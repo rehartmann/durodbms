@@ -244,7 +244,7 @@ RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *ecp,
 cleanup:
     if (qrp != NULL)
         RDB_drop_qresult(qrp, ecp, txp);
-    RDB_drop_expr(texp, ecp);
+    RDB_del_expr(texp, ecp);
     RDB_destroy_obj(&tpl, ecp);
     return ret;
 }
@@ -1039,7 +1039,7 @@ RDB_extract_tuple(RDB_object *tbp, RDB_exec_context *ecp,
 
     qrp = RDB_expr_qresult(texp, ecp, txp);
     if (qrp == NULL) {
-        RDB_drop_expr(texp, ecp);
+        RDB_del_expr(texp, ecp);
         return RDB_ERROR;
     }
 
@@ -1079,7 +1079,7 @@ cleanup:
     RDB_destroy_obj(&tpl, ecp);
 
     RDB_drop_qresult(qrp, ecp, txp);
-    RDB_drop_expr(texp, ecp);
+    RDB_del_expr(texp, ecp);
     return RDB_get_err(ecp) == NULL ? RDB_OK : RDB_ERROR;
 }
 
@@ -1146,8 +1146,8 @@ RDB_table_is_empty(RDB_object *tbp, RDB_exec_context *ecp,
     	return RDB_ERROR;
     argp = RDB_table_ref(tbp, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
-        RDB_drop_expr(argp, ecp);
+        RDB_del_expr(exp, ecp);
+        RDB_del_expr(argp, ecp);
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
@@ -1155,7 +1155,7 @@ RDB_table_is_empty(RDB_object *tbp, RDB_exec_context *ecp,
     nexp = RDB_optimize_expr(exp, 0, NULL, ecp, txp);
 
     /* Remove projection */
-    RDB_drop_expr(exp, ecp);
+    RDB_del_expr(exp, ecp);
 
     if (nexp == NULL) {
         return RDB_ERROR;
@@ -1163,7 +1163,7 @@ RDB_table_is_empty(RDB_object *tbp, RDB_exec_context *ecp,
 
     qrp = RDB_expr_qresult(nexp, ecp, txp);
     if (qrp == NULL) {
-        RDB_drop_expr(nexp, ecp);
+        RDB_del_expr(nexp, ecp);
         return RDB_ERROR;
     }
 
@@ -1176,7 +1176,7 @@ RDB_table_is_empty(RDB_object *tbp, RDB_exec_context *ecp,
         if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
             RDB_destroy_obj(&tpl, ecp);
             RDB_drop_qresult(qrp, ecp, txp);
-            RDB_drop_expr(nexp, ecp);
+            RDB_del_expr(nexp, ecp);
             return RDB_ERROR;
         }
         RDB_clear_err(ecp);
@@ -1189,7 +1189,7 @@ RDB_table_is_empty(RDB_object *tbp, RDB_exec_context *ecp,
     if (RDB_drop_qresult(qrp, ecp, txp) != RDB_OK) {
         return RDB_ERROR;
     }
-    return RDB_drop_expr(nexp, ecp);
+    return RDB_del_expr(nexp, ecp);
 }
 
 /**
@@ -1237,14 +1237,14 @@ RDB_cardinality(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     qrp = RDB_expr_qresult(texp, ecp, txp);
     if (qrp == NULL) {
-        RDB_drop_expr(texp, ecp);
+        RDB_del_expr(texp, ecp);
         return RDB_ERROR;
     }
 
     /* Duplicates must be removed */
     ret = RDB_duprem(qrp, ecp, txp);
     if (ret != RDB_OK) {
-        RDB_drop_expr(texp, ecp);
+        RDB_del_expr(texp, ecp);
         RDB_drop_qresult(qrp, ecp, txp);
         return RDB_ERROR;
     }
@@ -1270,13 +1270,13 @@ RDB_cardinality(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             && texp->def.tbref.tbp->val.tb.stp != NULL)
         texp->def.tbref.tbp->val.tb.stp->est_cardinality = count;
 
-    if (RDB_drop_expr(texp, ecp) != RDB_OK)
+    if (RDB_del_expr(texp, ecp) != RDB_OK)
         return RDB_ERROR;
 
     return count;
 
 error:
-    RDB_drop_expr(texp, ecp);
+    RDB_del_expr(texp, ecp);
     return RDB_ERROR;
 }
 

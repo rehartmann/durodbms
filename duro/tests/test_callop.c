@@ -79,13 +79,13 @@ test_useop(RDB_database *dbp, RDB_exec_context *ecp)
 
     argp = RDB_table_ref(tbp, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         goto error;
     }
     RDB_add_arg(exp, argp);
     argp = RDB_ro_op("PLUS", ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         goto error;
     }
     RDB_add_arg(argp, expv[0]);
@@ -94,7 +94,7 @@ test_useop(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_add_arg(exp, argp);
     argp = RDB_string_to_expr("XDEPTNO", ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         goto error;
     }
     RDB_add_arg(exp, argp);

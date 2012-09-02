@@ -109,10 +109,10 @@ list_to_upd(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
             int j;
 
             for (j = 0; j < i - 1; j++) {
-                RDB_drop_expr(updp->updv[j].exp, statep->current_ecp);
+                RDB_del_expr(updp->updv[j].exp, statep->current_ecp);
             }
             if (updp->condp != NULL) {
-                RDB_drop_expr(updp->condp, statep->current_ecp);
+                RDB_del_expr(updp->condp, statep->current_ecp);
             }
             return TCL_ERROR;
         }
@@ -220,7 +220,7 @@ list_to_copy(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
     } else {
         copyp->srcp = RDB_expr_to_vtable(srcexp, statep->current_ecp, txp);
         if (copyp->srcp == NULL) {
-            RDB_drop_expr(srcexp, statep->current_ecp);
+            RDB_del_expr(srcexp, statep->current_ecp);
             return TCL_ERROR;
         }
     }
@@ -329,9 +329,9 @@ cleanup:
 
     for (i = 0; i < updc; i++) {
         if (updv[i].condp != NULL)
-            RDB_drop_expr(updv[i].condp, statep->current_ecp);
+            RDB_del_expr(updv[i].condp, statep->current_ecp);
         for (j = 0; j < updv[i].updc; j++) {
-            RDB_drop_expr(updv[i].updv[j].exp, statep->current_ecp);
+            RDB_del_expr(updv[i].updv[j].exp, statep->current_ecp);
         }
         Tcl_Free((char *) updv[i].updv);
     }
@@ -339,7 +339,7 @@ cleanup:
 
     for (i = 0; i < delc; i++) {
         if (delv[i].condp != NULL)
-            RDB_drop_expr(delv[i].condp, statep->current_ecp);
+            RDB_del_expr(delv[i].condp, statep->current_ecp);
     }
     Tcl_Free((char *) delv);
 

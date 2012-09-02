@@ -85,7 +85,7 @@ RDB_expr_resolve_varname_expr(RDB_expression **expp, const char *varname,
                 }
 
                 exp->nextp = (*expp)->nextp;
-                RDB_drop_expr(*expp, ecp);
+                RDB_del_expr(*expp, ecp);
                 *expp = exp;
             }
             return RDB_OK;
@@ -149,7 +149,7 @@ RDB_expr_resolve_varnames(RDB_expression *exp, RDB_getobjfn *getfnp,
                 RDB_expression *argexp = RDB_expr_resolve_varnames(
                         argp, getfnp, getdata, ecp, txp);
                 if (argexp == NULL) {
-                    RDB_drop_expr(newexp, ecp);
+                    RDB_del_expr(newexp, ecp);
                     return NULL;
                 }
                 RDB_add_arg(newexp, argexp);
@@ -161,7 +161,7 @@ RDB_expr_resolve_varnames(RDB_expression *exp, RDB_getobjfn *getfnp,
              * is lost
              */
             if (copy_expr_typeinfo_if_needed(newexp, exp, ecp) != RDB_OK) {
-                RDB_drop_expr(newexp, ecp);
+                RDB_del_expr(newexp, ecp);
                 return NULL;
             }
 
@@ -513,7 +513,7 @@ RDB_tuple_attr(RDB_expression *arg, const char *attrname,
     exp->def.op.name = RDB_dup_str(attrname);
     if (exp->def.op.name == NULL) {
         RDB_raise_no_memory(ecp);
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return NULL;
     }
     return exp;
@@ -540,7 +540,7 @@ RDB_expr_comp(RDB_expression *arg, const char *compname,
 
     exp->def.op.name = RDB_dup_str(compname);
     if (exp->def.op.name == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return NULL;
     }
     return exp;
@@ -552,7 +552,7 @@ drop_children(RDB_expression *exp, RDB_exec_context *ecp)
     switch (exp->kind) {
         case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
-            if (RDB_drop_expr(exp->def.op.args.firstp, ecp) != RDB_OK)
+            if (RDB_del_expr(exp->def.op.args.firstp, ecp) != RDB_OK)
                 return RDB_ERROR;
             break;
         case RDB_EX_RO_OP:
@@ -565,7 +565,7 @@ drop_children(RDB_expression *exp, RDB_exec_context *ecp)
 }
 
 /**
- * RDB_drop_expr destroys the expression specified to by <var>exp</var>
+ * Destroys the expression specified to by <var>exp</var>
 (including all subexpressions) and frees all resources associated with it.
 
 @returns
@@ -577,7 +577,7 @@ RDB_OK on success, RDB_ERROR on failure.
 The call may fail for a @ref system-errors "system error".
  */
 int
-RDB_drop_expr(RDB_expression *exp, RDB_exec_context *ecp)
+RDB_del_expr(RDB_expression *exp, RDB_exec_context *ecp)
 {
     int ret;
 
@@ -634,7 +634,7 @@ RDB_dup_expr(const RDB_expression *exp, RDB_exec_context *ecp)
              * of the copy.
              */
             if (copy_expr_typeinfo_if_needed(newexp, exp, ecp) != RDB_OK) {
-                RDB_drop_expr(newexp, ecp);
+                RDB_del_expr(newexp, ecp);
                 return NULL;
             }
 
@@ -709,7 +709,7 @@ RDB_destroy_expr_list(RDB_expr_list *explistp, RDB_exec_context *ecp)
     RDB_expression *exp = explistp->firstp;
     while (exp != NULL) {
         nexp = exp->nextp;
-        if (RDB_drop_expr(exp, ecp) != RDB_OK)
+        if (RDB_del_expr(exp, ecp) != RDB_OK)
             ret = RDB_ERROR;
         exp = nexp;
     }
@@ -1114,7 +1114,7 @@ RDB_resolve_exprnames(RDB_expression **expp, RDB_expression *texp,
                 }
 
                 exp->nextp = (*expp)->nextp;
-                RDB_drop_expr(*expp, ecp);
+                RDB_del_expr(*expp, ecp);
                 *expp = exp;
             }
             return RDB_OK;

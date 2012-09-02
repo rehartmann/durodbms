@@ -47,7 +47,7 @@ add_empty_tb(RDB_constraint *constrp, RDB_exec_context *ecp,
         ret = RDB_hashtable_put(&txp->dbp->dbrootp->empty_tbtab,
                 exp, &te);
         if (ret != RDB_OK) {
-            RDB_drop_expr(exp, ecp);
+            RDB_del_expr(exp, ecp);
             RDB_errcode_to_error(ret, ecp, txp);
             return RDB_ERROR;
         }
@@ -241,7 +241,7 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
 
     if (strcmp(constrp->name, name) == 0) {
         dbrootp->first_constrp = constrp->nextp;
-        RDB_drop_expr(constrp->exp, ecp);
+        RDB_del_expr(constrp->exp, ecp);
         RDB_free(constrp->name);
         RDB_free(constrp);
     } else {
@@ -258,7 +258,7 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
 
         hconstrp = constrp->nextp;
         constrp->nextp = constrp->nextp->nextp;
-        RDB_drop_expr(hconstrp->exp, ecp);
+        RDB_del_expr(hconstrp->exp, ecp);
         RDB_free(hconstrp->name);
         RDB_free(hconstrp);
     }
@@ -270,7 +270,7 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
     ret = RDB_delete(dbrootp->constraints_tbp, condp, ecp, txp);
-    RDB_drop_expr(condp, ecp);
+    RDB_del_expr(condp, ecp);
 
     return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
 }

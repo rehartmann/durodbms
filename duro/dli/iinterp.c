@@ -340,7 +340,7 @@ exec_vardef_virtual(RDB_parse_node *nodep, RDB_exec_context *ecp)
 
     tbp = RDB_expr_to_vtable(texp, ecp, &txnp->tx);
     if (tbp == NULL) {
-        RDB_drop_expr(texp, ecp);
+        RDB_del_expr(texp, ecp);
         return RDB_ERROR;
     }
     if (RDB_set_table_name(tbp, varname, ecp, &txnp->tx) != RDB_OK)
@@ -678,7 +678,7 @@ cleanup:
     if (seqitv != NULL)
         RDB_free(seqitv);
     if (optexp != NULL) {
-        RDB_drop_expr(optexp, ecp);
+        RDB_del_expr(optexp, ecp);
     }
     RDB_destroy_obj(&strobj, ecp);
     return ret;
@@ -1175,7 +1175,7 @@ tuple_update_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
     return RDB_OK;
 
 error:
-    RDB_drop_expr(srcexp, ecp);
+    RDB_del_expr(srcexp, ecp);
     return RDB_ERROR;
 }
 
@@ -2478,7 +2478,7 @@ exec_constrdef(RDB_parse_node *nodep, RDB_exec_context *ecp)
 
 error:
     if (constrexp != NULL)
-    	RDB_drop_expr(constrexp, ecp);
+    	RDB_del_expr(constrexp, ecp);
     if (txnp == NULL)
         RDB_rollback(ecp, &tmp_tx);
     return RDB_ERROR;

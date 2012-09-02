@@ -4,11 +4,15 @@ Summary of Changes for Duro
 
 Changes for Duro 0.16
 
+- DEFAULT
+
 - FOREACH loop
 
 - INDEX, DROP INDEX
 
 - EXPLAIN
+
+- Renamed RDB_drop_expr() to RDB_del_expr() for consistency.
 
 - RDB_get_table() now raises a name_error if the table is not found.
 

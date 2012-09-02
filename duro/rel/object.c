@@ -821,7 +821,7 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
                         objp->val.arr.txp);
             }
 
-            if (RDB_drop_expr(objp->val.arr.texp, ecp) != RDB_OK)
+            if (RDB_del_expr(objp->val.arr.texp, ecp) != RDB_OK)
                 return RDB_ERROR;
 
             if (objp->val.arr.tplp != NULL) {
@@ -843,7 +843,7 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
             RDB_free(objp->val.tb.name);
             
             if (objp->val.tb.exp != NULL) {
-                if (RDB_drop_expr(objp->val.tb.exp, ecp) != RDB_OK)
+                if (RDB_del_expr(objp->val.tb.exp, ecp) != RDB_OK)
                     return RDB_ERROR;
             }
 

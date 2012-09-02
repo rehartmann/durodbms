@@ -101,7 +101,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
 
     argp = RDB_table_ref(tbp, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
@@ -109,7 +109,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
 
     argp = RDB_string_to_expr("SALARY", ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
@@ -117,7 +117,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
 
     vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     if (vtbp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
@@ -144,7 +144,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
 
     argp = RDB_table_ref(tbp, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
@@ -152,7 +152,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
 
     argp = RDB_string_to_expr("EMPNO", ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
@@ -160,7 +160,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
 
     argp = RDB_string_to_expr("NAME", ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
@@ -168,7 +168,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
 
     vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     if (vtbp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }

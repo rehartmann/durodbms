@@ -638,7 +638,7 @@ RDB_deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
                 return ret;
             ret = RDB_deserialize_str(valp, posp, ecp, &name);
             if (ret != RDB_OK) {
-                RDB_drop_expr(ex1p, ecp);
+                RDB_del_expr(ex1p, ecp);
                 return ret;
             }
             *expp = RDB_create_unexpr(ex1p, RDB_EX_GET_COMP, ecp);
@@ -646,7 +646,7 @@ RDB_deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
                 return RDB_ERROR;
             (*expp)->def.op.name = RDB_dup_str(name);
             if ((*expp)->def.op.name == NULL) {
-                RDB_drop_expr(*expp, ecp);
+                RDB_del_expr(*expp, ecp);
                 RDB_raise_no_memory(ecp);
                 return RDB_ERROR;
             }
@@ -708,7 +708,7 @@ RDB_deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
                 return ret;
             ret = RDB_deserialize_str(valp, posp, ecp, &name);
             if (ret != RDB_OK) {
-                RDB_drop_expr(ex1p, ecp);
+                RDB_del_expr(ex1p, ecp);
                 return ret;
             }
             *expp = RDB_create_unexpr(ex1p, RDB_EX_TUPLE_ATTR, ecp);
@@ -717,7 +717,7 @@ RDB_deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             (*expp)->def.op.name = RDB_dup_str(name);
             if ((*expp)->def.op.name == NULL) {
                 RDB_raise_no_memory(ecp);
-                RDB_drop_expr(*expp, ecp);
+                RDB_del_expr(*expp, ecp);
                 return RDB_ERROR;
             }
             break;

@@ -99,12 +99,12 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
         goto error;
     }
 
-    return RDB_drop_expr(texp, ecp);
+    return RDB_del_expr(texp, ecp);
 
 error:
     if (qrp != NULL)
         RDB_drop_qresult(qrp, ecp, txp);
-    RDB_drop_expr(texp, ecp);
+    RDB_del_expr(texp, ecp);
     return RDB_ERROR;
 }
 

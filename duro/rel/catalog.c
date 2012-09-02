@@ -547,21 +547,21 @@ RDB_cat_index_tablename(const char *name, char **tbnamep,
     }
     argp = RDB_table_ref(txp->dbp->dbrootp->indexes_tbp, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
     argp = RDB_eq(RDB_var_ref("name", ecp), RDB_string_to_expr(name, ecp),
             ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
 
     vtbp = RDB_expr_to_vtable(exp, ecp, txp);
     if (vtbp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
 
@@ -594,7 +594,7 @@ RDB_cat_delete_index(const char *name, RDB_exec_context *ecp,
     }
 
     ret = RDB_delete(txp->dbp->dbrootp->indexes_tbp, wherep, ecp, txp);
-    RDB_drop_expr(wherep, ecp);
+    RDB_del_expr(wherep, ecp);
     if (ret == RDB_ERROR)
         return RDB_ERROR;
     return RDB_OK;
@@ -694,7 +694,7 @@ delete_rtable(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     ret = RDB_delete(txp->dbp->dbrootp->dbtables_tbp, exprp, ecp, txp);
 
 cleanup:
-    RDB_drop_expr(exprp, ecp);
+    RDB_del_expr(exprp, ecp);
     return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
 }
 
@@ -715,7 +715,7 @@ delete_vtable(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     ret = RDB_delete(txp->dbp->dbrootp->dbtables_tbp, exprp, ecp, txp);
 
 cleanup:
-    RDB_drop_expr(exprp, ecp);
+    RDB_del_expr(exprp, ecp);
 
     return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
 }
@@ -752,21 +752,21 @@ RDB_cat_get_indexes(const char *tablename, RDB_dbroot *dbrootp,
     }
     argp = RDB_table_ref(dbrootp->indexes_tbp, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
     argp = RDB_eq(RDB_var_ref("tablename", ecp),
             RDB_string_to_expr(tablename, ecp), ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
 
     vtbp = RDB_expr_to_vtable(exp, ecp, txp);
     if (vtbp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
 
@@ -1408,21 +1408,21 @@ get_keys(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
     }
     argp = RDB_table_ref(txp->dbp->dbrootp->keys_tbp, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
     argp = RDB_eq(RDB_string_to_expr(name, ecp),
             RDB_var_ref("tablename", ecp), ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
 
     vtbp = RDB_expr_to_vtable(exp, ecp, txp);
     if (vtbp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
 
@@ -1518,14 +1518,14 @@ RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
     }
     argp = RDB_table_ref(txp->dbp->dbrootp->rtables_tbp, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         goto error;
     }
     RDB_add_arg(exp, argp);
     argp = RDB_eq(RDB_var_ref("tablename", ecp),
             RDB_string_to_expr(name, ecp), ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         goto error;
     }
 
@@ -1538,7 +1538,7 @@ RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
 
     tmptb1p = RDB_expr_to_vtable(exp, ecp, txp);
     if (tmptb1p == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         goto error;
     }
 
@@ -1559,14 +1559,14 @@ RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
     }
     argp = RDB_table_ref(txp->dbp->dbrootp->table_attr_tbp, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         goto error;
     }
     RDB_add_arg(exp, argp);
     argp = RDB_eq(RDB_var_ref("tablename", ecp),
             RDB_string_to_expr(name, ecp), ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         goto error;
     }
     RDB_add_arg(exp, argp);
@@ -1623,14 +1623,14 @@ RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
     argp = RDB_table_ref(txp->dbp->dbrootp->table_attr_defvals_tbp,
             ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         goto error;
     }
     RDB_add_arg(exp, argp);
     argp = RDB_eq(RDB_var_ref("tablename", ecp),
             RDB_string_to_expr(name, ecp), ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         goto error;
     }
     RDB_add_arg(exp, argp);
@@ -1689,21 +1689,21 @@ RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
         }
         argp = RDB_table_ref(txp->dbp->dbrootp->table_recmap_tbp, ecp);
         if (argp == NULL) {
-            RDB_drop_expr(exp, ecp);
+            RDB_del_expr(exp, ecp);
             goto error;
         }
         RDB_add_arg(exp, argp);
         argp = RDB_eq(RDB_var_ref("tablename", ecp),
                 RDB_string_to_expr(name, ecp), ecp);
         if (argp == NULL) {
-            RDB_drop_expr(exp, ecp);
+            RDB_del_expr(exp, ecp);
             goto error;
         }
         RDB_add_arg(exp, argp);
 
         tmptb4p = RDB_expr_to_vtable(exp, ecp, txp);
         if (tmptb4p == NULL) {
-            RDB_drop_expr(exp, ecp);
+            RDB_del_expr(exp, ecp);
             goto error;
         }
         ret = RDB_extract_tuple(tmptb4p, ecp, txp, &tpl);
@@ -1828,7 +1828,7 @@ RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
     }
     argp = RDB_table_ref(txp->dbp->dbrootp->vtables_tbp, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         goto error;
     }
     /* Set transformed flags to avoid infinite recursion */
@@ -1839,7 +1839,7 @@ RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
     argp = RDB_eq(RDB_var_ref("tablename", ecp),
             RDB_string_to_expr(name, ecp), ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         goto error;
     }
     argp->transformed = RDB_TRUE;
@@ -1848,7 +1848,7 @@ RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
     exp->transformed = RDB_TRUE;
     tmptbp = RDB_expr_to_vtable(exp, ecp, txp);
     if (tmptbp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         goto error;
     }
     
@@ -1944,9 +1944,9 @@ RDB_cat_rename_table(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
     ret = RDB_update(txp->dbp->dbrootp->dbtables_tbp, condp, 1, &upd, ecp, txp);
 
 cleanup:
-    RDB_drop_expr(condp, ecp);
+    RDB_del_expr(condp, ecp);
     if (upd.exp != NULL)
-        RDB_drop_expr(upd.exp, ecp);
+        RDB_del_expr(upd.exp, ecp);
     return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
 }
 
@@ -1963,21 +1963,21 @@ types_query(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
 
     argp = RDB_table_ref(txp->dbp->dbrootp->types_tbp, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
     argp = RDB_eq(RDB_var_ref("typename", ecp),
                     RDB_string_to_expr(name, ecp), ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
 
     *tbpp = RDB_expr_to_vtable(exp, ecp, txp);
     if (*tbpp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -1994,19 +1994,19 @@ RDB_possreps_query(const char *name, RDB_exec_context *ecp,
     	return RDB_ERROR;
     argp = RDB_table_ref(txp->dbp->dbrootp->possrepcomps_tbp, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
     argp = RDB_string_to_expr("typename", ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
     argp = RDB_string_to_expr("possrepname", ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
@@ -2014,14 +2014,14 @@ RDB_possreps_query(const char *name, RDB_exec_context *ecp,
     argp = exp;
     exp = RDB_ro_op("where", ecp);
     if (exp == NULL) {
-        RDB_drop_expr(argp, ecp);        
+        RDB_del_expr(argp, ecp);        
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
     argp = RDB_eq(RDB_var_ref("typename", ecp),
             RDB_string_to_expr(name, ecp), ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
@@ -2046,27 +2046,27 @@ possrepcomps_query(const char *name, const char *possrepname,
     argp = RDB_eq(RDB_var_ref("typename", ecp),
             RDB_string_to_expr(name, ecp), ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return NULL;
     }
     RDB_add_arg(exp, argp);
     argp = RDB_eq(RDB_var_ref("possrepname", ecp),
             RDB_string_to_expr(possrepname, ecp), ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);        
+        RDB_del_expr(exp, ecp);        
         return NULL;
     }
     RDB_add_arg(exp, argp);
 
     wexp = RDB_ro_op("where", ecp);
     if (wexp == NULL) {
-        RDB_drop_expr(exp, ecp);        
+        RDB_del_expr(exp, ecp);        
         return NULL;
     }
     argp = RDB_table_ref(txp->dbp->dbrootp->possrepcomps_tbp, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(wexp, ecp);
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(wexp, ecp);
+        RDB_del_expr(exp, ecp);
         return NULL;
     }
     RDB_add_arg(wexp, argp);
@@ -2074,7 +2074,7 @@ possrepcomps_query(const char *name, const char *possrepname,
 
     tbp = RDB_expr_to_vtable(wexp, ecp, txp);
     if (tbp == NULL) {
-        RDB_drop_expr(wexp, ecp);
+        RDB_del_expr(wexp, ecp);
         return NULL;
     }
     return tbp;
@@ -2380,20 +2380,20 @@ RDB_cat_load_ro_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp
     exp = RDB_eq(RDB_var_ref("name", ecp),
             RDB_string_to_expr(name, ecp), ecp);
     if (exp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         RDB_destroy_obj(&typesobj, ecp);
         return RDB_ERROR;
     }
 
     wexp = RDB_ro_op("where", ecp);
     if (wexp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
     argp = RDB_table_ref(txp->dbp->dbrootp->ro_ops_tbp, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(wexp, ecp);
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(wexp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
     RDB_add_arg(wexp, argp);
@@ -2401,7 +2401,7 @@ RDB_cat_load_ro_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp
 
     vtbp = RDB_expr_to_vtable(wexp, ecp, txp);
     if (vtbp == NULL) {
-        RDB_drop_expr(wexp, ecp);
+        RDB_del_expr(wexp, ecp);
         return RDB_ERROR;
     }
     qrp = RDB_table_qresult(vtbp, ecp, txp);
@@ -2486,20 +2486,20 @@ RDB_cat_load_upd_op(const char *name, RDB_exec_context *ecp,
     exp = RDB_eq(RDB_var_ref("name", ecp),
             RDB_string_to_expr(name, ecp), ecp);
     if (exp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         RDB_destroy_obj(&typesobj, ecp);
         return RDB_ERROR;
     }
 
     wexp = RDB_ro_op("where", ecp);
     if (wexp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
     argp = RDB_table_ref(txp->dbp->dbrootp->upd_ops_tbp, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(wexp, ecp);
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(wexp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
     RDB_add_arg(wexp, argp);
@@ -2507,7 +2507,7 @@ RDB_cat_load_upd_op(const char *name, RDB_exec_context *ecp,
 
     vtbp = RDB_expr_to_vtable(wexp, ecp, txp);
     if (vtbp == NULL) {
-        RDB_drop_expr(wexp, ecp);
+        RDB_del_expr(wexp, ecp);
         return RDB_ERROR;
     }
     qrp = RDB_table_qresult(vtbp, ecp, txp);

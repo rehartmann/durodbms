@@ -57,8 +57,8 @@ test_update(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     ret = RDB_update(tbp, condp, 1, attrs, ecp, txp);
     assert(ret != RDB_ERROR);
 
-    assert(RDB_drop_expr(condp, ecp) == RDB_OK);
-    assert(RDB_drop_expr(attrs[0].exp, ecp) == RDB_OK);
+    assert(RDB_del_expr(condp, ecp) == RDB_OK);
+    assert(RDB_del_expr(attrs[0].exp, ecp) == RDB_OK);
 }
 
 static void

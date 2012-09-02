@@ -931,7 +931,7 @@ binop_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *t
 
 error:
     if (nodep->exp != NULL) {
-        RDB_drop_expr(nodep->exp, ecp);
+        RDB_del_expr(nodep->exp, ecp);
         nodep->exp = NULL;
     }
     return NULL;
@@ -967,7 +967,7 @@ inner_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *t
                     if (add_tuple_item_list(nodep->exp,
                             firstp->nextp->nextp, ecp, txp)
                                     != RDB_OK) {
-                        RDB_drop_expr(nodep->exp, ecp);
+                        RDB_del_expr(nodep->exp, ecp);
                         return nodep->exp = NULL;
                     }
                 }
@@ -984,19 +984,19 @@ inner_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *t
                     RDB_type *reltyp = parse_heading(firstp->nextp->nextp,
                             RDB_TRUE, ecp, txp);
                     if (reltyp == NULL) {
-                        RDB_drop_expr(nodep->exp, ecp);
+                        RDB_del_expr(nodep->exp, ecp);
                         return nodep->exp = NULL;
                     }
                     RDB_set_expr_type(nodep->exp, reltyp);
                     if (add_arg_list(nodep->exp, firstp->nextp->nextp->nextp->nextp->nextp, ecp, txp)
                             != RDB_OK) {
-                        RDB_drop_expr(nodep->exp, ecp);
+                        RDB_del_expr(nodep->exp, ecp);
                         return nodep->exp = NULL;
                     }
                     return nodep->exp;
                 } else {
                     if (add_arg_list(nodep->exp, firstp->nextp->nextp, ecp, txp) != RDB_OK) {
-                        RDB_drop_expr(nodep->exp, ecp);
+                        RDB_del_expr(nodep->exp, ecp);
                         return nodep->exp = NULL;
                     }
                 }
@@ -1012,12 +1012,12 @@ inner_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *t
                     RDB_type *typ = RDB_parse_node_to_type(firstp->nextp,
                             NULL, NULL, ecp, txp);
                     if (typ == NULL) {
-                        RDB_drop_expr(nodep->exp, ecp);
+                        RDB_del_expr(nodep->exp, ecp);
                         return nodep->exp = NULL;
                     }
                     arrtyp = RDB_new_array_type(typ, ecp);
                     if (arrtyp == NULL) {
-                        RDB_drop_expr(nodep->exp, ecp);
+                        RDB_del_expr(nodep->exp, ecp);
                         return nodep->exp = NULL;
                     }
 

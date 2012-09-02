@@ -95,7 +95,7 @@ replace_updattrs(RDB_expression *exp, int updc, RDB_attr_update updv[],
     return uexp;
 
 error:
-    RDB_drop_expr(uexp, ecp);
+    RDB_del_expr(uexp, ecp);
     return NULL;
 }
 
@@ -113,30 +113,30 @@ replace_targets_real_ins(RDB_object *tbp, const RDB_ma_insert *insp,
     }
     argp =  RDB_table_ref(tbp, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return NULL;
     }
     RDB_add_arg(exp, argp);
 
     argp = RDB_obj_to_expr(NULL, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return NULL;
     }
     tbtyp = RDB_dup_nonscalar_type(RDB_obj_type(tbp), ecp);
     if (tbtyp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return NULL;
     }
     if (RDB_init_table_from_type(RDB_expr_obj(argp), NULL,
             tbtyp, 0, NULL, 0, NULL, ecp) != RDB_OK) {
         RDB_del_nonscalar_type(tbtyp, ecp);
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return NULL;
     }
     ret = RDB_insert(RDB_expr_obj(argp), insp->objp, ecp, NULL);
     if (ret != RDB_OK) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return NULL;
     }
     RDB_add_arg(exp, argp);
@@ -215,9 +215,9 @@ replace_targets_real_upd(RDB_object *tbp, const RDB_ma_update *updp,
     return exp;
 
 error:
-    RDB_drop_expr(exp, ecp);
+    RDB_del_expr(exp, ecp);
     if (uexp != NULL)
-        RDB_drop_expr(uexp, ecp);
+        RDB_del_expr(uexp, ecp);
 
     return NULL;
 }
@@ -254,27 +254,27 @@ replace_targets_real(RDB_object *tbp,
                     return NULL;
                 argp = RDB_table_ref(tbp, ecp);
                 if (argp == NULL) {
-                    RDB_drop_expr(exp, ecp);
+                    RDB_del_expr(exp, ecp);
                     return NULL;
                 }
                 RDB_add_arg(exp, argp);
 
                 wexp = RDB_ro_op("where", ecp);
                 if (wexp == NULL) {
-                    RDB_drop_expr(exp, ecp);
+                    RDB_del_expr(exp, ecp);
                     return NULL;
                 }
                 argp = RDB_table_ref(tbp, ecp);
                 if (argp == NULL) {
-                    RDB_drop_expr(exp, ecp);
-                    RDB_drop_expr(wexp, ecp);
+                    RDB_del_expr(exp, ecp);
+                    RDB_del_expr(wexp, ecp);
                     return NULL;
                 }
                 RDB_add_arg(wexp, argp);
                 argp = RDB_dup_expr(delv[i].condp, ecp);
                 if (argp == NULL) {
-                    RDB_drop_expr(exp, ecp);
-                    RDB_drop_expr(wexp, ecp);
+                    RDB_del_expr(exp, ecp);
+                    RDB_del_expr(wexp, ecp);
                     return NULL;
                 }
                 RDB_add_arg(wexp, argp);
@@ -512,7 +512,7 @@ del_updlist(update_node *updnp, RDB_exec_context *ecp)
         hupdnp = updnp->nextp;
 
         if (updnp->upd.condp != NULL) {
-            RDB_drop_expr(updnp->upd.condp, ecp);
+            RDB_del_expr(updnp->upd.condp, ecp);
         }
         RDB_free(updnp);
         updnp = hupdnp;
@@ -528,7 +528,7 @@ del_dellist(delete_node *delnp, RDB_exec_context *ecp)
         hdelnp = delnp->nextp;
 
         if (delnp->del.condp != NULL) {
-            RDB_drop_expr(delnp->del.condp, ecp);
+            RDB_del_expr(delnp->del.condp, ecp);
         }
         RDB_free(delnp);
         delnp = hdelnp;
@@ -784,7 +784,7 @@ resolve_delete_expr(RDB_expression *exp, RDB_expression *condp,
                 }
                 ncondp = RDB_ro_op("and", ecp);
                 if (ncondp == NULL) {
-                    RDB_drop_expr(hcondp, ecp);
+                    RDB_del_expr(hcondp, ecp);
                     del_dellist(delnp, ecp);
                     return RDB_ERROR;
                 }
@@ -884,15 +884,15 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp,
 
     nexp = RDB_optimize_expr(exp, 0, NULL, ecp, txp);
     exp->def.op.args.firstp = NULL;
-    RDB_drop_expr(exp, ecp);
-    RDB_drop_expr(tbexp, ecp);
+    RDB_del_expr(exp, ecp);
+    RDB_del_expr(tbexp, ecp);
     if (nexp == NULL)
         return RDB_ERROR;
 
     if (nexp->kind == RDB_EX_TBP) {
         ret = RDB_update_real(nexp->def.tbref.tbp, NULL, updp->updc, updp->updv,
                 ecp, txp);
-        RDB_drop_expr(nexp, ecp);
+        RDB_del_expr(nexp, ecp);
         return ret;
     }
     if (nexp->kind == RDB_EX_RO_OP
@@ -900,7 +900,7 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp,
         if (nexp->def.op.optinfo.objpc > 0) {
             ret = RDB_update_where_index(nexp, NULL, updp->updc, updp->updv,
                     ecp, txp);
-            RDB_drop_expr(nexp, ecp);
+            RDB_del_expr(nexp, ecp);
             return ret;
         }
 
@@ -910,7 +910,7 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp,
             ret = RDB_update_where_index(nexp->def.op.args.firstp,
                     nexp->def.op.args.firstp->nextp, updp->updc, updp->updv,
                     ecp, txp);
-            RDB_drop_expr(nexp, ecp);
+            RDB_del_expr(nexp, ecp);
             return ret;
         }
 
@@ -918,11 +918,11 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp,
             ret = RDB_update_real(nexp->def.op.args.firstp->def.tbref.tbp,
                     nexp->def.op.args.firstp->nextp, updp->updc, updp->updv,
                     ecp, txp);
-            RDB_drop_expr(nexp, ecp);
+            RDB_del_expr(nexp, ecp);
             return ret;
         }
     }
-    RDB_drop_expr(nexp, ecp);
+    RDB_del_expr(nexp, ecp);
     RDB_raise_not_supported("Unsupported update", ecp);
     return RDB_ERROR;
 }
@@ -956,18 +956,18 @@ do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
         return RDB_ERROR;
 
     exp->def.op.args.firstp = NULL;
-    RDB_drop_expr(exp, ecp);
-    RDB_drop_expr(tbexp, ecp);
+    RDB_del_expr(exp, ecp);
+    RDB_del_expr(tbexp, ecp);
 
     if (nexp->kind == RDB_EX_TBP) {
         ret = RDB_delete_real(nexp->def.tbref.tbp, NULL, ecp, txp);
-        RDB_drop_expr(nexp, ecp);
+        RDB_del_expr(nexp, ecp);
         return ret;
     }
     if (nexp->kind == RDB_EX_RO_OP && strcmp (nexp->def.op.name, "where") == 0) {
         if (nexp->def.op.optinfo.objpc > 0) {
             ret = RDB_delete_where_index(nexp, NULL, ecp, txp);
-            RDB_drop_expr(nexp, ecp);
+            RDB_del_expr(nexp, ecp);
             return ret;
         }
 
@@ -976,18 +976,18 @@ do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
                 && nexp->def.op.args.firstp->def.op.optinfo.objpc > 0) {
             ret = RDB_delete_where_index(nexp->def.op.args.firstp,
                     nexp->def.op.args.firstp->nextp, ecp, txp);
-            RDB_drop_expr(nexp, ecp);
+            RDB_del_expr(nexp, ecp);
             return ret;
         }
 
         if (nexp->def.op.args.firstp->kind == RDB_EX_TBP) {
             ret = RDB_delete_real(nexp->def.op.args.firstp->def.tbref.tbp,
                     nexp->def.op.args.firstp->nextp, ecp, txp);
-            RDB_drop_expr(nexp, ecp);
+            RDB_del_expr(nexp, ecp);
             return ret;
         }
     }
-    RDB_drop_expr(nexp, ecp);
+    RDB_del_expr(nexp, ecp);
     RDB_raise_not_supported("Unsupported delete", ecp);
     return RDB_ERROR;
 }
@@ -1654,7 +1654,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                  * Check constraint
                  */
                 ret = RDB_evaluate_bool(newexp, NULL, NULL, NULL, ecp, txp, &b);
-                RDB_drop_expr(newexp, ecp);
+                RDB_del_expr(newexp, ecp);
                 if (ret != RDB_OK) {
                     rcount = RDB_ERROR;
                     goto cleanup;
@@ -1780,7 +1780,7 @@ cleanup:
     if (nupdv != updv) {
         for (i = updc; i < nupdc; i++) {
             if (nupdv[i].condp != NULL) {
-                RDB_drop_expr(nupdv[i].condp, ecp);
+                RDB_del_expr(nupdv[i].condp, ecp);
             }
         }
         RDB_free(nupdv);
@@ -1789,7 +1789,7 @@ cleanup:
     if (ndelv != delv) {
         for (i = delc; i < ndelc; i++) {
             if (ndelv[i].condp != NULL) {
-                RDB_drop_expr(ndelv[i].condp, ecp);
+                RDB_del_expr(ndelv[i].condp, ecp);
             }
         }
         RDB_free(ndelv);

@@ -72,7 +72,7 @@ transform_union(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
                  * by T { ... }
                  */
 
-                if (RDB_drop_expr(exp->def.op.args.firstp->nextp, ecp) != RDB_OK)
+                if (RDB_del_expr(exp->def.op.args.firstp->nextp, ecp) != RDB_OK)
                     return RDB_ERROR;
 
                 RDB_free(exp->def.op.name);
@@ -81,7 +81,7 @@ transform_union(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 
                 exp->def.op.args.firstp = wex1p->def.op.args.firstp;
                 exp->def.op.args.lastp = pexp->def.op.args.lastp;
-                if (RDB_drop_expr(wex1p->def.op.args.firstp->nextp, ecp) != RDB_OK)
+                if (RDB_del_expr(wex1p->def.op.args.firstp->nextp, ecp) != RDB_OK)
                     return RDB_ERROR;
                 wex1p->def.op.args.firstp->nextp = pexp->def.op.args.firstp->nextp;
 
@@ -163,7 +163,7 @@ transform_where(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 
             wexp = RDB_ro_op("where", ecp);
             if (wexp == NULL) {
-                RDB_drop_expr(condp, ecp);
+                RDB_del_expr(condp, ecp);
                 return RDB_ERROR;
             }
             RDB_add_arg(wexp, exp->def.op.args.firstp->def.op.args.firstp->nextp);
@@ -282,7 +282,7 @@ swap_project_union(RDB_expression *exp,
     while (argp != NULL) {
         nargp = RDB_dup_expr(argp, ecp);
         if (nargp == NULL) {
-            RDB_drop_expr(nexp, ecp);
+            RDB_del_expr(nexp, ecp);
             return RDB_ERROR;
         }
         RDB_add_arg(nexp, nargp);
@@ -351,8 +351,8 @@ swap_project_rename(RDB_expression *texp, RDB_gettypefn *getfnp, void *arg,
         if (proj_attr(texp, RDB_obj_string(&argp->nextp->nextp->def.obj))
                 == NULL) {
             hexp = argp->nextp->nextp->nextp;
-            RDB_drop_expr(argp->nextp, ecp);
-            RDB_drop_expr(argp->nextp->nextp, ecp);
+            RDB_del_expr(argp->nextp, ecp);
+            RDB_del_expr(argp->nextp->nextp, ecp);
             argp->nextp = hexp;
         } else {
             argp = argp->nextp->nextp;
@@ -450,8 +450,8 @@ transform_project_extend(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             argp = argp->nextp->nextp;
         } else {
             hexp = argp->nextp->nextp->nextp;
-            RDB_drop_expr(argp->nextp->nextp, ecp);
-            RDB_drop_expr(argp->nextp, ecp);
+            RDB_del_expr(argp->nextp->nextp, ecp);
+            RDB_del_expr(argp->nextp, ecp);
             argp->nextp = hexp;
         }
     }
@@ -534,7 +534,7 @@ swap_project_where(RDB_expression *exp, RDB_expression *chexp,
         for (i = 0; i < attrc; i++) {
             argp = RDB_string_to_expr(attrv[i], ecp);
             if (argp == NULL) {
-                RDB_drop_expr(nexp, ecp);
+                RDB_del_expr(nexp, ecp);
                 RDB_free(attrv);
                 return RDB_ERROR;
             }
@@ -589,7 +589,7 @@ transform_project(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             argp = chexp->def.op.args.firstp->nextp;
             while (argp != NULL) {
                 RDB_expression *nextp = argp->nextp;
-                if (RDB_drop_expr(argp, ecp) != RDB_OK)
+                if (RDB_del_expr(argp, ecp) != RDB_OK)
                     return RDB_ERROR;
                 argp = nextp;
             }
@@ -737,7 +737,7 @@ RDB_remove_to_project(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 error:
     if (argv != NULL) {
         for (i = 1; i < ai; i++) {
-            RDB_drop_expr(argv[i], ecp);
+            RDB_del_expr(argv[i], ecp);
         }
     }
     return RDB_ERROR;

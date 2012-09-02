@@ -101,7 +101,7 @@ RDB_parse_del_node(RDB_parse_node *nodep, RDB_exec_context *ecp)
             return RDB_ERROR;
     }
     if (nodep->exp != NULL)
-        return RDB_drop_expr(nodep->exp, ecp);
+        return RDB_del_expr(nodep->exp, ecp);
     if (nodep->whitecommp != NULL) {
         RDB_destroy_obj(nodep->whitecommp, ecp);
         RDB_free(nodep->whitecommp);

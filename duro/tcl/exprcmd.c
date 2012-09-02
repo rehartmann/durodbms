@@ -44,12 +44,12 @@ Duro_expr_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
     RDB_init_obj(&val);
     if (RDB_evaluate(exprp, Duro_get_ltable, statep, NULL, statep->current_ecp,
             txp, &val) != RDB_OK) {
-        RDB_drop_expr(exprp, statep->current_ecp);
+        RDB_del_expr(exprp, statep->current_ecp);
         RDB_destroy_obj(&val, statep->current_ecp);
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
-    RDB_drop_expr(exprp, statep->current_ecp);
+    RDB_del_expr(exprp, statep->current_ecp);
 
     tobjp = Duro_to_tcl(interp, &val, statep->current_ecp, txp);
     RDB_destroy_obj(&val, statep->current_ecp);

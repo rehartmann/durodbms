@@ -68,7 +68,7 @@ test_join(RDB_database *dbp, RDB_exec_context *ecp)
 
     argp = RDB_table_ref(tbp1, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
@@ -76,7 +76,7 @@ test_join(RDB_database *dbp, RDB_exec_context *ecp)
 
     argp = RDB_table_ref(tbp2, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
@@ -84,7 +84,7 @@ test_join(RDB_database *dbp, RDB_exec_context *ecp)
 
     vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     if (vtbp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }

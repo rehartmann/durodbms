@@ -244,7 +244,7 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     tbp = RDB_expr_to_vtable(texp, statep->current_ecp, txp);
     if (tbp == NULL) {
-        RDB_drop_expr(texp, statep->current_ecp);
+        RDB_del_expr(texp, statep->current_ecp);
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }        
@@ -394,11 +394,11 @@ Duro_delete_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST ob
     if (count == RDB_ERROR) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         if (wherep != NULL)
-            RDB_drop_expr(wherep, statep->current_ecp);
+            RDB_del_expr(wherep, statep->current_ecp);
         return TCL_ERROR;
     }
     if (wherep != NULL)
-        RDB_drop_expr(wherep, statep->current_ecp);
+        RDB_del_expr(wherep, statep->current_ecp);
     restobjp = Tcl_NewIntObj(count);
     if (restobjp == NULL) {
         return TCL_ERROR;
@@ -765,7 +765,7 @@ table_getplan_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_init_obj(&defobj);
     ret = RDB_expr_to_str(&defobj, texp, statep->current_ecp, txp,
             RDB_SHOW_INDEX);
-    RDB_drop_expr(texp, statep->current_ecp);
+    RDB_del_expr(texp, statep->current_ecp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&defobj, statep->current_ecp);
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);

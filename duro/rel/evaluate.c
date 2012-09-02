@@ -27,7 +27,7 @@ evaluate_vt(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         return RDB_ERROR;
 
     if (RDB_vtexp_to_obj(nexp, ecp, txp, retvalp) != RDB_OK) {
-        RDB_drop_expr(nexp, ecp);
+        RDB_del_expr(nexp, ecp);
         return RDB_ERROR;
     }
     return RDB_OK;

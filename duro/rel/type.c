@@ -909,13 +909,13 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
     }
     wherep = RDB_ro_op("=", ecp);
     if (wherep == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
     RDB_add_arg(wherep, exp);
     argp = RDB_string_to_expr(name, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
     RDB_add_arg(wherep, argp);
@@ -969,9 +969,9 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
 cleanup:    
     for (i = 0; i < 3; i++) {
         if (upd[i].exp != NULL)
-            RDB_drop_expr(upd[i].exp, ecp);
+            RDB_del_expr(upd[i].exp, ecp);
     }
-    RDB_drop_expr(wherep, ecp);
+    RDB_del_expr(wherep, ecp);
 
     return ret;
 }
@@ -1077,13 +1077,13 @@ RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     }
     argp = RDB_var_ref("typename", ecp);
     if (argp == NULL) {
-        RDB_drop_expr(wherep, ecp);
+        RDB_del_expr(wherep, ecp);
         return RDB_ERROR;
     }
     RDB_add_arg(wherep, argp);
     argp = RDB_string_to_expr(name, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(wherep, ecp);
+        RDB_del_expr(wherep, ecp);
         return RDB_ERROR;
     }
     RDB_add_arg(wherep, argp);
@@ -1094,13 +1094,13 @@ RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
     if (cnt == (RDB_int) RDB_ERROR) {
-        RDB_drop_expr(wherep, ecp);
+        RDB_del_expr(wherep, ecp);
         return RDB_ERROR;
     }
     cnt = RDB_delete(txp->dbp->dbrootp->possrepcomps_tbp, wherep, ecp,
             txp);
     if (cnt == (RDB_int) RDB_ERROR) {
-        RDB_drop_expr(wherep, ecp);
+        RDB_del_expr(wherep, ecp);
         return ret;
     }
 

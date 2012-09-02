@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2005 René Hartmann.
+ * Copyright (C) 2004-2005 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -95,11 +95,11 @@ Duro_update_cmd(ClientData data, Tcl_Interp *interp, int objc,
 cleanup:
     for (i = 0; i < updc; i++) {
         if (updv[i].exp != NULL)
-            RDB_drop_expr(updv[i].exp, statep->current_ecp);
+            RDB_del_expr(updv[i].exp, statep->current_ecp);
     }
     Tcl_Free((char *) updv);
     if (wherep != NULL)
-        RDB_drop_expr(wherep, statep->current_ecp);
+        RDB_del_expr(wherep, statep->current_ecp);
     return ret;                    
 }
 

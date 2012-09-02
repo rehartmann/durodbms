@@ -65,7 +65,7 @@ test_delete(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     }
 
-    RDB_drop_expr(exprp, ecp);
+    RDB_del_expr(exprp, ecp);
 
     ret = print_table(tbp, ecp, &tx);
     if (ret != RDB_OK) {

@@ -721,7 +721,7 @@ op_vtable(int argc, RDB_object *argv[], RDB_operator *op,
             argexp = RDB_obj_to_expr(argv[i], ecp);
         }
         if (argexp == NULL) {
-            RDB_drop_expr(exp, ecp);
+            RDB_del_expr(exp, ecp);
             return RDB_ERROR;
         }
         RDB_add_arg(exp, argexp);
@@ -731,7 +731,7 @@ op_vtable(int argc, RDB_object *argv[], RDB_operator *op,
      * Create virtual table
      */
     if (RDB_vtexp_to_obj(exp, ecp, txp, retvalp) != RDB_OK) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
     return RDB_OK;

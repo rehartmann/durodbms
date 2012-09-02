@@ -109,12 +109,12 @@ RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
         goto error;
     }
     RDB_drop_qresult(qrp, ecp, txp);
-    return RDB_drop_expr(texp, ecp);
+    return RDB_del_expr(texp, ecp);
 
 error:
     if (qrp != NULL)
         RDB_drop_qresult(qrp, ecp, txp);
-    RDB_drop_expr(texp, ecp);
+    RDB_del_expr(texp, ecp);
     return RDB_ERROR;
 }
 

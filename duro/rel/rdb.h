@@ -302,17 +302,17 @@ typedef RDB_object *RDB_getobjfn(const char *, void *);
 typedef RDB_type *RDB_gettypefn(const char *, void *);
 
 char *
-RDB_db_name(RDB_database *dbp);
+RDB_db_name(RDB_database *);
 
 RDB_environment *
 RDB_db_env(RDB_database *);
 
 RDB_database *
-RDB_create_db_from_env(const char *name, RDB_environment *envp,
+RDB_create_db_from_env(const char *, RDB_environment *,
         RDB_exec_context *);
 
 RDB_database *
-RDB_get_db_from_env(const char *name, RDB_environment *, RDB_exec_context *);
+RDB_get_db_from_env(const char *, RDB_environment *, RDB_exec_context *);
 
 int
 RDB_drop_db(RDB_database *, RDB_exec_context *);
@@ -342,9 +342,9 @@ typedef struct RDB_attr {
 } RDB_attr;
 
 RDB_object *
-RDB_create_table(const char *name,
-        int attrc, const RDB_attr attrv[],
-        int keyc, const RDB_string_vec keyv[],
+RDB_create_table(const char *,
+        int, const RDB_attr[],
+        int, const RDB_string_vec[],
         RDB_exec_context *, RDB_transaction *);
 
 RDB_object *
@@ -367,19 +367,19 @@ RDB_init_table_from_type(RDB_object *, const char *, RDB_type *,
         RDB_exec_context *);
 
 RDB_object *
-RDB_get_table(const char *name, RDB_exec_context *, RDB_transaction *);
+RDB_get_table(const char *, RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_drop_table(RDB_object *tbp, RDB_exec_context *, RDB_transaction *);
+RDB_drop_table(RDB_object *, RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_table_keys(RDB_object *, RDB_exec_context *, RDB_string_vec **keyvp);
+RDB_table_keys(RDB_object *, RDB_exec_context *, RDB_string_vec **);
 
 char *
 RDB_table_name(const RDB_object *);
 
 int
-RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *,
+RDB_set_table_name(RDB_object *, const char *, RDB_exec_context *,
         RDB_transaction *);
 
 int
@@ -847,7 +847,7 @@ RDB_evaluate_bool(RDB_expression *, RDB_getobjfn *getfnp, void *getdata,
         RDB_environment *, RDB_exec_context *, RDB_transaction *, RDB_bool *);
 
 int
-RDB_drop_expr(RDB_expression *, RDB_exec_context *);
+RDB_del_expr(RDB_expression *, RDB_exec_context *);
 
 RDB_expression *
 RDB_dup_expr(const RDB_expression *, RDB_exec_context *);

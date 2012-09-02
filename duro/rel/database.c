@@ -65,7 +65,7 @@ free_dbroot(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     while (constrp != NULL) {
         nextconstrp = constrp->nextp;
         RDB_free(constrp->name);
-        RDB_drop_expr(constrp->exp, ecp);
+        RDB_del_expr(constrp->exp, ecp);
         RDB_free(constrp);
         constrp = nextconstrp;
     }
@@ -252,7 +252,7 @@ cleanup_env(RDB_environment *envp)
     /* Destroy tables used in IS_EMPTY constraints */
     RDB_init_hashtable_iter(&tit, &dbrootp->empty_tbtab);
     while ((eexp = RDB_hashtable_next(&tit)) != NULL) {
-        RDB_drop_expr(eexp, &ec);
+        RDB_del_expr(eexp, &ec);
     }
     RDB_destroy_hashtable_iter(&tit);
 
@@ -750,13 +750,13 @@ user_tables_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
 error:
     if (ex1p != NULL)
-        RDB_drop_expr(ex1p, ecp);
+        RDB_del_expr(ex1p, ecp);
     if (ex2p != NULL)
-        RDB_drop_expr(ex2p, ecp);
+        RDB_del_expr(ex2p, ecp);
     if (ex3p != NULL)
-        RDB_drop_expr(ex3p, ecp);
+        RDB_del_expr(ex3p, ecp);
     if (ex4p != NULL)
-        RDB_drop_expr(ex4p, ecp);
+        RDB_del_expr(ex4p, ecp);
     return NULL;
 }
 
@@ -800,11 +800,11 @@ db_exists_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
 error:
     if (ex1p == NULL)
-        RDB_drop_expr(ex1p, ecp);
+        RDB_del_expr(ex1p, ecp);
     if (ex2p == NULL)
-        RDB_drop_expr(ex2p, ecp);
+        RDB_del_expr(ex2p, ecp);
     if (ex3p == NULL)
-        RDB_drop_expr(ex3p, ecp);
+        RDB_del_expr(ex3p, ecp);
     return NULL;
 }
 
@@ -929,11 +929,11 @@ db_names_tb(RDB_object *dbtables_tbp, RDB_exec_context *ecp, RDB_transaction *tx
 
 error:
     if (ex1p == NULL)
-        RDB_drop_expr(ex1p, ecp);
+        RDB_del_expr(ex1p, ecp);
     if (ex2p == NULL)
-        RDB_drop_expr(ex2p, ecp);
+        RDB_del_expr(ex2p, ecp);
     if (ex3p == NULL)
-        RDB_drop_expr(ex3p, ecp);
+        RDB_del_expr(ex3p, ecp);
     return NULL;
 }
 
@@ -1328,27 +1328,27 @@ table_dep_check(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     ex2p = RDB_string_to_expr(RDB_db_name(RDB_tx_db(txp)), ecp);
     if (ex2p == NULL) {
-        RDB_drop_expr(ex1p, ecp);
+        RDB_del_expr(ex1p, ecp);
         return RDB_ERROR;
     }
 
     wherep = RDB_eq(ex1p, ex2p, ecp);
     if (wherep == NULL) {
-        RDB_drop_expr(ex1p, ecp);
-        RDB_drop_expr(ex2p, ecp);
+        RDB_del_expr(ex1p, ecp);
+        RDB_del_expr(ex2p, ecp);
         return RDB_ERROR;
     }
 
     ex1p = RDB_ro_op("where", ecp);
     if (ex1p == NULL) {
-        RDB_drop_expr(wherep, ecp);
+        RDB_del_expr(wherep, ecp);
         return RDB_ERROR;
     }
 
     ex2p = RDB_table_ref(txp->dbp->dbrootp->dbtables_tbp, ecp);
     if (ex2p == NULL) {
-        RDB_drop_expr(wherep, ecp);
-        RDB_drop_expr(ex1p, ecp);
+        RDB_del_expr(wherep, ecp);
+        RDB_del_expr(ex1p, ecp);
         return RDB_ERROR;
     }
 
@@ -1357,7 +1357,7 @@ table_dep_check(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     vtbp = RDB_expr_to_vtable(ex1p, ecp, txp);
     if (vtbp == NULL) {
-        RDB_drop_expr(ex1p, ecp);
+        RDB_del_expr(ex1p, ecp);
         return RDB_ERROR;
     }
 

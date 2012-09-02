@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005 René Hartmann.
+ * Copyright (C) 2005 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -43,7 +43,7 @@ constraint_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     ret = RDB_create_constraint(Tcl_GetString(objv[2]), exp,
             statep->current_ecp, txp);
     if (ret != RDB_OK) {
-        RDB_drop_expr(exp, statep->current_ecp);
+        RDB_del_expr(exp, statep->current_ecp);
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }

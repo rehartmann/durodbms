@@ -67,7 +67,7 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    RDB_drop_expr(exprp, ecp);
+    RDB_del_expr(exprp, ecp);
 
     /* Updating table, setting NAME of no 1 to Smythe */
     attrs[0].name = "NAME";
@@ -78,8 +78,8 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    RDB_drop_expr(exprp, ecp);
-    RDB_drop_expr(attrs[0].exp, ecp);
+    RDB_del_expr(exprp, ecp);
+    RDB_del_expr(attrs[0].exp, ecp);
 
     /* Updating table, setting SALARY of no 3 to SALARY + 100 */
     attrs[0].name = "SALARY";
@@ -96,7 +96,7 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    RDB_drop_expr(exprp, ecp);
+    RDB_del_expr(exprp, ecp);
 
     /* Converting table to array */
     check_table(tbp, ecp, &tx);

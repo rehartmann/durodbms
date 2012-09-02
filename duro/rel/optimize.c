@@ -575,7 +575,7 @@ mutate_where(RDB_expression *texp, RDB_expression **tbpv, int cap,
 
         nexp = RDB_ro_op("where", ecp);
         if (nexp == NULL) {
-            RDB_drop_expr(exp, ecp);
+            RDB_del_expr(exp, ecp);
             return RDB_ERROR;
         }
         RDB_add_arg(nexp, tbpv[i]);
@@ -667,7 +667,7 @@ dup_expr_vt(const RDB_expression *exp, RDB_exec_context *ecp)
     if (exp->typ != NULL) {
         newexp->typ = RDB_dup_nonscalar_type(exp->typ, ecp);
         if (newexp->typ == NULL) {
-            RDB_drop_expr(newexp, ecp);
+            RDB_del_expr(newexp, ecp);
             return NULL;
         }
     }
@@ -763,14 +763,14 @@ transform_semiminus_union(RDB_expression *texp, RDB_exec_context *ecp,
 
     ex2p = RDB_dup_expr(texp->def.op.args.firstp->nextp, ecp);
     if (ex2p == NULL) {
-        RDB_drop_expr(ex1p, ecp);
+        RDB_del_expr(ex1p, ecp);
         return NULL;
     }
 
     ex3p = RDB_ro_op("semiminus", ecp);
     if (ex3p == NULL) {
-        RDB_drop_expr(ex1p, ecp);
-        RDB_drop_expr(ex2p, ecp);
+        RDB_del_expr(ex1p, ecp);
+        RDB_del_expr(ex2p, ecp);
         return NULL;
     }
     RDB_add_arg(ex3p, ex1p);
@@ -778,22 +778,22 @@ transform_semiminus_union(RDB_expression *texp, RDB_exec_context *ecp,
 
     ex1p = RDB_dup_expr(texp->def.op.args.firstp->def.op.args.firstp->nextp, ecp);
     if (ex1p == NULL) {
-        RDB_drop_expr(ex3p, ecp);
+        RDB_del_expr(ex3p, ecp);
         return NULL;
     }
 
     ex2p = RDB_dup_expr(texp->def.op.args.firstp->nextp, ecp);
     if (ex2p == NULL) {
-        RDB_drop_expr(ex1p, ecp);
-        RDB_drop_expr(ex3p, ecp);
+        RDB_del_expr(ex1p, ecp);
+        RDB_del_expr(ex3p, ecp);
         return NULL;
     }
 
     ex4p = RDB_ro_op("semiminus", ecp);
     if (ex4p == NULL) {
-        RDB_drop_expr(ex1p, ecp);
-        RDB_drop_expr(ex2p, ecp);
-        RDB_drop_expr(ex3p, ecp);
+        RDB_del_expr(ex1p, ecp);
+        RDB_del_expr(ex2p, ecp);
+        RDB_del_expr(ex3p, ecp);
         return NULL;
     }
     RDB_add_arg(ex4p, ex1p);
@@ -801,8 +801,8 @@ transform_semiminus_union(RDB_expression *texp, RDB_exec_context *ecp,
 
     resexp = RDB_ro_op("union", ecp);
     if (resexp == NULL) {
-        RDB_drop_expr(ex3p, ecp);
-        RDB_drop_expr(ex4p, ecp);
+        RDB_del_expr(ex3p, ecp);
+        RDB_del_expr(ex4p, ecp);
         return NULL;
     }
     RDB_add_arg(resexp, ex3p);
@@ -810,7 +810,7 @@ transform_semiminus_union(RDB_expression *texp, RDB_exec_context *ecp,
 
     ret = replace_empty(resexp, ecp, txp);
     if (ret != RDB_OK) {
-        RDB_drop_expr(resexp, ecp);
+        RDB_del_expr(resexp, ecp);
         return NULL;
     }
     return resexp;
@@ -868,7 +868,7 @@ index_joins(RDB_expression *otexp, RDB_expression *itexp,
 
             arg1p = RDB_dup_expr(otexp, ecp);
             if (arg1p == NULL) {
-                RDB_drop_expr(ntexp, ecp);
+                RDB_del_expr(ntexp, ecp);
                 return RDB_ERROR;
             }
 
@@ -1153,13 +1153,13 @@ RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
         }
         if (bestn == -1) {
             for (i = 0; i < tbc; i++)
-                RDB_drop_expr(texpv[i], ecp);
+                RDB_del_expr(texpv[i], ecp);
         } else {
-            RDB_drop_expr(nexp, ecp);
+            RDB_del_expr(nexp, ecp);
             nexp = texpv[bestn];
             for (i = 0; i < tbc; i++) {
                 if (i != bestn)
-                    RDB_drop_expr(texpv[i], ecp);
+                    RDB_del_expr(texpv[i], ecp);
             }
         }
     } while (bestcost < obestcost);

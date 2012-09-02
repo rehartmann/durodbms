@@ -137,7 +137,7 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
 
     argp = RDB_table_ref(tbp, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         goto error;
     }
     RDB_add_arg(exp, argp);
@@ -155,35 +155,35 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
 
     argp = RDB_string_to_expr("SALARY_AFTER_TAX", ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         goto error;
     }
     RDB_add_arg(exp, argp);
 
     texp = RDB_ro_op("length", ecp);
     if (texp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         goto error;
     }
     RDB_add_arg(exp, texp);
 
     argp = RDB_var_ref("NAME", ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         goto error;
     }
     RDB_add_arg(texp, argp);
 
     argp = RDB_string_to_expr("NAME_LEN", ecp);
     if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         goto error;
     }
     RDB_add_arg(exp, argp);
 
     vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     if (vtbp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_del_expr(exp, ecp);
         goto error;
     }
 
