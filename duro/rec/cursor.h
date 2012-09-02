@@ -2,7 +2,7 @@
 #define RDB_CURSOR_H
 
 /*
- * Copyright (C) 2003, 2004 René Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -28,63 +28,36 @@ enum {
     RDB_REC_RANGE = 2
 };
 
-/*
- * Create a cursor for a recmap. The initial position of the cursor is
- * undefined.
- */
 int
-RDB_recmap_cursor(RDB_cursor **, RDB_recmap *, RDB_bool wr, DB_TXN *txid);
+RDB_recmap_cursor(RDB_cursor **, RDB_recmap *, RDB_bool wr, DB_TXN *);
 
-/*
- * Create a cursor over an index. The initial position of the cursor is
- * undefined.
- */
 int
-RDB_index_cursor(RDB_cursor **, struct RDB_index *, RDB_bool wr, DB_TXN *txid);
+RDB_index_cursor(RDB_cursor **, struct RDB_index *, RDB_bool wr, DB_TXN *);
 
-/* Read the value of field fno from the current record.  */
 int
-RDB_cursor_get(RDB_cursor *, int fno, void **datapp, size_t *sizep);
+RDB_cursor_get(RDB_cursor *, int fno, void **datapp, size_t *);
 
-/* Set the values of the fields specified by fieldc/fieldv.  */
 int
 RDB_cursor_set(RDB_cursor *, int fieldc, RDB_field[]);
 
-/* Delete the record at the current position. */
 int
 RDB_cursor_delete(RDB_cursor *);
 
 int
-RDB_cursor_update(RDB_cursor *, int fieldc, const RDB_field fieldv[]);
+RDB_cursor_update(RDB_cursor *, int fieldc, const RDB_field[]);
 
-/*
- * Move the cursor to the first record.
- * If there is no first record, RDB_NOT_FOUND is returned.
- */
 int
 RDB_cursor_first(RDB_cursor *);
 
-/*
- * Move the cursor to the next record.
- * If the cursor is at the end, RDB_NOT_FOUND is returned.
- * If flags is RDB_REC_DUP, return RDB_NOT_FOUND if the next
-  * record has a different key.
- */
 int
 RDB_cursor_next(RDB_cursor *, int flags);
 
 int
 RDB_cursor_prev(RDB_cursor *);
 
-/*
- * Move the cursor to the position specified by keyv.
- */
 int
-RDB_cursor_seek(RDB_cursor *curp, int fieldc, RDB_field keyv[], int flags);
+RDB_cursor_seek(RDB_cursor *, int fieldc, RDB_field[], int);
 
-/* Detroy the cursor, releasing the resources associated with it
- * and freeing its memory.
- */
 int
 RDB_destroy_cursor(RDB_cursor *);
 

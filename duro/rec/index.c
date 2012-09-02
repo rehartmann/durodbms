@@ -6,7 +6,9 @@
  */
 
 #include "index.h"
+#include "dbdefs.h"
 #include <gen/strfns.h>
+
 #include <string.h>
 #include <errno.h>
 

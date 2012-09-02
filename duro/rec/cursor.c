@@ -1,7 +1,7 @@
 /*
  * $Id$ 
  *
- * Copyright (C) 2003-2006 Ren� Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -30,6 +30,10 @@ new_cursor(RDB_recmap *rmp, DB_TXN *txid, RDB_index *idxp)
     return curp;
 }
 
+/*
+ * Create a cursor for a recmap. The initial position of the cursor is
+ * undefined.
+ */
 int
 RDB_recmap_cursor(RDB_cursor **curpp, RDB_recmap *rmp, RDB_bool wr,
                   DB_TXN *txid)
@@ -53,6 +57,10 @@ RDB_recmap_cursor(RDB_cursor **curpp, RDB_recmap *rmp, RDB_bool wr,
     return RDB_OK;
 }
 
+/*
+ * Create a cursor over an index. The initial position of the cursor is
+ * undefined.
+ */
 int
 RDB_index_cursor(RDB_cursor **curpp, RDB_index *idxp, RDB_bool wr,
                   DB_TXN *txid)
@@ -71,6 +79,10 @@ RDB_index_cursor(RDB_cursor **curpp, RDB_index *idxp, RDB_bool wr,
     return RDB_OK;
 }
 
+/*
+ * Destroy the cursor, releasing the resources associated with it
+ * and freeing its memory.
+ */
 int
 RDB_destroy_cursor(RDB_cursor *curp)
 {
@@ -84,6 +96,7 @@ RDB_destroy_cursor(RDB_cursor *curp)
     return ret;
 }
 
+/* Read the value of field fno from the current record.  */
 int
 RDB_cursor_get(RDB_cursor *curp, int fno, void **datapp, size_t *lenp)
 {
@@ -105,6 +118,7 @@ RDB_cursor_get(RDB_cursor *curp, int fno, void **datapp, size_t *lenp)
     return RDB_OK;
 }
 
+/* Set the values of the fields specified by fieldc/fieldv.  */
 int
 RDB_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[])
 {
@@ -139,6 +153,7 @@ RDB_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[])
                 &curp->current_key, &curp->current_data, DB_CURRENT);
 }
 
+/* Delete the record at the current position. */
 int
 RDB_cursor_delete(RDB_cursor *curp)
 {
@@ -169,6 +184,10 @@ cleanup:
     return ret;
 }
 
+/*
+ * Move the cursor to the first record.
+ * If there is no first record, RDB_NOT_FOUND is returned.
+ */
 int
 RDB_cursor_first(RDB_cursor *curp)
 {
@@ -184,6 +203,12 @@ RDB_cursor_first(RDB_cursor *curp)
     }
 }
 
+/*
+ * Move the cursor to the next record.
+ * If the cursor is at the end, RDB_NOT_FOUND is returned.
+ * If flags is RDB_REC_DUP, return RDB_NOT_FOUND if the next
+  * record has a different key.
+ */
 int
 RDB_cursor_next(RDB_cursor *curp, int flags)
 {
@@ -216,6 +241,9 @@ RDB_cursor_prev(RDB_cursor *curp)
     }
 }
 
+/*
+ * Move the cursor to the position specified by keyv.
+ */
 int
 RDB_cursor_seek(RDB_cursor *curp, int fieldc, RDB_field keyv[], int flags)
 {

@@ -23,7 +23,7 @@ along with Duro; if not, write to the Free Software Foundation, Inc.,
 */
 
 #include <rec/env.h>
-#include <rec/recmap.h>
+#include <rec/dbdefs.h>
 #include <gen/hashmap.h>
 #include <gen/hashtable.h>
 #include <gen/types.h>

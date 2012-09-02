@@ -21,9 +21,6 @@
 #define RDB_VARIABLE_LEN (-1) /* indicates a variable field length */
 
 enum {
-    RDB_UNIQUE = 1,
-    RDB_ORDERED = 2,
-
     RDB_ELEMENT_EXISTS = -200,
     RDB_KEY_VIOLATION = -201,
     RDB_RECORD_CORRUPTED = -202
@@ -73,73 +70,36 @@ typedef struct {
 
 #define RDB_recmap_name(rmp) ((rmp)->namp)
 
-/*
- * Create a recmap with the name specified by name in the DB environment
- * pointed to by envp in the file specified by filename.
- * If filename is NULL, a transient recmap is created.
- * The recmap will have fieldc fields, the length of field i
- * is given by fieldlenv[i].
- * The first keyfcnt fields constitute the primary index.
- */
 int
 RDB_create_recmap(const char *name, const char *filename,
         RDB_environment *, int fieldc, const int fieldlenv[], int keyfieldc,
         const RDB_compare_field cmpv[], int flags, DB_TXN *, RDB_recmap **);
 
-/* Open a recmap. For a description of the arguments, see RDB_create_recmap(). */
 int
 RDB_open_recmap(const char *name, const char *filename,
         RDB_environment *, int fieldc, const int fieldlenv[], int keyfieldc,
         DB_TXN *, RDB_recmap **);
 
-/* Close a recmap. */
 int
 RDB_close_recmap(RDB_recmap *);
 
-/* Delete a recmap. */
 int
 RDB_delete_recmap(RDB_recmap *, DB_TXN *);
 
-/*
- * Insert a record into a recmap. The values are given by valv.
- * valv[..].no is ignored.
- */
 int
 RDB_insert_rec(RDB_recmap *, RDB_field[], DB_TXN *);
 
-/* Update the record whose key values are given by keyv.
- * The new values are given by fieldv.
- * keyv[..].no is ignored. 
- */
 int
 RDB_update_rec(RDB_recmap *, RDB_field[],
                int, const RDB_field[], DB_TXN *);
 
-/* Delete from a recmap the record whose key values are given by keyv.
- * keyv[..].no is ignored.
- */
 int
 RDB_delete_rec(RDB_recmap *, RDB_field[], DB_TXN *);
 
-/* Read field values of the record from a recmap using the primary index.
- * Arguments:
- * rm		pointer to the recmap.
- * keyv		array of the key fields specifying the record to read.
- * txid		pointer to a Berkeley DB transaction
- * fieldc	how many fields are to be read
- * resfieldv    the fields to read.
- *              no must be set by the caller,
- *              size and datap are set by RDB_get_fields().
- *              Must not contain key fields.
- */
 int
 RDB_get_fields(RDB_recmap *, RDB_field[],
            int, DB_TXN *, RDB_field[]);
 
-/* Check if the recmap contains the record whose values are given by valv.
- * Return RDB_OK if yes, RDB_NOT_FOUND if no.
- * valv[..].no is ignored.
- */
 int
 RDB_contains_rec(RDB_recmap *, RDB_field[], DB_TXN *);
 
