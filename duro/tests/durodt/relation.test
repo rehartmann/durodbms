@@ -29,7 +29,7 @@ test insert {creating table and inserting tuples} -setup $SETUP -body {
         current_db := 'D';
 
         begin transaction;
-        var r real relation {i INTEGER, d FLOAT, c STRING} key {i};
+        var r real relation {i int, d float, c string} key {i};
         insert r relation {} {};
 
         var a init 1;
@@ -40,8 +40,8 @@ test insert {creating table and inserting tuples} -setup $SETUP -body {
         var t init tuple {i 2 + 1, d 1.0, c 'Z'};
         insert r update t {i := i + 1};
 
-        put_line(CAST_AS_STRING(count(r)));
-        put_line(CAST_AS_STRING(count(s)));
+        put_line(cast_as_string(count(r)));
+        put_line(cast_as_string(count(s)));
         put_line((tuple from r where i=2).c);
         commit;
     }
@@ -56,7 +56,7 @@ test invalid_type {invalid (scalar) type for table} -setup $SETUP -match glob -b
     	current_db := 'D';
 
 	    begin transaction;
-    	var ir real INTEGER key {};
+    	var ir real int key {};
     }
 }  -returnCodes {1} -result {*type_mismatch_error*}
 
@@ -65,17 +65,17 @@ test private {creating private table and inserting tuples} -setup $SETUP -body {
         connect('dbenv');
         current_db := 'D';
 
-        var r private relation {i INTEGER, d FLOAT, c STRING} key {i};
+        var r private relation {i int, d float, c string} key {i};
         insert r relation {} {};
 
         try
-            var ir private relation {i INTEGER} key {i};
-            var ir private relation {i INTEGER} key {i};
+            var ir private relation {i int} key {i};
+            var ir private relation {i int} key {i};
         catch err element_exists_error;
             put_line("double creation caught");
         end try;
 
-        var s private relation {i INTEGER} init relation { tuple {i 1}, tuple {i 2} } key {i};
+        var s private relation {i int} init relation { tuple {i 1}, tuple {i 2} } key {i};
 
         var a init 1;
         insert r relation {tuple {i a, d 1.0, c 'X'}, tuple {i 2, d 1.1, c 'Y'}};
@@ -93,12 +93,12 @@ test private {creating private table and inserting tuples} -setup $SETUP -body {
         
         -- test invalid relation selector
         try
-            var r init relation {a INTEGER} {tuple {a 'x'}};
+            var r init relation {a int} {tuple {a 'x'}};
         catch err type_mismatch_error;
             put_line("type mismatch");
         end try;
         
-        put((tuple from relation {a INTEGER} {tuple {a 7}}).a); put_line('');
+        put((tuple from relation {a int} {tuple {a 7}}).a); put_line('');
     }
 } -result {double creation caught
 1
@@ -115,9 +115,9 @@ test ra {relational algebra} -setup $SETUP -body {
 
         begin transaction;
 
-        var t1 real relation {a INTEGER, b STRING}
+        var t1 real relation {a int, b string}
         		init relation { tuple {a 1, b 'x'}, tuple {a 2, b 'y'} } key {a};
-        var t2 real relation {a INTEGER} key {a};
+        var t2 real relation {a int} key {a};
 
         insert t2 relation { tuple {a 2}, tuple {a 3} };
 
@@ -125,7 +125,7 @@ test ra {relational algebra} -setup $SETUP -body {
 
 		put((tuple from relation{tuple{i 1}} join table_dee).i); put_line('');
 
-        var a array tuple{i INTEGER};
+        var a array tuple{i int};
         load a from rel{tup{i 1}} union rel{tup{i 2}} order (i asc);
         put(a[0].i); put_line('');
         put(a[1].i); put_line('');
@@ -165,7 +165,7 @@ test updop {user defined update operators} -setup $SETUP -body {
             commit;
         end operator;
 
-        operator insop(t relation {b STRING, a INTEGER}) updates {t};
+        operator insop(t relation {b string, a int}) updates {t};
             insert t tuple {a 0, b "duro"};
         end operator;
 
@@ -191,7 +191,7 @@ test deedum {TABLE_DEE and TABLE_DUM} -setup $SETUP -body {
         current_db := 'D';
 
         begin transaction;
-        var ev virtual relation {i INTEGER} {};
+        var ev virtual relation {i int} {};
         commit;
 
         DISconnect();
@@ -218,7 +218,7 @@ test logic {Logic operators} -setup $SETUP -body {
 
         begin transaction;
 
-        var t real relation {i INTEGER, j INTEGER} key {i, j};
+        var t real relation {i int, j int} key {i, j};
 
         insert t relation { tuple {i 1, j 1}, tuple {i 1, j 2},
                 tuple {i 2, j 1}, tuple {i 2, j 2} };
@@ -227,11 +227,11 @@ test logic {Logic operators} -setup $SETUP -body {
         var vo virtual t where i=1 and j=1;
         var vx virtual t where i=1 xor j=1;
         
-        var a array tuple {i INTEGER, j INTEGER};
+        var a array tuple {i int, j int};
 
         load a from va order(i asc, j asc);
         
-        var i INTEGER;
+        var i int;
         for i:= 0 to LENGTH(a)-1;
 			put(a[i].i);
 			put(' ');
@@ -302,7 +302,7 @@ test summarize {SUMMARIZE} -setup $SETUP -body {
 
         begin transaction;
 
-        var t real relation {i INTEGER, j INTEGER} key {i, j};
+        var t real relation {i int, j int} key {i, j};
 
 		insert t tup {i 1, j 0};
 		insert t tup {i 1, j 1};
@@ -320,7 +320,7 @@ test summarize {SUMMARIZE} -setup $SETUP -body {
 
         load arr from v order(i asc);
 
-        var i INTEGER;
+        var i int;
         for i:= 0 to LENGTH(arr)-1;
 			put(arr[i].A_SUM);			
 			put(' ');
@@ -346,7 +346,7 @@ test relrel {table with relation attribute} -setup $SETUP -body {
 
         begin transaction;
 
-        var t real relation {x INTEGER, a STRING, r relation{s STRING, i INTEGER}} key {x};
+        var t real relation {x int, a string, r relation{s string, i int}} key {x};
 
 		insert t tuple{x 1, a 'hm', r rel{tup{i 5, s 'yo'}}};
 
@@ -373,7 +373,7 @@ test ungroup {UNGROUP} -body {
 		var ugt init rel{
 		        tup {st rel{tup{s 'a', t 'b'}, tup{s 'c', t 'd'}}},
 		        tup {st rel{tup{s 'e', t 'f'}}}} ungroup st;
-		var arr array tuple{s STRING, t STRING};
+		var arr array tuple{s string, t string};
 		load arr from ugt order(s asc);
 		put(LENGTH(arr)); put_line('');
 		put_line(arr[0].s);
@@ -459,7 +459,7 @@ test index {creating index} -setup $SETUP -body {
         current_db := 'D';
 
         begin tx;
-        var r real relation {i INTEGER, d FLOAT, c STRING} key {i};
+        var r real relation {i int, d float, c string} key {i};
         commit;
 
         begin tx;
@@ -478,22 +478,30 @@ test real_default {public real table with default values} -setup $SETUP -body {
         current_db := 'D';
 
         begin tx;
-        var r1 real relation {i INTEGER, r FLOAT, c STRING} key {i}
+        var r1 real relation {i int, r float, c string} key {i}
                 default {r 1.2, c 'xyz'};
         insert r1 tup {i 5};
         var t1 init tuple from r1;
 
-        var r2 real relation {i INTEGER, r FLOAT, c STRING}
+        var r2 real relation {i int, r float, c string}
                 init rel {tup {i 0, r 1.0, c 'Zz'}}
                 key {i} key {c}
                 default {r 1.2, c 'xyz'};
         insert r2 tup {i 5};
         var t2 init tuple from (r2 where i=5);
 
-        var r3 real relation {i INTEGER, r FLOAT, c STRING}
+        var r3 real relation {i int, r float, c string}
                 init r2 default {r 1.2, c 'xyz'};
         insert r3 tup {i 6, c 'xyy'};
         var t3 init tuple from (r3 where i=6);
+
+        -- Invalid keys
+        try
+        	var r4 real rel {no int, r float, name string}
+            	    key {no} key {no, name} default {name 'John Doe'};
+        catch err invalid_argument_error;
+            put_line('r4: invalid_argument_error caught');
+        end try;
 
         commit;
 
@@ -509,29 +517,38 @@ test real_default {public real table with default values} -setup $SETUP -body {
         put(cast_as_integer(t3.r * 100.0)); put(' ');
         put(t3.c); put_line('');
     }
-} -result {5 120 xyz
+} -result {r4: invalid_argument_error caught
+5 120 xyz
 5 120 xyz
 6 120 xyy
 }
 
 test private_default {private table with default values} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
-        var r1 private relation {i INTEGER, r FLOAT, c STRING} key {i}
+        var r1 private relation {i int, r float, c string} key {i}
                 default {r 1.2, c 'xyz'};
         insert r1 tup {i 5};
         var t1 init tuple from r1;
 
-        var r2 private relation {i INTEGER, r FLOAT, c STRING}
+        var r2 private relation {i int, r float, c string}
                 init rel {tup {i 0, r 1.0, c 'Zz'}}
                 key {i} key {c}
                 default {r 1.2, c 'xyz'};
         insert r2 tup {i 5};
         var t2 init tuple from (r2 where i=5);
 
-        var r3 private relation {i INTEGER, r FLOAT, c STRING}
+        var r3 private relation {i int, r float, c string}
                 init r2 default {r 1.2, c 'xyz'};
         insert r3 tup {i 6, c 'xyy'};
         var t3 init tuple from (r3 where i=6);
+
+        -- Invalid table type
+        try
+            var r4 private tup {no int, r float, name string}
+                    key {no} default {name 'John Doe'};
+        catch err type_mismatch_error;
+            put_line('r4: type_mismatch_error caught');
+        end try;
 
         put(t1.i); put(' ');
         put(cast_as_integer(t1.r * 100.0)); put(' ');
@@ -545,7 +562,8 @@ test private_default {private table with default values} -setup $SETUP -body {
         put(cast_as_integer(t3.r * 100.0)); put(' ');
         put(t3.c); put_line('');
     }
-} -result {5 120 xyz
+} -result {r4: type_mismatch_error caught
+5 120 xyz
 5 120 xyz
 6 120 xyy
 }

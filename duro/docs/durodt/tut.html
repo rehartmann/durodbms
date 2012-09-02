@@ -402,6 +402,15 @@ D>
 
 <p>REL can be used as a synonym for RELATION.
 
+<p>It is possible to specify default values when creating a table. Example:
+
+<pre>
+D> var r2 real rel{no int, name string} key {no} default {name 'unknown'};
+Table r2 created.
+D> insert r2 tup{no 1};
+1 element affected.
+</pre>
+
 <p>Creating a private (real transient) table:
 
 <pre>

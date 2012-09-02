@@ -448,13 +448,13 @@ error:
 int
 Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
-    RDB_string_vec *keyv;
-    RDB_bool freekeys;
     RDB_parse_node *keylistnodep;
     RDB_parse_node *defaultnodep;
     RDB_attr *default_attrv;
     int default_attrc = 0;
-    int keyc = 0;
+    RDB_bool freekeys;
+    int keyc;
+    RDB_string_vec *keyv = NULL;
     RDB_object *tbp = NULL;
     RDB_expression *initexp = NULL;
     RDB_transaction *txp = txnp != NULL ? &txnp->tx : NULL;
@@ -482,9 +482,6 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
         tbtyp = Duro_parse_node_to_type_retry(nodep->nextp->nextp, ecp);
         if (tbtyp == NULL)
             return RDB_ERROR;
-        tbtyp = RDB_dup_nonscalar_type(tbtyp, ecp);
-        if (tbtyp == NULL)
-            goto error;
         if (nodep->nextp->nextp->nextp->kind == RDB_NODE_TOK
                 && nodep->nextp->nextp->nextp->val.token == TOK_INIT) {
             /* Get INIT value */
@@ -508,7 +505,7 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
     }
 
     if (!RDB_type_is_relation(tbtyp)) {
-        RDB_raise_syntax("relation type required", ecp);
+        RDB_raise_type_mismatch("relation type required", ecp);
         goto error;
     }
 
@@ -524,6 +521,7 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
         keyv = keylist_to_keyv(keylistnodep, &keyc, ecp);
         if (keyv == NULL)
             goto error;
+        freekeys = RDB_TRUE;
 
         /*
          * Make defaultnodep point to the node after the keylist
@@ -580,7 +578,12 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
         printf("Local table %s created.\n", varname);
 
     if (freekeys) {
-        /* !! Destroy keyv */
+        int i;
+
+        for (i = 0; i < keyc; i++) {
+            RDB_free(keyv[i].strv);
+        }
+        RDB_free(keyv);
     }
 
     return RDB_OK;
@@ -656,6 +659,7 @@ Duro_exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
         keyv = keylist_to_keyv(keylistnodep, &keyc, ecp);
         if (keyv == NULL)
             goto error;
+        freekeys = RDB_TRUE;
 
         /*
          * Make defaultnodep point to the node after the last KEY node
@@ -710,6 +714,15 @@ Duro_exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
     if (RDB_parse_get_interactive())
         printf("Table %s created.\n", varname);
 
+    if (freekeys) {
+        int i;
+
+        for (i = 0; i < keyc; i++) {
+            RDB_free(keyv[i].strv);
+        }
+        RDB_free(keyv);
+    }
+
     return RDB_OK;
 
 error:
@@ -722,6 +735,17 @@ error:
         } else if (tbtyp != NULL && !RDB_type_is_scalar(tbtyp)) {
             RDB_del_nonscalar_type(tbtyp, &ec);
         }
+
+        if (keyv != NULL && freekeys) {
+            int i;
+
+            for (i = 0; i < keyc; i++) {
+                if (keyv[i].strv != NULL)
+                    RDB_free(keyv[i].strv);
+            }
+            RDB_free(keyv);
+        }
+
         RDB_destroy_exec_context(&ec);
     }
     return RDB_ERROR;
