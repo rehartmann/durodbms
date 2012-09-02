@@ -7,7 +7,7 @@
 
 #include "rdb.h"
 #include "internal.h"
-#include "catalog.h"
+#include "cat_op.h"
 #include "serialize.h"
 #include <gen/strfns.h>
 

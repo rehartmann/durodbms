@@ -27,10 +27,6 @@ int
 RDB_possreps_query(const char *name, RDB_exec_context *, RDB_transaction *,
         RDB_object **tbpp);
 
-int
-RDB_possrepcomps_query(const char *name, const char *possrepname,
-        RDB_exec_context *, RDB_transaction *txp, RDB_object **tbpp);
-
 RDB_object *
 RDB_cat_get_rtable(const char *, RDB_exec_context *, RDB_transaction *);
 
@@ -40,16 +36,6 @@ RDB_cat_get_vtable(const char *, RDB_exec_context *, RDB_transaction *);
 int
 RDB_cat_rename_table(RDB_object *, const char *, RDB_exec_context *,
         RDB_transaction *);
-
-int
-RDB_cat_get_type(const char *name, RDB_exec_context *, RDB_transaction *,
-        RDB_type **typp);
-
-int
-RDB_cat_load_ro_op(const char *, RDB_exec_context *, RDB_transaction *);
-
-int
-RDB_cat_load_upd_op(const char *, RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_cat_insert_table_recmap(RDB_object *tbp, const char *rmname,

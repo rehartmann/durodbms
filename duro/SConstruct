@@ -62,7 +62,8 @@ relsrc = ['rel/array.c', 'rel/database.c', 'rel/operator.c', 'rel/builtinops.c',
         'rel/serialize.c', 'rel/table.c', 'rel/stable.c', 'rel/vtable.c',
         'rel/update.c', 'rel/insert.c', 'rel/contains.c', 'rel/transaction.c',
         'rel/delete.c', 'rel/tuple.c', 'rel/type.c', 'rel/builtintypes.c',
-        'rel/object.c', 'rel/catalog.c', 'rel/optimize.c', 'rel/transform.c',
+        'rel/object.c', 'rel/catalog.c', 'rel/cat_type.c', 'rel/cat_op.c',
+        'rel/optimize.c', 'rel/transform.c',
         'rel/constraint.c', 'rel/assign.c', 'rel/excontext.c',
         'rel/match.c', 'rel/opmap.c', 'rel/io.c', 'rel/tostr.c']
 
@@ -195,9 +196,10 @@ env.Alias('testbins', testbins)
 
 gen_hdrs = Split('gen/hashmap.h gen/hashmapit.h gen/hashtable.h '
         'gen/hashtabit.h gen/strfns.h gen/types.h')
-rec_hdrs = Split('rec/cursor.h rec/env.h rec/index.h rec/recmap.h')
+rec_hdrs = Split('rec/cursor.h rec/env.h rec/dbdefs.h rec/index.h rec/recmap.h')
 rel_hdrs = Split('rel/rdb.h rel/typeimpl.h')
-rel_ihdrs = Split('rel/catalog.h rel/delete.h rel/serialize.h '
+rel_ihdrs = Split('rel/catalog.h rel/cat_type.h rel/cat_op.h '
+		'rel/delete.h rel/serialize.h '
         'rel/insert.h rel/transform.h rel/internal.h rel/stable.h '
         'rel/optimize.h rel/update.h rel/qresult.h rel/opmap.h rel/io.h '
         'rel/tostr.h')

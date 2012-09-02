@@ -8,7 +8,8 @@
 #include "rdb.h"
 #include "typeimpl.h"
 #include "internal.h"
-#include "catalog.h"
+#include "cat_type.h"
+#include "cat_op.h"
 #include "serialize.h"
 #include "io.h"
 #include <gen/strfns.h>
