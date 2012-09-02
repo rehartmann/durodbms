@@ -1121,12 +1121,15 @@ create_table(const char *name, RDB_type *reltyp,
 <strong>RDB_create_table</strong> creates a persistent table
 with name <var>name</var> in the database
 the transaction *<var>txp</var> interacts with
-and returns a pointer to the newly created RDB_object structure.
+and returns a pointer to the newly created RDB_object structure
+which represents the table.
 
 If an error occurs, an error value is left in *<var>ecp</var>.
 
 The table will have <var>attrc</var> attributes. The individual
 attributes are specified by the elements of <var>attrv</var>.
+<var>options</var> is currently ignored, but should be set to zero
+for compatibility with future versions
 
 The candidate keys for the table are specified by <var>keyc</var>
 and <var>keyv</var>.
@@ -1139,7 +1142,7 @@ may be empty (not contain any attributes).
 The database *<var>txp</var> interacts with must be a user database.
 
 Passing a <var>keyv</var> of NULL is equivalent to specifiying a single key
-which consists of all attributes, that is, the table will become all-key.
+which consists of all attributes, that is, the table will be all-key.
 
 To enforce the key constraints, Duro creates a unique hash index
 for each key.
@@ -1184,8 +1187,18 @@ RDB_create_table(const char *name,
 <strong>RDB_create_table_from_type</strong> acts like
 RDB_create_table(), except that it takes
 a RDB_type argument instead of attribute arguments.
-*<var>reltyp</var> must be a relation type and will be managed
+
+<var>reltyp</var> must be a relation type and will be managed
 by the table created.
+
+If <var>default_attrc</var> is greater than zero,
+<var>default_attrv</var> must point to an array of length <var>default_attrc</var>
+where <var>name</var> is the attribute name and <var>defaultp</var>
+points to the default value for that attribute.
+Entries with a <var>defaultp</var> of NULL are ignored.
+Other fields of RDB_attr are ignored, but <var>options</var> should be set to zero
+for compatibility with future versions.
+
 */
 RDB_object *
 RDB_create_table_from_type(const char *name, RDB_type *reltyp,

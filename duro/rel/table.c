@@ -252,6 +252,15 @@ cleanup:
 /**
  * Like RDB_init_table(), but uses a RDB_type argument
  * instead of attribute arguments.
+
+If <var>default_attrc</var> is greater than zero,
+<var>default_attrv</var> must point to an array of length <var>default_attrc</var>
+where <var>name</var> is the attribute name and <var>defaultp</var>
+points to the default value for that attribute.
+Entries with a <var>defaultp</var> of NULL are ignored.
+Other fields of RDB_attr are ignored, but <var>options</var> should be set to zero
+for compatibility with future versions.
+ *
  * If it returns with RDB_OK, <var>rtyp</var> is consumed.
  */
 int
@@ -265,9 +274,9 @@ RDB_init_table_from_type(RDB_object *tbp, const char *name, RDB_type *reltyp,
             RDB_TRUE, NULL, ecp);
 }
 
-/** Turn *<var>tbp</var> into a transient table.
- *<var>tbp</var> should have been initialized using
-RDB_init_obj().
+/**
+ * Turn *<var>tbp</var> into a transient table.
+ * <var>tbp</var> should have been initialized using RDB_init_obj().
 
 For <var>name</var>, <var>attrc</var>, <var>attrv</var>,
 <var>keyc</var>, <var>keyv</var>,
