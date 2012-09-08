@@ -9,6 +9,7 @@
 #include "transform.h"
 #include "internal.h"
 #include <gen/strfns.h>
+#include "tostr.h"
 
 #include <string.h>
 #include <assert.h>
@@ -863,6 +864,14 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             RDB_raise_invalid_argument("invalid relational operator invocation",
                     ecp);
             goto error;
+        }
+
+        if (strcmp(exp->def.op.name, "minus") == 0
+                || strcmp(exp->def.op.name, "intersect") == 0) {
+            if (!RDB_type_equals(argtv[0], argtv[1])) {
+                RDB_raise_type_mismatch("argument types do not match", ecp);
+                goto error;
+            }
         }
 
         if (argtv[0]->kind != RDB_TP_RELATION

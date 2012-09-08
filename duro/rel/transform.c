@@ -136,8 +136,8 @@ transform_where(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
              * Same for MINUS, SEMIJOIN
              */
 
-            if (RDB_transform(chexp->def.op.args.firstp->nextp, getfnp, arg, ecp, txp)
-                    != RDB_OK)
+            if (RDB_transform(chexp->def.op.args.firstp->nextp, getfnp, arg,
+                    ecp, txp) != RDB_OK)
                 return RDB_ERROR;
 
             hname = exp->def.op.name;
@@ -153,7 +153,7 @@ transform_where(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             exp = chexp;
         } else if (strcmp(chexp->def.op.name, "union") == 0) {
             /*
-             * where(union( -> union(where(
+             * WHERE(UNION( -> UNION(WHERE(
              */
             RDB_expression *wexp;
             RDB_expression *condp = RDB_dup_expr(exp->def.op.args.firstp->nextp,

@@ -60,6 +60,9 @@ Duro_exit_interp(void)
     RDB_destroy_exec_context(&ec);
 }
 
+/*
+ * Operator exit() without arguments
+ */
 static int
 exit_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
@@ -68,12 +71,16 @@ exit_op(int argc, RDB_object *argv[], RDB_operator *op,
     exit(0);
 }   
 
+/*
+ * Operator exit() with argument
+ */
 static int
 exit_int_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    int exitcode = RDB_obj_int(argv[0]);
     Duro_exit_interp();
-    exit(RDB_obj_int(argv[0]));
+    exit(exitcode);
 }   
 
 static int
@@ -314,42 +321,6 @@ evaluate_retry_bool(RDB_expression *exp, RDB_exec_context *ecp, RDB_bool *result
     }
     *resultp = RDB_obj_bool(&result);
     RDB_destroy_obj(&result, ecp);
-    return RDB_OK;
-}
-
-static int
-exec_vardef_virtual(RDB_parse_node *nodep, RDB_exec_context *ecp)
-{
-    RDB_object *tbp;
-    RDB_expression *defexp;
-    RDB_expression *texp;
-    const char *varname = RDB_expr_var_name(nodep->exp);
-
-    if (txnp == NULL) {
-        RDB_raise_no_running_tx(ecp);
-        return RDB_ERROR;
-    }
-
-    defexp = RDB_parse_node_expr(nodep->nextp->nextp, ecp, &txnp->tx);
-    if (defexp == NULL)
-        return RDB_ERROR;
-
-    texp = RDB_dup_expr(defexp, ecp);
-    if (texp == NULL)
-        return RDB_ERROR;
-
-    tbp = RDB_expr_to_vtable(texp, ecp, &txnp->tx);
-    if (tbp == NULL) {
-        RDB_del_expr(texp, ecp);
-        return RDB_ERROR;
-    }
-    if (RDB_set_table_name(tbp, varname, ecp, &txnp->tx) != RDB_OK)
-        return RDB_ERROR;
-    if (RDB_add_table(tbp, ecp, &txnp->tx) != RDB_OK)
-        return RDB_ERROR;
-
-    if (RDB_parse_get_interactive())
-        printf("Table %s created.\n", varname);
     return RDB_OK;
 }
 
@@ -2456,7 +2427,8 @@ exec_constrdef(RDB_parse_node *nodep, RDB_exec_context *ecp)
         }
     }
 
-    constrexp = RDB_parse_node_expr(nodep->nextp, ecp, txnp != NULL ? &txnp->tx : NULL);
+    constrexp = RDB_parse_node_expr(nodep->nextp, ecp,
+            txnp != NULL ? &txnp->tx : NULL);
     if (constrexp == NULL)
         goto error;
     constrexp = RDB_dup_expr(constrexp, ecp);
@@ -2654,7 +2626,7 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
                             ret = Duro_exec_vardef_real(firstchildp->nextp, ecp);
                             break;
                         case TOK_VIRTUAL:
-                            ret = exec_vardef_virtual(firstchildp->nextp, ecp);
+                            ret = Duro_exec_vardef_virtual(firstchildp->nextp, ecp);
                             break;
                         case TOK_PRIVATE:
                             ret = Duro_exec_vardef_private(firstchildp->nextp, ecp);

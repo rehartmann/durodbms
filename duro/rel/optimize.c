@@ -723,24 +723,28 @@ mutate_full_vt(RDB_expression *texp, RDB_expression **tbpv, int cap,
             cap, ecp, txp);
 }
 
+/*
+ * If *exp or a subexpression of *exp is equal to *empty_exp, replace it
+ * with an empty relation.
+ * *empty_exp must not be NULL.
+ */
 static int
-replace_empty(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
+replace_empty(RDB_expression *exp, RDB_expression *empty_exp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    struct RDB_tx_and_ec te;
-
-    te.txp = txp;
-    te.ecp = ecp;
-
+    RDB_bool eqempty;
     /* Check if there is a constraint that says the table is empty */
-    if (txp->dbp != NULL
-            && RDB_hashtable_get(&txp->dbp->dbrootp->empty_tbtab,
-                    exp, &te) != NULL) {
+    int ret = RDB_expr_equals(exp, empty_exp,ecp, txp, &eqempty);
+    if (ret != RDB_OK)
+        return RDB_ERROR;
+
+    if (eqempty)
         return RDB_expr_to_empty_table(exp, ecp, txp);
-    } else if (exp->kind == RDB_EX_RO_OP) {
+    if (exp->kind == RDB_EX_RO_OP) {
         RDB_expression *argp = exp->def.op.args.firstp;
 
         while (argp != NULL) {
-            if (replace_empty(argp, ecp, txp) != RDB_OK)
+            if (replace_empty(argp, empty_exp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
             argp = argp->nextp;
     	}
@@ -748,9 +752,17 @@ replace_empty(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
     return RDB_OK;
 }
 
+/*
+ * (T1 UNION T2) [SEMI]MINUS T3 -> (T1 [SEMI]MINUS T2) UNION (T1 [SEMI]MINUS T3)
+ * Returns the new expression.
+ * Useful when there is a constraint of the form IS_EMPTY(T1 SEMIMINUS T2)
+ * so one of the children can be optimized away.
+ * empty_exp points to an expression declared to be empty
+ * by a constraint.
+ */
 static RDB_expression *
-transform_semiminus_union(RDB_expression *texp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+transform_semi_minus_union(RDB_expression *texp, RDB_expression *empty_exp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_expression *ex1p, *ex2p, *ex3p, *ex4p;
@@ -767,7 +779,7 @@ transform_semiminus_union(RDB_expression *texp, RDB_exec_context *ecp,
         return NULL;
     }
 
-    ex3p = RDB_ro_op("semiminus", ecp);
+    ex3p = RDB_ro_op(texp->def.op.name, ecp);
     if (ex3p == NULL) {
         RDB_del_expr(ex1p, ecp);
         RDB_del_expr(ex2p, ecp);
@@ -789,7 +801,7 @@ transform_semiminus_union(RDB_expression *texp, RDB_exec_context *ecp,
         return NULL;
     }
 
-    ex4p = RDB_ro_op("semiminus", ecp);
+    ex4p = RDB_ro_op(texp->def.op.name, ecp);
     if (ex4p == NULL) {
         RDB_del_expr(ex1p, ecp);
         RDB_del_expr(ex2p, ecp);
@@ -808,7 +820,7 @@ transform_semiminus_union(RDB_expression *texp, RDB_exec_context *ecp,
     RDB_add_arg(resexp, ex3p);
     RDB_add_arg(resexp, ex4p);
 
-    ret = replace_empty(resexp, ecp, txp);
+    ret = replace_empty(resexp, empty_exp, ecp, txp);
     if (ret != RDB_OK) {
         RDB_del_expr(resexp, ecp);
         return NULL;
@@ -816,9 +828,12 @@ transform_semiminus_union(RDB_expression *texp, RDB_exec_context *ecp,
     return resexp;
 }
 
+/*
+ * empty_exp must not be NULL.
+ */
 static int
-mutate_semiminus(RDB_expression *texp, RDB_expression **tbpv, int cap,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+mutate_semi_minus(RDB_expression *texp, RDB_expression **tbpv, int cap,
+        RDB_expression *empty_exp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc = mutate_full_vt(texp, tbpv, cap, ecp, txp);
     if (tbc < 0)
@@ -826,7 +841,7 @@ mutate_semiminus(RDB_expression *texp, RDB_expression **tbpv, int cap,
 
     if (tbc < cap && texp->def.op.args.firstp->kind == RDB_EX_RO_OP
             && strcmp(texp->def.op.args.firstp->def.op.name, "union") == 0) {
-        tbpv[tbc] = transform_semiminus_union(texp, ecp, txp);
+        tbpv[tbc] = transform_semi_minus_union(texp, empty_exp, ecp, txp);
         if (tbpv[tbc] == NULL)
             return RDB_ERROR;
         tbc++;
@@ -958,8 +973,12 @@ mutate(RDB_expression *texp, RDB_expression **tbpv, int cap, RDB_exec_context *e
         return mutate_join(texp, tbpv, cap, ecp, txp);
     }
 
-    if (strcmp(texp->def.op.name, "semiminus") == 0) {
-        return mutate_semiminus(texp, tbpv, cap, ecp, txp);       
+    if (strcmp(texp->def.op.name, "minus") == 0
+            || strcmp(texp->def.op.name, "semiminus") == 0) {
+        RDB_expression *empty_exp = RDB_ec_get_property(ecp, "$empty");
+        if (empty_exp != NULL)
+            return mutate_semi_minus(texp, tbpv, cap, empty_exp, ecp, txp);
+        return 0;
     }
 
     if (strcmp(texp->def.op.name, "union") == 0
@@ -1052,13 +1071,14 @@ RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
 }
 
 static void
-trace_plan(RDB_expression *exp, int cost, RDB_exec_context *ecp, RDB_transaction *txp)
+trace_plan_cost(RDB_expression *exp, int cost, const char *txt,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_database *dbp = RDB_tx_db(txp);
     /* dbp could be NULL, e.g. when RDB_get_dbs() is executed */
     if (dbp != NULL && RDB_env_trace(RDB_db_env(dbp)) > 0) {
         /*
-         * Write expression (with index info) and cost to stderr
+         * Write expression (with index info) and cost (if not -1) to stderr
          */
         RDB_object strobj;
 
@@ -1068,7 +1088,11 @@ trace_plan(RDB_expression *exp, int cost, RDB_exec_context *ecp, RDB_transaction
             return;
         }
 
-        fprintf(stderr, "Possible plan: %s, cost: %d\n", RDB_obj_string(&strobj), cost);
+        fprintf(stderr, "%s: %s", txt, RDB_obj_string(&strobj));
+        if (cost != -1)
+            fprintf(stderr, ", cost: %d\n", cost);
+        else
+            fputs("\n", stderr);
         RDB_destroy_obj(&strobj, ecp);
     }
 }
@@ -1083,6 +1107,10 @@ RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
     int bestn;
     int tbc;
     RDB_expression *texpv[tbpv_cap];
+
+    if (txp != NULL) {
+        trace_plan_cost(texp, -1, "plan before transformation: ", ecp, txp);
+    }
 
     /*
      * Make a copy of the table, so it can be transformed freely
@@ -1120,8 +1148,11 @@ RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
      * by a constraint
      */
     if (RDB_tx_db(txp) != NULL) {
-        if (replace_empty(nexp, ecp, txp) != RDB_OK)
-            return NULL;
+        RDB_expression *empty_exp = RDB_ec_get_property(ecp, "$empty");
+        if (empty_exp != NULL) {
+            if (replace_empty(nexp, empty_exp, ecp, txp) != RDB_OK)
+                return NULL;
+        }
     }
 
     /*
@@ -1130,7 +1161,7 @@ RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
 
     bestcost = sorted_table_cost(nexp, seqitc, seqitv);
 
-    trace_plan(nexp, bestcost, ecp, txp);
+    trace_plan_cost(nexp, bestcost, "plan after transformation", ecp, txp);
 
     do {
         obestcost = bestcost;
@@ -1144,7 +1175,7 @@ RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
         for (i = 0; i < tbc; i++) {
             int cost = sorted_table_cost(texpv[i], seqitc, seqitv);
 
-            trace_plan(texpv[i], bestcost, ecp, txp);
+            trace_plan_cost(texpv[i], cost, "alternative plan", ecp, txp);
 
             if (cost < bestcost) {
                 bestcost = cost;
@@ -1163,5 +1194,7 @@ RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
             }
         }
     } while (bestcost < obestcost);
+    trace_plan_cost(bestn != -1 ? texpv[bestn] : nexp, bestcost, "winning plan",
+            ecp, txp);
     return nexp;
 }

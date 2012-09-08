@@ -29,7 +29,7 @@ table_dum_expr(void)
 
     reltyp = RDB_new_relation_type(0, NULL, RDB_parse_ecp);
     if (reltyp == NULL) {
-        RDB_drop_expr(exp, RDB_parse_ecp);
+        RDB_del_expr(exp, RDB_parse_ecp);
         return NULL;
     }
 
@@ -162,8 +162,9 @@ yyerror(const char *);
 %left ':'
 %left TOK_FROM TOK_ELSE ','
 %left TOK_UNION TOK_MINUS TOK_INTERSECT TOK_SEMIMINUS TOK_JOIN TOK_SEMIJOIN
-        TOK_WHERE TOK_RENAME TOK_WRAP TOK_UNWRAP TOK_GROUP TOK_UNGROUP
-        TOK_DIVIDEBY TOK_PER '{'
+        TOK_RENAME TOK_WRAP TOK_UNWRAP TOK_GROUP TOK_UNGROUP
+        TOK_DIVIDEBY TOK_PER
+%left TOK_WHERE '{'
 %left TOK_OR TOK_XOR
 %left TOK_AND
 %left TOK_NOT
@@ -1977,14 +1978,14 @@ expression: expression '{' id_commalist '}' {
          */
         argexp = RDB_ro_op("tuple", RDB_parse_ecp);
         if (argexp == NULL) {
-            RDB_drop_expr(exp, RDB_parse_ecp);
+            RDB_del_expr(exp, RDB_parse_ecp);
             YYERROR;
         }
         RDB_add_arg(exp, argexp);
 
         $$ = RDB_new_parse_expr(exp, NULL, RDB_parse_ecp);
         if ($$ == NULL) {
-            RDB_drop_expr(exp, RDB_parse_ecp);
+            RDB_del_expr(exp, RDB_parse_ecp);
             YYERROR;
         }
     }

@@ -1,4 +1,4 @@
-	README for Duro 0.15
+	README for Duro 0.16
 
 $Id$
 
@@ -14,7 +14,7 @@ The following software is required for compiling and running Duro:
 - SCons 1.2.0 or later
 - GNU Readline
 
-Duro 0.15 has been tested under Linux/x86 and Windows XP with Berkeley
+Duro has been tested under Linux/x86 and Windows XP with Berkeley
 DB 5.3 and Tcl 8.5.
 
 To learn about how to use Duro, see the documentation in the 'docs'
@@ -25,7 +25,7 @@ When Duro is installed, the Tcl interface is installed as a package in
 the 'lib' subdirectory. The simplest way to make it available to application
 scripts is to add this subdirectory to TCLLIBPATH, e.g.:
 
-    TCLLIBPATH=/usr/local/duro.0.15/lib
+    TCLLIBPATH=/usr/local/duro.0.16/lib
     export TCLLIBPATH
 
 To run Duroadmin, run duroadmin.tcl from the 'bin' subdirectory

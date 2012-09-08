@@ -13,16 +13,16 @@
 #include <errno.h>
 
 static int
-append_obj(RDB_object *objp, const RDB_object *srcp, RDB_exec_context *,
-        RDB_transaction *);
+append_obj(RDB_object *objp, const RDB_object *srcp, RDB_environment *,
+        RDB_exec_context *, RDB_transaction *);
 
 static int
-append_table_def(RDB_object *, const RDB_object *, RDB_exec_context *,
-        RDB_transaction *, int options);
+append_table_def(RDB_object *, const RDB_object *, RDB_environment *,
+        RDB_exec_context *, RDB_transaction *, int options);
 
 static int
-append_tuple(RDB_object *objp, const RDB_object *tplp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+append_tuple(RDB_object *objp, const RDB_object *tplp, RDB_environment *envp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_hashtable_iter hiter;
@@ -60,8 +60,8 @@ append_tuple(RDB_object *objp, const RDB_object *tplp, RDB_exec_context *ecp,
             if (ret != RDB_OK) {
                 goto error;
             }
-    
-            ret = append_obj(objp, &entryp->obj, ecp, txp);
+
+            ret = append_obj(objp, &entryp->obj, envp, ecp, txp);
             if (ret != RDB_OK)
                 goto error;
         }
@@ -127,9 +127,14 @@ append_quoted_string(RDB_object *objp, const RDB_object *strp,
     return ret;
 }
 
+/*
+ * Generate selector invocation and append it to *objp.
+ * *txp is passed to RDB_obj_comp (may be needed to read the getter operator
+ * from the catalog)
+ */
 static int
 append_utype_obj(RDB_object *objp, const RDB_object *srcp,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int compc;
     int i;
@@ -154,13 +159,13 @@ append_utype_obj(RDB_object *objp, const RDB_object *srcp,
         }
 
         RDB_init_obj(&compobj);
-        ret = RDB_obj_comp(srcp, possrep->compv[i].name, &compobj, NULL,
+        ret = RDB_obj_comp(srcp, possrep->compv[i].name, &compobj, envp,
                 ecp, txp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&compobj, ecp);
             return ret;
         }
-        ret = append_obj(objp, &compobj, ecp, txp);
+        ret = append_obj(objp, &compobj, envp, ecp, txp);
         RDB_destroy_obj(&compobj, ecp);
         if (ret != RDB_OK)
             return ret;
@@ -169,8 +174,8 @@ append_utype_obj(RDB_object *objp, const RDB_object *srcp,
 }
 
 static int
-append_table_val(RDB_object *objp, const RDB_object *tbp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+append_table_val(RDB_object *objp, const RDB_object *tbp, RDB_environment *envp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     RDB_object arr;
@@ -195,7 +200,7 @@ append_table_val(RDB_object *objp, const RDB_object *tbp, RDB_exec_context *ecp,
             }
         }
 
-        if (append_tuple(objp, tplp, ecp, txp) != RDB_OK) {
+        if (append_tuple(objp, tplp, envp, ecp, txp) != RDB_OK) {
             RDB_destroy_obj(&arr, ecp);
             return RDB_ERROR;
         }
@@ -208,8 +213,8 @@ append_table_val(RDB_object *objp, const RDB_object *tbp, RDB_exec_context *ecp,
 }
 
 static int
-append_array(RDB_object *objp, const RDB_object *arrp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+append_array(RDB_object *objp, const RDB_object *arrp, RDB_environment *envp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     RDB_object *elemp;
@@ -226,7 +231,7 @@ append_array(RDB_object *objp, const RDB_object *arrp, RDB_exec_context *ecp,
             }
         }
 
-        if (append_obj(objp, elemp, ecp, txp) != RDB_OK) {
+        if (append_obj(objp, elemp, envp, ecp, txp) != RDB_OK) {
             return RDB_ERROR;
         }
     }
@@ -237,8 +242,8 @@ append_array(RDB_object *objp, const RDB_object *arrp, RDB_exec_context *ecp,
 }
 
 static int
-append_obj(RDB_object *objp, const RDB_object *srcp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+append_obj(RDB_object *objp, const RDB_object *srcp, RDB_environment *envp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_type *typ = RDB_obj_type(srcp);
@@ -247,7 +252,7 @@ append_obj(RDB_object *objp, const RDB_object *srcp, RDB_exec_context *ecp,
         if (RDB_type_is_scalar(typ)) {
             if (srcp->typ->def.scalar.repc > 0) {
                  /* Type with possreps - generate selector */
-                 ret = append_utype_obj(objp, srcp, ecp, txp);
+                 ret = append_utype_obj(objp, srcp, envp, ecp, txp);
              } else if (srcp->typ == &RDB_STRING) {
                  /* String */
                  ret = append_quoted_string(objp, srcp, ecp);
@@ -266,14 +271,14 @@ append_obj(RDB_object *objp, const RDB_object *srcp, RDB_exec_context *ecp,
              }
              return ret;
         } else if (RDB_type_is_relation(typ)) {
-            return append_table_val(objp, srcp, ecp, txp);
+            return append_table_val(objp, srcp, envp, ecp, txp);
         } else if (RDB_type_is_array(typ)
                 || srcp->kind == RDB_OB_ARRAY) {
-            return append_array(objp, srcp, ecp, txp);
+            return append_array(objp, srcp, envp, ecp, txp);
         }
     }
     if (srcp->kind == RDB_OB_TUPLE) {
-        return append_tuple(objp, srcp, ecp, txp);
+        return append_tuple(objp, srcp, envp, ecp, txp);
     }
     if (srcp->kind == RDB_OB_INITIAL) {
         /* Treat as empty tuple */
@@ -284,19 +289,20 @@ append_obj(RDB_object *objp, const RDB_object *srcp, RDB_exec_context *ecp,
 } /* append_obj */
 
 static int
-append_ex(RDB_object *objp, const RDB_expression *exp, RDB_exec_context *ecp,
-        RDB_transaction *txp, int options)
+append_ex(RDB_object *objp, const RDB_expression *exp, RDB_environment *envp,
+        RDB_exec_context *ecp, RDB_transaction *txp, int options)
 {
     int ret;
 
     switch (exp->kind) {
         case RDB_EX_OBJ:
-            ret = append_obj(objp, &exp->def.obj, ecp, txp);
+            ret = append_obj(objp, &exp->def.obj, envp, ecp, txp);
             if (ret != RDB_OK)
                  return ret;
             break;
         case RDB_EX_TBP:
-            ret = append_table_def(objp, exp->def.tbref.tbp, ecp, txp, options);
+            ret = append_table_def(objp, exp->def.tbref.tbp, envp,
+                    ecp, txp, options);
             if (ret != RDB_OK)
                  return ret;
             if (exp->def.tbref.indexp != NULL && (RDB_SHOW_INDEX & options)) {
@@ -317,7 +323,8 @@ append_ex(RDB_object *objp, const RDB_expression *exp, RDB_exec_context *ecp,
             ret = RDB_append_string(objp, "(", ecp);
             if (ret != RDB_OK)
                 return ret;
-            ret = append_ex(objp, exp->def.op.args.firstp, ecp, txp, options);
+            ret = append_ex(objp, exp->def.op.args.firstp, envp,
+                    ecp, txp, options);
             if (ret != RDB_OK)
                 return ret;
             ret = RDB_append_string(objp, ").", ecp);
@@ -340,7 +347,8 @@ append_ex(RDB_object *objp, const RDB_expression *exp, RDB_exec_context *ecp,
             ret = RDB_append_string(objp, "(", ecp);
             if (ret != RDB_OK)
                 return ret;
-            ret = append_ex(objp, exp->def.op.args.firstp, ecp, txp, options);
+            ret = append_ex(objp, exp->def.op.args.firstp, envp,
+                    ecp, txp, options);
             if (ret != RDB_OK)
                 return ret;
             ret = RDB_append_string(objp, ")", ecp);
@@ -364,7 +372,7 @@ append_ex(RDB_object *objp, const RDB_expression *exp, RDB_exec_context *ecp,
                     || strcmp(exp->def.op.name, "subset_of") == 0) {
                 if (RDB_append_string(objp, "(", ecp) != RDB_OK)
                     return RDB_ERROR;
-                if (append_ex(objp, exp->def.op.args.firstp, ecp, txp,
+                if (append_ex(objp, exp->def.op.args.firstp, envp, ecp, txp,
                         options) != RDB_OK)
                     return RDB_ERROR;
                 ret = RDB_append_string(objp, ") ", ecp);
@@ -376,7 +384,7 @@ append_ex(RDB_object *objp, const RDB_expression *exp, RDB_exec_context *ecp,
                 ret = RDB_append_string(objp, " (", ecp);
                 if (ret != RDB_OK)
                     return ret;
-                ret = append_ex(objp, exp->def.op.args.firstp->nextp, ecp,
+                ret = append_ex(objp, exp->def.op.args.firstp->nextp, envp, ecp,
                         txp, options);
                 if (ret != RDB_OK)
                     return ret;
@@ -392,7 +400,7 @@ append_ex(RDB_object *objp, const RDB_expression *exp, RDB_exec_context *ecp,
                     return RDB_ERROR;
                 argp = exp->def.op.args.firstp;
                 while (argp != NULL) {
-                    if (append_ex(objp, argp, ecp, txp, options) != RDB_OK)
+                    if (append_ex(objp, argp, envp, ecp, txp, options) != RDB_OK)
                         return RDB_ERROR;
                     argp = argp->nextp;
                     if (argp != NULL) {
@@ -409,8 +417,8 @@ append_ex(RDB_object *objp, const RDB_expression *exp, RDB_exec_context *ecp,
 }
 
 static int
-append_table_def(RDB_object *objp, const RDB_object *tbp, RDB_exec_context *ecp,
-        RDB_transaction *txp, int options)
+append_table_def(RDB_object *objp, const RDB_object *tbp, RDB_environment *envp,
+        RDB_exec_context *ecp, RDB_transaction *txp, int options)
 {
     RDB_expression *exp;
     if (RDB_table_name(tbp) != NULL) {
@@ -419,12 +427,12 @@ append_table_def(RDB_object *objp, const RDB_object *tbp, RDB_exec_context *ecp,
 
     exp = RDB_vtable_expr(tbp);
     if (exp == NULL) {
-        return append_table_val(objp, tbp, ecp, txp);
+        return append_table_val(objp, tbp, envp, ecp, txp);
     }
     if (RDB_append_string(objp, "(", ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (append_ex(objp, exp, ecp, txp, options) != RDB_OK)
+    if (append_ex(objp, exp, envp, ecp, txp, options) != RDB_OK)
         return RDB_ERROR;
     return RDB_append_string(objp, ")", ecp);
 }
@@ -436,7 +444,7 @@ RDB_obj_to_str(RDB_object *dstp, const RDB_object *srcp,
     if (RDB_string_to_obj(dstp, "", ecp) != RDB_OK)
         return RDB_ERROR;
 
-    return append_obj(dstp, srcp, ecp, txp);
+    return append_obj(dstp, srcp, NULL, ecp, txp);
 }
 
 int
@@ -446,7 +454,7 @@ RDB_table_def_to_str(RDB_object *dstp, const RDB_object *srcp,
     if (RDB_string_to_obj(dstp, "", ecp) != RDB_OK)
         return RDB_ERROR;
 
-    return append_table_def(dstp, srcp, ecp, txp, options);
+    return append_table_def(dstp, srcp, NULL, ecp, txp, options);
 }
 
 /*
@@ -459,7 +467,7 @@ RDB_expr_to_str(RDB_object *dstp, const RDB_expression *exp,
     if (RDB_string_to_obj(dstp, "", ecp) != RDB_OK)
         return RDB_ERROR;
 
-    return append_ex(dstp, exp, ecp, txp, options);
+    return append_ex(dstp, exp, NULL, ecp, txp, options);
 }
 
 int

@@ -1,4 +1,4 @@
-	README for Duro 0.15
+	README for Duro
 
 $Id$
 
@@ -18,7 +18,7 @@ The following software is required for running this version of Duro:
 Add the directories where the respective DLLs are located to PATH,
 together with the 'bin' subdirectory of the Duro root directory.
 
-Duro 0.15 has been tested under Linux/x86 and Windows XP with Berkeley
+Duro 0.16 has been tested under Linux/x86 and Windows XP with Berkeley
 DB 5.3 and Tcl 8.5.
 
 To learn about how to use Duro, see the documentation in the 'docs'
@@ -29,7 +29,7 @@ The Tcl interface can be found in the 'lib' subdirectory.
 The easiest way to make it available to application
 scripts is to add this subdirectory to TCLLIBPATH, e.g.:
 
-    set TCLLIBPATH=C:/duro.0.15/lib
+    set TCLLIBPATH=C:/duro.0.16/lib
 
 To run Duroadmin, run duroadmin.tcl from the 'bin' subdirectory
 after setting TCLLIBPATH as described above. Duroadmin requires

@@ -74,7 +74,6 @@ free_dbroot(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
 
     RDB_destroy_op_map(&dbrootp->upd_opmap);
 
-    RDB_destroy_hashtable(&dbrootp->empty_tbtab);
     RDB_free(dbrootp);
 }
 
@@ -240,21 +239,12 @@ cleanup_env(RDB_environment *envp)
     RDB_dbroot *dbrootp = (RDB_dbroot *) RDB_env_xdata(envp);
     RDB_database *dbp;
     RDB_database *nextdbp;
-    RDB_hashtable_iter tit;
-    RDB_expression *eexp;
     RDB_exec_context ec;
 
     if (dbrootp == NULL)
         return;
 
     RDB_init_exec_context(&ec);
-
-    /* Destroy tables used in IS_EMPTY constraints */
-    RDB_init_hashtable_iter(&tit, &dbrootp->empty_tbtab);
-    while ((eexp = RDB_hashtable_next(&tit)) != NULL) {
-        RDB_del_expr(eexp, &ec);
-    }
-    RDB_destroy_hashtable_iter(&tit);
 
     dbp = dbrootp->first_dbp;
 
@@ -271,43 +261,6 @@ cleanup_env(RDB_environment *envp)
     lt_dlexit();
 }
 
-static unsigned
-hash_exp(const void *exp, void *arg)
-{
-    RDB_expression *hexp = (RDB_expression *) exp;
-    switch (hexp->kind) {
-        case RDB_EX_TUPLE_ATTR:
-            return RDB_hash_str(hexp->def.op.name);
-        case RDB_EX_GET_COMP:
-            return RDB_hash_str(hexp->def.op.name);
-        case RDB_EX_RO_OP:
-            return RDB_hash_str(hexp->def.op.name);
-        case RDB_EX_OBJ:
-            return (unsigned) hexp->kind;
-        case RDB_EX_TBP:
-        {
-            char *name = RDB_table_name(hexp->def.tbref.tbp);
-            if (name != NULL)
-                return RDB_hash_str(name);
-            return (unsigned) hexp->kind;
-        }
-        case RDB_EX_VAR:
-            return RDB_hash_str(hexp->def.varname);
-    }
-    abort();
-}
-
-static RDB_bool
-exp_equals(const void *ex1p, const void *ex2p, void *argp)
-{
-    RDB_bool res;
-    struct RDB_tx_and_ec *tep = (struct RDB_tx_and_ec *) argp;
-
-    RDB_expr_equals((RDB_expression *) ex1p, (RDB_expression *) ex2p,
-            tep->ecp, tep->txp, &res);
-    return res;
-}
-
 static RDB_dbroot *
 new_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
 {
@@ -321,8 +274,6 @@ new_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
     RDB_init_hashmap(&dbrootp->typemap, RDB_DFL_MAP_CAPACITY);
     RDB_init_op_map(&dbrootp->ro_opmap);
     RDB_init_op_map(&dbrootp->upd_opmap);
-    RDB_init_hashtable(&dbrootp->empty_tbtab, RDB_DFL_MAP_CAPACITY,
-            &hash_exp, &exp_equals);
 
     dbrootp->first_dbp = NULL;
     dbrootp->first_constrp = NULL;
@@ -1311,6 +1262,10 @@ RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     return tbp;
 }
 
+/*
+ * Check if there is a virtual table that depends on this table.
+ * Raise in_use_error if such a table exists.
+ */
 static int
 table_dep_check(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -1445,6 +1400,8 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         if (table_dep_check(tbp, ecp, txp) != RDB_OK) {
             return RDB_ERROR;
         }
+
+        /* !! check if constraints depend on this table */
 
         /*
          * Remove table from all RDB_databases in list

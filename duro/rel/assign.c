@@ -1228,6 +1228,35 @@ copy_needs_tx(const RDB_object *dstp, const RDB_object *srcp)
             || (srcp->kind == RDB_OB_TABLE && srcp->val.tb.is_persistent));
 }
 
+/*
+ * If the constraint is of the form is_empty(table), set property $empty
+ */
+static int
+set_empty(RDB_constraint *constrp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    int ret;
+
+    if (constrp->exp->kind == RDB_EX_RO_OP
+            && constrp->exp->def.op.args.firstp != NULL
+            && constrp->exp->def.op.args.firstp->nextp == NULL
+            && strcmp(constrp->exp->def.op.name, "is_empty") == 0) {
+        RDB_expression *exp = constrp->exp->def.op.args.firstp;
+        if (exp->kind == RDB_EX_RO_OP
+                && strcmp(exp->def.op.name, "project") == 0) {
+            exp = exp->def.op.args.firstp;
+        }
+
+        ret = RDB_ec_set_property(ecp, "$empty", exp);
+        if (ret != RDB_OK) {
+            ret = RDB_ec_set_property(ecp, "$empty", NULL);
+            RDB_errcode_to_error(ret, ecp, txp);
+            return RDB_ERROR;
+        }
+    }
+    return RDB_OK;
+}
+
 /** @addtogroup generic
  * @{
  */
@@ -1305,15 +1334,15 @@ plus <var>objc</var>. If an error occurred, (RDB_int) RDB_ERROR is returned.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> must point to a running transaction (see above)
 but does not.
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd>A table appears twice as a target.
-<dt>RDB_NOT_SUPPORTED_ERROR
+<dt>not_supported_error
 <dd>A table is both source and target.
 <dd>A virtual table appears as a target in <var>copyv</var>.
-<dt>RDB_PREDICATE_VIOLATION_ERROR
+<dt>predicate_violation_error
 <dd>A constraint has been violated.
 </dl>
 
@@ -1611,7 +1640,9 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     /*
      * Check constraints
      */
-    if (txp != NULL) {
+
+    /* No constraint checking for transient tables */
+    if (need_tx) {
         RDB_constraint *constrp;
 
         dbrootp = RDB_tx_db(txp)->dbrootp;
@@ -1653,8 +1684,17 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                 /*
                  * Check constraint
                  */
+
+                /*
+                 * Pass expression declared to be empty through an
+                 * execution context property
+                 */
+                if (set_empty(constrp, ecp, txp) != RDB_OK)
+                    goto cleanup;
+
                 ret = RDB_evaluate_bool(newexp, NULL, NULL, NULL, ecp, txp, &b);
                 RDB_del_expr(newexp, ecp);
+                RDB_ec_set_property(ecp, "$empty", NULL);
                 if (ret != RDB_OK) {
                     rcount = RDB_ERROR;
                     goto cleanup;

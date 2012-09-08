@@ -752,6 +752,42 @@ error:
 }
 
 int
+Duro_exec_vardef_virtual(RDB_parse_node *nodep, RDB_exec_context *ecp)
+{
+    RDB_object *tbp;
+    RDB_expression *defexp;
+    RDB_expression *texp;
+    const char *varname = RDB_expr_var_name(nodep->exp);
+
+    if (txnp == NULL) {
+        RDB_raise_no_running_tx(ecp);
+        return RDB_ERROR;
+    }
+
+    defexp = RDB_parse_node_expr(nodep->nextp->nextp, ecp, &txnp->tx);
+    if (defexp == NULL)
+        return RDB_ERROR;
+
+    texp = RDB_dup_expr(defexp, ecp);
+    if (texp == NULL)
+        return RDB_ERROR;
+
+    tbp = RDB_expr_to_vtable(texp, ecp, &txnp->tx);
+    if (tbp == NULL) {
+        RDB_del_expr(texp, ecp);
+        return RDB_ERROR;
+    }
+    if (RDB_set_table_name(tbp, varname, ecp, &txnp->tx) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_add_table(tbp, ecp, &txnp->tx) != RDB_OK)
+        return RDB_ERROR;
+
+    if (RDB_parse_get_interactive())
+        printf("Table %s created.\n", varname);
+    return RDB_OK;
+}
+
+int
 Duro_exec_vardrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
     const char *varname = RDB_expr_var_name(nodep->exp);

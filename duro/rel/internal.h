@@ -97,7 +97,6 @@ typedef struct RDB_dbroot {
     RDB_database *first_dbp;
     RDB_constraint *first_constrp;
     RDB_bool constraints_read;
-    RDB_hashtable empty_tbtab;
 
     /* catalog tables */
     RDB_object *rtables_tbp;

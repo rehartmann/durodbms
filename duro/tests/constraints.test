@@ -87,7 +87,7 @@ test constraints {table and database constraints} -setup $SETUP -body {
     } {{B}} $tx
 
     # Create foreign key constraint
-    duro::constraint create C2 {is_empty(T1 SEMIMINUS T2)} $tx
+    duro::constraint create C2 {is_empty(T1 semiminus T2)} $tx
     
     duro::commit $tx
 

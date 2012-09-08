@@ -1154,7 +1154,7 @@ RDB_table_is_empty(RDB_object *tbp, RDB_exec_context *ecp,
 
     nexp = RDB_optimize_expr(exp, 0, NULL, ecp, txp);
 
-    /* Remove projection */
+    /* Remove original projection */
     RDB_del_expr(exp, ecp);
 
     if (nexp == NULL) {

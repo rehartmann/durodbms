@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005-2011 Rene Hartmann.
+ * Copyright (C) 2005-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  *
  *
@@ -15,45 +15,6 @@
 #include "serialize.h"
 #include <gen/strfns.h>
 #include <string.h>
-
-/*
- * If the constraint is of the form is_empty(table), add table to
- * hashtable of empty tables
- */
-static int
-add_empty_tb(RDB_constraint *constrp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-    int ret;
-    struct RDB_tx_and_ec te;
-
-    te.txp = txp;
-    te.ecp = ecp;
-
-    if (constrp->exp->kind == RDB_EX_RO_OP
-            && constrp->exp->def.op.args.firstp != NULL
-            && constrp->exp->def.op.args.firstp->nextp == NULL
-            && strcmp(constrp->exp->def.op.name, "is_empty") == 0) {
-        RDB_expression *exp;
-        RDB_expression *oexp = constrp->exp->def.op.args.firstp;
-        if (oexp->kind == RDB_EX_RO_OP
-                && strcmp(oexp->def.op.name, "project") == 0) {
-            oexp = oexp->def.op.args.firstp;
-        }
-        exp = RDB_dup_expr(oexp, ecp);
-        if (exp == NULL)
-            return RDB_ERROR;
-
-        ret = RDB_hashtable_put(&txp->dbp->dbrootp->empty_tbtab,
-                exp, &te);
-        if (ret != RDB_OK) {
-            RDB_del_expr(exp, ecp);
-            RDB_errcode_to_error(ret, ecp, txp);
-            return RDB_ERROR;
-        }
-    }
-    return RDB_OK;
-}
 
 /*
  * Read constraints from catalog
@@ -94,10 +55,6 @@ RDB_read_constraints(RDB_exec_context *ecp, RDB_transaction *txp)
         if (constrp->exp == NULL) {
             RDB_free(constrp->name);
             RDB_free(constrp);
-            ret = RDB_ERROR;
-            goto cleanup;
-        }
-        if (add_empty_tb(constrp, ecp, txp) != RDB_OK) {
             ret = RDB_ERROR;
             goto cleanup;
         }
@@ -174,7 +131,6 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
     }
 
     constrp->exp = exp;
-    add_empty_tb(constrp, ecp, txp);
 
     constrp->name = RDB_dup_str(name);
     if (constrp->name == NULL) {
@@ -239,6 +195,9 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
         } else {
             prevconstrp->nextp = constrp->nextp;
         }
+
+        /* !! delete from empty_tbtab */
+
         RDB_del_expr(constrp->exp, ecp);
         RDB_free(constrp->name);
         RDB_free(constrp);
@@ -252,6 +211,10 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
     }
     ret = RDB_delete(dbrootp->constraints_tbp, condp, ecp, txp);
     RDB_del_expr(condp, ecp);
+    if (ret == 0) {
+        RDB_raise_not_found(name, ecp);
+        return RDB_ERROR;
+    }
 
     return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
 }
