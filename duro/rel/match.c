@@ -175,6 +175,7 @@ stored_matching(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
                         && index_covers_tuple(&tbp->val.tb.stp->indexv[i], tplp));
             i++);
     if (i >= tbp->val.tb.stp->indexc) {
+        /* Not found - scan *tbp for a matching tuple */
         return matching_ts(tbp, tplp, ecp, txp, resultp);
     }
     indexp = &tbp->val.tb.stp->indexv[i];
