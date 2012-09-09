@@ -1109,7 +1109,7 @@ RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
     RDB_expression *texpv[tbpv_cap];
 
     if (txp != NULL) {
-        trace_plan_cost(texp, -1, "plan before transformation: ", ecp, txp);
+        trace_plan_cost(texp, -1, "plan before transformation", ecp, txp);
     }
 
     /*

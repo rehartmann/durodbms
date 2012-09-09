@@ -463,7 +463,7 @@ test index {creating index} -setup $SETUP -body {
         commit;
 
         begin tx;
-        index r_c for r (c);
+        index r_c r (c);
         commit;
 
         begin tx;

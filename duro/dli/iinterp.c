@@ -2463,7 +2463,7 @@ exec_indexdef(RDB_parse_node *nodep, RDB_exec_context *ecp)
     int i;
     const char *indexname = RDB_expr_var_name(nodep->exp);
     RDB_object *tbp;
-    int idxcompc = RDB_parse_nodelist_length(nodep->nextp->nextp->nextp->nextp);
+    int idxcompc = RDB_parse_nodelist_length(nodep->nextp->nextp->nextp);
     RDB_seq_item *idxcompv;
     RDB_parse_node *attrnodep;
 
@@ -2472,7 +2472,7 @@ exec_indexdef(RDB_parse_node *nodep, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    tbp = RDB_get_table(RDB_expr_var_name(nodep->nextp->nextp->exp),
+    tbp = RDB_get_table(RDB_expr_var_name(nodep->nextp->exp),
             ecp, &txnp->tx);
     if (tbp == NULL) {
         return RDB_ERROR;
@@ -2482,7 +2482,7 @@ exec_indexdef(RDB_parse_node *nodep, RDB_exec_context *ecp)
     if (idxcompv == NULL)
         return RDB_ERROR;
 
-    attrnodep = nodep->nextp->nextp->nextp->nextp->val.children.firstp;
+    attrnodep = nodep->nextp->nextp->nextp->val.children.firstp;
     i = 0;
     for(;;) {
         idxcompv[i].attrname = (char *) RDB_expr_var_name(attrnodep->exp);

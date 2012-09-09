@@ -1685,6 +1685,10 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                  * Check constraint
                  */
 
+                if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
+                    fprintf(stderr, "Checking constraint %s\n", constrp->name);
+                }
+
                 /*
                  * Pass expression declared to be empty through an
                  * execution context property
@@ -1703,6 +1707,9 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                     RDB_raise_predicate_violation(constrp->name, ecp);
                     rcount = RDB_ERROR;
                     goto cleanup;
+                }
+                if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
+                    fputs("Constraint check successful.\n", stderr);
                 }
             }
             constrp = constrp->nextp;

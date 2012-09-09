@@ -503,20 +503,6 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
     }    
-    | TOK_DROP TOK_INDEX TOK_ID ';' {
-        $$ = new_parse_inner();
-        if ($$ == NULL) {
-            RDB_parse_del_node($1, RDB_parse_ecp);
-            RDB_parse_del_node($2, RDB_parse_ecp);
-            RDB_parse_del_node($3, RDB_parse_ecp);
-            RDB_parse_del_node($4, RDB_parse_ecp);
-            YYERROR;
-        }
-        RDB_parse_add_child($$, $1);
-        RDB_parse_add_child($$, $2);
-        RDB_parse_add_child($$, $3);
-        RDB_parse_add_child($$, $4);
-    }    
     | ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
@@ -991,7 +977,7 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
     }
-    | TOK_INDEX TOK_ID TOK_FOR TOK_ID '(' ne_id_commalist ')' ';' {
+    | TOK_INDEX TOK_ID TOK_ID '(' ne_id_commalist ')' ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -1001,7 +987,6 @@ statement: assignment ';' {
             RDB_parse_del_node($5, RDB_parse_ecp);
             RDB_parse_del_node($6, RDB_parse_ecp);
             RDB_parse_del_node($7, RDB_parse_ecp);
-            RDB_parse_del_node($8, RDB_parse_ecp);
             YYERROR;
         }
         RDB_parse_add_child($$, $1);
@@ -1011,8 +996,21 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $5);
         RDB_parse_add_child($$, $6);
         RDB_parse_add_child($$, $7);
-        RDB_parse_add_child($$, $8);
     }
+    | TOK_DROP TOK_INDEX TOK_ID ';' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            RDB_parse_del_node($4, RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+    }    
     | TOK_EXPLAIN expression TOK_ORDER '(' order_item_commalist ')' ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
