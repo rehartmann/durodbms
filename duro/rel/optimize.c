@@ -63,7 +63,7 @@ alter_op(RDB_expression *exp, const char *name, RDB_exec_context *ecp)
 }
 
 /**
- * Remove the (only child) of exp and turn the grandchildren of exp into children
+ * Remove the (only) child of exp and turn the grandchildren of exp into children
  */
 static int
 eliminate_child (RDB_expression *exp, const char *name, RDB_exec_context *ecp,

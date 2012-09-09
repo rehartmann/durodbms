@@ -84,7 +84,6 @@ RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
 {
     int ret;
     RDB_qresult *qrp;
-    RDB_expression *texp;
 
     if (exp->kind == RDB_EX_OBJ) {
         return RDB_matching_tuple(&exp->def.obj, tplp, ecp, txp, resultp);
@@ -95,12 +94,8 @@ RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
     if (exp->kind == RDB_EX_RO_OP && strcmp (exp->def.op.name, "project") == 0) {
         return project_matching(exp, tplp, ecp, txp, resultp);
     }
-
-    texp = RDB_optimize_expr(exp, 0, NULL, ecp, txp);
-    if (texp == NULL)
-        return RDB_ERROR;
     
-    qrp = RDB_expr_qresult(texp, ecp, txp);
+    qrp = RDB_expr_qresult(exp, ecp, txp);
     if (qrp == NULL)
         goto error;
 
@@ -108,13 +103,11 @@ RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
     if (ret != RDB_OK) {
         goto error;
     }
-    RDB_drop_qresult(qrp, ecp, txp);
-    return RDB_del_expr(texp, ecp);
+    return RDB_drop_qresult(qrp, ecp, txp);
 
 error:
     if (qrp != NULL)
         RDB_drop_qresult(qrp, ecp, txp);
-    RDB_del_expr(texp, ecp);
     return RDB_ERROR;
 }
 
