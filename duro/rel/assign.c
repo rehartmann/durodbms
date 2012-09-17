@@ -15,6 +15,7 @@
 #include "optimize.h"
 #include "internal.h"
 #include "stable.h"
+#include "transform.h"
 #include <gen/strfns.h>
 
 #include <string.h>
@@ -1664,6 +1665,10 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
             /*
              * Check if constraint refers to assignment target
              */
+
+            /* Transform is needed to resolve table names */
+            if (RDB_transform(constrp->exp, NULL, NULL, ecp, txp) != RDB_OK)
+                return RDB_ERROR;
 
             /* resolved inserts/updates/... */
             if (expr_refers_target(constrp->exp, ninsc, ninsv, nupdc, nupdv,

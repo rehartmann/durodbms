@@ -593,8 +593,11 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     int argc;
     RDB_type **argtv = NULL;
 
-    if (RDB_transform(exp, getfnp, arg, ecp, txp) != RDB_OK)
-        return NULL;
+    /* Transform UPDATE */
+    if (strcmp(exp->def.op.name, "update") == 0) {
+        if (RDB_convert_update(exp, getfnp, arg, ecp, txp) != RDB_OK)
+            return NULL;
+    }
 
     /*
      * WHERE, EXTEND, etc. require special treatment

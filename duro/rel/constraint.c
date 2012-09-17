@@ -126,10 +126,6 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
         return RDB_ERROR;
     }
 
-    if (RDB_transform(exp, NULL, NULL, ecp, txp) != RDB_OK) {
-        return RDB_ERROR;
-    }
-
     constrp->exp = exp;
 
     constrp->name = RDB_dup_str(name);
@@ -195,8 +191,6 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
         } else {
             prevconstrp->nextp = constrp->nextp;
         }
-
-        /* !! delete from empty_tbtab */
 
         RDB_del_expr(constrp->exp, ecp);
         RDB_free(constrp->name);

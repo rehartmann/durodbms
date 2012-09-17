@@ -144,9 +144,12 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         gtinfo.getfnp = getfnp;
     }
 
-    if (RDB_transform(exp, getfnp != NULL ? get_type : NULL,
-            getfnp != NULL ? &gtinfo : NULL, ecp, txp) != RDB_OK)
-        return RDB_ERROR;
+    /* Transform UPDATE */
+    if (strcmp(exp->def.op.name, "update") == 0) {
+        if (RDB_convert_update(exp, getfnp != NULL ? get_type : NULL,
+                getfnp != NULL ? &gtinfo : NULL, ecp, txp) != RDB_OK)
+            return RDB_ERROR;
+    }
 
     /*
      * Certain operators cannot be evaluated by evaluating the arguments

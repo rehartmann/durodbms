@@ -755,11 +755,20 @@ transform_remove(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     return transform_project(exp, getfnp, arg, ecp, txp);
 }
 
-/**
- * Transform UPDATE into RENAME(PROJECT(EXTEND(
- */
 static int
 transform_update(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    if (RDB_convert_update(exp, getfnp, arg, ecp, txp) != RDB_OK)
+        return RDB_ERROR;
+    return RDB_transform(exp->def.op.args.firstp, getfnp, arg, ecp, txp);
+}
+
+/**
+ * Convert UPDATE into RENAME(PROJECT(EXTEND(
+ */
+int
+RDB_convert_update(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object nattrname;
@@ -788,48 +797,51 @@ transform_update(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         if (argp->nextp == NULL) {
             RDB_raise_invalid_argument("UPDATE: invalid number of arguments",
                     ecp);
-            return RDB_ERROR;
+            goto error;
         }
         nargp = argp->nextp->nextp;
 
         if (argp->kind != RDB_EX_OBJ) {
             RDB_raise_invalid_argument("UPDATE argument must be STRING",
                     ecp);
-            return RDB_ERROR;
+            goto error;
         }
 
         /* Build attribute name prefixed by $ */
         if (RDB_string_to_obj(&nattrname, "$", ecp) != RDB_OK)
-            return RDB_ERROR;
+            goto error;
         if (RDB_append_string(&nattrname, RDB_obj_string(RDB_expr_obj(argp)),
                 ecp) != RDB_OK)
-            return RDB_ERROR;
+            goto error;
 
         /* Append EXTEND args */
         RDB_add_arg(xexp, argp->nextp);
         hexp = RDB_obj_to_expr(&nattrname, ecp);
         if (hexp == NULL)
-            return RDB_ERROR;
+            goto error;
         RDB_add_arg(xexp, hexp);
 
         /* Append REMOVE args */
         hexp = RDB_obj_to_expr(RDB_expr_obj(argp), ecp);
         if (hexp == NULL)
-            return RDB_ERROR;
+            goto error;
         RDB_add_arg(pexp, hexp);
 
         /* Append RENAME args */
         hexp = RDB_obj_to_expr(&nattrname, ecp);
         if (hexp == NULL)
-            return RDB_ERROR;
+            goto error;
         RDB_add_arg(exp, hexp);
         RDB_add_arg(exp, argp);
 
         argp = nargp;
     }
     RDB_destroy_obj(&nattrname, ecp);
+    return RDB_remove_to_project(pexp, getfnp, arg, ecp, txp);
 
-    return transform_remove(pexp, getfnp, arg, ecp, txp);
+error:
+    RDB_destroy_obj(&nattrname, ecp);
+        return RDB_ERROR;
 }
 
 static int
@@ -881,8 +893,9 @@ int
 RDB_transform(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    if (exp->transformed)
+    if (exp->transformed) {
         return RDB_OK;
+    }
     exp->transformed = RDB_TRUE;
 
     /*

@@ -18,4 +18,8 @@ int
 RDB_remove_to_project(RDB_expression *, RDB_gettypefn *, void *,
         RDB_exec_context *, RDB_transaction *);
 
+int
+RDB_convert_update(RDB_expression *, RDB_gettypefn *, void *,
+        RDB_exec_context *, RDB_transaction *);
+
 #endif /*TRANSFORM_H*/
