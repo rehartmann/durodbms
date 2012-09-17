@@ -15,7 +15,7 @@ set testdir [::tcltest::configure -testdir]
 
 makeDirectory dbenv
 
-set ::DBSETUP {
+set ::SETUP {
     removeDirectory dbenv
     makeDirectory dbenv
     cd $::tcltest::temporaryDirectory
@@ -34,7 +34,7 @@ FALSE
 error caught
 }
 
-test deftype {user-defined types} -setup $DBSETUP -body {
+test deftype {user-defined types} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -93,7 +93,7 @@ caught IN_USE
 caught TYPE_CONSTRAINT_VIOLATION
 }
 
-test defroop {read-only user-defined operators} -setup $DBSETUP -body {
+test defroop {read-only user-defined operators} -setup $SETUP -body {
     exec $testdir/../../dli/durodt -e dbenv -d D << {
         operator testop() returns STRING;
             var a INTEGER;
@@ -180,7 +180,7 @@ test defroop {read-only user-defined operators} -setup $DBSETUP -body {
 0
 }
 
-test defupdop {user-defined update operators} -setup $DBSETUP -body {
+test defupdop {user-defined update operators} -setup $SETUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         CURRENT_DB := 'D';
         begin transaction;
@@ -223,39 +223,7 @@ test defupdop {user-defined update operators} -setup $DBSETUP -body {
 } -result {a = xyz, b = 1
 }
 
-test dbconstraint {db/table constraints} -setup $DBSETUP -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
-        CURRENT_DB := 'D';
-        begin transaction;
-
-        operator create_constraint() updates {};
-            constraint CR count(r) <= 1;
-        end operator;
-
-        operator drop_constraint() updates {};
-            drop constraint CR;
-        end operator;
-
-        var r real relation {no INTEGER, name STRING}
-                init relation {tuple {no 1, name 'one'}}
-                key {no};
-
-        create_constraint();
-
-        try
-            insert r tuple {no 2, name 'two'};
-        catch err PREDICATE_VIOLATION_ERROR;
-            put_line('caught predicate violation: ' || THE_MSG(err));
-        end try;
-
-        drop_constraint();
-
-        commit;
-    }
-} -result {caught predicate violation: cr
-}
-
-test trycatch {TRY .. CATCH} -setup $DBSETUP -body {
+test trycatch {TRY .. CATCH} -setup $SETUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         CURRENT_DB := 'D';
         begin transaction;
@@ -278,7 +246,7 @@ test trycatch {TRY .. CATCH} -setup $DBSETUP -body {
 } -result {caught
 }
 
-test getenv {GETENV operator} -setup $DBSETUP -body {
+test getenv {GETENV operator} -setup $SETUP -body {
     set ::env(TEST) DUROTEST
 
     exec $testdir/../../dli/durodt -e dbenv << {

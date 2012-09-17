@@ -4,7 +4,7 @@ exec tclsh "$0" ${1+"$@"}
 
 # $Id$
 #
-# Test scalar definitions and operations
+# Test database relvars and relational operators
 #
 
 package require tcltest 2.2
@@ -59,54 +59,6 @@ test invalid_type {invalid (scalar) type for table} -setup $SETUP -match glob -b
     	var ir real int key {};
     }
 }  -returnCodes {1} -result {*type_mismatch_error*}
-
-test private {creating private table and inserting tuples} -setup $SETUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
-        current_db := 'D';
-
-        var r private relation {i int, d float, c string} key {i};
-        insert r relation {} {};
-
-        try
-            var ir private relation {i int} key {i};
-            var ir private relation {i int} key {i};
-        catch err element_exists_error;
-            put_line("double creation caught");
-        end try;
-
-        var s private relation {i int} init relation { tuple {i 1}, tuple {i 2} } key {i};
-
-        var a init 1;
-        insert r relation {tuple {i a, d 1.0, c 'X'}, tuple {i 2, d 1.1, c 'Y'}};
-
-        insert r tuple {i 2 + 1, d 1.0, c 'Z'}; 
-
-        update r where i=3 { c:= 'ZZ' };
-
-        delete r where i<>2;
-
-        put(count(r)); put_line('');
-        put_line((tuple from r where i=2).c);
-        put(sum(s, i)); put_line('');
-        drop var r;
-        
-        -- test invalid relation selector
-        try
-            var r init relation {a int} {tuple {a 'x'}};
-        catch err type_mismatch_error;
-            put_line("type mismatch");
-        end try;
-        
-        put((tuple from relation {a int} {tuple {a 7}}).a); put_line('');
-    }
-} -result {double creation caught
-1
-Y
-3
-type mismatch
-7
-}
 
 test ra {relational algebra} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
@@ -360,99 +312,6 @@ test relrel {table with relation attribute} -setup $SETUP -body {
 yo
 }
 
-test group {GROUP} -body {
-    exec $testdir/../../dli/durodt << {
-		var gt init rel{tup{i 1, j 1}, tup{i 2, j 2}} group {i, j} as ij;
-		put((tuple from gt).ij = rel{tup{i 1, j 1}, tup{i 2, j 2}}); put_line('');
-    }
-} -result {TRUE
-}
-
-test ungroup {UNGROUP} -body {
-    exec $testdir/../../dli/durodt << {
-		var ugt init rel{
-		        tup {st rel{tup{s 'a', t 'b'}, tup{s 'c', t 'd'}}},
-		        tup {st rel{tup{s 'e', t 'f'}}}} ungroup st;
-		var arr array tuple{s string, t string};
-		load arr from ugt order(s asc);
-		put(LENGTH(arr)); put_line('');
-		put_line(arr[0].s);
-		put_line(arr[0].t);
-		put_line(arr[1].s);
-		put_line(arr[1].t);
-		put_line(arr[2].s);
-		put_line(arr[2].t);
-    }
-} -result {3
-a
-b
-c
-d
-e
-f
-}
-
-test sdivide {small DIVIDE} -body {
-    exec $testdir/../../dli/durodt << {
-        var pizzas private init rel{tup{pizza# 1}, tup{pizza# 2}};
-        var condiments private init rel{tup{cond 'salami'},tup{cond 'mushrooms'}};
-
-        try
-            var p_c private init rel{tup{pizza# 1, cond 'salami'},
-                    tup{pizza 2, cond 'salami'}, tup{pizza 2, cond 'mushrooms'}};
-        catch err;
-            put_line('error caught');
-        end try;
-
-        var p_c private init rel{tup{pizza# 1, cond 'salami'},
-                tup{pizza# 2, cond 'salami'}, tup{pizza# 2, cond 'mushrooms'}};
-                
-        -- Get # of pizza with all condiments
-        put((tuple from (pizzas divideby condiments per (p_c))).pizza#); put_line('');
-    }
-} -result {error caught
-2
-}
-
-test foreach {FOREACH} -body {
-    exec $testdir/../../dli/durodt << {
-        var pr private init relation{tup{i 1, j 1},tup{i 2, j 20}};
-
-        var t1 tuple{i integer, j integer};
-        foreach t1 in pr order(i asc);
-            put(t1.i); put_line('');
-        end foreach;
-        foreach t1 in pr order(i desc);
-            put(t1.i); put_line('');
-        end foreach;
-
-        var t2 tuple{i integer};
-        foreach t2 in pr {i} order(i asc);
-            put(t2.i); put_line('');
-        end foreach;
-        foreach t2 in pr {i} order(i desc);
-            put(t2.i); put_line('');
-        end foreach;
-
-        -- LEAVE with label
-        l: foreach t2 in pr {i} order(i asc);
-            put(t2.i); put_line('');
-            if t2.i = 1 then
-                leave l;
-            end if;
-        end foreach;
-    }
-} -result {1
-2
-2
-1
-1
-2
-2
-1
-1
-}
-
 test index {creating index} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
@@ -523,49 +382,36 @@ test real_default {public real table with default values} -setup $SETUP -body {
 6 120 xyy
 }
 
-test private_default {private table with default values} -setup $SETUP -body {
-    exec $testdir/../../dli/durodt << {
-        var r1 private relation {i int, r float, c string} key {i}
-                default {r 1.2, c 'xyz'};
-        insert r1 tup {i 5};
-        var t1 init tuple from r1;
+test dbconstraint {db/table constraints} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt -e dbenv << {
+        current_db := 'D';
+        begin transaction;
 
-        var r2 private relation {i int, r float, c string}
-                init rel {tup {i 0, r 1.0, c 'Zz'}}
-                key {i} key {c}
-                default {r 1.2, c 'xyz'};
-        insert r2 tup {i 5};
-        var t2 init tuple from (r2 where i=5);
+        operator create_constraint() updates {};
+            constraint CR count(r) <= 1;
+        end operator;
 
-        var r3 private relation {i int, r float, c string}
-                init r2 default {r 1.2, c 'xyz'};
-        insert r3 tup {i 6, c 'xyy'};
-        var t3 init tuple from (r3 where i=6);
+        operator drop_constraint() updates {};
+            drop constraint CR;
+        end operator;
 
-        -- Invalid table type
+        var r real relation {no INTEGER, name STRING}
+                init relation {tuple {no 1, name 'one'}}
+                key {no};
+
+        create_constraint();
+
         try
-            var r4 private tup {no int, r float, name string}
-                    key {no} default {name 'John Doe'};
-        catch err type_mismatch_error;
-            put_line('r4: type_mismatch_error caught');
+            insert r tuple {no 2, name 'two'};
+        catch err PREDICATE_VIOLATION_ERROR;
+            put_line('caught predicate violation: ' || THE_MSG(err));
         end try;
 
-        put(t1.i); put(' ');
-        put(cast_as_integer(t1.r * 100.0)); put(' ');
-        put(t1.c); put_line('');
+        drop_constraint();
 
-        put(t2.i); put(' ');
-        put(cast_as_integer(t2.r * 100.0)); put(' ');
-        put(t2.c); put_line('');
-
-        put(t3.i); put(' ');
-        put(cast_as_integer(t3.r * 100.0)); put(' ');
-        put(t3.c); put_line('');
+        commit;
     }
-} -result {r4: type_mismatch_error caught
-5 120 xyz
-5 120 xyz
-6 120 xyy
+} -result {caught predicate violation: cr
 }
 
 cleanupTests
