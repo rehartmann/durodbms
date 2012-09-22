@@ -876,31 +876,9 @@ transform_children(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_expression *argp = exp->def.op.args.firstp;
-    /*
-    RDB_expression *prevp = NULL; */
     while (argp != NULL) {
-/*
-        if (argp->kind == RDB_EX_TBP) {
-            RDB_object *vtbp = argp->def.tbref.tbp;
-            if (!RDB_table_is_real(vtbp)) {
-                RDB_expression *nextp = argp->nextp;
-                fputs("dropping vtable\n", stderr);
-                RDB_del_expr(argp, ecp);
-                argp = RDB_dup_expr(RDB_vtable_expr(vtbp), ecp);
-                if (argp == NULL)
-                    return RDB_ERROR;
-                argp->nextp = nextp;
-                if (prevp == NULL) {
-                    exp->def.op.args.firstp = argp;
-                } else {
-                    prevp->nextp = argp;
-                }
-            }
-        }
-*/
         if (RDB_transform(argp, getfnp, arg, ecp, txp) != RDB_OK)
             return RDB_ERROR;
-        /* prevp = argp; */
         argp = argp->nextp;
     }
     return RDB_OK;
