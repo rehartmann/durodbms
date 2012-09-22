@@ -1258,6 +1258,85 @@ set_empty(RDB_constraint *constrp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
+/*
+ * Check if the assignments violate a constraint
+ */
+static int
+check_constraints(int ninsc, const RDB_ma_insert ninsv[],
+        int nupdc, const RDB_ma_update nupdv[],
+        int ndelc, const RDB_ma_delete ndelv[],
+        int copyc, const RDB_ma_copy copyv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret;
+    RDB_constraint *constrp;
+    RDB_dbroot *dbrootp = RDB_tx_db(txp)->dbrootp;
+
+    /*
+     * Read constraints from DB
+     */
+    if (!dbrootp->constraints_read) {
+        if (RDB_read_constraints(ecp, txp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+        dbrootp->constraints_read = RDB_TRUE;
+    }
+
+    constrp = dbrootp->first_constrp;
+    while (constrp != NULL) {
+        /*
+         * Check if constraint refers to assignment target
+         */
+
+        /* resolved inserts/updates/... */
+        if (expr_refers_target(constrp->exp, ninsc, ninsv, nupdc, nupdv,
+                ndelc, ndelv, copyc, copyv)) {
+            RDB_bool b;
+
+            /*
+             * Replace target tables
+             */
+            RDB_expression *newexp = replace_targets(constrp->exp,
+                    ninsc, ninsv, nupdc, nupdv, ndelc, ndelv,
+                    copyc, copyv, ecp, txp);
+            if (newexp == NULL) {
+                return RDB_ERROR;
+            }
+
+            /*
+             * Check constraint
+             */
+
+            if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
+                fprintf(stderr, "Checking constraint %s\n", constrp->name);
+            }
+
+            /*
+             * Pass expression declared to be empty through an
+             * execution context property
+             */
+            if (set_empty(constrp, ecp, txp) != RDB_OK)
+                return RDB_ERROR;
+
+            ret = RDB_evaluate_bool(newexp, NULL, NULL, NULL, ecp, txp, &b);
+            RDB_del_expr(newexp, ecp);
+            RDB_ec_set_property(ecp, "$empty", NULL);
+            if (ret != RDB_OK) {
+                return RDB_ERROR;
+            }
+            if (!b) {
+                RDB_raise_predicate_violation(constrp->name, ecp);
+                return RDB_ERROR;
+            }
+            if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
+                fputs("Constraint check successful.\n", stderr);
+            }
+        }
+        constrp = constrp->nextp;
+    }
+    return RDB_OK;
+}
+
 /** @addtogroup generic
  * @{
  */
@@ -1359,7 +1438,6 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
 {
     int i, j;
     RDB_int rcount, cnt;
-    RDB_dbroot *dbrootp;
     int ninsc;
     int nupdc;
     int ndelc;
@@ -1644,80 +1722,10 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
 
     /* No constraint checking for transient tables */
     if (need_tx) {
-        RDB_constraint *constrp;
-
-        dbrootp = RDB_tx_db(txp)->dbrootp;
-
-        /*
-         * Read constraints from DB
-         */
-        if (!dbrootp->constraints_read) {
-            if (RDB_read_constraints(ecp, txp) != RDB_OK) {
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-            dbrootp->constraints_read = RDB_TRUE;
-        }
-
-        constrp = dbrootp->first_constrp;
-        while (constrp != NULL) {
-            int ret;
-            /*
-             * Check if constraint refers to assignment target
-             */
-
-            /* Transform is needed to resolve table names */
-            if (RDB_transform(constrp->exp, NULL, NULL, ecp, txp) != RDB_OK)
-                return RDB_ERROR;
-
-            /* resolved inserts/updates/... */
-            if (expr_refers_target(constrp->exp, ninsc, ninsv, nupdc, nupdv,
-                    ndelc, ndelv, copyc, copyv)) {
-                RDB_bool b;
-
-                /*
-                 * Replace target tables
-                 */
-                RDB_expression *newexp = replace_targets(constrp->exp,
-                        ninsc, ninsv, nupdc, nupdv, ndelc, ndelv,
-                        copyc, copyv, ecp, txp);
-                if (newexp == NULL) {
-                    rcount = RDB_ERROR;
-                    goto cleanup;
-                }
-
-                /*
-                 * Check constraint
-                 */
-
-                if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
-                    fprintf(stderr, "Checking constraint %s\n", constrp->name);
-                }
-
-                /*
-                 * Pass expression declared to be empty through an
-                 * execution context property
-                 */
-                if (set_empty(constrp, ecp, txp) != RDB_OK)
-                    goto cleanup;
-
-                ret = RDB_evaluate_bool(newexp, NULL, NULL, NULL, ecp, txp, &b);
-                RDB_del_expr(newexp, ecp);
-                RDB_ec_set_property(ecp, "$empty", NULL);
-                if (ret != RDB_OK) {
-                    rcount = RDB_ERROR;
-                    goto cleanup;
-                }
-                if (!b) {
-                    RDB_raise_predicate_violation(constrp->name, ecp);
-                    rcount = RDB_ERROR;
-                    goto cleanup;
-                }
-                if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
-                    fputs("Constraint check successful.\n", stderr);
-                }
-            }
-            constrp = constrp->nextp;
+        if (check_constraints(ninsc, ninsv, nupdc, nupdv, ndelc, ndelv,
+                copyc, copyv, ecp, txp) != RDB_OK) {
+            rcount = RDB_ERROR;
+            goto cleanup;
         }
     }
 
@@ -1729,7 +1737,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
      * Start subtransaction, if there is more than one assignment.
      * A subtransaction is also needed for an insert into a table
      * with secondary indexes, because the insert is not atomic
-     * in Berkeyley DB 4.5.
+     * in Berkeley DB 4.5.
      */
     if (need_tx
             && (ninsc + nupdc + ndelc + copyc > 1

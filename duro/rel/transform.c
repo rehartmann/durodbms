@@ -876,9 +876,31 @@ transform_children(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_expression *argp = exp->def.op.args.firstp;
+    /*
+    RDB_expression *prevp = NULL; */
     while (argp != NULL) {
+/*
+        if (argp->kind == RDB_EX_TBP) {
+            RDB_object *vtbp = argp->def.tbref.tbp;
+            if (!RDB_table_is_real(vtbp)) {
+                RDB_expression *nextp = argp->nextp;
+                fputs("dropping vtable\n", stderr);
+                RDB_del_expr(argp, ecp);
+                argp = RDB_dup_expr(RDB_vtable_expr(vtbp), ecp);
+                if (argp == NULL)
+                    return RDB_ERROR;
+                argp->nextp = nextp;
+                if (prevp == NULL) {
+                    exp->def.op.args.firstp = argp;
+                } else {
+                    prevp->nextp = argp;
+                }
+            }
+        }
+*/
         if (RDB_transform(argp, getfnp, arg, ecp, txp) != RDB_OK)
             return RDB_ERROR;
+        /* prevp = argp; */
         argp = argp->nextp;
     }
     return RDB_OK;
@@ -897,25 +919,6 @@ RDB_transform(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         return RDB_OK;
     }
     exp->transformed = RDB_TRUE;
-
-    /*
-     * Convert variable expressions referring to tables
-     * to table references if possible (RDB_optimize() cannot handle the former)
-     */
-    if (exp->kind == RDB_EX_VAR && txp != NULL
-            && (exp->typ == NULL || RDB_type_is_relation(exp->typ))) {
-        RDB_object *tbp = RDB_get_table(exp->def.varname, ecp, txp);
-        if (tbp == NULL) {
-            RDB_clear_err(ecp);
-            return RDB_OK;
-        }
-
-        /* Transform into table ref */
-        RDB_free(exp->def.varname);
-        exp->kind = RDB_EX_TBP;
-        exp->def.tbref.tbp = tbp;
-        exp->def.tbref.indexp = NULL;
-    }
 
     if (exp->kind != RDB_EX_RO_OP)
         return RDB_OK;

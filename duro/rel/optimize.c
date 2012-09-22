@@ -612,22 +612,24 @@ mutate_where(RDB_expression *texp, RDB_expression **tbpv, int cap,
 }
 
 /*
- * Copy expression, making a copy of virtual tables
+ * Copy expression, resolving table names and making a copy
+ * of virtual tables (recursively)
  */
 static RDB_expression *
-dup_expr_vt(const RDB_expression *exp, RDB_exec_context *ecp)
+dup_expr_deep(const RDB_expression *exp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     RDB_expression *newexp;
 
     switch (exp->kind) {
         case RDB_EX_TUPLE_ATTR:
-            newexp = dup_expr_vt(exp->def.op.args.firstp, ecp);
+            newexp = dup_expr_deep(exp->def.op.args.firstp, ecp, txp);
             if (newexp == NULL)
                 return NULL;
             newexp = RDB_tuple_attr(newexp, exp->def.op.name, ecp);
             break;
         case RDB_EX_GET_COMP:
-            newexp = dup_expr_vt(exp->def.op.args.firstp, ecp);
+            newexp = dup_expr_deep(exp->def.op.args.firstp, ecp, txp);
             if (newexp == NULL)
                 return NULL;
             newexp = RDB_expr_comp(newexp, exp->def.op.name, ecp);
@@ -639,7 +641,7 @@ dup_expr_vt(const RDB_expression *exp, RDB_exec_context *ecp)
             newexp = RDB_ro_op(exp->def.op.name, ecp);
             argp = exp->def.op.args.firstp;
             while (argp != NULL) {
-                RDB_expression *nargp = dup_expr_vt(argp, ecp);
+                RDB_expression *nargp = dup_expr_deep(argp, ecp, txp);
                 if (nargp == NULL)
                     return NULL;
                 RDB_add_arg(newexp, nargp);
@@ -651,14 +653,42 @@ dup_expr_vt(const RDB_expression *exp, RDB_exec_context *ecp)
             newexp = RDB_obj_to_expr(&exp->def.obj, ecp);
             break;
         case RDB_EX_TBP:
-            if (exp->def.tbref.tbp->val.tb.exp == NULL) {
+            if (RDB_table_is_real(exp->def.tbref.tbp)) {
                 newexp = RDB_table_ref(exp->def.tbref.tbp, ecp);
             } else {
-                newexp = dup_expr_vt(exp->def.tbref.tbp->val.tb.exp, ecp);
+                newexp = dup_expr_deep(exp->def.tbref.tbp->val.tb.exp, ecp, txp);
             }
             break;
         case RDB_EX_VAR:
-            newexp = RDB_var_ref(exp->def.varname, ecp);
+            /*
+             * Resolve table name.
+             * If the name refers to a virtual table, convert it
+             * to its defining expression
+             */
+            newexp = NULL;
+            if (txp != NULL
+                    && (exp->typ == NULL || RDB_type_is_relation(exp->typ))) {
+                RDB_object *tbp = RDB_get_table(RDB_expr_var_name(exp),
+                        ecp, txp);
+                if (tbp != NULL) {
+                    if (RDB_table_is_real(tbp)) {
+                        newexp = RDB_table_ref(tbp, ecp);
+                    } else {
+                        newexp = dup_expr_deep(RDB_vtable_expr(tbp), ecp, txp);
+                    }
+                    if (newexp == NULL)
+                        return NULL;
+                } else {
+                    if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NAME_ERROR) {
+                        /* Ignore error */
+                        RDB_clear_err(ecp);
+                    } else {
+                        return NULL;
+                    }
+                }
+            }
+            if (newexp == NULL)
+                newexp = RDB_var_ref(RDB_expr_var_name(exp), ecp);
             break;
     }
     if (newexp == NULL)
@@ -700,7 +730,7 @@ mutate_vt(RDB_expression *texp, int nargc, RDB_expression **tbpv, int cap,
                 if (k == j) {
                     RDB_add_arg(nexp, tbpv[i]);
                 } else {
-                    RDB_expression *otexp = dup_expr_vt(argp2, ecp);
+                    RDB_expression *otexp = dup_expr_deep(argp2, ecp, txp);
                     if (otexp == NULL)
                         return RDB_ERROR;
                     RDB_add_arg(nexp, otexp);
@@ -1065,9 +1095,14 @@ RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
         }
         return RDB_table_ref(tbp, ecp);
     }
-    return RDB_optimize_enabled ?
-            RDB_optimize_expr(tbp->val.tb.exp, seqitc, seqitv, ecp, txp)
-            : dup_expr_vt(tbp->val.tb.exp, ecp);
+    if (!RDB_optimize_enabled) {
+        return dup_expr_deep(tbp->val.tb.exp, ecp, txp);
+    }
+
+    /* Set expression types so it is known which names cannot refer to tables */
+    if (RDB_expr_type(tbp->val.tb.exp, NULL, NULL, ecp, txp) == NULL)
+        return NULL;
+    return RDB_optimize_expr(tbp->val.tb.exp, seqitc, seqitv, ecp, txp);
 }
 
 static void
@@ -1113,23 +1148,9 @@ RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
     }
 
     /*
-     * Make a copy of the table, so it can be transformed freely
+     * Make a deep copy of the table, so it can be transformed freely
      */
-    nexp = dup_expr_vt(texp, ecp);
-    if (nexp == NULL)
-        return NULL;
-
-    if (nexp->kind == RDB_EX_VAR && txp != NULL) {
-        /* Transform into table ref */
-        RDB_object *tbp = RDB_get_table(nexp->def.varname, ecp, txp);
-        if (tbp == NULL)
-            return NULL;
-
-        RDB_free(nexp->def.varname);
-        nexp->kind = RDB_EX_TBP;
-        nexp->def.tbref.tbp = tbp;
-        nexp->def.tbref.indexp = NULL;
-    }
+    nexp = dup_expr_deep(texp, ecp, txp);
 
     /*
      * Algebraic optimization

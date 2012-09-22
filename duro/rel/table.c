@@ -214,6 +214,8 @@ RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *ecp,
     if (texp == NULL)
         return RDB_ERROR;
 
+    RDB_init_obj(&tpl);
+
     qrp = RDB_expr_qresult(texp, ecp, txp);
     if (qrp == NULL) {
         ret = RDB_ERROR;
@@ -223,8 +225,6 @@ RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *ecp,
     /* Eliminate duplicates, if necessary */
     if (RDB_duprem(qrp, ecp, txp) != RDB_OK)
         goto cleanup;
-
-    RDB_init_obj(&tpl);
 
     while ((ret = RDB_next_tuple(qrp, &tpl, ecp, txp)) == RDB_OK) {
         if (!dstp->val.tb.is_persistent)

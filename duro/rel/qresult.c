@@ -847,6 +847,7 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
         RDB_object *tbp = RDB_get_table(exp->def.varname, ecp, txp);
         if (tbp == NULL)
             return RDB_ERROR;        
+        return init_qresult(qrp, tbp, ecp, txp);
     }
     if (exp->kind != RDB_EX_RO_OP) {
         RDB_raise_invalid_argument(

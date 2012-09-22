@@ -351,16 +351,20 @@ RDB_bool
 RDB_expr_expr_depend(const RDB_expression *, const RDB_expression *);
 
 int
-RDB_invrename_expr(RDB_expression *exp, RDB_expression *texp,
+RDB_invrename_expr(RDB_expression *, RDB_expression *,
         RDB_exec_context *);
 
 int
-RDB_resolve_exprnames(RDB_expression **expp, RDB_expression *texp,
+RDB_resolve_exprnames(RDB_expression **, RDB_expression *,
         RDB_exec_context *);
 
 int
-RDB_expr_to_empty_table(RDB_expression *exp, RDB_exec_context *ecp,
-        RDB_transaction *txp);
+RDB_expr_to_empty_table(RDB_expression *, RDB_exec_context *,
+        RDB_transaction *);
+
+int
+RDB_expr_resolve_tbnames(RDB_expression *, RDB_exec_context *,
+        RDB_transaction *);
 
 /*
  * Internal tuple functions

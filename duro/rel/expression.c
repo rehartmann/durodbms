@@ -1184,3 +1184,47 @@ RDB_expr_to_empty_table(RDB_expression *exp, RDB_exec_context *ecp,
     return RDB_init_table_from_type(&exp->def.obj, NULL, typ, 0, NULL,
             0, NULL, ecp);
 }
+
+/*
+ * Convert variable names referring to tables
+ * to table references if possible
+ */
+int
+RDB_expr_resolve_tbnames(RDB_expression *exp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_expression *argp;
+
+    switch (exp->kind) {
+        case RDB_EX_TUPLE_ATTR:
+        case RDB_EX_GET_COMP:
+            return RDB_expr_resolve_tbnames(exp->def.op.args.firstp,
+                    ecp, txp);
+        case RDB_EX_RO_OP:
+            argp = exp->def.op.args.firstp;
+            while (argp != NULL) {
+                if (RDB_expr_resolve_tbnames(argp, ecp, txp) != RDB_OK)
+                    return RDB_ERROR;
+                argp = argp->nextp;
+            }
+            return RDB_OK;
+        case RDB_EX_OBJ:
+        case RDB_EX_TBP:
+            return RDB_OK;
+        case RDB_EX_VAR:
+            if (exp->typ == NULL || RDB_type_is_relation(exp->typ)) {
+                RDB_object *tbp = RDB_get_table(exp->def.varname, ecp, txp);
+                if (tbp == NULL) {
+                    RDB_clear_err(ecp);
+                    return RDB_OK;
+                }
+
+                /* Transform into table ref */
+                RDB_free(exp->def.varname);
+                exp->kind = RDB_EX_TBP;
+                exp->def.tbref.tbp = tbp;
+                exp->def.tbref.indexp = NULL;
+            }
+    }
+    return RDB_OK;
+}

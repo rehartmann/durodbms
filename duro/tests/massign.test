@@ -20,7 +20,7 @@ test massign {multiple assignment} -setup $SETUP -body {
     duro::db create $dbenv TEST
 
     set tx [duro::begin $dbenv TEST]
-    
+
     # Create table
     duro::table create T1 {
        {A integer}

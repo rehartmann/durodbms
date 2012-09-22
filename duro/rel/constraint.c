@@ -58,6 +58,11 @@ RDB_read_constraints(RDB_exec_context *ecp, RDB_transaction *txp)
             ret = RDB_ERROR;
             goto cleanup;
         }
+
+        /* Resolve table names */
+        if (RDB_expr_resolve_tbnames(constrp->exp, ecp, txp) != RDB_OK)
+            return RDB_ERROR;
+
         constrp->nextp = dbrootp->first_constrp;
         dbrootp->first_constrp = constrp;
     }
@@ -125,6 +130,10 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
     if (constrp == NULL) {
         return RDB_ERROR;
     }
+
+    /* Resolve table names */
+    if (RDB_expr_resolve_tbnames(exp, ecp, txp) != RDB_OK)
+        return RDB_ERROR;
 
     constrp->exp = exp;
 

@@ -71,32 +71,24 @@ test ra {relational algebra} -setup $SETUP -body {
         		init relation { tuple {a 1, b 'x'}, tuple {a 2, b 'y'} } key {a};
         var t2 real relation {a int} key {a};
 
+        var v2 virtual t2 where a<=2;  
+
         insert t2 relation { tuple {a 2}, tuple {a 3} };
 
         put(with (is := p intersect t2, p := t1 {a}): (tuple from is).a); put_line('');
 
-		put((tuple from relation{tuple{i 1}} join table_dee).i); put_line('');
+        var va init 1;
+        put_line((tuple from (t1 where a=va)).b);
 
-        var a array tuple{i int};
-        load a from rel{tup{i 1}} union rel{tup{i 2}} order (i asc);
-        put(a[0].i); put_line('');
-        put(a[1].i); put_line('');
-        put_line('');
-
-        var t tuple{i INT};
-        foreach t in rel{tup{i 1}} union rel{tup{i 2}} order (i desc);
-            put(t.i); put_line('');
-        end foreach;
+        -- Test nested virtual table
+        var vv2 virtual v2 where a>=2;
+        put((tuple from vv2).a); put_line('');        
 
         commit;
     }
 } -result {2
-1
-1
+x
 2
-
-2
-1
 }
 
 test updop {user defined update operators} -setup $SETUP -body {
@@ -129,16 +121,8 @@ test updop {user defined update operators} -setup $SETUP -body {
 } -result {durox
 }
 
-test deedum {TABLE_DEE and TABLE_DUM} -setup $SETUP -body {
-    exec $testdir/../../dli/durodt << {
-        put(tup from TABLE_DEE); put_line('');
-        put(tup from DEE); put_line('');
-
-        put(TABLE_DUM); put_line('');
-        put(DUM); put_line('');
-
-        put(tuple from (rel{} {} union table_dee)); put_line('');
-        
+test zero_attrs {Tables with zero attributes} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt << {        
         connect('dbenv');
         current_db := 'D';
 
@@ -146,7 +130,7 @@ test deedum {TABLE_DEE and TABLE_DUM} -setup $SETUP -body {
         var ev virtual relation {i int} {};
         commit;
 
-        DISconnect();
+        disconnect();
 
         -- Connect again and read virtual table
         connect('dbenv');
@@ -155,12 +139,7 @@ test deedum {TABLE_DEE and TABLE_DUM} -setup $SETUP -body {
         put(ev); put_line('');
         commit;
     }
-} -result {TUPLE { }
-TUPLE { }
-RELATION { }
-RELATION { }
-TUPLE { }
-RELATION { }
+} -result {RELATION { }
 }
 
 test logic {Logic operators} -setup $SETUP -body {

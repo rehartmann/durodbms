@@ -25,7 +25,8 @@ test private {creating private table and inserting tuples} -body {
             put_line("double creation caught");
         end try;
 
-        var s private relation {i int} init relation { tuple {i 1}, tuple {i 2} } key {i};
+        var s private relation {i int} init relation { tuple {i 1}, tuple {i 2} }
+                key {i};
 
         var a init 1;
         insert r relation {tuple {i a, d 1.0, c 'X'}, tuple {i 2, d 1.1, c 'Y'}};
@@ -55,6 +56,26 @@ test private {creating private table and inserting tuples} -body {
 Y
 3
 type mismatch
+7
+}
+
+test deedum {TABLE_DEE and TABLE_DUM} -body {
+    exec $testdir/../../dli/durodt << {
+        put(tup from TABLE_DEE); put_line('');
+        put(tup from DEE); put_line('');
+
+        put(TABLE_DUM); put_line('');
+        put(DUM); put_line('');
+
+        put(tuple from (rel{} {} union table_dee)); put_line('');
+        
+        put((tuple from relation{tuple{i 7}} join table_dee).i); put_line('');       
+    }
+} -result {TUPLE { }
+TUPLE { }
+RELATION { }
+RELATION { }
+TUPLE { }
 7
 }
 
@@ -110,6 +131,40 @@ test sdivide {small DIVIDE} -body {
     }
 } -result {error caught
 2
+}
+
+test ra {relational algebra} -body {
+    exec $testdir/../../dli/durodt << {
+	    var arr array tuple{i int};
+	    load arr from rel{tup{i 1}} union rel{tup{i 2}} order (i asc);
+	    put(arr[0].i); put_line('');
+	    put(arr[1].i); put_line('');
+	    put_line('');
+	
+	    var t tuple{i INT};
+	    foreach t in rel{tup{i 1}} union rel{tup{i 2}} order (i desc);
+	        put(t.i); put_line('');
+	    end foreach;
+	    put_line('');
+
+        put((tuple from (rel{tup{i 1}, tup{i 2}} minus rel{tup{i 1}})).i);
+        put_line('');
+
+	    put(count(rel{tup{i 1}} minus rel{tup{i 1}}));
+	    put_line('');
+
+        put(is_empty(rel{tup{i 1}} intersect rel{tup{i 2}}));
+        put_line('');
+    }
+} -result {1
+2
+
+2
+1
+
+2
+0
+TRUE
 }
 
 test foreach {FOREACH} -body {

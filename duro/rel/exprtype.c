@@ -132,7 +132,7 @@ where_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         RDB_raise_type_mismatch("WHERE requires relation argument", ecp);
         return NULL;
     }
-    if (arg != NULL) {
+    if (getfnp != NULL) {
         struct chained_type_map tmap;
         tmap.arg1 = arg;
         tmap.getfn1p = getfnp;
