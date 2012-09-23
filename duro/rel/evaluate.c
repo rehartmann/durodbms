@@ -7,6 +7,8 @@
 #include "rdb.h"
 #include "internal.h"
 #include "transform.h"
+#include "optimize.h"
+#include "qresult.h"
 #include "tostr.h"
 #include <string.h>
 
@@ -31,6 +33,89 @@ evaluate_vt(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         return RDB_ERROR;
     }
     return RDB_OK;
+}
+
+/*
+ * Evaluate IS_EMPTY
+ */
+static int
+evaluate_is_empty(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
+        RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp,
+        RDB_object *resultp)
+{
+    RDB_object tpl;
+    RDB_qresult *qrp = NULL;
+
+    if (!exp->optimized) {
+        int ret;
+        RDB_expression *optexp;
+        RDB_expression *nexp = NULL;
+
+        if (getfnp != NULL) {
+            nexp = RDB_expr_resolve_varnames(exp, getfnp, getdata, ecp, txp);
+        }
+
+        /* Resolve relation-valued attributes */
+        optexp = RDB_optimize_expr(nexp != NULL ? nexp : exp, 0, NULL, ecp, txp);
+        if (nexp != NULL)
+            RDB_del_expr(nexp, ecp);
+        if (optexp == NULL) {
+            RDB_del_expr(optexp, ecp);
+            return RDB_ERROR;
+        }
+
+        /* Evaluate optimized expression */
+        ret = RDB_evaluate(optexp, NULL, NULL, NULL, ecp, txp, resultp);
+        RDB_del_expr(optexp, ecp);
+        return ret;
+    }
+
+    RDB_init_obj(&tpl);
+
+    qrp = RDB_expr_qresult(exp->def.op.args.firstp, ecp, txp);
+    if (qrp == NULL) {
+        goto error;
+    }
+
+    /*
+     * Read first tuple
+     */
+    if (RDB_next_tuple(qrp, &tpl, ecp, txp) != RDB_OK) {
+        if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
+            goto error;
+        }
+
+        /* Failure with not_found_error - clear error and return TRUE */
+        RDB_clear_err(ecp);
+        RDB_bool_to_obj(resultp, RDB_TRUE);
+    } else {
+        /* Success - return FALSE */
+        RDB_bool_to_obj(resultp, RDB_FALSE);
+    }
+
+    RDB_destroy_obj(&tpl, ecp);
+    return RDB_drop_qresult(qrp, ecp, txp);
+
+error:
+    RDB_destroy_obj(&tpl, ecp);
+    if (qrp != NULL)
+        RDB_drop_qresult(qrp, ecp, txp);
+    return RDB_ERROR;
+}
+
+struct get_type_info {
+    RDB_getobjfn *getfnp;
+    void *getdata;
+};
+
+static RDB_type *
+get_type(const char *name, void *arg)
+{
+    struct get_type_info *infop = arg;
+    RDB_object *objp = (*infop->getfnp) (name, infop->getdata);
+    if (objp == NULL)
+        return NULL;
+    return objp->typ;
 }
 
 /*
@@ -68,21 +153,6 @@ evaluate_if(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
 cleanup:
     RDB_destroy_obj(&arg1, ecp);
     return ret;
-}
-
-struct get_type_info {
-    RDB_getobjfn *getfnp;
-    void *getdata;
-};
-
-static RDB_type *
-get_type(const char *name, void *arg)
-{
-    struct get_type_info *infop = arg;
-    RDB_object *objp = (*infop->getfnp) (name, infop->getdata);
-    if (objp == NULL)
-        return NULL;
-    return objp->typ;
 }
 
 static int
@@ -251,6 +321,10 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             }
             return ret;
         }
+    }
+
+    if (argc == 1 && strcmp(exp->def.op.name, "is_empty") == 0) {
+        return evaluate_is_empty(exp, getfnp, getdata, envp, ecp, txp, valp);
     }
 
     if (argc == 3 && strcmp(exp->def.op.name, "if") == 0) {

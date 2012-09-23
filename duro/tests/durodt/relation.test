@@ -80,6 +80,9 @@ test ra {relational algebra} -setup $SETUP -body {
         var va init 1;
         put_line((tuple from (t1 where a=va)).b);
 
+        put(is_empty(v2 where a>2)); put_line('');
+        put(is_empty(v2 intersect rel{tup{a 2}})); put_line('');
+
         -- Test nested virtual table
         var vv2 virtual v2 where a>=2;
         put((tuple from vv2).a); put_line('');        
@@ -88,6 +91,8 @@ test ra {relational algebra} -setup $SETUP -body {
     }
 } -result {2
 x
+TRUE
+FALSE
 2
 }
 

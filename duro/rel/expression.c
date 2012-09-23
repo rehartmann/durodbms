@@ -229,6 +229,7 @@ new_expr(RDB_exec_context *ecp) {
     }
     exp->typ = NULL;
     exp->transformed = RDB_FALSE;
+    exp->optimized = RDB_FALSE;
 	return exp;
 }
 

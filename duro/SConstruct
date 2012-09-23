@@ -58,8 +58,9 @@ gensrc = ['gen/hashmap.c', 'gen/hashmapit.c',
 recsrc = ['rec/cursor.c', 'rec/env.c', 'rec/index.c', 'rec/recmap.c']
 
 relsrc = ['rel/array.c', 'rel/database.c', 'rel/operator.c', 'rel/builtinops.c',
-        'rel/expression.c', 'rel/evaluate.c', 'rel/exprtype.c', 'rel/qresult.c',
-        'rel/serialize.c', 'rel/table.c', 'rel/stable.c', 'rel/vtable.c',
+        'rel/expression.c', 'rel/evaluate.c', 'rel/exprtype.c',
+        'rel/stable.c', 'rel/qresult.c',
+        'rel/serialize.c', 'rel/table.c', 'rel/vtable.c', 'rel/aggrf.c',
         'rel/update.c', 'rel/insert.c', 'rel/contains.c', 'rel/transaction.c',
         'rel/delete.c', 'rel/tuple.c', 'rel/type.c', 'rel/builtintypes.c',
         'rel/object.c', 'rel/catalog.c', 'rel/cat_type.c', 'rel/cat_op.c',

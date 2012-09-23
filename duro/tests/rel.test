@@ -112,7 +112,7 @@ test rel {relation-valued attributes} -setup $SETUP -body {
             REMPTY := is_empty(RLATTR)}} $tx
 
     # Get tuple with empty RLATTR
-    
+
     array set a [duro::expr {TUPLE FROM (X WHERE REMPTY)} $tx]
     
     if {$a(SCATTR) != 3} {

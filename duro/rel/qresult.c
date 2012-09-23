@@ -12,6 +12,7 @@
 #include "optimize.h"
 #include "stable.h"
 #include "typeimpl.h"
+#include "transform.h"
 #include <gen/hashtabit.h>
 #include <gen/strfns.h>
 #include <string.h>
@@ -853,6 +854,12 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
         RDB_raise_invalid_argument(
                 "invalid expression, must be object or operator", ecp);
         return RDB_ERROR;
+    }
+
+    /* Transform UPDATE */
+    if (strcmp(exp->def.op.name, "update") == 0) {
+        if (RDB_convert_update(exp, NULL, NULL, ecp, txp) != RDB_OK)
+            return RDB_ERROR;
     }
 
     qrp->endreached = RDB_FALSE;

@@ -66,6 +66,7 @@ struct RDB_expression {
 
     /* RDB_TRUE if the expression has been transformed by RDB_transform(). */
     RDB_bool transformed;
+    RDB_bool optimized;
 };
 
 struct RDB_database {

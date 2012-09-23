@@ -880,7 +880,7 @@ Duro_parse_expr_utf(Tcl_Interp *interp, const char *s, void *arg,
         return NULL;
     }
     exp = RDB_parse_node_expr(nodep, ecp, txp);
-    
+
     Tcl_Free(dst);
     if (exp == NULL) {
         RDB_parse_del_node(nodep, ecp);
