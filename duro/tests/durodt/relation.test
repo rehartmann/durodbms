@@ -75,7 +75,7 @@ test ra {relational algebra} -setup $SETUP -body {
 
         insert t2 relation { tuple {a 2}, tuple {a 3} };
 
-        put(with (is := p intersect t2, p := t1 {a}): (tuple from is).a); put_line('');
+        put(with (p := t1 {a}, is := p intersect t2): (tuple from is).a); put_line('');
 
         var va init 1;
         put_line((tuple from (t1 where a=va)).b);

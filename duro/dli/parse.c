@@ -543,6 +543,7 @@ group_node_expr(RDB_parse_node *argnodep,
     return rexp;
 }
 
+#ifdef UNUSED
 /*
  * Replace occurrences of variable names by corresponding expression
  */
@@ -562,27 +563,63 @@ resolve_exprnames(RDB_expression **expp, RDB_parse_node *nameintrop,
     }
     return RDB_OK;
 }
+#endif
 
 static RDB_expression *
 with_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-	RDB_expression *exp;
+    RDB_expression *exp;
+	RDB_parse_node *inodep, *jnodep;
 
 	/* Convert node to expression */
 	exp = RDB_parse_node_expr(nodep->nextp->nextp->nextp->nextp, ecp, txp);
-	if (exp == NULL)
-		return NULL;
+	if (exp == NULL) {
+	    return NULL;
+	}
 
 	exp = RDB_dup_expr(exp, ecp);
 	if (exp == NULL)
 		return NULL;
 
 	/* Resolve */
-	if (nodep->nextp->val.children.firstp != NULL) {
-        if (resolve_exprnames(&exp, nodep->nextp->val.children.firstp, ecp, txp)
-                != RDB_OK) {
-            return NULL;
-        }
+	inodep = nodep->nextp->val.children.firstp;
+	if (inodep != NULL) {
+	    for(;;) {
+            const char *varname = RDB_expr_var_name(inodep->val.children.firstp->exp);
+            RDB_expression *dstexp = RDB_parse_node_expr(
+                    inodep->val.children.firstp->nextp->nextp, ecp, txp);
+            if (dstexp == NULL)
+                return NULL;
+
+            /* Replace name by expression in the following name intros */
+            if (inodep->nextp != NULL) {
+                jnodep = inodep->nextp->nextp;
+                for(;;) {
+                    if (RDB_parse_node_expr(jnodep->val.children.firstp->nextp->nextp,
+                            ecp, txp) == NULL) {
+                        return NULL;
+                    }
+                    int ret = RDB_expr_resolve_varname_expr(
+                            &jnodep->val.children.firstp->nextp->nextp->exp,
+                            varname, dstexp, ecp);
+                    if (ret != RDB_OK)
+                        return NULL;
+                    if (jnodep->nextp == NULL)
+                        break;
+                    jnodep = jnodep->nextp->nextp;
+                }
+            }
+
+            /* Replace name by expression in exp */
+            int ret = RDB_expr_resolve_varname_expr(&exp,
+                    varname, dstexp, ecp);
+            if (ret != RDB_OK)
+                return NULL;
+
+            if (inodep->nextp == NULL)
+                break;
+            inodep = inodep->nextp->nextp;
+	    }
 	}
 
 	return exp;
