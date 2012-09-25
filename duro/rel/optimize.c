@@ -469,7 +469,7 @@ table_cost(RDB_expression *exp)
         case RDB_EX_VAR:
         case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
-            abort();
+            return 0; /* !! */
         case RDB_EX_RO_OP:
             ;
     }
@@ -535,7 +535,8 @@ table_cost(RDB_expression *exp)
         return table_cost(exp->def.op.args.firstp)
                 * table_cost(exp->def.op.args.firstp->nextp); /* !! */
     }
-    if (strcmp(exp->def.op.name, "isempty") == 0)
+    if (strcmp(exp->def.op.name, "isempty") == 0
+            || strcmp(exp->def.op.name, "count") == 0)
         return table_cost(exp->def.op.args.firstp);
 
     /* Other operator */
@@ -543,12 +544,12 @@ table_cost(RDB_expression *exp)
 }
 
 static int
-mutate(RDB_expression *exp, RDB_expression **tbpv, int cap, RDB_exec_context *,
-        RDB_transaction *);
+mutate(RDB_expression *exp, RDB_expression **tbpv, int cap, RDB_expression *,
+        RDB_exec_context *, RDB_transaction *);
 
 static int
 mutate_where(RDB_expression *texp, RDB_expression **tbpv, int cap,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_expression *empty_exp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     int tbc;
@@ -566,7 +567,7 @@ mutate_where(RDB_expression *texp, RDB_expression **tbpv, int cap,
         unbalance_and(condp);
     }
 
-    tbc = mutate(chexp, tbpv, cap, ecp, txp);
+    tbc = mutate(chexp, tbpv, cap, empty_exp, ecp, txp);
     if (tbc < 0)
         return tbc;
 
@@ -616,10 +617,10 @@ mutate_where(RDB_expression *texp, RDB_expression **tbpv, int cap,
 
 static int
 mutate_unary(RDB_expression *exp, RDB_expression **tbpv, int cap,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_expression *empty_exp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
-    int tbc = mutate(exp->def.op.args.firstp, tbpv, cap, ecp, txp);
+    int tbc = mutate(exp->def.op.args.firstp, tbpv, cap, empty_exp, ecp, txp);
     if (tbc <= 0)
         return tbc;
 
@@ -729,7 +730,7 @@ dup_expr_deep(const RDB_expression *exp, RDB_exec_context *ecp,
 
 static int
 mutate_vt(RDB_expression *texp, int nargc, RDB_expression **tbpv, int cap,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_expression *empty_exp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i, j, k;
     RDB_expression *argp;
@@ -739,7 +740,7 @@ mutate_vt(RDB_expression *texp, int nargc, RDB_expression **tbpv, int cap,
 
     argp = texp->def.op.args.firstp;
     for (j = 0; j < nargc; j++) {
-        ntbc = mutate(argp, &tbpv[otbc], cap - otbc, ecp, txp);
+        ntbc = mutate(argp, &tbpv[otbc], cap - otbc, empty_exp, ecp, txp);
         if (ntbc < 0)
             return ntbc;
         for (i = otbc; i < otbc + ntbc; i++) {
@@ -770,10 +771,10 @@ mutate_vt(RDB_expression *texp, int nargc, RDB_expression **tbpv, int cap,
 
 static int
 mutate_full_vt(RDB_expression *texp, RDB_expression **tbpv, int cap,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_expression *empty_exp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     return mutate_vt(texp, RDB_expr_list_length(&texp->def.op.args), tbpv,
-            cap, ecp, txp);
+            cap, empty_exp, ecp, txp);
 }
 
 /*
@@ -787,12 +788,12 @@ replace_empty(RDB_expression *exp, RDB_expression *empty_exp,
 {
     RDB_bool eqempty;
     /* Check if there is a constraint that says the table is empty */
-    int ret = RDB_expr_equals(exp, empty_exp,ecp, txp, &eqempty);
-    if (ret != RDB_OK)
+    if (RDB_expr_equals(exp, empty_exp, ecp, txp, &eqempty) != RDB_OK)
         return RDB_ERROR;
 
-    if (eqempty)
+    if (eqempty) {
         return RDB_expr_to_empty_table(exp, ecp, txp);
+    }
     if (exp->kind == RDB_EX_RO_OP) {
         RDB_expression *argp = exp->def.op.args.firstp;
 
@@ -888,7 +889,7 @@ static int
 mutate_semi_minus(RDB_expression *texp, RDB_expression **tbpv, int cap,
         RDB_expression *empty_exp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int tbc = mutate_full_vt(texp, tbpv, cap, ecp, txp);
+    int tbc = mutate_full_vt(texp, tbpv, cap, empty_exp, ecp, txp);
     if (tbc < 0)
         return RDB_ERROR;
 
@@ -951,13 +952,13 @@ index_joins(RDB_expression *otexp, RDB_expression *itexp,
 
 static int
 mutate_join(RDB_expression *texp, RDB_expression **tbpv, int cap,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_expression *empty_exp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc = 0;
 
     if (texp->def.op.args.firstp->kind != RDB_EX_TBP
             && texp->def.op.args.firstp->nextp->kind != RDB_EX_TBP) {
-        return mutate_full_vt(texp, tbpv, cap, ecp, txp);
+        return mutate_full_vt(texp, tbpv, cap, empty_exp, ecp, txp);
     }
 
     if (texp->def.op.args.firstp->nextp->kind == RDB_EX_TBP) {
@@ -1009,8 +1010,8 @@ mutate_tbref(RDB_expression *texp, RDB_expression **tbpv, int cap,
  * Create equivalents of *exp and store them in *tbpv.
  */
 static int
-mutate(RDB_expression *exp, RDB_expression **tbpv, int cap, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+mutate(RDB_expression *exp, RDB_expression **tbpv, int cap,
+        RDB_expression *empty_exp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (exp->kind == RDB_EX_TBP) {
         return mutate_tbref(exp, tbpv, cap, ecp, txp);
@@ -1020,16 +1021,15 @@ mutate(RDB_expression *exp, RDB_expression **tbpv, int cap, RDB_exec_context *ec
         return 0;
 
     if (strcmp(exp->def.op.name, "where") == 0) {
-        return mutate_where(exp, tbpv, cap, ecp, txp);
+        return mutate_where(exp, tbpv, cap, empty_exp, ecp, txp);
     }
 
     if (strcmp(exp->def.op.name, "join") == 0) {
-        return mutate_join(exp, tbpv, cap, ecp, txp);
+        return mutate_join(exp, tbpv, cap, empty_exp, ecp, txp);
     }
 
     if (strcmp(exp->def.op.name, "minus") == 0
             || strcmp(exp->def.op.name, "semiminus") == 0) {
-        RDB_expression *empty_exp = RDB_ec_get_property(ecp, "$empty");
         if (empty_exp != NULL)
             return mutate_semi_minus(exp, tbpv, cap, empty_exp, ecp, txp);
         return 0;
@@ -1040,7 +1040,7 @@ mutate(RDB_expression *exp, RDB_expression **tbpv, int cap, RDB_exec_context *ec
             || strcmp(exp->def.op.name, "intersect") == 0
             || strcmp(exp->def.op.name, "semijoin") == 0
             || strcmp(exp->def.op.name, "join") == 0) {
-        return mutate_full_vt(exp, tbpv, cap, ecp, txp);
+        return mutate_full_vt(exp, tbpv, cap, empty_exp, ecp, txp);
     }
     if (strcmp(exp->def.op.name, "extend") == 0
             || strcmp(exp->def.op.name, "project") == 0
@@ -1051,14 +1051,14 @@ mutate(RDB_expression *exp, RDB_expression **tbpv, int cap, RDB_exec_context *ec
             || strcmp(exp->def.op.name, "unwrap") == 0
             || strcmp(exp->def.op.name, "group") == 0
             || strcmp(exp->def.op.name, "ungroup") == 0) {
-        return mutate_vt(exp, 1, tbpv, cap, ecp, txp);
+        return mutate_vt(exp, 1, tbpv, cap, empty_exp, ecp, txp);
     }
     if (strcmp(exp->def.op.name, "divide") == 0) {
-        return mutate_vt(exp, 2, tbpv, cap, ecp, txp);
+        return mutate_vt(exp, 2, tbpv, cap, empty_exp, ecp, txp);
     }
     if (exp->def.op.args.firstp != NULL
             && exp->def.op.args.firstp->nextp == NULL) {
-        return mutate_unary(exp, tbpv, cap, ecp, txp);
+        return mutate_unary(exp, tbpv, cap, empty_exp, ecp, txp);
     }
     return 0;
 }
@@ -1130,7 +1130,8 @@ RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
     /* Set expression types so it is known which names cannot refer to tables */
     if (RDB_expr_type(tbp->val.tb.exp, NULL, NULL, ecp, txp) == NULL)
         return NULL;
-    return RDB_optimize_expr(tbp->val.tb.exp, seqitc, seqitv, ecp, txp);
+    return RDB_optimize_expr(tbp->val.tb.exp, seqitc, seqitv, NULL,
+            ecp, txp);
 }
 
 static void
@@ -1162,7 +1163,7 @@ trace_plan_cost(RDB_expression *exp, int cost, const char *txt,
 
 RDB_expression *
 RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
-        RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_expression *empty_exp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     RDB_expression *nexp;
@@ -1199,7 +1200,6 @@ RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
      * by a constraint
      */
     if (RDB_tx_db(txp) != NULL) {
-        RDB_expression *empty_exp = RDB_ec_get_property(ecp, "$empty");
         if (empty_exp != NULL) {
             if (replace_empty(nexp, empty_exp, ecp, txp) != RDB_OK)
                 return NULL;
@@ -1217,7 +1217,7 @@ RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
     do {
         obestcost = bestcost;
 
-        tbc = mutate(nexp, texpv, tbpv_cap, ecp, txp);
+        tbc = mutate(nexp, texpv, tbpv_cap, empty_exp, ecp, txp);
         if (tbc < 0)
             return NULL;
 

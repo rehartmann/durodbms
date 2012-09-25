@@ -167,6 +167,15 @@ test ra {relational algebra} -body {
 TRUE
 }
 
+test relattr {relation-valued attribute} -body {
+    exec $testdir/../../dli/durodt << {
+        var t tuple{r relation{i int}};
+
+        put(is_empty(t.r)); put_line('');
+    }
+} -result {TRUE
+}
+
 test foreach {FOREACH} -body {
     exec $testdir/../../dli/durodt << {
         var pr private init relation{tup{i 1, j 1},tup{i 2, j 20}};

@@ -20,6 +20,7 @@ typedef struct RDB_qresult {
     RDB_expression *exp;
     RDB_bool nested;
     union {
+        /* !nested */
         struct {
             /* May be a descendant of *exp, NULL for sorter */
             RDB_object *tbp;
@@ -27,23 +28,26 @@ typedef struct RDB_qresult {
             /* NULL if a unique index is used */
             RDB_cursor *curp;
         } stored;
+        /* nested */
         struct {
             struct RDB_qresult *qrp;
 
             /* Only for some operators, may be NULL */
             struct RDB_qresult *qr2p;
-            
+
             /* only used for join and ungroup */
             RDB_object tpl;
             RDB_bool tpl_valid;
         } children;
-        /* When iterating over operator arguments */
+        /* Used when iterating over operator arguments */
         RDB_expression *next_exp;
     } val;
     RDB_bool endreached;
- 
+
     /*
-     * 'materialized' table, needed for SUMMARIZE PER and sorting.
+     * Temporary 'materialized' result table, needed for SUMMARIZE PER,
+     * sorting etc.
+     * Destroyed when the qresult is destroyed.
      */
     RDB_object *matp;
 } RDB_qresult;
@@ -83,7 +87,7 @@ RDB_get_by_uindex(RDB_object *tbp, RDB_object *objpv[],
         RDB_transaction *, RDB_object *tplp);
 
 int
-RDB_drop_qresult(RDB_qresult *, RDB_exec_context *, RDB_transaction *);
+RDB_del_qresult(RDB_qresult *, RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_reset_qresult(RDB_qresult *, RDB_exec_context *, RDB_transaction *);

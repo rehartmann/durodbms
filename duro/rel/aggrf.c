@@ -10,8 +10,6 @@
 #include "rdb.h"
 #include "internal.h"
 #include "optimize.h"
-#include "qresult.h"
-#include "stable.h"
 
 /** @addtogroup table
  * @{
@@ -679,63 +677,31 @@ RDB_int
 RDB_cardinality(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    RDB_int count;
-    RDB_qresult *qrp;
-    RDB_object tpl;
-    RDB_expression *texp;
+    RDB_int card;
+    RDB_object result;
+    RDB_expression *argp;
+    RDB_expression *exp = RDB_ro_op("count", ecp);
+    if (exp == NULL)
+        return (RDB_int) RDB_ERROR;
 
-    if (txp != NULL && !RDB_tx_is_running(txp)) {
-        RDB_raise_no_running_tx(ecp);
-        return RDB_ERROR;
+    argp = RDB_table_ref(tbp, ecp);
+    if (argp == NULL) {
+        RDB_del_expr(exp, ecp);
+        return (RDB_int) RDB_ERROR;
     }
+    RDB_add_arg(exp, argp);
 
-    texp = RDB_optimize(tbp, 0, NULL, ecp, txp);
-    if (texp == NULL)
-        return RDB_ERROR;
-
-    qrp = RDB_expr_qresult(texp, ecp, txp);
-    if (qrp == NULL) {
-        RDB_del_expr(texp, ecp);
-        return RDB_ERROR;
-    }
-
-    /* Duplicates must be removed */
-    ret = RDB_duprem(qrp, ecp, txp);
+    RDB_init_obj(&result);
+    ret = RDB_evaluate(exp, NULL, NULL, NULL, ecp, txp, &result);
+    RDB_del_expr(exp, ecp);
     if (ret != RDB_OK) {
-        RDB_del_expr(texp, ecp);
-        RDB_drop_qresult(qrp, ecp, txp);
-        return RDB_ERROR;
+        RDB_destroy_obj(&result, ecp);
+        return (RDB_int) RDB_ERROR;
     }
 
-    RDB_init_obj(&tpl);
-
-    count = 0;
-    while ((ret = RDB_next_tuple(qrp, &tpl, ecp, txp)) == RDB_OK) {
-        count++;
-    }
-    RDB_destroy_obj(&tpl, ecp);
-    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        RDB_drop_qresult(qrp, ecp, txp);
-        goto error;
-    }
-    RDB_clear_err(ecp);
-
-    ret = RDB_drop_qresult(qrp, ecp, txp);
-    if (ret != RDB_OK)
-        goto error;
-
-    if (texp->kind == RDB_EX_TBP
-            && texp->def.tbref.tbp->val.tb.stp != NULL)
-        texp->def.tbref.tbp->val.tb.stp->est_cardinality = count;
-
-    if (RDB_del_expr(texp, ecp) != RDB_OK)
-        return RDB_ERROR;
-
-    return count;
-
-error:
-    RDB_del_expr(texp, ecp);
-    return RDB_ERROR;
+    card = RDB_obj_int(&result);
+    RDB_destroy_obj(&result, ecp);
+    return card;
 }
 
 /*@}*/

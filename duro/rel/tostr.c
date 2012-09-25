@@ -289,6 +289,57 @@ append_obj(RDB_object *objp, const RDB_object *srcp, RDB_environment *envp,
 } /* append_obj */
 
 static int
+append_ex(RDB_object *, const RDB_expression *, RDB_environment *,
+        RDB_exec_context *, RDB_transaction *, int);
+
+static int
+append_infix_binary_ex(RDB_object *objp, const RDB_expression *exp,
+        RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp,
+        int options)
+{
+    /* Argument #1 */
+    if (exp->def.op.args.firstp->kind != RDB_EX_VAR
+            && exp->def.op.args.firstp->kind != RDB_EX_OBJ) {
+        if (RDB_append_string(objp, "(", ecp) != RDB_OK)
+            return RDB_ERROR;
+    }
+    if (append_ex(objp, exp->def.op.args.firstp, envp, ecp, txp,
+            options) != RDB_OK)
+        return RDB_ERROR;
+    if (exp->def.op.args.firstp->kind != RDB_EX_VAR
+            && exp->def.op.args.firstp->kind != RDB_EX_OBJ) {
+        if (RDB_append_string(objp, ")", ecp) != RDB_OK)
+            return RDB_ERROR;
+    }
+
+    if (RDB_append_string(objp, " ", ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    /* Operator name */
+    if (RDB_append_string(objp, exp->def.op.name, ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    if (RDB_append_string(objp, " ", ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    /* Argument #2 */
+    if (exp->def.op.args.firstp->nextp->kind != RDB_EX_VAR
+            && exp->def.op.args.firstp->nextp->kind != RDB_EX_OBJ) {
+        if (RDB_append_string(objp, "(", ecp) != RDB_OK)
+            return RDB_ERROR;
+    }
+    if (append_ex(objp, exp->def.op.args.firstp->nextp, envp, ecp,
+            txp, options) != RDB_OK)
+        return RDB_ERROR;
+    if (exp->def.op.args.firstp->nextp->kind != RDB_EX_VAR
+            && exp->def.op.args.firstp->nextp->kind != RDB_EX_OBJ) {
+        if (RDB_append_string(objp, ")", ecp) != RDB_OK)
+            return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int
 append_ex(RDB_object *objp, const RDB_expression *exp, RDB_environment *envp,
         RDB_exec_context *ecp, RDB_transaction *txp, int options)
 {
@@ -370,25 +421,7 @@ append_ex(RDB_object *objp, const RDB_expression *exp, RDB_environment *envp,
                     || strcmp(exp->def.op.name, "or") == 0
                     || strcmp(exp->def.op.name, "in") == 0
                     || strcmp(exp->def.op.name, "subset_of") == 0) {
-                if (RDB_append_string(objp, "(", ecp) != RDB_OK)
-                    return RDB_ERROR;
-                if (append_ex(objp, exp->def.op.args.firstp, envp, ecp, txp,
-                        options) != RDB_OK)
-                    return RDB_ERROR;
-                ret = RDB_append_string(objp, ") ", ecp);
-                if (ret != RDB_OK)
-                    return ret;
-                ret = RDB_append_string(objp, exp->def.op.name, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-                ret = RDB_append_string(objp, " (", ecp);
-                if (ret != RDB_OK)
-                    return ret;
-                ret = append_ex(objp, exp->def.op.args.firstp->nextp, envp, ecp,
-                        txp, options);
-                if (ret != RDB_OK)
-                    return ret;
-                ret = RDB_append_string(objp, ")", ecp);
+                ret = append_infix_binary_ex(objp, exp, envp, ecp, txp, options);
                 if (ret != RDB_OK)
                     return ret;
             } else {

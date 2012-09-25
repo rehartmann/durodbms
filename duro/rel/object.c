@@ -90,7 +90,7 @@ table_ilen(const RDB_object *tbp, size_t *lenp, RDB_exec_context *ecp)
         ret = RDB_obj_ilen(&tpl, &len, ecp);
         if (ret != RDB_OK) {
              RDB_destroy_obj(&tpl, ecp);
-            RDB_drop_qresult(qrp, ecp, NULL);
+            RDB_del_qresult(qrp, ecp, NULL);
             return RDB_ERROR;
         }
         *lenp += len;
@@ -99,10 +99,10 @@ table_ilen(const RDB_object *tbp, size_t *lenp, RDB_exec_context *ecp)
     if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
         RDB_clear_err(ecp);
     } else {
-        RDB_drop_qresult(qrp, ecp, NULL);
+        RDB_del_qresult(qrp, ecp, NULL);
         return RDB_ERROR;
     }
-    return RDB_drop_qresult(qrp, ecp, NULL);
+    return RDB_del_qresult(qrp, ecp, NULL);
 }
 
 int
@@ -531,11 +531,11 @@ table_to_irep(void *dstp, RDB_object *tbp, size_t len)
     }
     RDB_destroy_obj(&tpl, &ec);
     if (RDB_obj_type(RDB_get_err(&ec)) != &RDB_NOT_FOUND_ERROR) {
-        RDB_drop_qresult(qrp, &ec, NULL);
+        RDB_del_qresult(qrp, &ec, NULL);
         RDB_destroy_exec_context(&ec);
         return;
     }
-    RDB_drop_qresult(qrp, &ec, NULL);
+    RDB_del_qresult(qrp, &ec, NULL);
     RDB_destroy_exec_context(&ec);
 }
 
@@ -817,7 +817,7 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
                 return RDB_OK;
 
             if (objp->val.arr.qrp != NULL) {
-                ret = RDB_drop_qresult(objp->val.arr.qrp, ecp,
+                ret = RDB_del_qresult(objp->val.arr.qrp, ecp,
                         objp->val.arr.txp);
             }
 

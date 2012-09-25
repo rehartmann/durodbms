@@ -1033,6 +1033,10 @@ Duro_init_obj(RDB_object *objp, RDB_type *typ, RDB_exec_context *ecp,
         if (typ == NULL)
             return RDB_ERROR;
         RDB_obj_set_typeinfo(objp, typ);
+    } else if (RDB_type_is_relation(typ)) {
+        if (RDB_init_table_from_type(objp, NULL, typ, 0, NULL,
+                0, NULL, ecp) != RDB_OK)
+            return RDB_ERROR;
     } else {
         /* Invoke selector */
         if (typ->def.scalar.repc > 0) {

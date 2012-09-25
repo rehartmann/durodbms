@@ -478,7 +478,7 @@ transform_project_extend(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 }
 
 /**
- * Transform PROJECT(WHERE) to WHERE(PROJECT) or PROJECT(WHERE(PROJECT))
+ * Transform project(WHERE) to WHERE(project) or project(WHERE(project))
  */
 static int
 swap_project_where(RDB_expression *exp, RDB_expression *chexp,
@@ -509,7 +509,7 @@ swap_project_where(RDB_expression *exp, RDB_expression *chexp,
 
     /*
      * Add attributes from child which are not attributes of the parent,
-     * but are referred to by the select condition
+     * but are referred to by the where condition
      */
     for (i = 0; i < chtyp->def.basetyp->def.tuple.attrc; i++) {
         char *attrname = chtyp->def.basetyp->def.tuple.attrv[i].name;
@@ -520,27 +520,31 @@ swap_project_where(RDB_expression *exp, RDB_expression *chexp,
         }
     }
 
+    /*
+     * If project and WHERE cannot be swapped because there are attributes
+     * which are needed by the WHERE condition add a project grandchild
+     * if it has any effect
+     */
     if (attrc > RDB_expr_list_length(&exp->def.op.args) - 1) {
-        /*
-         * Add project
-         */
-        RDB_expression *argp;
-        RDB_expression *nexp = RDB_ro_op("project", ecp);
-        if (nexp == NULL)
-            return RDB_ERROR;
-        nexp->nextp = chexp->def.op.args.firstp->nextp;
-
-        RDB_add_arg(nexp, chexp->def.op.args.firstp);
-        for (i = 0; i < attrc; i++) {
-            argp = RDB_string_to_expr(attrv[i], ecp);
-            if (argp == NULL) {
-                RDB_del_expr(nexp, ecp);
-                RDB_free(attrv);
+        if (attrc > chtyp->def.basetyp->def.tuple.attrc) {
+            RDB_expression *argp;
+            RDB_expression *nexp = RDB_ro_op("project", ecp);
+            if (nexp == NULL)
                 return RDB_ERROR;
+            nexp->nextp = chexp->def.op.args.firstp->nextp;
+
+            RDB_add_arg(nexp, chexp->def.op.args.firstp);
+            for (i = 0; i < attrc; i++) {
+                argp = RDB_string_to_expr(attrv[i], ecp);
+                if (argp == NULL) {
+                    RDB_del_expr(nexp, ecp);
+                    RDB_free(attrv);
+                    return RDB_ERROR;
+                }
+                RDB_add_arg(nexp, argp);
             }
-            RDB_add_arg(nexp, argp);
+            chexp->def.op.args.firstp = nexp;
         }
-        chexp->def.op.args.firstp = nexp;
     } else {
         char *hname;
         RDB_expression *hexp;

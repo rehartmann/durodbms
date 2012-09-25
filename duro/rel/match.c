@@ -103,11 +103,11 @@ RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
     if (ret != RDB_OK) {
         goto error;
     }
-    return RDB_drop_qresult(qrp, ecp, txp);
+    return RDB_del_qresult(qrp, ecp, txp);
 
 error:
     if (qrp != NULL)
-        RDB_drop_qresult(qrp, ecp, txp);
+        RDB_del_qresult(qrp, ecp, txp);
     return RDB_ERROR;
 }
 
@@ -125,10 +125,10 @@ matching_ts(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
 
     ret = qr_matching_tuple(qrp, tplp, ecp, txp, resultp);
     if (ret != RDB_OK) {
-        RDB_drop_qresult(qrp, ecp, txp);
+        RDB_del_qresult(qrp, ecp, txp);
         return ret;
     }
-    return RDB_drop_qresult(qrp, ecp, txp);
+    return RDB_del_qresult(qrp, ecp, txp);
 }
 
 static RDB_bool

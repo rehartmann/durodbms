@@ -94,7 +94,7 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
         goto error;
     RDB_clear_err(ecp);
 
-    if (RDB_drop_qresult(qrp, ecp, txp) != RDB_OK) {
+    if (RDB_del_qresult(qrp, ecp, txp) != RDB_OK) {
         qrp = NULL;
         goto error;
     }
@@ -103,7 +103,7 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
 
 error:
     if (qrp != NULL)
-        RDB_drop_qresult(qrp, ecp, txp);
+        RDB_del_qresult(qrp, ecp, txp);
     RDB_del_expr(texp, ecp);
     return RDB_ERROR;
 }

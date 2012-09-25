@@ -883,7 +883,7 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp,
     RDB_add_arg(exp, tbexp);
     RDB_add_arg(exp, updp->condp);
 
-    nexp = RDB_optimize_expr(exp, 0, NULL, ecp, txp);
+    nexp = RDB_optimize_expr(exp, 0, NULL, NULL, ecp, txp);
     exp->def.op.args.firstp = NULL;
     RDB_del_expr(exp, ecp);
     RDB_del_expr(tbexp, ecp);
@@ -952,7 +952,7 @@ do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
     RDB_add_arg(exp, tbexp);
     RDB_add_arg(exp, delp->condp);
 
-    nexp = RDB_optimize_expr(exp, 0, NULL, ecp, txp);
+    nexp = RDB_optimize_expr(exp, 0, NULL, NULL, ecp, txp);
     if (nexp == NULL)
         return RDB_ERROR;
 
@@ -1230,32 +1230,23 @@ copy_needs_tx(const RDB_object *dstp, const RDB_object *srcp)
 }
 
 /*
- * If the constraint is of the form is_empty(table), set property $empty
+ * If the constraint is of the form is_empty(table), return table
  */
-static int
-set_empty(RDB_constraint *constrp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+static RDB_expression *
+get_empty(RDB_expression *exp)
 {
-    int ret;
-
-    if (constrp->exp->kind == RDB_EX_RO_OP
-            && constrp->exp->def.op.args.firstp != NULL
-            && constrp->exp->def.op.args.firstp->nextp == NULL
-            && strcmp(constrp->exp->def.op.name, "is_empty") == 0) {
-        RDB_expression *exp = constrp->exp->def.op.args.firstp;
-        if (exp->kind == RDB_EX_RO_OP
-                && strcmp(exp->def.op.name, "project") == 0) {
-            exp = exp->def.op.args.firstp;
+    if (exp->kind == RDB_EX_RO_OP
+            && exp->def.op.args.firstp != NULL
+            && exp->def.op.args.firstp->nextp == NULL
+            && strcmp(exp->def.op.name, "is_empty") == 0) {
+        RDB_expression *eexp = exp->def.op.args.firstp;
+        if (eexp->kind == RDB_EX_RO_OP
+                && strcmp(eexp->def.op.name, "project") == 0) {
+            eexp = eexp->def.op.args.firstp;
         }
-
-        ret = RDB_ec_set_property(ecp, "$empty", exp);
-        if (ret != RDB_OK) {
-            ret = RDB_ec_set_property(ecp, "$empty", NULL);
-            RDB_errcode_to_error(ret, ecp, txp);
-            return RDB_ERROR;
-        }
+        return eexp;
     }
-    return RDB_OK;
+    return NULL;
 }
 
 /*
@@ -1285,41 +1276,42 @@ check_constraints(int ninsc, const RDB_ma_insert ninsv[],
     constrp = dbrootp->first_constrp;
     while (constrp != NULL) {
         /*
-         * Check if constraint refers to assignment target
+         * Check if the constraint refers to an assignment target
          */
-
-        /* resolved inserts/updates/... */
         if (expr_refers_target(constrp->exp, ninsc, ninsv, nupdc, nupdv,
                 ndelc, ndelv, copyc, copyv)) {
             RDB_bool b;
+            RDB_expression *empty_tbexp;
+            RDB_expression *opt_check_exp;
 
             /*
              * Replace target tables
              */
-            RDB_expression *newexp = replace_targets(constrp->exp,
+            RDB_expression *check_exp = replace_targets(constrp->exp,
                     ninsc, ninsv, nupdc, nupdv, ndelc, ndelv,
                     copyc, copyv, ecp, txp);
-            if (newexp == NULL) {
+            if (check_exp == NULL) {
                 return RDB_ERROR;
             }
-
-            /*
-             * Check constraint
-             */
 
             if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
                 fprintf(stderr, "Checking constraint %s\n", constrp->name);
             }
 
             /*
-             * Pass expression declared to be empty through an
-             * execution context property
+             * If the constraint declares a table to be empty, get that table
              */
-            if (set_empty(constrp, ecp, txp) != RDB_OK)
-                return RDB_ERROR;
+            empty_tbexp = get_empty(constrp->exp);
 
-            ret = RDB_evaluate_bool(newexp, NULL, NULL, NULL, ecp, txp, &b);
-            RDB_del_expr(newexp, ecp);
+            opt_check_exp = RDB_optimize_expr(check_exp, 0, NULL,
+                    empty_tbexp, ecp, txp);
+            RDB_del_expr(check_exp, ecp);
+            if (opt_check_exp == NULL) {
+                return RDB_ERROR;
+            }
+
+            ret = RDB_evaluate_bool(opt_check_exp, NULL, NULL, NULL, ecp, txp, &b);
+            RDB_del_expr(opt_check_exp, ecp);
             RDB_ec_set_property(ecp, "$empty", NULL);
             if (ret != RDB_OK) {
                 return RDB_ERROR;

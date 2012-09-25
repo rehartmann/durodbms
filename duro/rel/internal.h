@@ -178,7 +178,7 @@ RDB_object *
 RDB_new_obj(RDB_exec_context *ecp);
 
 RDB_object *
-RDB_new_rtable(const char *name, RDB_bool persistent,
+RDB_new_rtable(const char *, RDB_bool,
                 RDB_type *,
                 int, const RDB_string_vec[],
                 int, const RDB_attr[],
@@ -191,10 +191,10 @@ RDB_init_table_i(RDB_object *, const char *, RDB_bool,
         RDB_bool, RDB_expression *, RDB_exec_context *);
 
 int
-RDB_free_obj(RDB_object *tbp, RDB_exec_context *);
+RDB_free_obj(RDB_object *, RDB_exec_context *);
 
 int
-RDB_assoc_table_db(RDB_object *tbp, RDB_database *dbp, RDB_exec_context *);
+RDB_assoc_table_db(RDB_object *, RDB_database *, RDB_exec_context *);
 
 RDB_bool
 RDB_table_refers(const RDB_object *tbp, const RDB_object *rtbp);

@@ -10,6 +10,7 @@
 #include "optimize.h"
 #include "qresult.h"
 #include "tostr.h"
+#include "stable.h"
 #include <string.h>
 
 /*
@@ -35,6 +36,35 @@ evaluate_vt(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     return RDB_OK;
 }
 
+static int
+opt_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
+        RDB_exec_context *ecp, RDB_transaction *txp,
+        RDB_object *resultp)
+{
+    int ret;
+    RDB_expression *optexp;
+    RDB_expression *nexp = NULL;
+
+    if (getfnp != NULL) {
+        nexp = RDB_expr_resolve_varnames(exp, getfnp, getdata, ecp, txp);
+    }
+
+    /* Resolve relation-valued attributes */
+    optexp = RDB_optimize_expr(nexp != NULL ? nexp : exp, 0, NULL, NULL,
+            ecp, txp);
+    if (nexp != NULL)
+        RDB_del_expr(nexp, ecp);
+    if (optexp == NULL) {
+        RDB_del_expr(optexp, ecp);
+        return RDB_ERROR;
+    }
+
+    /* Evaluate optimized expression */
+    ret = RDB_evaluate(optexp, NULL, NULL, NULL, ecp, txp, resultp);
+    RDB_del_expr(optexp, ecp);
+    return ret;
+}
+
 /*
  * Evaluate IS_EMPTY
  */
@@ -47,27 +77,7 @@ evaluate_is_empty(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     RDB_qresult *qrp = NULL;
 
     if (!exp->optimized) {
-        int ret;
-        RDB_expression *optexp;
-        RDB_expression *nexp = NULL;
-
-        if (getfnp != NULL) {
-            nexp = RDB_expr_resolve_varnames(exp, getfnp, getdata, ecp, txp);
-        }
-
-        /* Resolve relation-valued attributes */
-        optexp = RDB_optimize_expr(nexp != NULL ? nexp : exp, 0, NULL, ecp, txp);
-        if (nexp != NULL)
-            RDB_del_expr(nexp, ecp);
-        if (optexp == NULL) {
-            RDB_del_expr(optexp, ecp);
-            return RDB_ERROR;
-        }
-
-        /* Evaluate optimized expression */
-        ret = RDB_evaluate(optexp, NULL, NULL, NULL, ecp, txp, resultp);
-        RDB_del_expr(optexp, ecp);
-        return ret;
+        return opt_evaluate(exp, getfnp, getdata, ecp, txp, resultp);
     }
 
     RDB_init_obj(&tpl);
@@ -94,13 +104,69 @@ evaluate_is_empty(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     }
 
     RDB_destroy_obj(&tpl, ecp);
-    return RDB_drop_qresult(qrp, ecp, txp);
+    return RDB_del_qresult(qrp, ecp, txp);
 
 error:
     RDB_destroy_obj(&tpl, ecp);
     if (qrp != NULL)
-        RDB_drop_qresult(qrp, ecp, txp);
+        RDB_del_qresult(qrp, ecp, txp);
     return RDB_ERROR;
+}
+
+/*
+ * Evaluate COUNT
+ */
+static int
+evaluate_count(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
+        RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp,
+        RDB_object *resultp)
+{
+    int ret;
+    RDB_int count;
+    RDB_object tpl;
+    RDB_qresult *qrp = NULL;
+
+    if (!exp->optimized) {
+        return opt_evaluate(exp, getfnp, getdata, ecp, txp, resultp);
+    }
+
+    RDB_init_obj(&tpl);
+
+    qrp = RDB_expr_qresult(exp->def.op.args.firstp, ecp, txp);
+    if (qrp == NULL) {
+        return RDB_ERROR;
+    }
+
+    /* Duplicates must be removed */
+    ret = RDB_duprem(qrp, ecp, txp);
+    if (ret != RDB_OK) {
+        RDB_del_qresult(qrp, ecp, txp);
+        return RDB_ERROR;
+    }
+
+    RDB_init_obj(&tpl);
+
+    count = 0;
+    while ((ret = RDB_next_tuple(qrp, &tpl, ecp, txp)) == RDB_OK) {
+        count++;
+    }
+    RDB_destroy_obj(&tpl, ecp);
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
+        RDB_del_qresult(qrp, ecp, txp);
+        return RDB_ERROR;
+    }
+    RDB_clear_err(ecp);
+
+    ret = RDB_del_qresult(qrp, ecp, txp);
+    if (ret != RDB_OK)
+        return RDB_ERROR;
+
+    if (exp->kind == RDB_EX_TBP
+            && exp->def.tbref.tbp->val.tb.stp != NULL)
+        exp->def.tbref.tbp->val.tb.stp->est_cardinality = count;
+
+    RDB_int_to_obj(resultp, count);
+    return RDB_OK;
 }
 
 struct get_type_info {
@@ -323,8 +389,15 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         }
     }
 
-    if (argc == 1 && strcmp(exp->def.op.name, "is_empty") == 0) {
-        return evaluate_is_empty(exp, getfnp, getdata, envp, ecp, txp, valp);
+    if (argc == 1) {
+        if (strcmp(exp->def.op.name, "is_empty") == 0) {
+            return evaluate_is_empty(exp, getfnp, getdata, envp,
+                    ecp, txp, valp);
+        }
+        if (strcmp(exp->def.op.name, "count") == 0) {
+            return evaluate_count(exp, getfnp, getdata, envp,
+                    ecp, txp, valp);
+        }
     }
 
     if (argc == 3 && strcmp(exp->def.op.name, "if") == 0) {

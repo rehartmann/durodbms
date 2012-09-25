@@ -243,7 +243,7 @@ RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *ecp,
 
 cleanup:
     if (qrp != NULL)
-        RDB_drop_qresult(qrp, ecp, txp);
+        RDB_del_qresult(qrp, ecp, txp);
     RDB_del_expr(texp, ecp);
     RDB_destroy_obj(&tpl, ecp);
     return ret;
@@ -487,7 +487,7 @@ RDB_extract_tuple(RDB_object *tbp, RDB_exec_context *ecp,
 cleanup:
     RDB_destroy_obj(&tpl, ecp);
 
-    RDB_drop_qresult(qrp, ecp, txp);
+    RDB_del_qresult(qrp, ecp, txp);
     RDB_del_expr(texp, ecp);
     return RDB_get_err(ecp) == NULL ? RDB_OK : RDB_ERROR;
 }
@@ -578,7 +578,7 @@ RDB_subset(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *ecp,
         ret = RDB_table_contains(tb2p, &tpl, ecp, txp, resultp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
-            RDB_drop_qresult(qrp, ecp, txp);
+            RDB_del_qresult(qrp, ecp, txp);
             goto error;
         }
         if (!*resultp) {
@@ -589,12 +589,12 @@ RDB_subset(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *ecp,
     RDB_destroy_obj(&tpl, ecp);
     if (ret != RDB_OK) {
         if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-            RDB_drop_qresult(qrp, ecp, txp);
+            RDB_del_qresult(qrp, ecp, txp);
             goto error;
         }
         RDB_clear_err(ecp);
     }
-    ret = RDB_drop_qresult(qrp, ecp, txp);
+    ret = RDB_del_qresult(qrp, ecp, txp);
     if (ret != RDB_OK)
         goto error;
     return RDB_OK;
@@ -627,7 +627,7 @@ RDB_table_equals(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *ecp,
     if (cnt < 0)
         return cnt;
 
-    ret =  RDB_cardinality(tb2p, ecp, txp);
+    ret = RDB_cardinality(tb2p, ecp, txp);
     if (ret < 0)
         return ret;
     if (ret != cnt) {
@@ -652,18 +652,18 @@ RDB_table_equals(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *ecp,
         }
         if (!*resp) {
             RDB_destroy_obj(&tpl, ecp);
-            return RDB_drop_qresult(qrp, ecp, txp);
+            return RDB_del_qresult(qrp, ecp, txp);
         }
     }
     RDB_clear_err(ecp);
 
     *resp = RDB_TRUE;
     RDB_destroy_obj(&tpl, ecp);
-    return RDB_drop_qresult(qrp, ecp, txp);
+    return RDB_del_qresult(qrp, ecp, txp);
 
 error:
     RDB_destroy_obj(&tpl, ecp);
-    RDB_drop_qresult(qrp, ecp, txp);
+    RDB_del_qresult(qrp, ecp, txp);
     return ret;
 }
 

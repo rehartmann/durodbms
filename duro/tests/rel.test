@@ -101,7 +101,7 @@ test rel {relation-valued attributes} -setup $SETUP -body {
     if {$cnt != 2} {
         error "wrong # of attributes: $cnt"
     }
-    
+
     set v [duro::expr {(TUPLE FROM S1).SCATTR} $tx]
     
     if {$v != 2} {

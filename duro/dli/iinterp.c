@@ -626,7 +626,7 @@ exec_explain(RDB_parse_node *nodep, RDB_exec_context *ecp)
     }
 
     /* Optimize */
-    optexp = RDB_optimize_expr(exp, seqitc, seqitv, ecp, &txnp->tx);
+    optexp = RDB_optimize_expr(exp, seqitc, seqitv, NULL, ecp, &txnp->tx);
     if (optexp == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
@@ -971,7 +971,7 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
         }
     }
 
-    if (RDB_drop_qresult(itp, ecp, txp) != RDB_OK) {
+    if (RDB_del_qresult(itp, ecp, txp) != RDB_OK) {
         RDB_destroy_obj(&tb, ecp);
         return RDB_ERROR;
     }
@@ -988,7 +988,7 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
 
 error:
     if (itp != NULL) {
-        RDB_drop_qresult(itp, ecp, txp);
+        RDB_del_qresult(itp, ecp, txp);
     }
     if (seqitv != NULL)
         RDB_free(seqitv);
