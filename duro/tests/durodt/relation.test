@@ -126,6 +126,29 @@ test updop {user defined update operators} -setup $SETUP -body {
 } -result {durox
 }
 
+test roop {user defined read-only operators} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+
+        operator int_to_rel(n int) returns rel{no int};
+            var i int;
+            var r private rel{no int} key {no};
+            for i := 1 to n;
+                insert r tup{no i};
+            end for;
+            return r;
+        end operator;
+
+        put(is_empty(int_to_rel(0))); put_line('');
+        put(count(int_to_rel(3))); put_line('');
+    }
+} -result {TRUE
+3
+} 
+
 test zero_attrs {Tables with zero attributes} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {        
         connect('dbenv');

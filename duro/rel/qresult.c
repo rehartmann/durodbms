@@ -962,8 +962,7 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
         qrp->val.next_exp = exp->def.op.args.firstp;
         return RDB_OK;
     }
-    RDB_raise_invalid_argument(exp->def.op.name, ecp);
-    return RDB_ERROR;
+    return init_eval_qresult(qrp, exp, ecp, txp);
 }
 
 /*
