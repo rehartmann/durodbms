@@ -1047,7 +1047,7 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
                 return NULL;
             typ = RDB_type_attr_type(typ, exp->def.op.name);
             if (typ == NULL) {
-                RDB_raise_name(exp->def.varname, ecp);
+                RDB_raise_name(exp->def.op.name, ecp);
                 return NULL;
             }
             return typ;

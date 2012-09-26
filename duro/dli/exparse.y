@@ -71,6 +71,7 @@ yyerror(const char *);
 %token TOK_MINUS "MINUS"
 %token TOK_SEMIMINUS "SEMIMINUS"
 %token TOK_SEMIJOIN "SEMIJOIN"
+%token TOK_MATCHING "MATCHING"
 %token TOK_JOIN "JOIN"
 %token TOK_RENAME "RENAME"
 %token TOK_EXTEND "EXTEND"
@@ -162,7 +163,7 @@ yyerror(const char *);
 %left ':'
 %left TOK_FROM TOK_ELSE ','
 %left TOK_UNION TOK_MINUS TOK_INTERSECT TOK_SEMIMINUS TOK_JOIN TOK_SEMIJOIN
-        TOK_RENAME TOK_WRAP TOK_UNWRAP TOK_GROUP TOK_UNGROUP
+        TOK_MATCHING TOK_RENAME TOK_WRAP TOK_UNWRAP TOK_GROUP TOK_UNGROUP
         TOK_DIVIDEBY TOK_PER
 %left TOK_WHERE '{'
 %left TOK_OR TOK_XOR
@@ -1543,6 +1544,32 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $1);
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
+    }
+    | expression TOK_MATCHING expression {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+    }
+    | expression TOK_NOT TOK_MATCHING expression {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            RDB_parse_del_node($4, RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
     }
     | expression TOK_JOIN expression {
         $$ = new_parse_inner();

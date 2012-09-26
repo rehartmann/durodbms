@@ -231,6 +231,8 @@ RDB_token_name(int tok)
             return "SEMIMINUS";
         case TOK_SEMIJOIN:
             return "SEMIJOIN";
+        case TOK_MATCHING:
+            return "MATCHING";
         case TOK_JOIN:
             return "JOIN";
         case TOK_RENAME:

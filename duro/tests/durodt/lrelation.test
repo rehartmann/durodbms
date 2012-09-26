@@ -155,6 +155,22 @@ test ra {relational algebra} -body {
 
         put(is_empty(rel{tup{i 1}} intersect rel{tup{i 2}}));
         put_line('');
+
+        var pr private init rel{tup{id 1, name 'x'},
+                tup{id 2, name 'y'}};
+        put_line((tuple from pr semijoin rel{tup{name 'y'}}).name);
+
+        put_line((tuple from pr matching (rel{tup{id 1}, tup{id 2}} where id=1)).name);
+
+        put_line((tuple from pr matching (rel{tup{id 1, name 'z'}} {id})).name);
+
+        put_line((tuple from
+                pr semiminus (rel{tup{id 1}}
+                              join rel{tup{name 'x'}}))
+                .name);
+
+        put((is_empty(pr not matching (rel{tup{id 1}} union rel{tup{id 2}}))));
+        put_line('');
     }
 } -result {1
 2
@@ -164,6 +180,11 @@ test ra {relational algebra} -body {
 
 2
 0
+TRUE
+y
+x
+x
+y
 TRUE
 }
 

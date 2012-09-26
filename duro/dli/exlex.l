@@ -156,6 +156,12 @@ SEMIJOIN {
     return TOK_SEMIJOIN;
 }
 
+MATCHING {
+    yylval = RDB_new_parse_token(TOK_MATCHING, whitecommp, RDB_parse_ecp);
+    whitecommp = NULL;
+    return TOK_MATCHING;
+}
+
 JOIN {
     yylval = RDB_new_parse_token(TOK_JOIN, whitecommp, RDB_parse_ecp);
     whitecommp = NULL;

@@ -94,7 +94,9 @@ RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
     if (exp->kind == RDB_EX_RO_OP && strcmp (exp->def.op.name, "project") == 0) {
         return project_matching(exp, tplp, ecp, txp, resultp);
     }
-    
+
+    /* !! More operators */
+
     qrp = RDB_expr_qresult(exp, ecp, txp);
     if (qrp == NULL)
         goto error;

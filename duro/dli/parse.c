@@ -139,6 +139,34 @@ unop_expr(const char *opname, RDB_parse_node *nodep,
 }
 
 static RDB_expression *
+not_matching_expr(RDB_parse_node *nodep, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_expression *argp;
+
+    nodep->exp = RDB_ro_op("semiminus", ecp);
+    if (nodep->exp == NULL)
+        return NULL;
+
+    argp = RDB_parse_node_expr(nodep->val.children.firstp, ecp, txp);
+    if (argp == NULL)
+        return NULL;
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        return NULL;
+    RDB_add_arg(nodep->exp, argp);
+    argp = RDB_parse_node_expr(nodep->val.children.firstp->nextp->nextp->nextp,
+            ecp, txp);
+    if (argp == NULL)
+        return NULL;
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        return NULL;
+    RDB_add_arg(nodep->exp, argp);
+    return nodep->exp;
+}
+
+static RDB_expression *
 if_expr(RDB_parse_node *nodep,
         RDB_parse_node *argnodep, RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -898,6 +926,7 @@ binop_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *t
             opnamep = "semiminus";
             break;
         case TOK_SEMIJOIN:
+        case TOK_MATCHING:
             opnamep = "semijoin";
             break;
         case TOK_JOIN:
@@ -1178,9 +1207,15 @@ inner_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *t
             }
         }
         if (firstp->nextp->nextp != NULL
-                && firstp->nextp->nextp->nextp == NULL
                 && firstp->nextp->kind == RDB_NODE_TOK) {
-            return binop_node_expr(nodep, ecp, txp);
+            if (firstp->nextp->nextp->nextp == NULL)
+                return binop_node_expr(nodep, ecp, txp);
+            if (firstp->nextp->nextp->nextp != NULL
+                    && firstp->nextp->val.token == TOK_NOT
+                    && firstp->nextp->nextp->kind == RDB_NODE_TOK
+                    && firstp->nextp->nextp->val.token == TOK_MATCHING) {
+                return not_matching_expr(nodep, ecp, txp);
+            }
         }
     }
 
