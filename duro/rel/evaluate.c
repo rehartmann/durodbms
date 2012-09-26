@@ -646,14 +646,12 @@ RDB_evaluate_bool(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp,
         RDB_bool *resp)
 {
-    int ret;
     RDB_object val;
 
     RDB_init_obj(&val);
-    ret = RDB_evaluate(exp, getfnp, getdata, envp, ecp, txp, &val);
-    if (ret != RDB_OK) {
+    if (RDB_evaluate(exp, getfnp, getdata, envp, ecp, txp, &val) != RDB_OK) {
         RDB_destroy_obj(&val, ecp);
-        return ret;
+        return RDB_ERROR;
     }
     if (RDB_obj_type(&val) != &RDB_BOOLEAN) {
         RDB_destroy_obj(&val, ecp);
@@ -662,8 +660,7 @@ RDB_evaluate_bool(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     }
 
     *resp = val.val.bool_val;
-    RDB_destroy_obj(&val, ecp);
-    return RDB_OK;
+    return RDB_destroy_obj(&val, ecp);
 }
 
 /*@}*/

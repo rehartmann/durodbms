@@ -42,7 +42,7 @@ test db2 {two databases} -setup $SETUP -body {
     set dbenv [duro::env open [configure -tmpdir]/dbenv]
     
     set tx [duro::begin $dbenv TEST1]
-    
+
     duro::table expr T {(sys_dbtables where tablename="T1") {dbname}} $tx
     if {![duro::table contains T {dbname TEST2} $tx]} {
         error "Table T1 should be in database TEST2, but is not"

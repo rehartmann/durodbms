@@ -171,6 +171,14 @@ test ra {relational algebra} -body {
 
         put((is_empty(pr not matching (rel{tup{id 1}} union rel{tup{id 2}}))));
         put_line('');
+
+        put_line((tuple from
+                pr matching (rel{tup{id 1}, tup{id 2}}
+                             intersect rel{tup{id 2}, tup{id 3}}))
+               .name);
+        put_line((tuple from
+                pr intersect (pr matching rel{tup{id 2}, tup{id 3}}))
+               .name);
     }
 } -result {1
 2
@@ -186,6 +194,8 @@ x
 x
 y
 TRUE
+y
+y
 }
 
 test relattr {relation-valued attribute} -body {

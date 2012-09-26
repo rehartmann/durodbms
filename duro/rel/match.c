@@ -74,6 +74,38 @@ project_matching(RDB_expression *texp, const RDB_object *tplp, RDB_exec_context 
     return RDB_destroy_obj(&tpl, ecp);
 }
 
+static int
+union_matching(RDB_expression *texp, const RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_bool *resultp)
+{
+    /*
+     * Check if one of the argument expressions contain the tuple
+     */
+    if (RDB_expr_matching_tuple(texp->def.op.args.firstp, tplp,
+            ecp, txp, resultp) != RDB_OK)
+        return RDB_ERROR;
+    if (*resultp)
+        return RDB_OK;
+    return RDB_expr_matching_tuple(texp->def.op.args.firstp->nextp, tplp,
+            ecp, txp, resultp);
+}
+
+static int
+join_matching(RDB_expression *texp, const RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_bool *resultp)
+{
+    /*
+     * Check if both argument expressions contain the tuple
+     */
+    if (RDB_expr_matching_tuple(texp->def.op.args.firstp, tplp,
+            ecp, txp, resultp) != RDB_OK)
+        return RDB_ERROR;
+    if (!*resultp)
+        return RDB_OK;
+    return RDB_expr_matching_tuple(texp->def.op.args.firstp->nextp, tplp,
+            ecp, txp, resultp);
+}
+
 /*
  * Check if one of the tuples in *exp matches *tplp
  * (The expression must be relation-valued)
@@ -85,17 +117,33 @@ RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
     int ret;
     RDB_qresult *qrp;
 
-    if (exp->kind == RDB_EX_OBJ) {
-        return RDB_matching_tuple(&exp->def.obj, tplp, ecp, txp, resultp);
+    switch (exp->kind) {
+        case RDB_EX_OBJ:
+            return RDB_matching_tuple(&exp->def.obj, tplp, ecp, txp, resultp);
+        case RDB_EX_TBP:
+            return RDB_matching_tuple(exp->def.tbref.tbp, tplp, ecp, txp,
+                    resultp);
+        case RDB_EX_RO_OP:
+            if (strcmp (exp->def.op.name, "project") == 0
+                    && exp->def.op.args.firstp != NULL) {
+                return project_matching(exp, tplp, ecp, txp, resultp);
+            }
+            if (strcmp (exp->def.op.name, "union") == 0
+                    && exp->def.op.args.firstp != NULL
+                    && exp->def.op.args.firstp->nextp != NULL) {
+                return union_matching(exp, tplp, ecp, txp, resultp);
+            }
+            if ((strcmp (exp->def.op.name, "join") == 0
+                    || strcmp (exp->def.op.name, "semijoin") == 0
+                    || strcmp (exp->def.op.name, "intersect") == 0)
+                    && exp->def.op.args.firstp != NULL
+                    && exp->def.op.args.firstp->nextp != NULL) {
+                return join_matching(exp, tplp, ecp, txp, resultp);
+            }
+            break;
+        default:
+            break;
     }
-    if (exp->kind == RDB_EX_TBP) {
-        return RDB_matching_tuple(exp->def.tbref.tbp, tplp, ecp, txp, resultp);
-    }
-    if (exp->kind == RDB_EX_RO_OP && strcmp (exp->def.op.name, "project") == 0) {
-        return project_matching(exp, tplp, ecp, txp, resultp);
-    }
-
-    /* !! More operators */
 
     qrp = RDB_expr_qresult(exp, ecp, txp);
     if (qrp == NULL)
