@@ -1387,6 +1387,7 @@ int
 RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
+    RDB_constraint *constrp;
 
     if (tbp->kind == RDB_OB_TABLE && tbp->val.tb.is_persistent) {
         RDB_database *dbp;
@@ -1401,12 +1402,31 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             return RDB_ERROR;
         }
 
-        /* !! check if constraints depend on this table */
+        dbrootp = (RDB_dbroot *) RDB_env_xdata(txp->envp);
+
+        /*
+         * Read constraints from DB
+         */
+        if (!dbrootp->constraints_read) {
+            if (RDB_read_constraints(ecp, txp) != RDB_OK) {
+                return RDB_ERROR;
+            }
+            dbrootp->constraints_read = RDB_TRUE;
+        }
+
+        /* Check if a constraint depends on this table */
+        constrp = dbrootp->first_constrp;
+        while (constrp != NULL) {
+            if (RDB_expr_refers(constrp->exp, tbp)) {
+                RDB_raise_in_use(constrp->name, ecp);
+                return RDB_ERROR;
+            }
+            constrp = constrp->nextp;
+        }
 
         /*
          * Remove table from all RDB_databases in list
          */
-        dbrootp = (RDB_dbroot *) RDB_env_xdata(txp->envp);
         for (dbp = dbrootp->first_dbp; dbp != NULL; dbp = dbp->nextdbp) {
             RDB_object *foundtbp = RDB_hashmap_get(&dbp->tbmap, tbp->val.tb.name);
             if (foundtbp != NULL) {

@@ -395,11 +395,11 @@ test dbconstraint {db/table constraints} -setup $SETUP -body {
         begin transaction;
 
         operator create_constraint() updates {};
-            constraint CR count(r) <= 1;
+            constraint cr count(r) <= 1;
         end operator;
 
         operator drop_constraint() updates {};
-            drop constraint CR;
+            drop constraint cr;
         end operator;
 
         var r real relation {no INTEGER, name STRING}
@@ -410,8 +410,14 @@ test dbconstraint {db/table constraints} -setup $SETUP -body {
 
         try
             insert r tuple {no 2, name 'two'};
-        catch err PREDICATE_VIOLATION_ERROR;
+        catch err predicate_violation_error;
             put_line('caught predicate violation: ' || THE_MSG(err));
+        end try;
+
+        try
+            drop var r;
+        catch err in_use_error;
+            put_line('caught in_use_error');
         end try;
 
         drop_constraint();
@@ -419,6 +425,7 @@ test dbconstraint {db/table constraints} -setup $SETUP -body {
         commit;
     }
 } -result {caught predicate violation: cr
+caught in_use_error
 }
 
 cleanupTests
