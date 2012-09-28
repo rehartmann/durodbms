@@ -43,11 +43,35 @@ test insert {creating table and inserting tuples} -setup $SETUP -body {
         put_line(cast_as_string(count(r)));
         put_line(cast_as_string(count(s)));
         put_line((tuple from r where i=2).c);
+        
+        -- Test table with 2 keys
+
+        var r2 real relation{no int, id string, str string} key {no} key {id};
+        insert r2 tup{no 1, id '1', str 'xxx'};
+
+        -- Test key #1
+        try
+            insert r2 tup{no 1, id '2', str 'yyy'};
+        catch err key_violation_error;
+            put_line('key violation caught (1)');
+        end try;
+
+        -- Test key #2
+        try
+            insert r2 tup{no 1, id '2', str 'zzz'};
+        catch err key_violation_error;
+            put_line('key violation caught (2)');
+        end try;
+
+        insert r2 tup{no 2, id '2', str 'xxx'};
+
         commit;
     }
 } -result {3
 2
 Y
+key violation caught (1)
+key violation caught (2)
 }
 
 test invalid_type {invalid (scalar) type for table} -setup $SETUP -match glob -body {
