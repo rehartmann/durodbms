@@ -1542,24 +1542,47 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
     RDB_init_op_map(&RDB_builtin_ro_op_map);
 
     argtv[0] = &RDB_FLOAT;
+
     ret = put_builtin_ro_op("cast_as_integer", 1, argtv, &RDB_INTEGER, &cast_as_integer_float,
+            ecp);
+    if (ret != RDB_OK)
+        return RDB_ERROR;
+    ret = put_builtin_ro_op("cast_as_int", 1, argtv, &RDB_INTEGER, &cast_as_integer_float,
             ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
     argtv[0] = &RDB_STRING;
+
     ret = put_builtin_ro_op("cast_as_integer", 1, argtv, &RDB_INTEGER, &cast_as_integer_string,
+            ecp);
+    if (ret != RDB_OK)
+        return RDB_ERROR;
+    ret = put_builtin_ro_op("cast_as_int", 1, argtv, &RDB_INTEGER, &cast_as_integer_string,
             ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
     argtv[0] = &RDB_INTEGER;
+
     ret = put_builtin_ro_op("cast_as_float", 1, argtv, &RDB_FLOAT, &cast_as_float_int, ecp);
+    if (ret != RDB_OK)
+        return RDB_ERROR;
+    ret = put_builtin_ro_op("cast_as_rat", 1, argtv, &RDB_FLOAT, &cast_as_float_int, ecp);
+    if (ret != RDB_OK)
+        return RDB_ERROR;
+    ret = put_builtin_ro_op("cast_as_rational", 1, argtv, &RDB_FLOAT, &cast_as_float_int, ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
     argtv[0] = &RDB_STRING;
     ret = put_builtin_ro_op("cast_as_float", 1, argtv, &RDB_FLOAT, &cast_as_float_string, ecp);
+    if (ret != RDB_OK)
+        return RDB_ERROR;
+    ret = put_builtin_ro_op("cast_as_rational", 1, argtv, &RDB_FLOAT, &cast_as_float_string, ecp);
+    if (ret != RDB_OK)
+        return RDB_ERROR;
+    ret = put_builtin_ro_op("cast_as_rat", 1, argtv, &RDB_FLOAT, &cast_as_float_string, ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
@@ -1568,10 +1591,16 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
     ret = put_builtin_ro_op("cast_as_string", 1, argtv, &RDB_STRING, &cast_as_string, ecp);
     if (ret != RDB_OK)
         return ret;
+    ret = put_builtin_ro_op("cast_as_char", 1, argtv, &RDB_STRING, &cast_as_string, ecp);
+    if (ret != RDB_OK)
+        return ret;
 
     argtv[0] = &RDB_FLOAT;
 
     ret = put_builtin_ro_op("cast_as_string", 1, argtv, &RDB_STRING, &cast_as_string, ecp);
+    if (ret != RDB_OK)
+        return ret;
+    ret = put_builtin_ro_op("cast_as_char", 1, argtv, &RDB_STRING, &cast_as_string, ecp);
     if (ret != RDB_OK)
         return ret;
 

@@ -34,6 +34,41 @@ FALSE
 error caught
 }
 
+test casts {cast operators} -body {
+    exec $testdir/../../dli/durodt << {
+	    put(cast_as_integer('11')); put_line('');
+	    put(cast_as_int('-7')); put_line('');
+	    put(cast_as_integer(-3.0)); put_line('');
+	    put(cast_as_int(5.0)); put_line('');
+	
+	    put(cast_as_float('1.1')); put_line('');
+	    put(cast_as_rational('-5.3')); put_line('');
+	    put(cast_as_rat('4.0')); put_line('');
+	    put(cast_as_float(1)); put_line('');
+	    put(cast_as_rational(2)); put_line('');
+	    put(cast_as_rat(3)); put_line('');
+
+	    put_line(cast_as_string(500));
+	    put_line(cast_as_char(-13));
+	    put_line(cast_as_string(-34.5));
+	    put_line(cast_as_char(6.0));
+    }
+} -result {11
+-7
+-3
+5
+1.1
+-5.3
+4.0
+1.0
+2.0
+3.0
+500
+-13
+-34.5
+6.0
+}
+
 test deftype {user-defined types} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');

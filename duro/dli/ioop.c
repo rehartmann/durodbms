@@ -174,11 +174,20 @@ static int
 op_put_float(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    if (printf("%f", (double) RDB_obj_float(argv[0])) < 0) {
+    RDB_object dstobj;
+
+    RDB_init_obj(&dstobj);
+    if (RDB_obj_to_string(&dstobj, argv[0], ecp) != RDB_OK)
+        goto error;
+    if (fputs(RDB_obj_string(&dstobj), stdout) == EOF) {
         RDB_errcode_to_error(errno, ecp, txp);
-        return RDB_ERROR;
+        goto error;
     }
-    return RDB_OK;
+    return RDB_destroy_obj(&dstobj, ecp);
+
+error:
+    RDB_destroy_obj(&dstobj, ecp);;
+    return RDB_ERROR;
 }
 
 static int

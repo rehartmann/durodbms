@@ -50,7 +50,7 @@ test convert {type conversions} -setup $SETUP -body {
     
     set tpl [duro::expr {TUPLE FROM X} $tx]
     
-    set stpl {A 1 B 2.0 C 03 A_I 1 A_R 2.0 A_S S1 B_I 2 B_R 4.0 B_S S2
+    set stpl {A 1 B 2.0 C 03 A_I 1 A_R 2.0 A_S S1 B_I 2 B_R 4.0 B_S S2.0
             C_I 3 C_R 6.0 C_S S03 B_F 2.0}
     if {![tequal $tpl $stpl]} {
         error "Tuple should be $tpl, but is $stpl"

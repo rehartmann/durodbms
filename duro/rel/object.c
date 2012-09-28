@@ -1410,6 +1410,20 @@ RDB_set_obj_type(RDB_object *objp, RDB_type *typ)
         objp->val.bin.datap = NULL;
 }
 
+static void
+dfloat_to_str(RDB_float f, char *bufp)
+{
+    size_t len;
+
+    sprintf(bufp, "%.10f", (double) f);
+
+    /* Remove trailing zeroes */
+    len = strlen(bufp);
+    while (len > 1 && bufp[len - 1] == '0' && bufp[len - 2] != '.') {
+        bufp[--len] = '\0';
+    }
+}
+
 int
 RDB_obj_to_string(RDB_object *dstp, const RDB_object *srcp,
         RDB_exec_context *ecp)
@@ -1428,7 +1442,7 @@ RDB_obj_to_string(RDB_object *dstp, const RDB_object *srcp,
         if (ret != RDB_OK)
             return RDB_ERROR;
     } else if (srcp->typ == &RDB_FLOAT) {
-        sprintf(buf, "%g", (double) RDB_obj_float(srcp));
+        dfloat_to_str(RDB_obj_float(srcp), buf);
         ret = RDB_string_to_obj(dstp, buf, ecp);
         if (ret != RDB_OK)
             return RDB_ERROR;
