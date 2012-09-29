@@ -438,7 +438,7 @@ RDB_ro_op(const char *opname, RDB_exec_context *ecp)
     }
 
     exp->kind = RDB_EX_RO_OP;
-    
+
     exp->def.op.name = RDB_dup_str(opname);
     if (exp->def.op.name == NULL) {
         RDB_free(exp);
@@ -446,7 +446,7 @@ RDB_ro_op(const char *opname, RDB_exec_context *ecp)
         return NULL;
     }
 
-    exp->def.op.args.firstp = exp->def.op.args.lastp = NULL;
+    RDB_init_expr_list(&exp->def.op.args);
 
     exp->def.op.optinfo.objpc = 0;
 
@@ -699,6 +699,7 @@ RDB_init_expr_list(RDB_expr_list *explistp)
     explistp->firstp = explistp->lastp = NULL;
 }
 
+
 /**
  * Drop all expressions in the list.
  */
@@ -716,6 +717,7 @@ RDB_destroy_expr_list(RDB_expr_list *explistp, RDB_exec_context *ecp)
     }
     return ret;
 }
+
 
 RDB_int
 RDB_expr_list_length(const RDB_expr_list *explistp)
