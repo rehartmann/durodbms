@@ -8,8 +8,8 @@
 #include "rdb.h"
 #include "qresult.h"
 #include "qr_tclose.h"
-#include "insert.h"
 #include "internal.h"
+#include "insert.h"
 #include "delete.h"
 #include "optimize.h"
 #include "stable.h"
@@ -19,7 +19,6 @@
 #include <gen/strfns.h>
 #include <string.h>
 #include <assert.h>
-#include "tostr.h"
 
 static int
 init_qresult(RDB_qresult *, RDB_object *, RDB_exec_context *,

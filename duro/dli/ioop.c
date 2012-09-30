@@ -4,7 +4,7 @@
  * Copyright (C) 2011-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  *
- * I/O operators.
+ * I/O operators
  */
 
 #include "ioop.h"
@@ -28,7 +28,7 @@ enum {
     IOSTREAMS_MAX = 64
 };
 
-static FILE *iostreams[IOSTREAMS_MAX] = { NULL }; /* Initalize with zeros */
+static FILE *iostreams[IOSTREAMS_MAX] = { NULL }; /* Initalize with zeroes */
 
 RDB_object DURO_STDIN_OBJ;
 RDB_object DURO_STDOUT_OBJ;

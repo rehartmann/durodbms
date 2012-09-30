@@ -776,6 +776,10 @@ exec_while(RDB_parse_node *nodep, RDB_parse_node *labelp, RDB_exec_context *ecp,
                 if (labelp != NULL
                         && strcmp(RDB_expr_var_name(labelp->exp),
                                 leave_targetname) == 0) {
+                    /* Target name matches label */
+                    ret = RDB_OK;
+                } else if (leave_targetname == NULL) {
+                    /* No label and target is NULL */
                     ret = RDB_OK;
                 }
             }
@@ -850,6 +854,9 @@ exec_for(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
                 if (labelp != NULL
                         && strcmp(RDB_expr_var_name(labelp->exp),
                                 leave_targetname) == 0) {
+                    ret = RDB_OK;
+                } else if (leave_targetname == NULL) {
+                    /* No label and target is NULL */
                     ret = RDB_OK;
                 }
             }
@@ -953,6 +960,9 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
                 if (labelp != NULL
                         && strcmp(RDB_expr_var_name(labelp->exp),
                                 leave_targetname) == 0) {
+                    ret = RDB_OK;
+                } else if (leave_targetname == NULL) {
+                    /* No label and target is NULL */
                     ret = RDB_OK;
                 }
             }
@@ -2570,7 +2580,11 @@ error:
 static int
 exec_leave(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
-    leave_targetname = RDB_expr_var_name(nodep->exp);
+    if (nodep->kind == RDB_NODE_TOK) {
+        leave_targetname = NULL;
+    } else {
+        leave_targetname = RDB_expr_var_name(nodep->exp);
+    }
     return DURO_LEAVE;
 }
 

@@ -87,10 +87,29 @@ test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -body {
         put_line(lop());
 
         commit;
+
+        -- LEAVE without label
+        for i := 1 to 10;
+            if i = 5 then
+                leave;
+            end if;
+        end for;
+        put_line(cast_as_string(i));
+
+        i := 10;
+        while true;
+            i := i - 1;
+            if i = 4 then
+                leave;
+            end if;
+        end while;            
+        put_line(cast_as_string(i));
     }
 } -result {2
 3
 2,3
+5
+4
 }
 
 test leave_op {Unmatched LEAVE in operator} -setup $DBSETUP -body {

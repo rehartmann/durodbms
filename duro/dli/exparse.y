@@ -754,6 +754,16 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
     }
+    | TOK_LEAVE ';' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+    }
     | TOK_ID ':' TOK_WHILE expression ';' ne_statement_list TOK_END TOK_WHILE {
         $$ = new_parse_inner();
         if ($$ == NULL) {
