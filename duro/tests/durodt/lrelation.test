@@ -300,6 +300,15 @@ test tclose {TCLOSE} -body {
             put(t.n1); put(' ');
             put(t.n2); put_line('');
         end foreach;
+        
+        put_line(if is_empty(tclose(rel {n1 int, n2 int} {}))
+                then 'empty' else 'not empty');
+        
+        try
+            put(tclose(rel {tup {n 1, s '1'}}));
+        catch err;
+            put_line('invalid TCLOSE caught');
+        end try;
     }
 } -result {1 2
 1 3
@@ -309,4 +318,6 @@ test tclose {TCLOSE} -body {
 3 12
 10 8
 10 10
+empty
+invalid TCLOSE caught
 }
