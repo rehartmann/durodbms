@@ -11,7 +11,7 @@
 
 <pre>
 durodt
-Duro D/T library version 0.15
+Duro D/T library version 0.16
 no db>
 </pre>
 
@@ -235,6 +235,25 @@ end while;
 
 <p>This code reads one line of input until you enter a positive number.
 (Or a string which is not a number which will result in an <code>invalid_argument_error</code>)
+
+<p>It is possible to exit a loop using the LEAVE statement. Example:
+
+<pre>
+no db> var s string;
+no db> while true;
+no db> put('type "exit" to exit: ');
+no db> get_line(s);
+no db> if s = 'exit' then
+no db> leave;
+no db> end if;
+no db> end while;
+type "exit" to exit: x
+type "exit" to exit: exit
+no db> 
+</pre>
+
+<p>LEAVE with a statement name is also supported.
+See <cite>TTM</cite>, chapter 5 for details.
 
 <h3>CASE</h3>
 
