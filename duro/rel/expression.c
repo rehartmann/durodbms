@@ -359,7 +359,7 @@ RDB_obj_to_expr(const RDB_object *objp, RDB_exec_context *ecp)
             RDB_free(exp);
             return NULL;
         }
-        if (objp->typ != NULL) {
+        if (objp->typ != NULL && exp->def.obj.typ == NULL) {
             exp->def.obj.typ = RDB_dup_nonscalar_type(objp->typ, ecp);
             if (exp->def.obj.typ == NULL)
                 return NULL;

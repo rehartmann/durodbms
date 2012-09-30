@@ -7,6 +7,7 @@
 
 #include "rdb.h"
 #include "qresult.h"
+#include "qr_tclose.h"
 #include "insert.h"
 #include "internal.h"
 #include "delete.h"
@@ -18,6 +19,7 @@
 #include <gen/strfns.h>
 #include <string.h>
 #include <assert.h>
+#include "tostr.h"
 
 static int
 init_qresult(RDB_qresult *, RDB_object *, RDB_exec_context *,
@@ -952,6 +954,9 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     }    
     if (strcmp(exp->def.op.name, "divide") == 0) {
         return sdivide_qresult(qrp, exp, ecp, txp);
+    }
+    if (strcmp(exp->def.op.name, "tclose") == 0) {
+        return RDB_tclose_qresult(qrp, exp, ecp, txp);
     }
     if (strcmp(exp->def.op.name, "relation") == 0) {
         qrp->nested = RDB_FALSE;
@@ -2138,7 +2143,10 @@ destroy_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (qrp->nested) {
         int ret2;
 
-        ret = RDB_del_qresult(qrp->val.children.qrp, ecp, txp);
+        if (qrp->val.children.qrp != NULL)
+            ret = RDB_del_qresult(qrp->val.children.qrp, ecp, txp);
+        else
+            ret = RDB_OK;
         if (qrp->val.children.qr2p != NULL) {
             ret2 = RDB_del_qresult(qrp->val.children.qr2p, ecp, txp);
             if (ret2 != RDB_OK)
@@ -2560,6 +2568,9 @@ RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
             ret = next_sdivide_tuple(qrp, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
+        } else if (strcmp(qrp->exp->def.op.name, "tclose") == 0) {
+            if (RDB_next_tclose_tuple(qrp, tplp, ecp, txp) != RDB_OK)
+                return RDB_ERROR;
         } else if (strcmp(qrp->exp->def.op.name, "ungroup") == 0) {
             if (next_ungroup_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
@@ -2572,7 +2583,7 @@ RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         }
 
         /* Check for duplicate, if necessary */
-        if (qrp->matp != NULL) {
+        if (qrp->matp != NULL && strcmp(qrp->exp->def.op.name, "tclose") != 0) {
             ret = RDB_insert_real(qrp->matp, tplp, ecp, txp);
             if (ret != RDB_OK) {
                 if (RDB_obj_type(RDB_get_err(ecp))

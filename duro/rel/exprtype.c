@@ -785,7 +785,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         }
 
         if (argtv[0] == NULL || argtv[0]->kind != RDB_TP_RELATION) {
-            RDB_raise_invalid_argument("is_empty requires table argument", ecp);
+            RDB_raise_invalid_argument("is_empty requires relation argument", ecp);
             goto error;
         }
 
@@ -798,7 +798,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         }
 
         if (argtv[1] == NULL || argtv[1]->kind != RDB_TP_RELATION) {
-            RDB_raise_invalid_argument("table argument required", ecp);
+            RDB_raise_invalid_argument("relation argument required", ecp);
             goto error;
         }
 
@@ -813,7 +813,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
         }
         if (argtv[0]->kind != RDB_TP_RELATION) {
-            RDB_raise_type_mismatch("UNGROUP requires table argument", ecp);
+            RDB_raise_type_mismatch("UNGROUP requires relation argument", ecp);
             goto error;
         }
         if (exp->def.op.args.firstp->nextp->kind != RDB_EX_OBJ
@@ -831,9 +831,9 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
         }
 
-        if (argtv[0]->kind != RDB_TP_RELATION
-                    || argtv[1]->kind != RDB_TP_RELATION) {
-            RDB_raise_type_mismatch("table argument required", ecp);
+        if (!RDB_type_is_relation(argtv[0])
+                || !RDB_type_is_relation(argtv[1])) {
+            RDB_raise_type_mismatch("relation argument required", ecp);
             goto error;
         }
         typ = RDB_join_relation_types(argtv[0], argtv[1], ecp);
@@ -879,7 +879,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 
         if (argtv[0]->kind != RDB_TP_RELATION
                     || argtv[1]->kind != RDB_TP_RELATION) {
-            RDB_raise_type_mismatch("table argument required", ecp);
+            RDB_raise_type_mismatch("relation argument required", ecp);
             goto error;
         }
 
@@ -899,7 +899,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         if (argtv[0]->kind != RDB_TP_RELATION
                     || argtv[1]->kind != RDB_TP_RELATION
                     || argtv[2]->kind != RDB_TP_RELATION) {
-            RDB_raise_type_mismatch("table argument required", ecp);
+            RDB_raise_type_mismatch("relation argument required", ecp);
             goto error;
         }
 
@@ -916,7 +916,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         }
 
         if (argtv[0]->kind != RDB_TP_RELATION) {
-            RDB_raise_type_mismatch("table argument required", ecp);
+            RDB_raise_type_mismatch("relation argument required", ecp);
             goto error;
         }
 
@@ -931,11 +931,25 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             && (argtv[0] == NULL || argtv[0]->kind == RDB_TP_ARRAY)) {
         /* Array subscript operator */
         typ = RDB_dup_nonscalar_type(argtv[0]->def.basetyp, ecp);
-    } else if (strcmp(exp->def.op.name, "plan") == 0
-            && argc == 1
-            && (argtv[0] == NULL || argtv[0]->kind == RDB_TP_RELATION)) {
-        /* PLAN operator shows RA tree with query execution information */
-        typ = &RDB_STRING;
+    } else if (strcmp(exp->def.op.name, "tclose") == 0 && argc == 1) {
+        if (argtv[0] == NULL) {
+            RDB_raise_invalid_argument("invalid TCLOSE invocation", ecp);
+            goto error;
+        }
+        if (!RDB_type_is_relation(argtv[0])) {
+            RDB_raise_type_mismatch("relation argument required", ecp);
+            goto error;
+        }
+        if (argtv[0]->def.basetyp->def.tuple.attrc != 2) {
+            RDB_raise_invalid_argument("TCLOSE argument must have 2 attributes", ecp);
+            goto error;
+        }
+        if (!RDB_type_equals(argtv[0]->def.basetyp->def.tuple.attrv[0].typ,
+                argtv[0]->def.basetyp->def.tuple.attrv[1].typ)) {
+            RDB_raise_type_mismatch("TCLOSE argument attributes not of same type", ecp);
+            goto error;
+        }
+        typ = RDB_dup_nonscalar_type(argtv[0], ecp);
     } else {
         for (i = 0; i < argc; i++) {
             if (argtv[i] == NULL) {

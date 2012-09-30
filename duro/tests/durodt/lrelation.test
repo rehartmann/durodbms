@@ -290,3 +290,23 @@ test private_default {private table with default values} -body {
 5 120 xyz
 6 120 xyy
 }
+
+test tclose {TCLOSE} -body {
+    exec $testdir/../../dli/durodt << {
+        var t tuple {n1 int, n2 int};
+        foreach t in tclose(rel{tup{n1 1, n2 2}, tup{n1 2, n2 3},
+                tup{n1 3, n2 12}, tup{n1 10, n2 10}, tup{n1 10, n2 8}})
+                order (n1 asc, n2 asc);
+            put(t.n1); put(' ');
+            put(t.n2); put_line('');
+        end foreach;
+    }
+} -result {1 2
+1 3
+1 12
+2 3
+2 12
+3 12
+10 8
+10 10
+}

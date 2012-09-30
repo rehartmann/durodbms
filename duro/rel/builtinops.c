@@ -990,6 +990,40 @@ op_union(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
+op_tclose(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_type *argtyp;
+
+    if (argc != 1) {
+        RDB_raise_invalid_argument("invalid # of arguments", ecp);
+        return RDB_ERROR;
+    }
+
+    argtyp = RDB_obj_type(argv[0]);
+
+    /* Relation UNION - check types */
+    if (argtyp == NULL || !RDB_type_is_relation(argtyp)) {
+        RDB_raise_type_mismatch("relation argument required", ecp);
+        return RDB_ERROR;
+    }
+
+    if (argtyp->def.basetyp->def.tuple.attrc != 2) {
+        RDB_raise_invalid_argument("TCLOSE argument must have 2 attributes",
+                ecp);
+        return RDB_ERROR;
+    }
+    if (!RDB_type_equals(argtyp->def.basetyp->def.tuple.attrv[0].typ,
+            argtyp->def.basetyp->def.tuple.attrv[1].typ)) {
+        RDB_raise_type_mismatch("TCLOSE argument attributes not of same type",
+                ecp);
+        return RDB_ERROR;
+    }
+
+    return op_vtable(argc, argv, op, ecp, txp, retvalp);
+}
+
+static int
 op_wrap(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
@@ -1998,6 +2032,10 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
         return ret;
 
     ret = put_builtin_ro_op("divide", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = put_builtin_ro_op("tclose", -1, NULL, NULL, &op_tclose, ecp);
     if (ret != RDB_OK)
         return ret;
 
