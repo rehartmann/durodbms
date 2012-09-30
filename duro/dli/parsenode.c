@@ -95,18 +95,22 @@ RDB_parse_node_child(const RDB_parse_node *nodep, RDB_int idx)
 int
 RDB_parse_del_node(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
+    int ret = RDB_OK;
     if (nodep->kind == RDB_NODE_INNER
             && nodep->val.children.firstp != NULL) {
-        if (RDB_parse_del_nodelist(nodep->val.children.firstp, ecp) != RDB_OK)
-            return RDB_ERROR;
+        ret = RDB_parse_del_nodelist(nodep->val.children.firstp, ecp);
     }
-    if (nodep->exp != NULL)
-        return RDB_del_expr(nodep->exp, ecp);
+    if (nodep->exp != NULL) {
+        int ret2 = RDB_del_expr(nodep->exp, ecp);
+        if (ret == RDB_OK)
+            ret = ret2;
+    }
     if (nodep->whitecommp != NULL) {
         RDB_destroy_obj(nodep->whitecommp, ecp);
         RDB_free(nodep->whitecommp);
     }
-    return RDB_OK;
+    RDB_free(nodep);
+    return ret;
 }
 
 int
