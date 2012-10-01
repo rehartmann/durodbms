@@ -95,12 +95,23 @@ OPERATOR close(ios io_stream) UPDATES {};
 
 Close I/O stream <var>ios</var>.
 
+OPERATOR eof() RETURNS BOOLEAN;
+
+Return TRUE if the end-of-file indicator was set while reading
+from standard input.
+
+OPERATOR eof(ios io_stream) RETURNS BOOLEAN;
+
+Return TRUE if the end-of-file indicator was set while reading
+from <var>ios</var>.
+
 */
 
 /*
  * Get file number from io_stream
  */
-static int get_fileno(const RDB_object *objp, RDB_exec_context *ecp)
+static int
+get_fileno(const RDB_object *objp, RDB_exec_context *ecp)
 {
     int fno = (int) RDB_obj_int(objp);
     if (fno >= IOSTREAMS_MAX || iostreams[fno] == NULL) {
@@ -432,6 +443,27 @@ op_open(int argc, RDB_object *argv[], RDB_operator *op,
     return init_iostream(argv[0], fno, ecp);
 }
 
+int op_eof(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, struct RDB_transaction *txp,
+        RDB_object *resultp)
+{
+    RDB_bool_to_obj(resultp, feof(stdin));
+    return RDB_OK;
+}
+
+int op_eof_iostream(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, struct RDB_transaction *txp,
+        RDB_object *resultp)
+{
+    int fno = get_fileno(argv[0], ecp);
+    if (fno == RDB_ERROR) {
+        return RDB_ERROR;
+    }
+
+    RDB_bool_to_obj(resultp, feof(iostreams[fno]));
+    return RDB_OK;
+}
+
 int
 RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
 {
@@ -449,6 +481,8 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     static RDB_parameter get_line_iostream_params[2];
     static RDB_parameter open_params[3];
     static RDB_parameter close_params[1];
+
+    static RDB_type *eof_iostream_param_typ;
 
     put_string_params[0].typ = &RDB_STRING;
     put_string_params[0].update = RDB_FALSE;
@@ -544,6 +578,18 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     if (RDB_put_upd_op(opmapp, "open", 3, open_params, &op_open, ecp)
             != RDB_OK)
         return RDB_ERROR;
+
+    eof_iostream_param_typ = &RDB_IO_STREAM;
+
+    if (RDB_put_global_ro_op("eof", 0, NULL, &RDB_BOOLEAN, &op_eof, ecp)
+            != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    if (RDB_put_global_ro_op("eof", 1, &eof_iostream_param_typ,
+            &RDB_BOOLEAN, &op_eof_iostream, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
 
     RDB_init_obj(&DURO_STDIN_OBJ);
     if (init_iostream(&DURO_STDIN_OBJ, STDIN_FILENO, ecp) != RDB_OK)

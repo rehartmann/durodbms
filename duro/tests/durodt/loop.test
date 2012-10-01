@@ -89,6 +89,7 @@ test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -body {
         commit;
 
         -- LEAVE without label
+
         for i := 1 to 10;
             if i = 5 then
                 leave;

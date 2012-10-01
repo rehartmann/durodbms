@@ -8,7 +8,7 @@
  */
 
 #include <rel/rdb.h>
-#include <rel/internal.h>
+/* #include <rel/internal.h> */
 #include "parse.h"
 #include "iinterp.h"
 

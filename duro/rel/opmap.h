@@ -15,10 +15,6 @@
 
 #include <ltdl.h>
 
-typedef int RDB_ro_op_func(int, RDB_object *[], RDB_operator *,
-        RDB_exec_context *, struct RDB_transaction *,
-        RDB_object *);
-
 typedef int RDB_upd_op_func(int, RDB_object *[], RDB_operator *,
     RDB_exec_context *, RDB_transaction *);
 

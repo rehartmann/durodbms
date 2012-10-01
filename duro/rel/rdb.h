@@ -214,6 +214,10 @@ typedef struct RDB_parameter {
 
 typedef void RDB_op_cleanup_func(RDB_operator *);
 
+typedef int RDB_ro_op_func(int, RDB_object *[], RDB_operator *,
+        RDB_exec_context *, struct RDB_transaction *,
+        RDB_object *);
+
 #if defined (_WIN32) && !defined (NO_DLL_IMPORT)
 #define RDB_EXTERN_VAR __declspec(dllimport)
 #else
@@ -575,6 +579,9 @@ RDB_type_attr_type(const RDB_type *, const char *);
 RDB_bool
 RDB_is_selector(const RDB_operator *);
 
+int
+RDB_init_builtin_types(RDB_exec_context *);
+
 /** @addtogroup tx
  * @{
  */
@@ -898,6 +905,10 @@ RDB_call_update_op(RDB_operator *, int argc, RDB_object *[],
 
 int
 RDB_drop_op(const char *name, RDB_exec_context *, RDB_transaction *);
+
+int
+RDB_put_global_ro_op(const char *, int, RDB_type **, RDB_type *,
+        RDB_ro_op_func *, RDB_exec_context *);
 
 RDB_parameter *
 RDB_get_parameter(const RDB_operator *, int);

@@ -151,9 +151,6 @@ extern RDB_exec_context *RDB_cmp_ecp;
 /* Internal functions */
 
 int
-RDB_init_builtin_types(RDB_exec_context *);
-
-int
 RDB_add_type(RDB_type *, RDB_exec_context *);
 
 /**
