@@ -193,9 +193,6 @@ RDB_free_obj(RDB_object *, RDB_exec_context *);
 int
 RDB_assoc_table_db(RDB_object *, RDB_database *, RDB_exec_context *);
 
-RDB_bool
-RDB_table_refers(const RDB_object *tbp, const RDB_object *rtbp);
-
 int
 RDB_table_equals(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resp);

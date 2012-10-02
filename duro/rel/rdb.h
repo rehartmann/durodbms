@@ -496,7 +496,10 @@ RDB_object *
 RDB_expr_to_vtable(RDB_expression *, RDB_exec_context *, RDB_transaction *);
 
 RDB_expression *
-RDB_vtable_expr(const RDB_object *tbp);
+RDB_vtable_expr(const RDB_object *);
+
+RDB_bool
+RDB_table_refers(const RDB_object *, const RDB_object *);
 
 int
 RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,

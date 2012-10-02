@@ -93,7 +93,7 @@ RDB_expr_to_vtable(RDB_expression *exp, RDB_exec_context *ecp,
 }
 
 /**
- * If *tbp is a virtual table, return the the defining expression,
+ * If *tbp is a virtual table, return the defining expression,
  * otherwise NULL.
  */
 RDB_expression *
@@ -523,16 +523,6 @@ RDB_infer_keys(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     }
     *caller_must_freep = RDB_TRUE;
     return 1;
-}
-
-RDB_bool
-RDB_table_refers(const RDB_object *srctbp, const RDB_object *dsttbp)
-{
-    if (srctbp == dsttbp)
-        return RDB_TRUE;
-	if (srctbp->val.tb.exp == NULL)
-	    return RDB_FALSE;
-	return RDB_expr_refers(srctbp->val.tb.exp, dsttbp);
 }
 
 RDB_object **

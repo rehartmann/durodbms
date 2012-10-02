@@ -47,6 +47,14 @@ typedef struct Duro_varmap_node {
     struct Duro_varmap_node *parentp;
 } varmap_node;
 
+typedef struct foreach_iter {
+    RDB_qresult *qrp;
+    RDB_object tb;
+    struct foreach_iter *prevp; /* for chaining nested FOREACHs */
+} foreach_iter;
+
+extern foreach_iter *current_foreachp;
+
 struct Duro_op_data {
     RDB_parse_node *stmtlistp;
     int argnamec;

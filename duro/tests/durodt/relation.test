@@ -74,6 +74,28 @@ key violation caught (1)
 key violation caught (2)
 }
 
+test foreach_drop {DROP in FOREACH} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+        var r real relation {no int, name string} key {no};
+        insert r rel{tup{no 1, name 'one'}, tup{no 2, name 'two'}};
+
+        var t tup{no int};
+        try
+            foreach t in r {no} order();
+                drop var r;
+            end foreach;
+        catch err in_use_error;
+            put_line('in_use caught');
+        end try;
+        commit;
+    }
+} -result {in_use caught
+}
+
 test invalid_type {invalid (scalar) type for table} -setup $SETUP -match glob -body {
     exec $testdir/../../dli/durodt << {
 	    connect('dbenv');

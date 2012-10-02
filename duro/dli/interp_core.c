@@ -31,6 +31,8 @@ static Duro_module root_module;
  */
 static varmap_node *current_varmapp;
 
+foreach_iter *current_foreachp;
+
 int
 Duro_add_varmap(RDB_exec_context *ecp)
 {
@@ -787,6 +789,20 @@ Duro_exec_vardef_virtual(RDB_parse_node *nodep, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
+static int
+check_foreach_depends(const RDB_object *tbp, RDB_exec_context *ecp)
+{
+    foreach_iter *itp = current_foreachp;
+    while (itp != NULL) {
+        if (RDB_table_refers(&itp->tb, tbp)) {
+            RDB_raise_in_use("FOREACH refers to table", ecp);
+            return RDB_ERROR;
+        }
+        itp = itp->prevp;
+    }
+    return RDB_OK;
+}
+
 int
 Duro_exec_vardrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
@@ -794,19 +810,28 @@ Duro_exec_vardrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     RDB_object *objp = NULL;
 
     /* Try to look up local variable */
-    if (current_varmapp != NULL)
+    if (current_varmapp != NULL) {
         objp = RDB_hashmap_get(&current_varmapp->map, varname);
-    if (objp == NULL)
-        objp = RDB_hashmap_get(&root_module.varmap, varname);
-    if (objp != NULL) {
-        /* If transient variable found */
-        if (current_varmapp != NULL) {
+        if (objp != NULL) {
+            if (check_foreach_depends(objp, ecp) != RDB_OK)
+                return RDB_ERROR;
+            /* Delete key by putting NULL value */
             if (RDB_hashmap_put(&current_varmapp->map, varname, NULL) != RDB_OK)
                 return RDB_ERROR;
-        } else {
+        }
+    }
+    if (objp == NULL) {
+        objp = RDB_hashmap_get(&root_module.varmap, varname);
+        if (objp != NULL) {
+            if (check_foreach_depends(objp, ecp) != RDB_OK)
+                return RDB_ERROR;
             if (RDB_hashmap_put(&root_module.varmap, varname, NULL) != RDB_OK)
                 return RDB_ERROR;
         }
+    }
+
+    if (objp != NULL) {
+        /* Destroy transient variable */
         return drop_local_var(objp, ecp);
     }
 
@@ -815,12 +840,20 @@ Duro_exec_vardrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
      */
 
     if (txnp == NULL) {
-        RDB_raise_no_running_tx(ecp);
+        RDB_raise_name(varname, ecp);
         return RDB_ERROR;
     }
 
+    /*
+     * If a foreach loop is running, check if the table
+     * depends on the foreach expression
+     */
+
     objp = RDB_get_table(varname, ecp, &txnp->tx);
     if (objp == NULL)
+        return RDB_ERROR;
+
+    if (check_foreach_depends(objp, ecp) != RDB_OK)
         return RDB_ERROR;
 
     if (RDB_drop_table(objp, ecp, &txnp->tx) != RDB_OK)

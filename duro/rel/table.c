@@ -958,4 +958,21 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
+/**
+ * Return TRUE if *srctbp depends on *dsttbp, FALSE otherwise.
+ */
+RDB_bool
+RDB_table_refers(const RDB_object *srctbp, const RDB_object *dsttbp)
+{
+    RDB_expression *exp;
+
+    if (srctbp == dsttbp)
+        return RDB_TRUE;
+
+    exp = RDB_vtable_expr(srctbp);
+    if (exp == NULL)
+        return RDB_FALSE;
+    return RDB_expr_refers(exp, dsttbp);
+}
+
 /*@}*/

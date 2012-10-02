@@ -987,8 +987,9 @@ RDB_del_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
 {
     int i;
     int ret = RDB_OK;
+    enum RDB_tp_kind kind = typ->kind;
 
-    switch (typ->kind) {
+    switch (kind) {
         case RDB_TP_TUPLE:
             for (i = 0; i < typ->def.tuple.attrc; i++) {
                 RDB_type *attrtyp = typ->def.tuple.attrv[i].typ;
@@ -1005,12 +1006,18 @@ RDB_del_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
             if (!RDB_type_is_scalar(typ->def.basetyp))
                 ret = RDB_del_nonscalar_type(typ->def.basetyp, ecp);
             break;
-        default:
+        case RDB_TP_SCALAR:
             RDB_raise_invalid_argument("type is scalar", ecp);
             ret = RDB_ERROR;
+            break;
+        default:
+            RDB_raise_internal("invalid type structure", ecp);
+            abort();
+            /* return RDB_ERROR; */
     }
     typ->kind = (enum RDB_tp_kind) -1; /* for error detection */
-    RDB_free(typ);
+    if (kind != RDB_TP_SCALAR)
+        RDB_free(typ);
     return ret;
 }
 

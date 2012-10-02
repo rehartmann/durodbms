@@ -108,6 +108,11 @@ disconnect_op(int argc, RDB_object *argv[], RDB_operator *op,
         return RDB_ERROR;
     }
 
+    if (current_foreachp != NULL) {
+        RDB_raise_in_use("disconnect() not allowed in FOREACH", ecp);
+        return RDB_ERROR;
+    }
+
     /* If a transaction is active, abort it */
     if (txnp != NULL) {
         ret = RDB_rollback(ecp, &txnp->tx);
@@ -242,6 +247,9 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
     trace_params[0].update = RDB_FALSE;
 
     Duro_init_vars();
+
+    leave_targetname = NULL;
+    current_foreachp = NULL;
 
     RDB_init_op_map(&sys_module.upd_op_map);
 
@@ -890,17 +898,18 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
 {
     int ret;
     RDB_expression *tbexp;
-    RDB_object tb;
     RDB_type *tbtyp;
     int seqitc;
     RDB_seq_item *seqitv = NULL;
-    RDB_qresult *itp = NULL;
+    foreach_iter it;
     RDB_transaction *txp = txnp != NULL ? &txnp->tx : NULL;
     RDB_object *varp = Duro_lookup_transient_var(RDB_expr_var_name(nodep->exp));
     if (varp == NULL) {
         RDB_raise_name(RDB_expr_var_name(nodep->exp), ecp);
         return RDB_ERROR;
     }
+
+    it.qrp = NULL;
 
     tbexp = RDB_parse_node_expr(nodep->nextp->nextp, ecp, txp);
     if (tbexp == NULL)
@@ -919,9 +928,9 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
         return RDB_ERROR;
     }
 
-    RDB_init_obj(&tb);
+    RDB_init_obj(&it.tb);
     /* !! Inefficient if tbexp is a table name - applies to LOAD too */
-    if (Duro_evaluate_retry(tbexp, ecp, &tb) != RDB_OK) {
+    if (Duro_evaluate_retry(tbexp, ecp, &it.tb) != RDB_OK) {
         goto error;
     }
 
@@ -936,40 +945,39 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
                     != RDB_OK) {
         goto error;
     }
-    itp = RDB_table_iterator(&tb, seqitc, seqitv, ecp, txp);
-    if (itp == NULL)
+    it.qrp = RDB_table_iterator(&it.tb, seqitc, seqitv, ecp, txp);
+    if (it.qrp == NULL)
         goto error;
-    /*
-     * !! the iterator may depend on a running transaction;
-     * in this case the loop body must not stop the transaction
-     */
 
-    while (RDB_next_tuple(itp, varp, ecp, txp) == RDB_OK) {
+    it.prevp = current_foreachp;
+    current_foreachp = &it;
+
+    while (RDB_next_tuple(it.qrp, varp, ecp, txp) == RDB_OK) {
         if (Duro_add_varmap(ecp) != RDB_OK)
             goto error;
 
         /* Execute statements */
-        ret = exec_stmts(nodep->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->val.children.firstp,
+        ret = exec_stmts(nodep->nextp->nextp->nextp->nextp->nextp
+                ->nextp->nextp->nextp->val.children.firstp,
                 ecp, retinfop);
-        if (ret != RDB_OK) {
-            if (ret == DURO_LEAVE) {
-                /*
-                 * If the statement name matches the LEAVE target,
-                 * exit loop with RDB_OK
-                 */
-                if (labelp != NULL
-                        && strcmp(RDB_expr_var_name(labelp->exp),
-                                leave_targetname) == 0) {
-                    ret = RDB_OK;
-                } else if (leave_targetname == NULL) {
-                    /* No label and target is NULL */
-                    ret = RDB_OK;
-                }
-            }
-            Duro_remove_varmap();
-            return ret;
-        }
         Duro_remove_varmap();
+        if (ret == DURO_LEAVE) {
+            /*
+             * If the statement name matches the LEAVE target,
+             * exit loop with RDB_OK
+             */
+            if (labelp != NULL
+                    && strcmp(RDB_expr_var_name(labelp->exp),
+                            leave_targetname) == 0) {
+                ret = RDB_OK;
+            } else if (leave_targetname == NULL) {
+                /* No label and target is NULL, exit loop */
+                ret = RDB_OK;
+            }
+            break;
+        }
+        if (ret != RDB_OK)
+            goto error;
 
         /*
          * Check for user interrupt
@@ -981,28 +989,34 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
         }
     }
 
-    if (RDB_del_qresult(itp, ecp, txp) != RDB_OK) {
-        RDB_destroy_obj(&tb, ecp);
+    /* Set to previous FOREACH iterator (or NULL) */
+    current_foreachp = it.prevp;
+
+    if (RDB_del_qresult(it.qrp, ecp, txp) != RDB_OK) {
+        RDB_destroy_obj(&it.tb, ecp);
         return RDB_ERROR;
     }
     if (seqitv != NULL)
         RDB_free(seqitv);
 
-    RDB_destroy_obj(&tb, ecp);
+    RDB_destroy_obj(&it.tb, ecp);
 
     /* Ignore not_found */
-    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
-        return RDB_ERROR;
+    if (ret == RDB_ERROR) {
+        if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
+            return RDB_ERROR;
+    }
     RDB_clear_err(ecp);
     return RDB_OK;
 
 error:
-    if (itp != NULL) {
-        RDB_del_qresult(itp, ecp, txp);
+    if (it.qrp != NULL) {
+        RDB_del_qresult(it.qrp, ecp, txp);
+        current_foreachp = it.prevp;
     }
+    RDB_destroy_obj(&it.tb, ecp);
     if (seqitv != NULL)
         RDB_free(seqitv);
-    RDB_destroy_obj(&tb, ecp);
     return RDB_ERROR;
 }
 
@@ -1616,6 +1630,11 @@ exec_commit(RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
+    if (current_foreachp != NULL) {
+        RDB_raise_in_use("COMMIT not allowed in FOREACH", ecp);
+        return RDB_ERROR;
+    }
+
     if (RDB_commit(ecp, &txnp->tx) != RDB_OK)
         return RDB_ERROR;
 
@@ -1633,6 +1652,11 @@ exec_rollback(RDB_exec_context *ecp)
 {
     if (txnp == NULL) {
         RDB_raise_no_running_tx(ecp);
+        return RDB_ERROR;
+    }
+
+    if (current_foreachp != NULL) {
+        RDB_raise_in_use("ROLLBACK not allowed in FOREACH", ecp);
         return RDB_ERROR;
     }
 
