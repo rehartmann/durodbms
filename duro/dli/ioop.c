@@ -25,10 +25,10 @@
 #endif
 
 enum {
-    IOSTREAMS_MAX = 64
+    IOSTREAMS_MAX = 63
 };
 
-static FILE *iostreams[IOSTREAMS_MAX] = { NULL }; /* Initalize with zeroes */
+static FILE *iostreams[IOSTREAMS_MAX + 1] = { NULL }; /* Initalize with zeroes */
 
 RDB_object DURO_STDIN_OBJ;
 RDB_object DURO_STDOUT_OBJ;
@@ -114,7 +114,7 @@ static int
 get_fileno(const RDB_object *objp, RDB_exec_context *ecp)
 {
     int fno = (int) RDB_obj_int(objp);
-    if (fno >= IOSTREAMS_MAX || iostreams[fno] == NULL) {
+    if (fno < 0 || fno > IOSTREAMS_MAX || iostreams[fno] == NULL) {
         RDB_raise_invalid_argument("invalid file number", ecp);
         return RDB_ERROR;
     }
@@ -382,10 +382,9 @@ static int
 op_close(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    /* Get file number from arg*/
-    int fno = RDB_obj_int(argv[0]);
-    if (fno >= IOSTREAMS_MAX || iostreams[fno] == NULL) {
-        RDB_raise_invalid_argument("invalid file number", ecp);
+    /* Get file number from arg */
+    int fno = get_fileno(argv[0], ecp);
+    if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }
     if (fclose(iostreams[fno]) != 0) {
@@ -406,7 +405,7 @@ init_iostream(RDB_object *iosp, int fno, RDB_exec_context *ecp)
     RDB_object *fobjp;
 
     /* Check fno */
-    if (fno >= IOSTREAMS_MAX) {
+    if (fno > IOSTREAMS_MAX) {
         RDB_raise_not_supported("file number too high", ecp);
         return RDB_ERROR;
     }
