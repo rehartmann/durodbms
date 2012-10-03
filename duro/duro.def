@@ -135,7 +135,7 @@ RDB_tuple_attr
 RDB_expr_comp
 RDB_ro_op
 RDB_expr_obj
-RDB_drop_expr
+RDB_del_expr
 RDB_create_ro_op
 RDB_create_update_op
 RDB_call_ro_op_by_name
@@ -179,6 +179,7 @@ RDB_obj_to_str
 RDB_table_def_to_str
 RDB_dup_str
 RDB_table_refers
+RDB_table_attrs
 RDB_optimize
 RDB_get_update_op
 RDB_get_update_op_e

@@ -598,6 +598,7 @@ with_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *tx
 {
     RDB_expression *exp;
 	RDB_parse_node *inodep, *jnodep;
+	int ret;
 
 	/* Convert node to expression */
 	exp = RDB_parse_node_expr(nodep->nextp->nextp->nextp->nextp, ecp, txp);
@@ -627,7 +628,7 @@ with_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *tx
                             ecp, txp) == NULL) {
                         return NULL;
                     }
-                    int ret = RDB_expr_resolve_varname_expr(
+                    ret = RDB_expr_resolve_varname_expr(
                             &jnodep->val.children.firstp->nextp->nextp->exp,
                             varname, dstexp, ecp);
                     if (ret != RDB_OK)
@@ -639,7 +640,7 @@ with_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *tx
             }
 
             /* Replace name by expression in exp */
-            int ret = RDB_expr_resolve_varname_expr(&exp,
+            ret = RDB_expr_resolve_varname_expr(&exp,
                     varname, dstexp, ecp);
             if (ret != RDB_OK)
                 return NULL;
