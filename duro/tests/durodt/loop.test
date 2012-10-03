@@ -105,12 +105,25 @@ test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -body {
             end if;
         end while;            
         put_line(cast_as_string(i));
+
+        -- Dropping FOR loop variable
+        try
+            for i:= 1 to 5;
+                drop var i;
+             end for;
+        -- Both errors are acceptable
+        catch err in_use_error;
+             put_line('dropping FOR variable: error caught');
+        catch err name_error;
+             put_line('dropping FOR variable: error caught');
+        end try;
     }
 } -result {2
 3
 2,3
 5
 4
+dropping FOR variable: error caught
 }
 
 test leave_op {Unmatched LEAVE in operator} -setup $DBSETUP -body {
@@ -179,6 +192,17 @@ test foreach {FOREACH} -body {
                 leave l;
             end if;
         end foreach;
+
+        -- Dropping FOREACH loop variable
+        try
+            foreach t1 in pr order();
+                drop var t1;
+             end foreach;
+        catch err in_use_error;
+             put_line('dropping FOREACH variable: error caught');
+        catch err name_error;
+             put_line('dropping FOREACH variable: error caught');
+        end try;
     }
 } -result {1
 2
@@ -189,6 +213,7 @@ test foreach {FOREACH} -body {
 2
 1
 1
+dropping FOREACH variable: error caught
 }
 
 cleanupTests

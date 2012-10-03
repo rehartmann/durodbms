@@ -815,7 +815,8 @@ exec_for(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
     int ret;
     RDB_object endval;
     RDB_expression *fromexp, *toexp;
-    RDB_object *varp = Duro_lookup_transient_var(RDB_expr_var_name(nodep->exp));
+    const char *varname = RDB_expr_var_name(nodep->exp);
+    RDB_object *varp = Duro_lookup_transient_var(varname);
     if (varp == NULL) {
         RDB_raise_name(RDB_expr_var_name(nodep->exp), ecp);
         return RDB_ERROR;
@@ -874,6 +875,13 @@ exec_for(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
         }
         Duro_remove_varmap();
 
+        /* Check if the variable has been dropped */
+        varp = Duro_lookup_transient_var(varname);
+        if (varp == NULL) {
+            RDB_raise_name(varname, ecp);
+            goto error;
+        }
+
         /*
          * Check for user interrupt
          */
@@ -903,9 +911,10 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
     RDB_seq_item *seqitv = NULL;
     foreach_iter it;
     RDB_transaction *txp = txnp != NULL ? &txnp->tx : NULL;
-    RDB_object *varp = Duro_lookup_transient_var(RDB_expr_var_name(nodep->exp));
+    const char *varname = RDB_expr_var_name(nodep->exp);
+    RDB_object *varp = Duro_lookup_transient_var(varname);
     if (varp == NULL) {
-        RDB_raise_name(RDB_expr_var_name(nodep->exp), ecp);
+        RDB_raise_name(varname, ecp);
         return RDB_ERROR;
     }
 
@@ -979,6 +988,13 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
         if (ret != RDB_OK)
             goto error;
 
+        /* Check if the variable has been dropped */
+        varp = Duro_lookup_transient_var(varname);
+        if (varp == NULL) {
+            RDB_raise_name(varname, ecp);
+            goto error;
+        }
+
         /*
          * Check for user interrupt
          */
@@ -992,12 +1008,11 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
     /* Set to previous FOREACH iterator (or NULL) */
     current_foreachp = it.prevp;
 
+    RDB_free(seqitv);
     if (RDB_del_qresult(it.qrp, ecp, txp) != RDB_OK) {
         RDB_destroy_obj(&it.tb, ecp);
         return RDB_ERROR;
     }
-    if (seqitv != NULL)
-        RDB_free(seqitv);
 
     RDB_destroy_obj(&it.tb, ecp);
 
@@ -1015,8 +1030,7 @@ error:
         current_foreachp = it.prevp;
     }
     RDB_destroy_obj(&it.tb, ecp);
-    if (seqitv != NULL)
-        RDB_free(seqitv);
+    RDB_free(seqitv);
     return RDB_ERROR;
 }
 
