@@ -4,23 +4,17 @@ Summary of Changes for Duro
 
 Changes for Duro 0.16
 
-- TCLOSE
+- Removed durodump.tcl.
 
-- MATCHING, NOT MATCHING
+- Duro D/T: DEFAULT, FOREACH loop, INDEX, DROP INDEX, EXPLAIN
 
-- DEFAULT
+- Duro D/T now uses GNU readline.
 
-- FOREACH loop
-
-- INDEX, DROP INDEX
-
-- EXPLAIN
+- Added TCLOSE, MATCHING, NOT MATCHING
 
 - Renamed RDB_drop_expr() to RDB_del_expr() for consistency.
 
 - RDB_get_table() now raises a name_error if the table is not found.
-
-- Duro D/T now uses GNU readline.
 
 - Dropped database SYS_DB.
 
