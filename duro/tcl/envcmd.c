@@ -78,14 +78,24 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
     if (strcmp(argv[1], "open") == 0) {
         int new;
         char handle[20];
+        int flags;
+        const char *path;
     
-        if (argc != 3) {
-            Tcl_SetResult(interp, "wrong # args: should be \"env open path\"",
+        if (argc < 3 || argc > 4) {
+            Tcl_SetResult(interp, "wrong # args: should be \"env open [-create] path\"",
                     TCL_STATIC);
             return TCL_ERROR;
         }
 
-        ret = RDB_open_env(argv[2], &envp);
+        if (strcmp(argv[2], "-create") == 0) {
+            flags = RDB_CREATE;
+            path = argv[3];
+        } else {
+            flags = 0;
+            path = argv[2];
+        }
+
+        ret = RDB_open_env(path, &envp, flags);
         if (ret != RDB_OK) {
             Tcl_AppendResult(interp, "database error: ", db_strerror(ret),
                     (char *) NULL);
@@ -202,7 +212,7 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
             return TCL_ERROR;
         }
         envp = Tcl_GetHashValue(entryp);
-        
+
         fp = fopen(argv[3], "a");
         if (fp == NULL) {
             char *errstr = (char *) Tcl_ErrnoMsg(Tcl_GetErrno());

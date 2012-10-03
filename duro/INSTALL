@@ -39,4 +39,4 @@ To build Duro without Tcl support, use:
 scons with_durotcl=0
 
 Note that since most tests depend on Durotcl, running the tests will not
-be possible in this case. Duroadmin and Durodump will not be available either.
+be possible in this case. Duroadmin will not be available either.

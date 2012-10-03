@@ -87,7 +87,7 @@ static int
 connect_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int ret = RDB_open_env(RDB_obj_string(argv[0]), &envp);
+    int ret = RDB_open_env(RDB_obj_string(argv[0]), &envp, 0);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp, txp);
         envp = NULL;
@@ -169,7 +169,7 @@ create_env_op(int argc, RDB_object *argv[], RDB_operator *op,
         return RDB_ERROR;
     }
 
-    ret = RDB_open_env(RDB_obj_string(argv[0]), &envp);
+    ret = RDB_open_env(RDB_obj_string(argv[0]), &envp, RDB_CREATE);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp, txp);
         envp = NULL;

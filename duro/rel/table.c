@@ -603,6 +603,58 @@ error:
     return RDB_ERROR;
 }
 
+/**
+ * Return TRUE if *srctbp depends on *dsttbp, FALSE otherwise.
+ */
+RDB_bool
+RDB_table_refers(const RDB_object *srctbp, const RDB_object *dsttbp)
+{
+    RDB_expression *exp;
+
+    if (srctbp == dsttbp)
+        return RDB_TRUE;
+
+    exp = RDB_vtable_expr(srctbp);
+    if (exp == NULL)
+        return RDB_FALSE;
+    return RDB_expr_refers(exp, dsttbp);
+}
+
+/**
+ * Returns a pointer to an array of RDB_attr structs
+describing the attributes of table *<var>tbp</var> and
+stores the number of attributes in *<var>attrcp</var>.
+
+The pointer returned must no longer be used if the table has been destroyed.
+
+@returns
+
+A pointer to an array of RDB_attr structs or NULL if *tbp is not a table.
+ */
+RDB_attr *
+RDB_table_attrs(const RDB_object *tbp, int *attrcp)
+{
+    RDB_attr *attrv;
+    int i;
+
+    if (tbp->kind != RDB_OB_TABLE) {
+        return NULL;
+    }
+
+    attrv = RDB_type_attrs(RDB_obj_type(tbp), attrcp);
+    if (tbp->val.tb.default_tplp != NULL) {
+        for (i = 0; i < *attrcp; i++) {
+            attrv[i].defaultp = RDB_tuple_get(tbp->val.tb.default_tplp,
+                    attrv[i].name);
+        }
+    } else {
+        for (i = 0; i < *attrcp; i++) {
+            attrv[i].defaultp = NULL;
+        }
+    }
+    return attrv;
+}
+
 /*@}*/
 
 int
@@ -956,23 +1008,6 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
     }
 
     return RDB_OK;
-}
-
-/**
- * Return TRUE if *srctbp depends on *dsttbp, FALSE otherwise.
- */
-RDB_bool
-RDB_table_refers(const RDB_object *srctbp, const RDB_object *dsttbp)
-{
-    RDB_expression *exp;
-
-    if (srctbp == dsttbp)
-        return RDB_TRUE;
-
-    exp = RDB_vtable_expr(srctbp);
-    if (exp == NULL)
-        return RDB_FALSE;
-    return RDB_expr_refers(exp, dsttbp);
 }
 
 /*@}*/

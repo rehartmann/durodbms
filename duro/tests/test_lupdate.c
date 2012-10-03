@@ -100,7 +100,7 @@ main(void)
     RDB_transaction tx;
     RDB_object tb;
 
-    ret = RDB_open_env("dbenv", &dsp);
+    ret = RDB_open_env("dbenv", &dsp, RDB_CREATE);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
         return 1;

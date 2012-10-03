@@ -152,7 +152,7 @@ proc create_env {} {
             file mkdir $envpath
         }
 
-        set ::dbenv [duro::env open $envpath]
+        set ::dbenv [duro::env open -create $envpath]
         duro::env seterrfile $::dbenv $::errfile
     } msg]} {
         tk_messageBox -type ok -title "Error" -message $msg -icon error

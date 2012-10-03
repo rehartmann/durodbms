@@ -186,7 +186,7 @@ cleanup:
 
 /*
  * Move the cursor to the first record.
- * If there is no first record, RDB_NOT_FOUND is returned.
+ * If there is no first record, DB_NOTFOUND is returned.
  */
 int
 RDB_cursor_first(RDB_cursor *curp)

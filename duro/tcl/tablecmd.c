@@ -638,7 +638,7 @@ table_attrs_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
 
     listobjp = Tcl_NewListObj(0, NULL);
-    attrv = RDB_type_attrs(RDB_obj_type(tbp), &attrc);
+    attrv = RDB_table_attrs(tbp, &attrc);
     for (i = 0; i < attrc; i++) {
         Tcl_Obj *typobjp;
         Tcl_Obj *sublistobjp = Tcl_NewListObj(0, NULL);
@@ -655,7 +655,8 @@ table_attrs_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         if (ret != TCL_OK)
             return ret;
 
-        /* If there is a default value, add it to sublist */
+        /* If there is a default value, add it to sublist
+         * !! default value no longer valid */
         if (attrv[i].defaultp != NULL) {
             Tcl_Obj *defp = Duro_to_tcl(interp,
                     attrv[i].defaultp, statep->current_ecp,

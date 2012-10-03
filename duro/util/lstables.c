@@ -40,7 +40,7 @@ getargs(RDB_exec_context *ecp, int *argcp, char **argvp[],
             break;
     }
     if (envnamp != NULL) {
-        ret = RDB_open_env(envnamp, envpp);
+        ret = RDB_open_env(envnamp, envpp, 0);
         if (ret != RDB_OK)
             return ret;
         if (dbnamp != NULL) {

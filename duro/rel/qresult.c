@@ -903,7 +903,7 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
 
     if (strcmp(exp->def.op.name, "project") == 0) {
         RDB_expression *texp = exp->def.op.args.firstp;
-        
+
         qrp->val.children.tpl_valid = RDB_FALSE;
         if (texp->kind == RDB_EX_TBP
                 && texp->def.tbref.tbp->kind == RDB_OB_TABLE

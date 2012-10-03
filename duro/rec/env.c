@@ -26,6 +26,8 @@
  *
  * @param path  pathname of the direcory where the data is stored.
  * @param envpp   location where the pointer to the environment is stored.
+ * @param flags can be zero or RDB_CREATE. If it is RDB_CREATE,
+ *        all necessary files will be created.
  * 
  * @return On success, RDB_OK is returned. On failure, an error code is returned.
  * 
@@ -33,7 +35,7 @@
  * See the documentation of the Berkeley DB function DB_ENV->open for details.
  */
 int
-RDB_open_env(const char *path, RDB_environment **envpp)
+RDB_open_env(const char *path, RDB_environment **envpp, int flags)
 {
     RDB_environment *envp;
     int ret;
@@ -70,10 +72,10 @@ RDB_open_env(const char *path, RDB_environment **envpp)
      */
     envp->envp->set_errfile(envp->envp, NULL);
 
-    /* open DB environment */
+    /* Open DB environment */
     ret = envp->envp->open(envp->envp, path,
             DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN
-                    | DB_CREATE | DB_RECOVER,
+                    | (flags && RDB_CREATE ? DB_CREATE | DB_RECOVER : 0),
             0);
     if (ret != 0) {
         envp->envp->close(envp->envp, 0);

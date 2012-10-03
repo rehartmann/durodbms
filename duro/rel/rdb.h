@@ -501,6 +501,9 @@ RDB_vtable_expr(const RDB_object *);
 RDB_bool
 RDB_table_refers(const RDB_object *, const RDB_object *);
 
+RDB_attr *
+RDB_table_attrs(const RDB_object *, int *);
+
 int
 RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,
         const RDB_seq_item idxcompv[], int flags, RDB_exec_context *,

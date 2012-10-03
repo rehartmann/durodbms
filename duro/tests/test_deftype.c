@@ -59,7 +59,7 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    ret = RDB_open_env("dbenv", &envp);
+    ret = RDB_open_env("dbenv", &envp, RDB_CREATE);
     if (ret != 0) {
         fprintf(stderr, "Cannot open db environment: %s\n", db_strerror(ret));
         return 1;

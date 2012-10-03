@@ -10,6 +10,10 @@
 
 #include <db.h>
 
+enum {
+    RDB_CREATE = 1
+};
+
 typedef void (RDB_errfn)(const char *msg, void *arg);
 
 typedef struct RDB_environment {
@@ -29,14 +33,14 @@ typedef struct RDB_environment {
     unsigned trace;
 } RDB_environment;
 
-#define RDB_internal_env(renvp) (renvp->envp)
+#define RDB_internal_env(renvp) ((renvp)->envp)
 
-#define RDB_env_xdata(renvp) (renvp->xdata)
+#define RDB_env_xdata(renvp) ((renvp)->xdata)
 
-#define RDB_env_trace(renvp) (renvp->trace)
+#define RDB_env_trace(renvp) ((renvp)->trace)
 
 int
-RDB_open_env(const char *, RDB_environment **);
+RDB_open_env(const char *, RDB_environment **, int);
 
 int
 RDB_close_env(RDB_environment *);

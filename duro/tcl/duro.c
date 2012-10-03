@@ -173,7 +173,7 @@ Duro_init_tcl(Tcl_Interp *interp, TclState **statepp)
         return TCL_ERROR;
     }
 
-    return Tcl_PkgProvide(interp, "duro", "0.15");
+    return Tcl_PkgProvide(interp, "duro", "0.16");
 }
 
 int
@@ -400,7 +400,7 @@ list_to_table(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         Duro_dberror(interp, RDB_get_err(ecp), txp);
         return TCL_ERROR;
     }
-       
+
     if (RDB_init_table_from_type(tbp, NULL, typ, 0, NULL, 0, NULL, ecp)
             != RDB_OK) {
         Duro_dberror(interp, RDB_get_err(ecp), txp);
