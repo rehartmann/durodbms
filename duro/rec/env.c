@@ -75,7 +75,7 @@ RDB_open_env(const char *path, RDB_environment **envpp, int flags)
     /* Open DB environment */
     ret = envp->envp->open(envp->envp, path,
             DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN
-                    | (flags && RDB_CREATE ? DB_CREATE | DB_RECOVER : 0),
+                    | (flags & RDB_CREATE ? DB_CREATE | DB_RECOVER : 0),
             0);
     if (ret != 0) {
         envp->envp->close(envp->envp, 0);
