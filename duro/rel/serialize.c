@@ -739,19 +739,6 @@ RDB_binobj_to_expr(RDB_object *valp, RDB_exec_context *ecp,
 }
 
 RDB_object *
-RDB_binobj_to_vtable(RDB_object *valp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-	RDB_expression *exp;
-    int pos = 0;
-    int ret = RDB_deserialize_expr(valp, &pos, ecp, txp, &exp);
-    if (ret != RDB_OK)
-        return NULL;
-
-    return RDB_expr_to_vtable(exp, ecp, txp);
-}
-
-RDB_object *
 deserialize_rtable(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {

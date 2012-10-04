@@ -49,8 +49,8 @@ RDB_expr_is_const(const RDB_expression *exp)
 }
 
 /**
- * Replace all occurrences of variable names by expressions
- * Replcement is performed in-place if possible.
+ * Replace all occurrences of variable name varname by expression *texp.
+ * Replacement is performed in-place if possible.
  */
 int
 RDB_expr_resolve_varname_expr(RDB_expression **expp, const char *varname,
@@ -117,7 +117,8 @@ copy_expr_typeinfo_if_needed(RDB_expression *dstexp, const RDB_expression *srcex
 /**
  * Return a new expression in which all variable names for which
  * *<var>getfnp</var>() or RDB_get_table() return an RDB_object
- * have been replaced by this object
+ * have been replaced by this object.
+ * Table names are replaced by table refs.
  */
 RDB_expression *
 RDB_expr_resolve_varnames(RDB_expression *exp, RDB_getobjfn *getfnp,

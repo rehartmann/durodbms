@@ -18,9 +18,6 @@ RDB_type_to_binobj(RDB_object *, const RDB_type *, RDB_exec_context *);
 RDB_expression *
 RDB_binobj_to_expr(RDB_object *, RDB_exec_context *, RDB_transaction *);
 
-RDB_object *
-RDB_binobj_to_vtable(RDB_object *, RDB_exec_context *, RDB_transaction *);
-
 RDB_type *
 RDB_binobj_to_type(RDB_object *, RDB_exec_context *, RDB_transaction *);
 

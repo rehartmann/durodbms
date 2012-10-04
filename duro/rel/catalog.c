@@ -1802,6 +1802,28 @@ error:
     return NULL;
 } /* RDB_cat_get_rtable */
 
+static RDB_object *
+RDB_binobj_to_vtable(RDB_object *valp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_expression *exp, *texp;
+    int pos = 0;
+    int ret = RDB_deserialize_expr(valp, &pos, ecp, txp, &exp);
+    if (ret != RDB_OK)
+        return NULL;
+
+    /*
+     * Resolve table names so the underlying real table(s) can be
+     * accessed without having to resolve a variable
+     */
+    texp = RDB_expr_resolve_varnames(exp, NULL, NULL, ecp, txp);
+    RDB_del_expr(exp, ecp);
+    if (texp == NULL)
+        return NULL;
+
+    return RDB_expr_to_vtable(texp, ecp, txp);
+}
+
 RDB_object *
 RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
         RDB_transaction *txp)
