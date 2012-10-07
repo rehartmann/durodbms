@@ -571,28 +571,6 @@ group_node_expr(RDB_parse_node *argnodep,
     return rexp;
 }
 
-#ifdef UNUSED
-/*
- * Replace occurrences of variable names by corresponding expression
- */
-static int
-resolve_exprnames(RDB_expression **expp, RDB_parse_node *nameintrop,
-        RDB_exec_context *ecp, RDB_transaction *txp) {
-    for(;;) {
-        int ret = RDB_expr_resolve_varname_expr(expp,
-                RDB_expr_var_name(nameintrop->val.children.firstp->exp),
-                RDB_parse_node_expr(nameintrop->val.children.firstp->nextp->nextp, ecp, txp),
-                ecp);
-        if (ret != RDB_OK)
-            return ret;
-        if (nameintrop->nextp == NULL)
-            break;
-        nameintrop = nameintrop->nextp->nextp;
-    }
-    return RDB_OK;
-}
-#endif
-
 static RDB_expression *
 with_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *txp)
 {

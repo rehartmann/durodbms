@@ -46,9 +46,13 @@ struct RDB_expression {
             RDB_expr_list args;
             char *name;
             struct {
-                int objpc;
+                int objc;
 
-                /* The following fields are only valid if objpc > 0 */
+                /* The following fields are only valid if objc > 0 */
+
+                /* Optionally stores the values in objpv */
+                RDB_object *objv;
+
                 RDB_object **objpv;
                 RDB_bool asc;
                 RDB_bool all_eq;
@@ -56,7 +60,7 @@ struct RDB_expression {
             } optinfo;
         } op;
     } def;
-    
+
     /*
      * The expression type. NULL if the type has not been determined.
      * If typ is non-scalar, it is destroyed by RDB_drop_expr().

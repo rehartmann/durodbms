@@ -633,13 +633,13 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
         }
     }
 
-    if (texp->def.op.optinfo.objpc != refexp->def.tbref.indexp->attrc
+    if (texp->def.op.optinfo.objc != refexp->def.tbref.indexp->attrc
             || !texp->def.op.optinfo.all_eq)
         flags = RDB_REC_RANGE;
     else
         flags = 0;
 
-    ret = RDB_cursor_seek(curp, texp->def.op.optinfo.objpc, fv, flags);
+    ret = RDB_cursor_seek(curp, texp->def.op.optinfo.objc, fv, flags);
     if (ret == DB_NOTFOUND) {
         rcount = 0;
         goto cleanup;
@@ -720,7 +720,7 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
             }
             rcount++;
         }
-        if (texp->def.op.optinfo.objpc == refexp->def.tbref.indexp->attrc
+        if (texp->def.op.optinfo.objc == refexp->def.tbref.indexp->attrc
                 && texp->def.op.optinfo.all_eq) {
             flags = RDB_REC_DUP;
         } else {
@@ -862,14 +862,14 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
         }
     }
 
-    if (texp->def.op.optinfo.objpc != refexp->def.tbref.indexp->attrc
+    if (texp->def.op.optinfo.objc != refexp->def.tbref.indexp->attrc
             || !texp->def.op.optinfo.all_eq)
         flags = RDB_REC_RANGE;
     else
         flags = 0;
 
     /* Set cursor position */
-    ret = RDB_cursor_seek(curp, texp->def.op.optinfo.objpc, fv, flags);
+    ret = RDB_cursor_seek(curp, texp->def.op.optinfo.objc, fv, flags);
     if (ret == DB_NOTFOUND) {
         rcount = RDB_OK;
         goto cleanup;
@@ -949,7 +949,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
             }
             rcount++;
         }
-        if (texp->def.op.optinfo.objpc == refexp->def.tbref.indexp->attrc
+        if (texp->def.op.optinfo.objc == refexp->def.tbref.indexp->attrc
                 && texp->def.op.optinfo.all_eq)
             flags = RDB_REC_DUP;
         else
@@ -969,7 +969,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
      */
 
     /* Reset cursor */
-    ret = RDB_cursor_seek(curp, texp->def.op.optinfo.objpc, fv, flags);
+    ret = RDB_cursor_seek(curp, texp->def.op.optinfo.objc, fv, flags);
     if (ret == DB_NOTFOUND) {
         ret = RDB_OK;
         goto cleanup;
@@ -1038,7 +1038,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
                 goto cleanup;
             }
         }
-        if (texp->def.op.optinfo.objpc == refexp->def.tbref.indexp->attrc
+        if (texp->def.op.optinfo.objc == refexp->def.tbref.indexp->attrc
                 && texp->def.op.optinfo.all_eq)
             flags = RDB_REC_DUP;
         else

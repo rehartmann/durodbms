@@ -29,7 +29,7 @@ delete_by_uindex(RDB_object *tbp, RDB_object *objpv[], RDB_tbindex *indexp,
         rcount = RDB_ERROR;
         goto cleanup;
     }
-    
+
     for (i = 0; i < keylen; i++) {
         ret = RDB_obj_to_field(&fv[i], objpv[i], ecp);
         if (ret != RDB_OK) {
@@ -257,13 +257,13 @@ delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
         }
     }
 
-    if (texp->def.op.optinfo.objpc != indexp->attrc
+    if (texp->def.op.optinfo.objc != indexp->attrc
             || !texp->def.op.optinfo.all_eq)
         flags = RDB_REC_RANGE;
     else
         flags = 0;
 
-    ret = RDB_cursor_seek(curp, texp->def.op.optinfo.objpc, fv, flags);
+    ret = RDB_cursor_seek(curp, texp->def.op.optinfo.objc, fv, flags);
     if (ret == DB_NOTFOUND) {
         rcount = 0;
         goto cleanup;
@@ -330,7 +330,7 @@ delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
             rcount++;
         }
 
-        if (texp->def.op.optinfo.objpc == indexp->attrc
+        if (texp->def.op.optinfo.objc == indexp->attrc
                 && texp->def.op.optinfo.all_eq)
             flags = RDB_REC_DUP;
         else

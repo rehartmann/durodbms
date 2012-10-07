@@ -428,8 +428,8 @@ split_by_index(RDB_expression *texp, RDB_tbindex *indexp,
         RDB_add_arg(sitexp, texp->def.op.args.firstp);
         RDB_add_arg(sitexp, ixexp);
 
-        assert(sitexp->def.op.optinfo.objpc == 0);
-        sitexp->def.op.optinfo.objpc = objpc;
+        assert(sitexp->def.op.optinfo.objc == 0);
+        sitexp->def.op.optinfo.objc = objpc;
         sitexp->def.op.optinfo.objpv = objpv;
         sitexp->def.op.optinfo.asc = asc;
         sitexp->def.op.optinfo.all_eq = all_eq;
@@ -443,8 +443,8 @@ split_by_index(RDB_expression *texp, RDB_tbindex *indexp,
          */
         texp->def.op.args.firstp->nextp = ixexp;
         ixexp->nextp = NULL;
-        assert(texp->def.op.optinfo.objpc == 0);
-        texp->def.op.optinfo.objpc = objpc;
+        assert(texp->def.op.optinfo.objc == 0);
+        texp->def.op.optinfo.objc = objpc;
         texp->def.op.optinfo.objpv = objpv;
         texp->def.op.optinfo.asc = asc;
         texp->def.op.optinfo.all_eq = all_eq;
@@ -471,7 +471,7 @@ table_cost(RDB_expression *exp)
         case RDB_EX_GET_COMP:
             return 0; /* !! */
         case RDB_EX_RO_OP:
-            ;
+            break;
     }
 
     if (strcmp(exp->def.op.name, "semiminus") == 0)
@@ -491,12 +491,15 @@ table_cost(RDB_expression *exp)
         return table_cost(exp->def.op.args.firstp); /* !! */
 
     if (strcmp(exp->def.op.name, "where") == 0) {
-        if (exp->def.op.optinfo.objpc == 0)
+        if (exp->def.op.optinfo.objc == 0)
             return table_cost(exp->def.op.args.firstp);
         if (exp->def.op.args.firstp->kind == RDB_EX_TBP) {
             indexp = exp->def.op.args.firstp->def.tbref.indexp;
         } else {
             indexp = exp->def.op.args.firstp->def.op.args.firstp->def.tbref.indexp;
+        }
+        if (indexp == NULL) {
+            return table_cost(exp->def.op.args.firstp);
         }
         if (indexp->idxp == NULL)
             return 1;
@@ -754,7 +757,7 @@ mutate_vt(RDB_expression *texp, int nargc, RDB_expression **tbpv, int cap,
                 if (k == j) {
                     RDB_add_arg(nexp, tbpv[i]);
                 } else {
-                    RDB_expression *otexp = dup_expr_deep(argp2, ecp, txp);
+                    RDB_expression *otexp = RDB_dup_expr(argp2, ecp);
                     if (otexp == NULL)
                         return RDB_ERROR;
                     RDB_add_arg(nexp, otexp);
@@ -1038,8 +1041,7 @@ mutate(RDB_expression *exp, RDB_expression **tbpv, int cap,
     if (strcmp(exp->def.op.name, "union") == 0
             || strcmp(exp->def.op.name, "minus") == 0
             || strcmp(exp->def.op.name, "intersect") == 0
-            || strcmp(exp->def.op.name, "semijoin") == 0
-            || strcmp(exp->def.op.name, "join") == 0) {
+            || strcmp(exp->def.op.name, "semijoin") == 0) {
         return mutate_full_vt(exp, tbpv, cap, empty_exp, ecp, txp);
     }
     if (strcmp(exp->def.op.name, "extend") == 0
@@ -1161,16 +1163,70 @@ trace_plan_cost(RDB_expression *exp, int cost, const char *txt,
     }
 }
 
-RDB_expression *
-RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
+/*
+ * Return an optimized version of exp or exp itself, if a cheaper
+ * version could not be found
+ */
+static RDB_expression *
+mutate_select(RDB_expression *exp, int seqitc, const RDB_seq_item seqitv[],
         RDB_expression *empty_exp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
-    RDB_expression *nexp;
     unsigned obestcost, bestcost;
     int bestn;
     int tbc;
     RDB_expression *texpv[tbpv_cap];
+
+    bestcost = sorted_table_cost(exp, seqitc, seqitv);
+
+    trace_plan_cost(exp, bestcost, "plan after transformation", ecp, txp);
+
+    /* Perform rounds of optimization until there is no improvemen */
+    do {
+        obestcost = bestcost;
+
+        trace_plan_cost(exp, obestcost, "original plan", ecp, txp);
+
+        tbc = mutate(exp, texpv, tbpv_cap, empty_exp, ecp, txp);
+        if (tbc < 0)
+            return NULL;
+
+        bestn = -1;
+
+        for (i = 0; i < tbc; i++) {
+            trace_plan_cost(texpv[i], -1, "alternative plan", ecp, txp);
+
+            int cost = sorted_table_cost(texpv[i], seqitc, seqitv);
+
+            trace_plan_cost(texpv[i], cost, "alternative plan", ecp, txp);
+
+            if (cost < bestcost) {
+                bestcost = cost;
+                bestn = i;
+            }
+        }
+        if (bestn == -1) {
+            for (i = 0; i < tbc; i++)
+                RDB_del_expr(texpv[i], ecp);
+        } else {
+            exp = texpv[bestn];
+            for (i = 0; i < tbc; i++) {
+                if (i != bestn)
+                    RDB_del_expr(texpv[i], ecp);
+            }
+        }
+    } while (bestcost < obestcost);
+    trace_plan_cost(exp, bestcost, "winning plan", ecp, txp);
+    exp->optimized = RDB_TRUE;
+    return exp;
+}
+
+RDB_expression *
+RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
+        RDB_expression *empty_exp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_expression *nexp;
+    RDB_expression *optexp;
 
     if (txp != NULL) {
         trace_plan_cost(texp, -1, "plan before transformation", ecp, txp);
@@ -1210,43 +1266,12 @@ RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
      * Try to find cheapest table
      */
 
-    bestcost = sorted_table_cost(nexp, seqitc, seqitv);
+    optexp = mutate_select(nexp, seqitc, seqitv, empty_exp, ecp, txp);
 
-    trace_plan_cost(nexp, bestcost, "plan after transformation", ecp, txp);
+    /* If a better expression has been found, destroy the original one */
+    if (optexp != nexp) {
+        RDB_del_expr(nexp, ecp);
+    }
 
-    do {
-        obestcost = bestcost;
-
-        tbc = mutate(nexp, texpv, tbpv_cap, empty_exp, ecp, txp);
-        if (tbc < 0)
-            return NULL;
-
-        bestn = -1;
-
-        for (i = 0; i < tbc; i++) {
-            int cost = sorted_table_cost(texpv[i], seqitc, seqitv);
-
-            trace_plan_cost(texpv[i], cost, "alternative plan", ecp, txp);
-
-            if (cost < bestcost) {
-                bestcost = cost;
-                bestn = i;
-            }
-        }
-        if (bestn == -1) {
-            for (i = 0; i < tbc; i++)
-                RDB_del_expr(texpv[i], ecp);
-        } else {
-            RDB_del_expr(nexp, ecp);
-            nexp = texpv[bestn];
-            for (i = 0; i < tbc; i++) {
-                if (i != bestn)
-                    RDB_del_expr(texpv[i], ecp);
-            }
-        }
-    } while (bestcost < obestcost);
-    trace_plan_cost(bestn != -1 ? texpv[bestn] : nexp, bestcost, "winning plan",
-            ecp, txp);
-    nexp->optimized = RDB_TRUE;
-    return nexp;
+    return optexp;
 }

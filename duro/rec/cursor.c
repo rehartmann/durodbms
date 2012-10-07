@@ -67,7 +67,7 @@ RDB_index_cursor(RDB_cursor **curpp, RDB_index *idxp, RDB_bool wr,
 {
     int ret;
     RDB_cursor *curp = new_cursor(idxp->rmp, txid, idxp);
-    
+
     if (curp == NULL)
         return ENOMEM;
     ret = idxp->dbp->cursor(idxp->dbp, txid, &curp->cursorp, 0);

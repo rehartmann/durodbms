@@ -18,7 +18,7 @@ test tuple {tuple-valued attributes} -setup $SETUP -body {
     
     # Create Database
     duro::db create $dbenv TEST
-    
+
     set tx [duro::begin $dbenv TEST]
 
     #
@@ -42,7 +42,7 @@ test tuple {tuple-valued attributes} -setup $SETUP -body {
     if {[duro::expr {(TUPLE FROM (T1 {TPATTR})).TPATTR.T.C} $tx] != "Blap"} {
         error "Attribute value should be \"Blap\""
     }
-    
+
     # Update w/ WHERE
     duro::update T1 {SCATTR="Bla"} TPATTR \
             {TUPLE {A 1, B "Blubb", T TUPLE {C "Blop"}}} $tx
@@ -58,7 +58,7 @@ test tuple {tuple-valued attributes} -setup $SETUP -body {
     # Create UNWRAP table
     #
     duro::table expr -global UW {T1 UNWRAP (TPATTR)} $tx
-    
+
     #
     # Test tuple comparison
     #

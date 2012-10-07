@@ -49,7 +49,7 @@ RDB_expr_is_const(const RDB_expression *exp)
 }
 
 /**
- * Replace all occurrences of variable name varname by expression *texp.
+ * Replace all occurrences of variable name varname by a copy of expression *texp.
  * Replacement is performed in-place if possible.
  */
 int
@@ -449,7 +449,8 @@ RDB_ro_op(const char *opname, RDB_exec_context *ecp)
 
     RDB_init_expr_list(&exp->def.op.args);
 
-    exp->def.op.optinfo.objpc = 0;
+    exp->def.op.optinfo.objc = 0;
+    exp->def.op.optinfo.objv = NULL;
 
     return exp;
 }
@@ -590,14 +591,84 @@ RDB_del_expr(RDB_expression *exp, RDB_exec_context *ecp)
     return ret;
 }
 
+static RDB_expression *
+dup_ro_op(const RDB_expression *exp, RDB_exec_context *ecp)
+{
+    RDB_expression *argp;
+    RDB_expression *argdp;
+    RDB_expression *newexp = RDB_ro_op(exp->def.op.name, ecp);
+    if (newexp == NULL)
+        return NULL;
+
+    /*
+     * Duplicate child expressions and append them to new expression
+     */
+    argp = exp->def.op.args.firstp;
+    while (argp != NULL) {
+        argdp = RDB_dup_expr(argp, ecp);
+        if (argdp == NULL)
+            goto error;
+        RDB_add_arg(newexp, argdp);
+        argp = argp->nextp;
+    }
+
+    /*
+     * If the expression is e.g. RELATION {}, duplicate the type if available
+     * because otherwise it would be impossible to determine the type
+     * of the copy.
+     */
+    if (copy_expr_typeinfo_if_needed(newexp, exp, ecp) != RDB_OK) {
+        goto error;
+    }
+
+    if (exp->def.op.optinfo.objc > 0) {
+        int i;
+
+        /*
+         * Copy the values exp->def.op.optinfo.objpv points to
+         * to nexp->def.op.optinfo.objv and initialize
+         * nexp->def.op.optinfo.objpv
+         */
+        newexp->def.op.optinfo.objv = RDB_alloc(exp->def.op.optinfo.objc
+                * sizeof(RDB_object), ecp);
+        if (newexp->def.op.optinfo.objv == NULL) {
+            goto error;
+        }
+        newexp->def.op.optinfo.objpv = RDB_alloc(exp->def.op.optinfo.objc
+                * sizeof(RDB_object *), ecp);
+        if (newexp->def.op.optinfo.objpv == NULL) {
+            goto error;
+        }
+        newexp->def.op.optinfo.objc = exp->def.op.optinfo.objc;
+        for (i = 0; i < exp->def.op.optinfo.objc; i++) {
+            RDB_init_obj(&newexp->def.op.optinfo.objv[i]);
+        }
+        for (i = 0; i < exp->def.op.optinfo.objc; i++) {
+            if (RDB_copy_obj(&newexp->def.op.optinfo.objv[i],
+                    exp->def.op.optinfo.objpv[i], ecp) != RDB_OK) {
+                goto error;
+            }
+            newexp->def.op.optinfo.objv[i].store_typ =
+                    exp->def.op.optinfo.objpv[i]->store_typ;
+
+            newexp->def.op.optinfo.objpv[i] = &newexp->def.op.optinfo.objv[i];
+        }
+    }
+
+    return newexp;
+
+error:
+    RDB_del_expr(newexp, ecp);
+    return NULL;
+}
+
 /**
- * Return a deep copy of an expression.
+ * Return a copy of an expression, copying child expressions.
  */
 RDB_expression *
 RDB_dup_expr(const RDB_expression *exp, RDB_exec_context *ecp)
 {
     RDB_expression *newexp;
-    RDB_expression *argp;
 
     switch (exp->kind) {
         case RDB_EX_TUPLE_ATTR:
@@ -611,41 +682,15 @@ RDB_dup_expr(const RDB_expression *exp, RDB_exec_context *ecp)
                 return NULL;
             return RDB_expr_comp(newexp, exp->def.op.name, ecp);
         case RDB_EX_RO_OP:
-        {
-            RDB_expression *argdp;
-
-            newexp = RDB_ro_op(exp->def.op.name, ecp);
-            if (newexp == NULL)
-                return NULL;
-
-            /*
-             * Duplicate child expressions and append them to new expression
-             */
-            argp = exp->def.op.args.firstp;
-            while (argp != NULL) {
-                argdp = RDB_dup_expr(argp, ecp);
-                if (argdp == NULL)
-                    return NULL;
-                RDB_add_arg(newexp, argdp);
-                argp = argp->nextp;
-            }
-
-            /*
-             * If the expression is e.g. RELATION {}, duplicate the type if available
-             * because otherwise it would be impossible to determine the type
-             * of the copy.
-             */
-            if (copy_expr_typeinfo_if_needed(newexp, exp, ecp) != RDB_OK) {
-                RDB_del_expr(newexp, ecp);
-                return NULL;
-            }
-
-            return newexp;
-        }
+            return dup_ro_op(exp, ecp);
         case RDB_EX_OBJ:
             return RDB_obj_to_expr(&exp->def.obj, ecp);
         case RDB_EX_TBP:
-            return RDB_table_ref(exp->def.tbref.tbp, ecp);
+            newexp = RDB_table_ref(exp->def.tbref.tbp, ecp);
+            if (newexp == NULL)
+                return NULL;
+            newexp->def.tbref.indexp = exp->def.tbref.indexp;
+            return newexp;
         case RDB_EX_VAR:
             return RDB_var_ref(exp->def.varname, ecp);
     }
@@ -795,8 +840,15 @@ RDB_destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
             break;
         case RDB_EX_RO_OP:
             RDB_free(exp->def.op.name);
-            if (exp->def.op.optinfo.objpc > 0)
+            if (exp->def.op.optinfo.objc > 0) {
                 RDB_free(exp->def.op.optinfo.objpv);
+                if (exp->def.op.optinfo.objv != NULL) {
+                    int i;
+                    for (i = 0; i < exp->def.op.optinfo.objc; i++)
+                        RDB_destroy_obj(&exp->def.op.optinfo.objv[i], ecp);
+                    RDB_free(exp->def.op.optinfo.objv);
+                }
+            }
             break;
         case RDB_EX_VAR:
             RDB_free(exp->def.varname);

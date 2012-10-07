@@ -453,12 +453,7 @@ static int
 append_table_def(RDB_object *objp, const RDB_object *tbp, RDB_environment *envp,
         RDB_exec_context *ecp, RDB_transaction *txp, int options)
 {
-    RDB_expression *exp;
-    if (RDB_table_name(tbp) != NULL) {
-        return RDB_append_string(objp, RDB_table_name(tbp), ecp);
-    }
-
-    exp = RDB_vtable_expr(tbp);
+    RDB_expression *exp = RDB_vtable_expr(tbp);
     if (exp == NULL) {
         return append_table_val(objp, tbp, envp, ecp, txp);
     }

@@ -8,7 +8,6 @@
  */
 
 #include <rel/rdb.h>
-/* #include <rel/internal.h> */
 #include "parse.h"
 #include "iinterp.h"
 
@@ -108,7 +107,7 @@ main(int argc, char *argv[])
     }
 
     if (envname != NULL) {
-        ret = RDB_open_env(envname, &envp, 0);
+        ret = RDB_open_env(envname, &envp, RDB_CREATE);
         if (ret != RDB_OK) {
             fprintf(stderr, "unable to open environment %s: %s\n", envname,
                 db_strerror(errno));

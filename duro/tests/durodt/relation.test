@@ -142,6 +142,37 @@ FALSE
 2
 }
 
+test tupleattr {tuple-valued attributes}  -setup $SETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+        var tr real rel{no int, tp tup{n int, s string}} key{no};
+        insert tr tup{no 1, tp tup{n 10, s 'one'}};
+
+        commit;
+    }
+    # Test with new interpreter instance
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+
+        -- test tuple comparison in WHERE
+        var t tup same_heading_as(tr);
+        t := tuple from tr where no = 1 and tp = tup{n 10, s 'one'};
+        put(t.no); put_line('');
+        put(t.tp.n); put_line('');
+        put(t.tp.s); put_line('');
+        commit;
+    }
+} -result {1
+10
+one
+}
+
 test updop {user defined update operators} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
