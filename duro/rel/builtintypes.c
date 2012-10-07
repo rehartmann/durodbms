@@ -41,7 +41,7 @@ TYPE not_found_error POSSREP { msg string };
 
 TYPE operator_not_found_error POSSREP { msg string };
 
-TYPE rdb_name_error POSSREP { msg string };
+TYPE name_error POSSREP { msg string };
 
 TYPE element_exists_error POSSREP { msg string };
 
