@@ -656,6 +656,14 @@ OPERATOR summarize(R1 <em>RELATION</em>, R2 <em>RELATION</em>, EXPR <em>ANY</em>
 
 <hr>
 
+<h3 id="op_tclose">OPERATOR tclose</h3>
+
+OPERATOR tclose(R <em>RELATION</em>) RETURNS <em>RELATION</em>;
+
+The transitive closure operator.
+
+<hr>
+
 <h3 id="op_where">OPERATOR where</h3>
 
 OPERATOR where(R <em>RELATION</em>, B boolean) RETURNS <em>RELATION</em>;
