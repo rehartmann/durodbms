@@ -205,9 +205,9 @@ RDB_cursor_first(RDB_cursor *curp)
 
 /*
  * Move the cursor to the next record.
- * If the cursor is at the end, RDB_NOT_FOUND is returned.
- * If flags is RDB_REC_DUP, return RDB_NOT_FOUND if the next
-  * record has a different key.
+ * If the cursor is at the end, DB_NOTFOUND is returned.
+ * If flags is RDB_REC_DUP, return DB_NOTFOUND if the next
+ * record has a different key.
  */
 int
 RDB_cursor_next(RDB_cursor *curp, int flags)
