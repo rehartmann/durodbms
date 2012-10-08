@@ -792,7 +792,7 @@ exec_while(RDB_parse_node *nodep, RDB_parse_node *labelp, RDB_exec_context *ecp,
                 }
             }
             Duro_remove_varmap();
-            return ret;
+            break;
         }
         Duro_remove_varmap();
 
@@ -806,6 +806,7 @@ exec_while(RDB_parse_node *nodep, RDB_parse_node *labelp, RDB_exec_context *ecp,
             return RDB_ERROR;
         }
     }
+    return ret;
 }
 
 static int

@@ -134,13 +134,14 @@ RDB_parse_node_var_name_idx(const RDB_parse_node *nodep, const char *namep)
         return -1;
     for(;;) {
         if (strcmp(RDB_expr_var_name(nodep->exp), namep) == 0)
-            return idx;
+            break;
         idx++;
         nodep = nodep->nextp;
         if (nodep == NULL)
             return -1;
         nodep = nodep->nextp;
     }
+    return idx;
 }
 
 /*
