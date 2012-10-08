@@ -99,23 +99,31 @@ proc add_db {newdb} {
 proc open_env_path {envpath} {
     if {[catch {
         set ::dbenv [duro::env open $envpath]
-        duro::env seterrfile $::dbenv $::errfile
-        .mbar.file entryconfigure Close* -state normal
-
-        # Get databases
-        set dbs [duro::env dbs $::dbenv]
     } msg]} {
-        tk_messageBox -type ok -title "Error" -message $msg -icon error
-        set ::dbenv ""
-        return
+        if {[tk_messageBox -type retrycancel -title "Error" \
+                -message "$msg - retry with create/recover?" -icon error] \
+                == {cancel}} {
+            set ::dbenv ""
+            return
+        }
+        if {[catch {
+            set ::dbenv [duro::env open -create $envpath]
+        } msg]} {
+            tk_messageBox -type ok -title "Error" -message $msg -icon error
+            set ::dbenv ""
+            return
+        }
     }
+    duro::env seterrfile $::dbenv $::errfile
+    .mbar.file entryconfigure Close* -state normal
+
+    # Get databases
+    set dbs [duro::env dbs $::dbenv]
     wm title . "[file tail $envpath] - Duroadmin"
 
     # Add new entries
     foreach i $dbs {
-        if {$i != "SYS_DB"} {
-            add_db $i
-        }
+        add_db $i
     }
 
     # Activate first DB
