@@ -810,6 +810,10 @@ parse_heading(RDB_parse_node *nodep, RDB_bool rel, RDB_exec_context *ecp,
             return NULL;
 
         for (i = 0; i < attrc; i++) {
+            attrv[i].typ = NULL;
+        }
+
+        for (i = 0; i < attrc; i++) {
             exp = RDB_parse_node_expr(np, ecp, txp);
             if (exp == NULL)
                 goto cleanup;
