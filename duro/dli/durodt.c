@@ -31,7 +31,8 @@ usage_error(void)
 }
 
 static void
-handle_sigint(int sig) {
+handle_sigint(int sig)
+{
     Duro_dt_interrupt();
 }
 
@@ -49,6 +50,43 @@ read_line_interactive(void)
         add_history(line);
 
     return line;
+}
+
+char *
+generator(const char *text, int state)
+{
+    static int idx;
+    static size_t len;
+    int tok;
+    const char *name;
+
+    if (state == 0) {
+        /* Initialize */
+        idx = 0;
+        len = strlen(text);
+    }
+
+    /* Return next matching keyword or NULL if there is none */
+    while ((tok = RDB_parse_tokens[idx++]) != -1) {
+        name = RDB_token_name(tok);
+        if (strncasecmp(name, text, len) == 0)
+            return strdup(name);
+        /*
+         * Tokens are in sorted order, so there will be no matching
+         * tokens after a token that does not match.
+         * So return NULL if it's not the first call.
+         */
+        if (state != 0)
+            return NULL;
+    }
+    return NULL;
+}
+
+static char **
+completion(const char *text, int start, int end)
+{
+    rl_attempted_completion_over = 1;
+    return rl_completion_matches(text, generator);
 }
 
 int
@@ -116,6 +154,8 @@ main(int argc, char *argv[])
     } else {
         envp = NULL;
     }
+
+    rl_attempted_completion_function = completion;
 
     RDB_parse_set_readline_fn(&read_line_interactive);
 

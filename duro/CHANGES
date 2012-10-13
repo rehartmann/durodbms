@@ -8,7 +8,7 @@ Changes for Duro 0.16
 
 - Duro D/T: DEFAULT, FOREACH loop, INDEX, DROP INDEX, EXPLAIN
 
-- Duro D/T now uses GNU readline.
+- Duro D/T now uses GNU readline, providing keyword completion.
 
 - Added TCLOSE, MATCHING, NOT MATCHING
 

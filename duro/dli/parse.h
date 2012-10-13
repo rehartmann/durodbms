@@ -12,8 +12,13 @@
 #include <rel/rdb.h>
 #include "parsenode.h"
 
+extern int RDB_parse_tokens[];
+
 void
 RDB_parse_init_buf(FILE *);
+
+void
+RDB_parse_destroy_buf(void);
 
 RDB_expression *
 RDB_parse_node_expr(RDB_parse_node *, RDB_exec_context *, RDB_transaction *);

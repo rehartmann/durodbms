@@ -77,20 +77,6 @@ process_escapes(char *txt)
     }
 }
 
-/*
- * Used in interactive mode to start with an empty buffer
- */
-void
-RDB_parse_init_buf(FILE *f)
-{
-    if (RDB_parse_interactive)
-	    RDB_parse_buffer = yy_scan_string("");
-	else {
-		RDB_parse_buffer = yy_create_buffer(f, YY_BUF_SIZE);
-		yy_switch_to_buffer(RDB_parse_buffer);
-	}
-}
-
 void
 RDB_parse_start_exp(void)
 {
@@ -103,6 +89,13 @@ RDB_parse_start_stmt(void)
     RDB_parse_start_token = TOK_START_STMT;
 }
 
+static int create_token(int tok)
+{
+    yylval = RDB_new_parse_token(tok, whitecommp, RDB_parse_ecp);
+    whitecommp = NULL;
+    return tok;
+}
+
 %}
 
 %%
@@ -113,6 +106,7 @@ if (RDB_parse_start_token != 0)
 {
     int t = RDB_parse_start_token;
     RDB_parse_start_token = 0;
+    yylval = NULL; /* Otherwise the %destructor would try to destroy it */
     return t;
 }
 
@@ -121,273 +115,183 @@ yylloc.first_line = yylloc.last_line = yylineno;
 %}
 
 WHERE {
-    yylval = RDB_new_parse_token(TOK_WHERE, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_WHERE;
+    return create_token(TOK_WHERE);
 }
 
 UNION {
-    yylval = RDB_new_parse_token(TOK_UNION, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_UNION;
+    return create_token(TOK_UNION);
 }
 
 INTERSECT {
-    yylval = RDB_new_parse_token(TOK_INTERSECT, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_INTERSECT;
+    return create_token(TOK_INTERSECT);
 }
 
 MINUS {
-    yylval = RDB_new_parse_token(TOK_MINUS, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_MINUS;
+    return create_token(TOK_MINUS);
 }
 
 SEMIMINUS {
-    yylval = RDB_new_parse_token(TOK_SEMIMINUS, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_SEMIMINUS;
+    return create_token(TOK_SEMIMINUS);
 }
 
 SEMIJOIN {
-    yylval = RDB_new_parse_token(TOK_SEMIJOIN, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_SEMIJOIN;
+    return create_token(TOK_SEMIJOIN);
 }
 
 MATCHING {
-    yylval = RDB_new_parse_token(TOK_MATCHING, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_MATCHING;
+    return create_token(TOK_MATCHING);
 }
 
 JOIN {
-    yylval = RDB_new_parse_token(TOK_JOIN, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_JOIN;
+    return create_token(TOK_JOIN);
 }
 
 WRAP {
-    yylval = RDB_new_parse_token(TOK_WRAP, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_WRAP;
+    return create_token(TOK_WRAP);
 }
 
 UNWRAP {
-    yylval = RDB_new_parse_token(TOK_UNWRAP, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_UNWRAP;
+    return create_token(TOK_UNWRAP);
 }
 
 GROUP {
-    yylval = RDB_new_parse_token(TOK_GROUP, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_GROUP;
+    return create_token(TOK_GROUP);
 }
 
 UNGROUP {
-    yylval = RDB_new_parse_token(TOK_UNGROUP, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_UNGROUP;
+    return create_token(TOK_UNGROUP);
 }
 
 FROM {
-    yylval = RDB_new_parse_token(TOK_FROM, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_FROM;
+    return create_token(TOK_FROM);
 }
 
 TUPLE {
-    yylval = RDB_new_parse_token(TOK_TUPLE, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_TUPLE;
+    return create_token(TOK_TUPLE);
 }
 
 TUP {
-    yylval = RDB_new_parse_token(TOK_TUPLE, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_TUPLE;
+    return create_token(TOK_TUPLE);
 }
 
 RELATION {
-    yylval = RDB_new_parse_token(TOK_RELATION, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_RELATION;
+    return create_token(TOK_RELATION);
 }
 
 REL {
-    yylval = RDB_new_parse_token(TOK_RELATION, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_RELATION;
+    return create_token(TOK_RELATION);
 }
 
 ARRAY {
-    yylval = RDB_new_parse_token(TOK_ARRAY, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_ARRAY;
+    return create_token(TOK_ARRAY);
 }
 
 BUT {
-    yylval = RDB_new_parse_token(TOK_BUT, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_BUT;
+    return create_token(TOK_BUT);
 }
 
 AS {
-    yylval = RDB_new_parse_token(TOK_AS, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_AS;
+    return create_token(TOK_AS);
 }
 
 EXTEND {
-    yylval = RDB_new_parse_token(TOK_EXTEND, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_EXTEND;
+    return create_token(TOK_EXTEND);
 }
 
 RENAME {
-    yylval = RDB_new_parse_token(TOK_RENAME, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_RENAME;
+    return create_token(TOK_RENAME);
 }
 
 SUMMARIZE {
-    yylval = RDB_new_parse_token(TOK_SUMMARIZE, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_SUMMARIZE;
+    return create_token(TOK_SUMMARIZE);
 }
 
 DIVIDEBY {
-    yylval = RDB_new_parse_token(TOK_DIVIDEBY, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_DIVIDEBY;
+    return create_token(TOK_DIVIDEBY);
 }
 
 PER {
-    yylval = RDB_new_parse_token(TOK_PER, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_PER;
+    return create_token(TOK_PER);
 }
 
 ADD {
-    yylval = RDB_new_parse_token(TOK_ADD, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_ADD;
+    return create_token(TOK_ADD);
 }
 
 MATCHES {
-    yylval = RDB_new_parse_token(TOK_MATCHES, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_MATCHES;
+    return create_token(TOK_MATCHES);
 }
 
 IN {
-    yylval = RDB_new_parse_token(TOK_IN, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_IN;
+    return create_token(TOK_IN);
 }
 
 SUBSET_OF {
-    yylval = RDB_new_parse_token(TOK_SUBSET_OF, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_SUBSET_OF;
+    return create_token(TOK_SUBSET_OF);
 }
 
 OR {
-    yylval = RDB_new_parse_token(TOK_OR, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_OR;
+    return create_token(TOK_OR);
 }
 
 AND {
-    yylval = RDB_new_parse_token(TOK_AND, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_AND;
+    return create_token(TOK_AND);
 }
 
 XOR {
-    yylval = RDB_new_parse_token(TOK_XOR, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_XOR;
+    return create_token(TOK_XOR);
 }
 
 NOT {
-    yylval = RDB_new_parse_token(TOK_NOT, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_NOT;
+    return create_token(TOK_NOT);
 }
 
 IF {
-    yylval = RDB_new_parse_token(TOK_IF, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_IF;
+    return create_token(TOK_IF);
 }
 
 THEN {
-    yylval = RDB_new_parse_token(TOK_THEN, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_THEN;
+    return create_token(TOK_THEN);
 }
 
 ELSE {
-    yylval = RDB_new_parse_token(TOK_ELSE, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_ELSE;
+    return create_token(TOK_ELSE);
 }
 
 END {
-    yylval = RDB_new_parse_token(TOK_END, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_END;
+    return create_token(TOK_END);
 }
 
 CASE {
-    yylval = RDB_new_parse_token(TOK_CASE, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_CASE;
+    return create_token(TOK_CASE);
 }
 
 WHEN {
-    yylval = RDB_new_parse_token(TOK_WHEN, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_WHEN;
+    return create_token(TOK_WHEN);
 }
 
 FOR {
-    yylval = RDB_new_parse_token(TOK_FOR, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_FOR;
+    return create_token(TOK_FOR);
 }
 
 FOREACH {
-    yylval = RDB_new_parse_token(TOK_FOREACH, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_FOREACH;
+    return create_token(TOK_FOREACH);
 }
 
 DO {
-    yylval = RDB_new_parse_token(TOK_FOR, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_FOR;
+    return create_token(TOK_FOR);
 }
 
 TO {
-    yylval = RDB_new_parse_token(TOK_TO, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_TO;
+    return create_token(TOK_TO);
 }
 
 WHILE {
-    yylval = RDB_new_parse_token(TOK_WHILE, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_WHILE;
+    return create_token(TOK_WHILE);
 }
 
 LEAVE {
-    yylval = RDB_new_parse_token(TOK_LEAVE, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_LEAVE;
+    return create_token(TOK_LEAVE);
 }
 
 TRUE {
@@ -405,309 +309,207 @@ FALSE {
 }
 
 COUNT {
-    yylval = RDB_new_parse_token(TOK_COUNT, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_COUNT;
+    return create_token(TOK_COUNT);
 }
 
 SUM {
-    yylval = RDB_new_parse_token(TOK_SUM, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_SUM;
+    return create_token(TOK_SUM);
 }
 
 AVG {
-    yylval = RDB_new_parse_token(TOK_AVG, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_AVG;
+    return create_token(TOK_AVG);
 }
 
 MAX {
-    yylval = RDB_new_parse_token(TOK_MAX, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_MAX;
+    return create_token(TOK_MAX);
 }
 
 MIN {
-    yylval = RDB_new_parse_token(TOK_MIN, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_MIN;
+    return create_token(TOK_MIN);
 }
 
 ALL {
-    yylval = RDB_new_parse_token(TOK_ALL, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_ALL;
+    return create_token(TOK_ALL);
 }
 
 ANY {
-    yylval = RDB_new_parse_token(TOK_ANY, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_ANY;
+    return create_token(TOK_ANY);
 }
 
 SAME_TYPE_AS {
-    yylval = RDB_new_parse_token(TOK_SAME_TYPE_AS, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-	return TOK_SAME_TYPE_AS;
+    return create_token(TOK_SAME_TYPE_AS);
 }
 
 SAME_HEADING_AS {
-    yylval = RDB_new_parse_token(TOK_SAME_HEADING_AS, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-	return TOK_SAME_HEADING_AS;
+    return create_token(TOK_SAME_HEADING_AS);
 }
 
 TABLE_DEE {
-    yylval = RDB_new_parse_token(TOK_TABLE_DEE, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_TABLE_DEE;
+    return create_token(TOK_TABLE_DEE);
 }
 
 DEE {
-    yylval = RDB_new_parse_token(TOK_TABLE_DEE, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_TABLE_DEE;
+    return create_token(TOK_TABLE_DEE);
 }
 
 TABLE_DUM {
-    yylval = RDB_new_parse_token(TOK_TABLE_DUM, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_TABLE_DUM;
+    return create_token(TOK_TABLE_DUM);
 }
 
 DUM {
-    yylval = RDB_new_parse_token(TOK_TABLE_DUM, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_TABLE_DUM;
+    return create_token(TOK_TABLE_DUM);
 }
 
 VAR {
-    yylval = RDB_new_parse_token(TOK_VAR, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_VAR;
+    return create_token(TOK_VAR);
 }
 
 DROP {
-    yylval = RDB_new_parse_token(TOK_DROP, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_DROP;
+    return create_token(TOK_DROP);
 }
 
 REAL {
-    yylval = RDB_new_parse_token(TOK_REAL, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_REAL;
+    return create_token(TOK_REAL);
 }
 
 PRIVATE {
-    yylval = RDB_new_parse_token(TOK_PRIVATE, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_PRIVATE;
+    return create_token(TOK_PRIVATE);
 }
 
 BASE {
-    yylval = RDB_new_parse_token(TOK_REAL, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_REAL;
+    return create_token(TOK_REAL);
 }
 
 VIRTUAL {
-    yylval = RDB_new_parse_token(TOK_VIRTUAL, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_VIRTUAL;
+    return create_token(TOK_VIRTUAL);
 }
 
 KEY {
-    yylval = RDB_new_parse_token(TOK_KEY, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_KEY;
+    return create_token(TOK_KEY);
 }
 
 DEFAULT {
-    yylval = RDB_new_parse_token(TOK_DEFAULT, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_DEFAULT;
+    return create_token(TOK_DEFAULT);
 }
 
 INIT {
-    yylval = RDB_new_parse_token(TOK_INIT, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_INIT;
+    return create_token(TOK_INIT);
 }
 
 BEGIN {
-    yylval = RDB_new_parse_token(TOK_BEGIN, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_BEGIN;
+    return create_token(TOK_BEGIN);
 }
 
 TRANSACTION {
-    yylval = RDB_new_parse_token(TOK_TX, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_TX;
+    return create_token(TOK_TX);
 }
 
 TX {
-    yylval = RDB_new_parse_token(TOK_TX, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_TX;
+    return create_token(TOK_TX);
 }
 
 COMMIT {
-    yylval = RDB_new_parse_token(TOK_COMMIT, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_COMMIT;
+    return create_token(TOK_COMMIT);
 }
 
 ROLLBACK {
-    yylval = RDB_new_parse_token(TOK_ROLLBACK, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_ROLLBACK;
+    return create_token(TOK_ROLLBACK);
 }
 
 INSERT {
-    yylval = RDB_new_parse_token(TOK_INSERT, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_INSERT;
+    return create_token(TOK_INSERT);
 }
 
 DELETE {
-    yylval = RDB_new_parse_token(TOK_DELETE, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_DELETE;
+    return create_token(TOK_DELETE);
 }
 
 UPDATE {
-    yylval = RDB_new_parse_token(TOK_UPDATE, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_UPDATE;
+    return create_token(TOK_UPDATE);
 }
 
 CALL {
-    yylval = RDB_new_parse_token(TOK_CALL, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_CALL;
+    return create_token(TOK_CALL);
 }
 
 TYPE {
-    yylval = RDB_new_parse_token(TOK_TYPE, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-	return TOK_TYPE;
+    return create_token(TOK_TYPE);
 }
 
 POSSREP {
-    yylval = RDB_new_parse_token(TOK_POSSREP, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_POSSREP;
+    return create_token(TOK_POSSREP);
 }
 
 CONSTRAINT {
-    yylval = RDB_new_parse_token(TOK_CONSTRAINT, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_CONSTRAINT;
+    return create_token(TOK_CONSTRAINT);
 }
 
 OPERATOR {
-    yylval = RDB_new_parse_token(TOK_OPERATOR, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_OPERATOR;
+    return create_token(TOK_OPERATOR);
 }
 
 RETURNS {
-    yylval = RDB_new_parse_token(TOK_RETURNS, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_RETURNS;
+    return create_token(TOK_RETURNS);
 }
 
 UPDATES {
-    yylval = RDB_new_parse_token(TOK_UPDATES, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_UPDATES;
+    return create_token(TOK_UPDATES);
 }
 
 RETURN {
-    yylval = RDB_new_parse_token(TOK_RETURN, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_RETURN;
+    return create_token(TOK_RETURN);
 }
 
 LOAD {
-    yylval = RDB_new_parse_token(TOK_LOAD, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_LOAD;
+    return create_token(TOK_LOAD);
 }
 
 ORDER {
-    yylval = RDB_new_parse_token(TOK_ORDER, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_ORDER;
+    return create_token(TOK_ORDER);
 }
 
 ASC {
-    yylval = RDB_new_parse_token(TOK_ASC, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_ASC;
+    return create_token(TOK_ASC);
 }
 
 DESC {
-    yylval = RDB_new_parse_token(TOK_DESC, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_DESC;
+    return create_token(TOK_DESC);
 }
 
 WITH {
-    yylval = RDB_new_parse_token(TOK_WITH, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_WITH;
+    return create_token(TOK_WITH);
 }
 
 TRY {
-    yylval = RDB_new_parse_token(TOK_TRY, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_TRY;
+    return create_token(TOK_TRY);
 }
 
 CATCH {
-    yylval = RDB_new_parse_token(TOK_CATCH, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_CATCH;
+    return create_token(TOK_CATCH);
 }
 
 RAISE {
-    yylval = RDB_new_parse_token(TOK_RAISE, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_RAISE;
+    return create_token(TOK_RAISE);
 }
 
 IMPLEMENT {
-    yylval = RDB_new_parse_token(TOK_IMPLEMENT, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_IMPLEMENT;
+    return create_token(TOK_IMPLEMENT);
 }
 
 INDEX {
-    yylval = RDB_new_parse_token(TOK_INDEX, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_INDEX;
+    return create_token(TOK_INDEX);
 }
 
 ORDERED {
-    yylval = RDB_new_parse_token(TOK_ORDERED, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_ORDERED;
+    return create_token(TOK_ORDERED);
 }
 
 EXPLAIN {
-    yylval = RDB_new_parse_token(TOK_EXPLAIN, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_EXPLAIN;
+    return create_token(TOK_EXPLAIN);
 } 
 
 \|\| {
-    yylval = RDB_new_parse_token(TOK_CONCAT, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return TOK_CONCAT;
+    return create_token(TOK_CONCAT);
 }
 
 [a-zA-Z][a-zA-Z0-9_#]* {
@@ -967,21 +769,48 @@ EXPLAIN {
 %%
 
 void
-RDB_parse_set_readline_fn(RDB_readline_fn *fnp) {
+RDB_parse_set_readline_fn(RDB_readline_fn *fnp)
+{
     RDB_parse_readline_fnp = fnp;
 }
 
 RDB_bool
-RDB_parse_get_interactive(void) {
+RDB_parse_get_interactive(void)
+{
     return (RDB_bool) (RDB_parse_interactive != 0);
 }
 
 void
-RDB_parse_set_interactive(RDB_bool ia) {
+RDB_parse_set_interactive(RDB_bool ia)
+{
     RDB_parse_interactive = (int) ia;
 }
 
 void
-RDB_parse_set_case_insensitive(RDB_bool is) {
+RDB_parse_set_case_insensitive(RDB_bool is)
+{
     RDB_parse_case_insensitive = (int) is;
+}
+
+/*
+ * Used in interactive mode to start with an empty buffer
+ */
+void
+RDB_parse_init_buf(FILE *f)
+{
+    if (RDB_parse_interactive)
+	    RDB_parse_buffer = yy_scan_string("");
+	else {
+		RDB_parse_buffer = yy_create_buffer(f, YY_BUF_SIZE);
+		yy_switch_to_buffer(RDB_parse_buffer);
+	}
+}
+
+/*
+ * Free the flex buffer
+ */
+void
+RDB_parse_destroy_buf(void)
+{
+    yylex_destroy();
 }

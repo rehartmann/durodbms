@@ -510,25 +510,35 @@ exec_call_retry(const RDB_parse_node *nodep, RDB_exec_context *ecp) {
 }
 
 static int
-nodes_to_seqitv(RDB_seq_item *seqitv, RDB_parse_node *nodep, RDB_exec_context *ecp)
+nodes_to_seqitv(RDB_seq_item *seqitv, RDB_parse_node *nodep,
+        RDB_exec_context *ecp)
 {
     RDB_expression *exp;
     int i = 0;
 
-    while (nodep != NULL) {
-        /* Get attribute name */
-        exp = RDB_parse_node_expr(nodep->val.children.firstp, ecp,
-                txnp != NULL ? &txnp->tx : NULL);
-        if (exp == NULL) {
-            return RDB_ERROR;
+    if (nodep != NULL) {
+        for (;;) {
+            /* Get attribute name */
+            exp = RDB_parse_node_expr(nodep->val.children.firstp, ecp,
+                    txnp != NULL ? &txnp->tx : NULL);
+            if (exp == NULL) {
+                return RDB_ERROR;
+            }
+            seqitv[i].attrname = (char *) RDB_expr_var_name(exp);
+
+            /* Get ascending/descending info */
+            seqitv[i].asc = (RDB_bool)
+                    (nodep->val.children.firstp->nextp->val.token == TOK_ASC);
+
+            nodep = nodep->nextp;
+            if (nodep == NULL)
+                break;
+
+            /* Skip comma */
+            nodep = nodep->nextp;
+
+            i++;
         }
-        seqitv[i].attrname = (char *) RDB_expr_var_name(exp);
-
-        /* Get ascending/descending info */
-        seqitv[i].asc = (RDB_bool) (nodep->val.children.firstp->nextp->val.token == TOK_ASC);
-
-        nodep = nodep->nextp;
-        i++;
     }
     return RDB_OK;
 }
@@ -541,6 +551,7 @@ exec_load(RDB_parse_node *nodep, RDB_exec_context *ecp)
     RDB_expression *exp;
     RDB_object *dstp;
     int seqitc;
+    RDB_parse_node *seqitnodep;
     RDB_seq_item *seqitv = NULL;
 
     exp = RDB_parse_node_expr(nodep, ecp, txnp != NULL ? &txnp->tx : NULL);
@@ -554,7 +565,8 @@ exec_load(RDB_parse_node *nodep, RDB_exec_context *ecp)
         goto cleanup;
     }
 
-    exp = RDB_parse_node_expr(nodep->nextp->nextp, ecp, txnp != NULL ? &txnp->tx : NULL);
+    exp = RDB_parse_node_expr(nodep->nextp->nextp, ecp,
+            txnp != NULL ? &txnp->tx : NULL);
     if (exp == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
@@ -566,7 +578,8 @@ exec_load(RDB_parse_node *nodep, RDB_exec_context *ecp)
         goto cleanup;
     }
 
-    seqitc = RDB_parse_nodelist_length(nodep->nextp->nextp->nextp->nextp->nextp);
+    seqitnodep = nodep->nextp->nextp->nextp->nextp->nextp;
+    seqitc = (RDB_parse_nodelist_length(seqitnodep) + 1) / 2;
     if (seqitc > 0) {
         seqitv = RDB_alloc(sizeof(RDB_seq_item) * seqitc, ecp);
         if (seqitv == NULL) {
@@ -574,8 +587,7 @@ exec_load(RDB_parse_node *nodep, RDB_exec_context *ecp)
             goto cleanup;
         }
     }
-    ret = nodes_to_seqitv(seqitv,
-            nodep->nextp->nextp->nextp->nextp->nextp->val.children.firstp, ecp);
+    ret = nodes_to_seqitv(seqitv, seqitnodep->val.children.firstp, ecp);
     if (ret != RDB_OK) {
         goto cleanup;
     }
@@ -909,8 +921,9 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
     RDB_expression *tbexp;
     RDB_type *tbtyp;
     int seqitc;
-    RDB_seq_item *seqitv = NULL;
     foreach_iter it;
+    RDB_parse_node *seqitnodep;
+    RDB_seq_item *seqitv = NULL;
     RDB_transaction *txp = txnp != NULL ? &txnp->tx : NULL;
     const char *varname = RDB_expr_var_name(nodep->exp);
     RDB_object *varp = Duro_lookup_transient_var(varname);
@@ -944,14 +957,15 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
         goto error;
     }
 
-    seqitc = RDB_parse_nodelist_length(nodep->nextp->nextp->nextp->nextp->nextp);
+    seqitnodep = nodep->nextp->nextp->nextp->nextp->nextp;
+    seqitc = (RDB_parse_nodelist_length(seqitnodep) + 1) / 2;
     if (seqitc > 0) {
         seqitv = RDB_alloc(sizeof(RDB_seq_item) * seqitc, ecp);
         if (seqitv == NULL)
             goto error;
     }
-    if (nodes_to_seqitv(seqitv,
-            nodep->nextp->nextp->nextp->nextp->nextp->val.children.firstp, ecp)
+    seqitnodep = nodep->nextp->nextp->nextp->nextp->nextp;
+    if (nodes_to_seqitv(seqitv, seqitnodep->val.children.firstp, ecp)
                     != RDB_OK) {
         goto error;
     }
@@ -2906,17 +2920,21 @@ Duro_dt_execute(RDB_environment *dbenvp, char *dbname, char *infilename,
         goto error;
     }
 
+    /* Initialize error line */
     err_line = -1;
 
-    RDB_parse_set_interactive (
-            (RDB_bool) isatty(fileno(infile != NULL ? infile : stdin)));
-    if (RDB_parse_get_interactive()) {
+    if (isatty(fileno(infile != NULL ? infile : stdin))) {
+        RDB_parse_set_interactive(RDB_TRUE);
+
         /* Prompt is only needed in interactive mode */
         RDB_init_obj(&prompt);
 
         printf("Duro D/T library version %d.%d\n", RDB_major_version(),
                 RDB_minor_version());
+    } else {
+        RDB_parse_set_interactive(RDB_FALSE);
     }
+
     RDB_parse_init_buf(infile != NULL ? infile : stdin);
 
     for(;;) {
@@ -2940,6 +2958,7 @@ Duro_dt_execute(RDB_environment *dbenvp, char *dbname, char *infilename,
                     fclose(infile);
                     infile = NULL;
                 }
+                RDB_parse_destroy_buf();
                 return RDB_OK;
             }
         }
@@ -2949,6 +2968,7 @@ error:
     if (infile != NULL) {
         fclose(infile);
     }
+    RDB_parse_destroy_buf();
     return RDB_ERROR;
 }
 

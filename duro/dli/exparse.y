@@ -174,16 +174,25 @@ yyerror(const char *);
 %left '*' '/'
 %left '.' UPLUS UMINUS '['
 
+%destructor {
+    if ($$ != NULL) {
+	    RDB_parse_del_node($$, RDB_parse_ecp);
+	}
+} <>
+
 %%
 
 start: TOK_START_EXP expression {
+        $$ = $1;
         RDB_parse_resultp = $2;
     }
     | TOK_START_STMT statement {
+        $$ = $1;
         RDB_parse_resultp = $2;
     	YYACCEPT;
     }
     | TOK_START_STMT {
+        $$ = $1;
         RDB_parse_resultp = NULL;
     }
     ;
@@ -201,6 +210,7 @@ statement: assignment ';' {
     | TOK_CALL TOK_ID '(' expression_commalist ')' ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
+            RDB_raise_internal("Test", RDB_parse_ecp);
             RDB_parse_del_node($1, RDB_parse_ecp);
             RDB_parse_del_node($2, RDB_parse_ecp);
             RDB_parse_del_node($3, RDB_parse_ecp);
@@ -1177,11 +1187,11 @@ ne_order_item_commalist: order_item  {
     }
     | ne_order_item_commalist ',' order_item {
         $$ = $1;
+        RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
     }
 
-order_item_commalist: ne_order_item_commalist {
-    }
+order_item_commalist: ne_order_item_commalist
     | /* Empty */ {
         $$ = new_parse_inner();
         if ($$ == NULL) {
@@ -2003,6 +2013,7 @@ expression: expression '{' id_commalist '}' {
     | TOK_TABLE_DEE {
 		RDB_expression *argexp;
         RDB_expression *exp = table_dum_expr();
+		RDB_parse_del_node($1, RDB_parse_ecp);
         if (exp == NULL) {
             YYERROR;
         }
@@ -2026,11 +2037,11 @@ expression: expression '{' id_commalist '}' {
     }
     | TOK_TABLE_DUM {
         RDB_expression *exp = table_dum_expr();
+		RDB_parse_del_node($1, RDB_parse_ecp);
         if (exp == NULL) {
             YYERROR;
         }
         $$ = RDB_new_parse_expr(exp, NULL, RDB_parse_ecp);
-		RDB_parse_del_node($1, RDB_parse_ecp);
         if ($$ == NULL) {
             YYERROR;
         }
