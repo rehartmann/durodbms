@@ -1194,8 +1194,6 @@ mutate_select(RDB_expression *exp, int seqitc, const RDB_seq_item seqitv[],
         bestn = -1;
 
         for (i = 0; i < tbc; i++) {
-            trace_plan_cost(texpv[i], -1, "alternative plan", ecp, txp);
-
             int cost = sorted_table_cost(texpv[i], seqitc, seqitv);
 
             trace_plan_cost(texpv[i], cost, "alternative plan", ecp, txp);

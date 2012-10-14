@@ -4,7 +4,7 @@ set ::SETUP {
     if {$::tcl_platform(platform) == "windows"} {
         load $scriptdir/../durotcl.dll
     } else {
-        load $scriptdir/../libdurotcl.so
+        load [glob $scriptdir/../libdurotcl.so.*]
     }
 
     source $scriptdir/testutil.tcl
@@ -13,4 +13,3 @@ set ::SETUP {
     removeDirectory dbenv
     makeDirectory dbenv
 }
-	

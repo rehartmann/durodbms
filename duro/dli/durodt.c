@@ -19,6 +19,7 @@
 
 #ifdef _WIN32
 #define USE_READLINE_STATIC /* Makes it compile under Windows */
+#define strncasecmp _strnicmp
 #endif
 #include <readline/readline.h>
 #include <readline/history.h>

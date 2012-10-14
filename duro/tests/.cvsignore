@@ -36,3 +36,4 @@ test_defpointtype
 maptest
 test_2db
 test_relation_op
+*.16

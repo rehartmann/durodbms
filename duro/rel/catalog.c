@@ -2017,14 +2017,19 @@ cleanup:
     return ret;
 }
 
+/*
+ * Catalog version. A newer version can open db environments from
+ * old versions only if the catalog version is the same.
+ */
+
 int
-RDB_major_version(void)
+RDB_cat_major_version(void)
 {
     return MAJOR_VERSION;
 }
 
 int
-RDB_minor_version(void)
+RDB_cat_minor_version(void)
 {
     return MINOR_VERSION;
 }

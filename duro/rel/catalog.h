@@ -61,4 +61,10 @@ int
 RDB_cat_create_constraint(const char *name, RDB_expression *exp,
                       RDB_exec_context *, RDB_transaction *);
 
+int
+RDB_cat_major_version(void);
+
+int
+RDB_cat_minor_version(void);
+
 #endif

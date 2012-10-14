@@ -16,12 +16,19 @@ with_durotcl = int(ARGUMENTS.get('with_durotcl', 1))
 
 release = '0.16'
 
-env = Environment(ENV = os.environ)
+env = Environment(ENV = os.environ, tools = ['default','textfile'])
+
+oshlibsuffix = env['SHLIBSUFFIX']
 
 if env['PLATFORM'] == 'win32':
     default_prefix = 'C:'
+    env.Replace(LIBS = ['libdb53', 'ltdl'])
+    durolibs = ['libdb53', 'ltdl', 'regex']
 else:
     default_prefix = '/usr/local'
+    env.Replace(SHLIBSUFFIX = env['SHLIBSUFFIX'] + '.' + release)
+    env.Replace(LIBS = ['db', 'ltdl', 'm'])
+    durolibs = ['db', 'ltdl']
 
 prefix = ARGUMENTS.get('prefix', default_prefix)
 
@@ -30,13 +37,6 @@ installdir = prefix + '/duro.' + release
 env.Replace(CPPPATH = ['.', bdbhome + '/include', '/usr/include/tcl'])
 env.Replace(LIBPATH = ['.', bdbhome + '/lib'])
 env.Replace(RPATH = [installdir + '/lib', bdbhome + '/lib'])
-
-if env['PLATFORM'] == 'win32':
-    env.Replace(LIBS = ['duro', 'libdb53', 'ltdl'])
-    durolibs = ['libdb53', 'ltdl', 'regex']
-else:
-    env.Replace(LIBS = ['duro', 'db', 'ltdl', 'm'])
-    durolibs = ['db', 'ltdl']
 
 if (os.environ.has_key('CFLAGS')):
     env.Replace(CCFLAGS = os.environ['CFLAGS'])
@@ -52,8 +52,11 @@ if env.has_key('YACC'):
     CFile('dli/exparse.c', 'dli/exparse.y', YACCFLAGS = '-d')
     CFile('dli/exlex.c', 'dli/exlex.l', LEXFLAGS = '-i')
 
+env.Textfile(target = 'gen/releaseno.c', source = ['char *RDB_release_number = "' + release + '";', ''])
+
 gensrc = ['gen/hashmap.c', 'gen/hashmapit.c',
-        'gen/strfns.c', 'gen/hashtable.c', 'gen/hashtabit.c']
+        'gen/strfns.c', 'gen/hashtable.c', 'gen/hashtabit.c',
+        'gen/releaseno.c']
 
 recsrc = ['rec/cursor.c', 'rec/env.c', 'rec/index.c', 'rec/recmap.c']
 
@@ -99,14 +102,18 @@ if env['PLATFORM'] == 'win32':
     libdurotcl = env.SharedLibrary('durotcl', durotclsrc + ['durotcl.def'],
             LIBS = libdurotcllibs)
 else:
-    libdurotcl = env.SharedLibrary('durotcl', durotclsrc,
-            LIBS = libdurotcllibs)
+    libdurotcl = env.SharedLibrary('durotcl', [durotclsrc, libduro])
 
 #
 # Interpreter
 #
 
-dli = env.Program('dli/durodt.c', LIBS = env['LIBS'] + ['readline'])
+if env['PLATFORM'] == 'win32':
+    dli = env.Program(['dli/durodt.c'], LIBS = env['LIBS']
+            + ['readline', 'duro'])
+else:
+    dli = env.Program(['dli/durodt.c'], LIBS = env['LIBS']
+            + ['readline', libduro])
 
 #
 # Docs
@@ -132,7 +139,7 @@ if with_durotcl:
 # Tests
 #
 
-testenv = env.Clone(RPATH = [bdbhome + '/lib'])
+testenv = env.Clone(RPATH = [bdbhome + '/lib'], SHLIBSUFFIX = oshlibsuffix)
 
 testsrc = Split('tests/tupletest.c tests/maptest.c '
         'tests/prepare.c tests/test_aggregate.c '
@@ -155,17 +162,27 @@ testlibsrc = ['tests/point.c', 'tests/point.def', 'tests/plus.c',
 
 testbins = []
 for s in testsrc:
-    testbins.append(testenv.Program(s))
-
-testbins.append(testenv.Program('util/lstables.c'))
+    if env['PLATFORM'] == 'win32':
+        testbins.append(testenv.Program(s, LIBS = env['LIBS'] + ['duro']))
+    else:
+        testbins.append(testenv.Program(s, LIBS = env['LIBS'] + libduro))
 
 if env['PLATFORM'] == 'win32':
-    testbins.append(testenv.SharedLibrary(['tests/point.c', 'tests/point.def']))
+    testbins.append(testenv.Program('util/lstables.c',
+            LIBS = env['LIBS'] + ['duro']))
+else:
+    testbins.append(testenv.Program('util/lstables.c',
+            LIBS = env['LIBS'] + libduro))
+
+if env['PLATFORM'] == 'win32':
+    testbins.append(testenv.SharedLibrary(['tests/point.c', 'tests/point.def'],
+            LIBS = env['LIBS'] + ['duro']))
 else:
     testbins.append(testenv.SharedLibrary(['tests/point.c']))
 
 if env['PLATFORM'] == 'win32':
-    testbins.append(testenv.SharedLibrary(['tests/plus.c', 'tests/plus.def']))
+    testbins.append(testenv.SharedLibrary(['tests/plus.c', 'tests/plus.def'],
+            LIBS = env['LIBS'] + ['duro']))
 else:
     testbins.append(testenv.SharedLibrary(['tests/plus.c']))
 
@@ -196,7 +213,7 @@ env.Alias('testbins', testbins)
 #
 
 gen_hdrs = Split('gen/hashmap.h gen/hashmapit.h gen/hashtable.h '
-        'gen/hashtabit.h gen/strfns.h gen/types.h')
+        'gen/hashtabit.h gen/strfns.h gen/types.h gen/releaseno.h')
 rec_hdrs = Split('rec/cursor.h rec/env.h rec/dbdefs.h rec/index.h rec/recmap.h')
 rel_hdrs = Split('rel/rdb.h rel/typeimpl.h')
 rel_ihdrs = Split('rel/catalog.h rel/cat_type.h rel/cat_op.h '
@@ -256,6 +273,13 @@ if env['PLATFORM'] == 'win32':
     env.Install(installdir + '/bin', libduro)
 else:
     env.Install(installdir + '/lib', libduro)
+
+if env['PLATFORM'] != 'win32':
+    def SymLink(target, source, env):
+        os.symlink(os.path.basename(str(source[0])),
+                os.path.abspath(str(target[0])))
+    env.Command(installdir + '/lib/libduro.so',
+            libduro, SymLink)
 
 #
 # Distribution tarfile

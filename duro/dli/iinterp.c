@@ -13,6 +13,7 @@
 #include "ioop.h"
 #include <gen/hashmap.h>
 #include <gen/hashmapit.h>
+#include <gen/releaseno.h>
 #include <rel/tostr.h>
 #include <rel/rdb.h>
 #include <rel/typeimpl.h>
@@ -2929,8 +2930,7 @@ Duro_dt_execute(RDB_environment *dbenvp, char *dbname, char *infilename,
         /* Prompt is only needed in interactive mode */
         RDB_init_obj(&prompt);
 
-        printf("Duro D/T library version %d.%d\n", RDB_major_version(),
-                RDB_minor_version());
+        printf("Duro D/T library version %s\n", RDB_release_number);
     } else {
         RDB_parse_set_interactive(RDB_FALSE);
     }

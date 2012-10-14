@@ -4,3 +4,5 @@ dbenv
 core
 .directory
 *.gz
+*.16
+*.directory

@@ -208,8 +208,6 @@ RDB_init_op_map
 RDB_dup_expr
 RDB_get_op
 RDB_evaluate_bool
-RDB_major_version
-RDB_minor_version
 RDB_parse_del_node
 RDB_parse_init_buf
 Duro_print_error
@@ -241,3 +239,5 @@ RDB_set_op_u_data
 RDB_set_op_cleanup_fn
 RDB_parse_set_readline_fn
 RDB_parse_set_case_insensitive
+RDB_token_name
+RDB_parse_tokens
