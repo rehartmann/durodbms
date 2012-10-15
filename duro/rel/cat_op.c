@@ -14,10 +14,6 @@
 
 #include <string.h>
 
-#ifdef _WIN32
-#define snprintf sprintf_s
-#endif
-
 /*
  * Convert tuple to operator (without return type)
  */
@@ -28,7 +24,6 @@ tuple_to_operator(const char *name, const RDB_object *tplp,
     const char *libname;
     RDB_object *typobjp;
     RDB_operator *op;
-    char buf[64];
     RDB_int argc;
     RDB_type **argtv = NULL;
     RDB_object *typarrp = RDB_tuple_get(tplp, "argtypes");
@@ -62,11 +57,15 @@ tuple_to_operator(const char *name, const RDB_object *tplp,
     libname = RDB_tuple_get_string(tplp, "lib");
     if (libname[0] != '\0') {
         op->modhdl = lt_dlopenext(libname);
+#ifndef _WIN32
         if (op->modhdl == NULL) {
-            /* Try again with library suffix and version number */
+            char buf[64];
+
+            /* Try again with .so suffix and version number */
             snprintf(buf, sizeof(buf), "%s.so.%s", libname, RDB_release_number);
             op->modhdl = lt_dlopen(buf);
         }
+#endif
         if (op->modhdl == NULL) {
             RDB_raise_resource_not_found(libname, ecp);
             goto error;
