@@ -1422,7 +1422,7 @@ id_assign: TOK_ID TOK_ASSIGN expression {
     }
 
 assignable_expression: TOK_ID
-    | ro_op_invocation /* For THE_ operators */
+    | ro_op_invocation /* For THE_ and LENGTH operators */
     | assignable_expression '[' expression ']' {
         $$ = new_parse_inner();
         if ($$ == NULL) {

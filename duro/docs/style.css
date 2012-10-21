@@ -1,4 +1,7 @@
 body {
   margin: 1em 2em;
-  font-family: Arial, Helvetica, sans-serif
+  font-family: "DejaVu Sans", Corbel, sans-serif
+}
+pre, samp, tt {
+  font-family: "DejaVu Sans Mono", Consolas, monospace
 }

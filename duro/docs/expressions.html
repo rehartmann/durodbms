@@ -10,7 +10,8 @@
 <h2>Duro expression syntax</h2>
 
 <p>The language for Duro expressions is a subset of Tutorial D, as defined
-in <cite>TTM</cite>, third edition, with a few differences:
+in <cite>TTM</cite>, third edition and <cite>Database Explorations</cite>,
+with a few differences:
 
 <ol>
 <li>Duro uses a dot ('.') operator for tuple attribute extraction, in addition to FROM.
@@ -25,12 +26,12 @@ the second edition of TTM.
 <h3>Duro expression syntax (EBNF notation)</h3>
 
 <pre>
-expression = with | ifthenelse
-        | project | select | rename | relation 
+expression = project | where | rename | dyadic_relation_op_inv 
         | extend | update | summarize | divideby
 	| wrap | unwrap | group | ungroup
 	| expression OR expression
 	| expression AND expression
+	| expression XOR expression
 	| NOT expression
 	| rel_expression
 	| '+' expression | '-' expression
@@ -41,29 +42,32 @@ expression = with | ifthenelse
         | expression '/' expression
 	| var_expression
 	| literal
-	| count_invocation
-	| aggregate_invocation
+	| count_inv
+	| aggregate_inv
 	| '(' expression ')'
 	| expression '.' id
 	| id FROM expression
-	| TUPLE FROM expression.
+	| TUPLE FROM expression
+	| ifthenelse | with.
 
 project = expression '{' [ALL BUT] [id {',' id}] '}'.
 
-select = expression WHERE expression.
+where = expression WHERE expression.
 
 rename = expression RENAME '(' [id AS id {',' id AS id}] ')'.
 
-relation = expression UNION expression
+dyadic_relation_op_inv = expression UNION expression
         | expression INTERSECT expression
         | expression MINUS expression
         | expression SEMIMINUS expression
         | expression JOIN expression
-        | expression SEMIJOIN expression.
+        | expression SEMIJOIN expression
+        | expression MATCHING expression
+        | expression NOT MATCHING expression.
 
-extend = EXTEND expression ADD '(' [expression AS id {',' expression AS id}] ')'.
+extend = EXTEND expression : '{' [id ':=' expression {',' id ':=' expression}] '}'.
 
-update = UPDATE expression '{' [id ':=' expression {',' id ':=' expression}] '}'.
+update = UPDATE expression '{' id ':=' expression {',' id ':=' expression} '}'.
 
 summarize = SUMMARIZE expression PER expression
            ADD '(' [summary AS id {',' summary AS id}] ')'.
@@ -72,7 +76,7 @@ divideby = expression DIVIDEBY expression PER expression.
 
 summary = COUNT '(' ')' | summary_type '(' expression ')'.
 
-summary_type = SUM | AVG | MAX | MIN | ALL | ANY.
+summary_type = SUM | AVG | MAX | MIN | ALL | AND | ANY | OR.
 
 wrap = expression WRAP '(' [wrapping {',' wrapping}] ')'.
 
@@ -84,9 +88,9 @@ group  = expression GROUP '{' [id {',' id}] '}' AS id.
 
 ungroup = expression UNGROUP id.
 
-var_expression = id | id '(' [id {',' id}] ')' | var_expression '[' expression ']'.
+var_expression = id | op_inv | var_expression '[' expression ']'.
 
-with = WITH [expression AS id {',' expression AS id}] ':' expression.
+with = WITH '(' [id ':=' expression {',' id ':=' expression}] ')' ':' expression.
 
 rel_expression = expression | expression '=' expression
         | expression '&lt;>' expression
@@ -95,34 +99,42 @@ rel_expression = expression | expression '=' expression
         | expression '&lt;=' expression
         | expression '>' expression
         | expression '&lt;' expression
+        | expression SUBSET_OF expression
         | expression IN expression
-        | expression MATCHES expression
-        | expression SUBSET_OF expression.
+        | expression MATCHES expression.
 
 ifthenelse = IF expression THEN expression ELSE expression.
 
-count_invocation = COUNT '(' expression ')'.
+count_inv = COUNT '(' expression ')'.
 
-aggregate_invocation = summary_type '(' ne_expression_list ')'.
+aggregate_inv = summary_type '(' ne_expression_list ')'.
 
-operator_invocation = 'THE_'id '(' expression ')'
-        | id '(' expression_list ')'.
+op_inv = id '(' expression_list ')'.
 
 literal = string | integer | decimal | float | TRUE | FALSE
+        | RELATION '{' id_type_list '}' '{' expression_list '}'
+        | RELATION '{' ne_expression_list '}'
+        | TABLE_DEE | TABLE_DUM
         | TUPLE '{' tuple_item_list '}'
-        | RELATION '{' expression_list '}' | TABLE_DEE | TABLE_DUM.
+        | ARRAY type '{' expression_list '}'
+        | ARRAY '{' ne_expression_list '}'
 
-tuple_item_list = [ne_tuple_item_list].
+tuple_item_list = [id expression {',' id expression}].
 
 expression_list = [ne_expression_list].
 
 ne_expression_list = expression {',' expression}.
 
-ne_tuple_item_list = id expression {',' id expression}.
+type = id | TUPLE '{' id_type_list '}' | RELATION '{' id_type_list '}'
+        | ARRAY type | SAME_TYPE_AS '(' expression ')'
+        | TUPLE SAME_HEADING_AS '(' expression ')'
+        | RELATION SAME_HEADING_AS '(' expression ')'.
 
-string = '"'{char_lit}'"' | "'"{char_lit}"'".
+id_type_list = [id type {',' id type}].
 
-char_lit = char | '\"' | '\\' | '\n' | '\r' | '\t'.
+string = '"'{esc_char}'"' | "'"{character}"'".
+
+esc_char = character | '\"' | '\\' | '\n' | '\r' | '\t'.
 
 integer = digit{digit}.
 

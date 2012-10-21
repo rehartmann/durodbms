@@ -662,7 +662,7 @@ Type len defined.
 This can be done using IMPLEMENT TYPE:</p>
 
 <pre>
-D> implement type len;
+D> implement type len; end implement;
 Type len implemented.
 </pre>
 
@@ -671,6 +671,9 @@ Full type implementation functionality is available through the
 <a href="../api/html/group__typeimpl.html">C interface</a>
 or the Tcl interface
 (<a href="../tcl/type.html">duro::type</a>).
+
+<p>Future versions of Duro D/T may allow to specify an internal representation
+between IMPLEMENT TYPE and END IMPLEMENT.
 
 <p>After a type has been defined and implemented,
 it can be used to declare and assign variables, like so:
