@@ -16,11 +16,10 @@ exec tclsh "$0" ${1+"$@"}
 # Description
 #
 # Durodump is a Tcl script which dumps all real user tables in the
-# database environment
-# specified by <var>envpath</var> to a file.
+# database environment specified by <var>envpath</var> to a file.
 # If the name of the output file is not specified by the <var>output_file</var>
 # argument, the output file will be named restore.tcl.
-
+#
 # Restoring the data
 #
 # The output file of Durodump is a Tcl script which must be run in order
@@ -87,7 +86,9 @@ set dbs [duro::env dbs $dbenv]
 set tables {}
 
 foreach db $dbs {
-    puts $out "duro::db create \$dbenv $db"
+    # Use catch when creating the database so the database can be
+    # re-created manually before running the restore script
+    puts $out "catch \{duro::db create \$dbenv $db\}"
 
     set tx [duro::begin $dbenv $db]
 

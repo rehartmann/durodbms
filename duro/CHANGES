@@ -4,9 +4,11 @@ Summary of Changes for Duro
 
 Changes for Duro 0.16
 
-- Removed durodump.tcl.
+- durodump.tcl exports only real tables.
 
-- Duro D/T: DEFAULT, FOREACH loop, INDEX, DROP INDEX, EXPLAIN
+- IMPLEMENT TYPE now requires END IMPLEMENT.
+
+- Duro D/T: Added DEFAULT, FOREACH loop, INDEX, DROP INDEX, EXPLAIN
 
 - Duro D/T now uses GNU readline, providing keyword completion.
 
