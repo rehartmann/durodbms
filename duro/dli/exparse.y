@@ -1051,7 +1051,7 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $5);
         RDB_parse_add_child($$, $6);
         RDB_parse_add_child($$, $7);
-    }    
+    }
     | TOK_RAISE expression ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
@@ -1064,19 +1064,25 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
     }
-    | TOK_IMPLEMENT TOK_TYPE TOK_ID ';' {
+    | TOK_IMPLEMENT TOK_TYPE TOK_ID ';' TOK_END TOK_IMPLEMENT ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
             RDB_parse_del_node($2, RDB_parse_ecp);
             RDB_parse_del_node($3, RDB_parse_ecp);
             RDB_parse_del_node($4, RDB_parse_ecp);
+            RDB_parse_del_node($5, RDB_parse_ecp);
+            RDB_parse_del_node($6, RDB_parse_ecp);
+            RDB_parse_del_node($7, RDB_parse_ecp);
             YYERROR;
         }
         RDB_parse_add_child($$, $1);
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
+        RDB_parse_add_child($$, $5);
+        RDB_parse_add_child($$, $6);
+        RDB_parse_add_child($$, $7);
     }
     ;
 
@@ -1603,7 +1609,7 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
     }
-    | TOK_EXTEND expression ':' '{' name_intro_commalist '}' {
+    | TOK_EXTEND expression ':' '{' id_assign_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -2158,7 +2164,7 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $5);
         RDB_parse_add_child($$, $6);
     }
-    | TOK_WITH '(' name_intro_commalist ')' ':' expression {
+    | TOK_WITH '(' id_assign_commalist ')' ':' expression {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -2248,7 +2254,7 @@ renaming: TOK_ID TOK_AS TOK_ID {
 */
     ;
 
-name_intro_commalist: /* empty */ {
+id_assign_commalist: /* empty */ {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             YYERROR;
@@ -2490,19 +2496,7 @@ ne_id_type_commalist: TOK_ID type {
     ;
 
 type: TOK_ID
-    | TOK_TUPLE '{' '}' { /* !! */
-        $$ = new_parse_inner();
-        if ($$ == NULL) {
-            RDB_parse_del_node($1, RDB_parse_ecp);
-            RDB_parse_del_node($2, RDB_parse_ecp);
-            RDB_parse_del_node($3, RDB_parse_ecp);
-            YYERROR;
-        }
-        RDB_parse_add_child($$, $1);
-        RDB_parse_add_child($$, $2);
-        RDB_parse_add_child($$, $3);
-    }
-    | TOK_TUPLE '{' ne_id_type_commalist '}' {
+    | TOK_TUPLE '{' id_type_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);

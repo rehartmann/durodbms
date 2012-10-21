@@ -815,11 +815,7 @@ parse_heading(RDB_parse_node *nodep, RDB_bool rel, RDB_exec_context *ecp,
     RDB_attr *attrv = NULL;
     RDB_type *typ = NULL;
 
-    if (nodep->kind == RDB_NODE_INNER) {
-        attrc = (RDB_parse_nodelist_length(nodep) + 1) / 3;
-    } else {
-        attrc = 0;
-    }
+    attrc = (RDB_parse_nodelist_length(nodep) + 1) / 3;
     if (attrc > 0) {
         RDB_expression *exp;
         RDB_parse_node *np = nodep->val.children.firstp;

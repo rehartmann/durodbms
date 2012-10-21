@@ -2414,19 +2414,6 @@ exec_try(const RDB_parse_node *nodep, RDB_exec_context *ecp, return_info *retinf
 	int ret;
 	RDB_parse_node *catchp;
 
-    /* Evaluate all types in the catch clauses
-    while (catchp != NULL) {
-    	if (catchp->val.children.firstp->nextp->nextp->kind == RDB_NODE_TOK)
-
-        if (catchp->type.exp != NULL && catchp->type.typ == NULL) {
-            if (eval_parse_type(&catchp->type, ecp,
-                    txnp != NULL ? &txnp->tx : NULL) != RDB_OK)
-                return RDB_ERROR;
-        }
-        catchp = catchp->nextp;
-    }
-    */
-
     /*
      * Execute try body
      */
