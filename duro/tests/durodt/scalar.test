@@ -73,18 +73,19 @@ test deftype {user-defined types} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
-        type T
+        type t
             possrep { a INTEGER, b INTEGER };
 
-        implement type T;
+        implement type t;
+        end implement;
 
         CURRENT_DB := 'D';
         begin transaction;
-        var V T;
+        var V t;
         put(THE_a(V)); put_line('');
         put(THE_b(V)); put_line('');
         
-        V := T(1, 2);
+        V := t(1, 2);
         put(THE_a(V)); put_line('');
         put(THE_b(V)); put_line('');
 
@@ -93,29 +94,30 @@ test deftype {user-defined types} -setup $SETUP -body {
 
         commit;
 
-        -- Dropping T must fail because V still exists
+        -- Dropping t must fail because V still exists
         try
-            drop type T;
-		catch ex IN_USE_ERROR;
-		    put_line('caught IN_USE');
+            drop type t;
+		catch ex in_use_error;
+		    put_line('caught in_use_error');
 		end try;
 
         drop var V;
-        drop type T;
+        drop type t;
 
-        type STRING5 possrep {value STRING} constraint LENGTH(THE_value(STRING5)) <= 5;
-        implement type STRING5;
+        type string5 possrep {value STRING} constraint LENGTH(THE_value(string5)) <= 5;
+        implement type string5;
+        end implement;
 
         begin tx;
 
-        var s STRING5;
+        var s string5;
         
-        s := STRING5('OK');
+        s := string5('OK');
         
         try
-        	s := STRING5('Too long');
-        catch err TYPE_CONSTRAINT_VIOLATION_ERROR;
-            put_line('caught TYPE_CONSTRAINT_VIOLATION');
+        	s := string5('Too long');
+        catch err type_constraint_violation_error;
+            put_line('type constraint violation caught');
         end try;
         commit;
     }
@@ -124,8 +126,8 @@ test deftype {user-defined types} -setup $SETUP -body {
 1
 2
 5
-caught IN_USE
-caught TYPE_CONSTRAINT_VIOLATION
+caught in_use_error
+type constraint violation caught
 }
 
 test defroop {read-only user-defined operators} -setup $SETUP -body {

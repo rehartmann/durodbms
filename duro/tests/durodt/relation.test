@@ -124,7 +124,7 @@ test ra {relational algebra} -setup $SETUP -body {
         put(with (p := t1 {a}, is := p intersect t2): (tuple from is).a); put_line('');
 
         var va init 1;
-        put_line((tuple from (t1 where a=va)).b);
+        put_line((tuple from (t1 where a = va)).b);
 
         put(is_empty(v2 where a>2)); put_line('');
         put(is_empty(v2 intersect rel{tup{a 2}})); put_line('');
@@ -133,6 +133,16 @@ test ra {relational algebra} -setup $SETUP -body {
         var vv2 virtual v2 where a>=2;
         put((tuple from vv2).a); put_line('');        
 
+        var tpa tup{a int};
+        foreach tpa in t1 {a} order (a asc);
+            put(tpa.a); put_line('');
+        end foreach;
+
+        var tpb tup{b string};
+        foreach tpb in t1 {all but a} order (b asc);
+            put_line(tpb.b);
+        end foreach;
+
         commit;
     }
 } -result {2
@@ -140,6 +150,10 @@ x
 TRUE
 FALSE
 2
+1
+2
+x
+y
 }
 
 test tupleattr {tuple-valued attributes}  -setup $SETUP -body {
