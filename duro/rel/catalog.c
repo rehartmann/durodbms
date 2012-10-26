@@ -11,7 +11,6 @@
 #include "internal.h"
 #include "stable.h"
 #include "serialize.h"
-#include "qresult.h"
 
 #include <gen/strfns.h>
 #include <string.h>
@@ -1000,7 +999,7 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         } else {
             break;
         }
-    }       
+    }
     if (ret != RDB_OK) {
         return ret;
     }

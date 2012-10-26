@@ -519,4 +519,47 @@ test dbconstraint {db/table constraints} -setup $SETUP -body {
 caught in_use_error
 }
 
+test utypetable {table with attribute of user-defined type} -body {
+    exec $testdir/../../dli/durodt -e dbenv << {
+        current_db := 'D';
+        begin transaction;
+
+        type utype
+            possrep { s string };
+
+        implement type utype;
+        end implement;
+
+        var utr real rel{id int, uv utype} key {id};
+        insert utr rel{tup{id 1, uv utype('a')},
+                       tup{id 2, uv utype('b')}};
+
+        try
+            put_line(the_s(utr));
+        catch err type_mismatch_error;
+            put_line('type mismatch caught');
+        end try;
+
+        put_line(the_s((tuple from utr where id=1).uv));
+
+        commit;
+
+        begin tx;
+
+        try
+            drop type utype;
+        catch err in_use_error;
+            put_line('caught in_use_error');
+        end try;
+
+        drop var utr;
+        drop type utype;
+
+        commit;
+    }
+} -result {type mismatch caught
+a
+caught in_use_error
+}
+
 cleanupTests

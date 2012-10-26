@@ -74,7 +74,7 @@ test deftype {user-defined types} -setup $SETUP -body {
         connect('dbenv');
         current_db := 'D';
         type t
-            possrep { a INTEGER, b INTEGER };
+            possrep { a integer, b integer };
 
         implement type t;
         end implement;
@@ -104,7 +104,7 @@ test deftype {user-defined types} -setup $SETUP -body {
         drop var V;
         drop type t;
 
-        type string5 possrep {value STRING} constraint LENGTH(THE_value(string5)) <= 5;
+        type string5 possrep {value string} constraint LENGTH(THE_value(string5)) <= 5;
         implement type string5;
         end implement;
 
@@ -132,10 +132,10 @@ type constraint violation caught
 
 test defroop {read-only user-defined operators} -setup $SETUP -body {
     exec $testdir/../../dli/durodt -e dbenv -d D << {
-        operator testop() returns STRING;
-            var a INTEGER;
-            var b INTEGER init 1;
-            var c INTEGER;
+        operator testop() returns string;
+            var a integer;
+            var b integer init 1;
+            var c integer;
 
             if a <> 0 then
                 return "error: a <> 0";
@@ -163,30 +163,30 @@ test defroop {read-only user-defined operators} -setup $SETUP -body {
                 d := d * 2 + 1;
             end for;
 
-            return "a = " || CAST_AS_STRING(a) || ", b = " || CAST_AS_STRING(b)
-                     || ", c = " || CAST_AS_STRING(c) || ", d = " || CAST_AS_STRING(d);
+            return "a = " || cast_as_string(a) || ", b = " || cast_as_string(b)
+                     || ", c = " || cast_as_string(c) || ", d = " || cast_as_string(d);
         end operator;
 
         /*
-         * Reverse STRING.
+         * Reverse string.
          */
-        operator reverse(s STRING) returns STRING;
-            var res STRING;	-- automatically initialized to ''
+        operator reverse(s string) returns string;
+            var res string;	-- automatically initialized to ''
             var len init LENGTH(s);
 
-            var i INTEGER init len - 1;
+            var i integer init len - 1;
             while i >= 0;
-                res := res || SUBSTRING(s, i, 1);
+                res := res || substring(s, i, 1);
                 i := i - 1;
             end while;
             return res;
         end operator;
 
-        operator fib(n INTEGER) returns INTEGER;
+        operator fib(n integer) returns integer;
             return if n < 2 then n else fib(n - 1) + fib(n - 2);
         end operator;
 
-        operator sgn(n INTEGER) returns INTEGER;
+        operator sgn(n integer) returns integer;
             case
                 when n < 0 then return -1;
                 when n > 0 then return 1;
@@ -222,18 +222,18 @@ test defupdop {user-defined update operators} -setup $SETUP -body {
         CURRENT_DB := 'D';
         begin transaction;
 
-        operator op(s STRING, i INTEGER) updates {s};
+        operator op(s string, i integer) updates {s};
             i := i + 1;
 
             type LENGTH_T possrep { m FLOAT } constraint (m >= 0.0);
 
             drop type LENGTH_T;
 
-            operator op1(s STRING) returns STRING;
+            operator op1(s string) returns string;
                 return s || 'y';
             end operator;
 
-            operator op2(s STRING) updates { s };
+            operator op2(s string) updates { s };
                 s := s || 'z';
             end operator;
 
@@ -246,10 +246,10 @@ test defupdop {user-defined update operators} -setup $SETUP -body {
             return;
         end operator;
 
-        var a STRING init 'x';
-        var b INTEGER init 1;
+        var a string init 'x';
+        var b integer init 1;
         op(a, b);
-        put_line("a = " || a || ", b = " || CAST_AS_STRING(b));
+        put_line("a = " || a || ", b = " || cast_as_string(b));
 
         op(a, b);
 
@@ -266,9 +266,9 @@ test trycatch {TRY .. CATCH} -setup $SETUP -body {
         begin transaction;
 
         operator test() updates {};
-            var s STRING;
+            var s string;
             try
-                s := SUBSTRING('x', 1, 1);
+                s := substring('x', 1, 1);
             catch err NAME_ERROR;
                 put_line('caught NAME_ERROR');
             catch err;

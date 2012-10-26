@@ -25,10 +25,12 @@ enum {
 static int
 reserve_space(RDB_object *valp, int pos, size_t n, RDB_exec_context *ecp)
 {
-    while (valp->val.bin.len < pos + n) {
-        int newlen = valp->val.bin.len * 2;
+    /* If there is not enough, buffer space, reserve more */
+    if (valp->val.bin.len < pos + n) {
+        /* Reserve more space than requested to reduce # of reallocations */
+        int newlen = pos + n + RDB_BUF_INITLEN;
         void *newdatap = RDB_realloc(valp->val.bin.datap, newlen, ecp);
-        
+
         if (newdatap == NULL) {
             return RDB_ERROR;
         }
@@ -90,15 +92,26 @@ RDB_serialize_byte(RDB_object *valp, int *posp, RDB_byte b,
 }
 
 int
+RDB_serialize_scalar_type(RDB_object *valp, int *posp, const char *name,
+        RDB_exec_context *ecp)
+{
+    if (RDB_serialize_byte(valp, posp, (RDB_byte) RDB_TP_SCALAR, ecp) != RDB_OK)
+        return RDB_ERROR;
+    return RDB_serialize_str(valp, posp, name, ecp);
+}
+
+int
 RDB_serialize_type(RDB_object *valp, int *posp, const RDB_type *typ,
         RDB_exec_context *ecp)
 {
+    if (typ->kind == RDB_TP_SCALAR) {
+        return RDB_serialize_scalar_type(valp, posp, RDB_type_name(typ), ecp);
+    }
+
     if (RDB_serialize_byte(valp, posp, (RDB_byte) typ->kind, ecp) != RDB_OK)
         return RDB_ERROR;
 
     switch (typ->kind) {
-        case RDB_TP_SCALAR:
-            return RDB_serialize_str(valp, posp, typ->name, ecp);
         case RDB_TP_TUPLE:
         {
             int i;
@@ -133,8 +146,11 @@ RDB_serialize_type(RDB_object *valp, int *posp, const RDB_type *typ,
         case RDB_TP_RELATION:
         case RDB_TP_ARRAY:
             return RDB_serialize_type(valp, posp, typ->def.basetyp, ecp);
+        default:
+            break;
     }
-    abort();
+    RDB_raise_internal("RDB_serialize_type(): invalid type", ecp);
+    return RDB_ERROR;
 }
 
 /*
@@ -335,7 +351,8 @@ RDB_type_to_binobj(RDB_object *valp, const RDB_type *typ, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return RDB_ERROR;
 
-    valp->val.bin.len = pos; /* Only store actual length */
+    /* Set length to actual length */
+    valp->val.bin.len = pos;
     return RDB_OK;
 }
 

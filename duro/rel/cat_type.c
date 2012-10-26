@@ -355,3 +355,103 @@ error:
     }
     return RDB_ERROR;
 }
+
+static RDB_expression *
+attr_type_query(const char *name, RDB_database *dbp, RDB_exec_context *ecp)
+{
+    RDB_expression *exp;
+    RDB_expression *argp, *arg2p;
+    int pos = 0;
+
+    /* Create expression sys_tableattrs WHERE type = <type given by name> */
+
+    argp = RDB_var_ref("type", ecp);
+    if (argp == NULL)
+        goto error;
+
+    exp = RDB_ro_op("=", ecp);
+    if (exp == NULL) {
+        RDB_del_expr(argp, ecp);
+        return NULL;
+    }
+    RDB_add_arg(exp, argp);
+
+    /*
+     * Create expression which represents the type
+     */
+    argp = RDB_obj_to_expr(NULL, ecp);
+    if (argp == NULL)
+        return NULL;
+    /* Start with a buffer of 1 bytes */
+    if (RDB_binary_set(RDB_expr_obj(argp), 0, "\0", (size_t) 1, ecp)
+            != RDB_OK) {
+        RDB_del_expr(argp, ecp);
+        goto error;
+    }
+    if (RDB_serialize_scalar_type(RDB_expr_obj(argp), &pos, name, ecp)
+            != RDB_OK) {
+        RDB_del_expr(argp, ecp);
+        goto error;
+    }
+    /* Set length to actual length */
+    RDB_expr_obj(argp)->val.bin.len = pos;
+
+    RDB_add_arg(exp, argp);
+
+    arg2p = exp;
+    exp = RDB_ro_op("where", ecp);
+    if (exp == NULL) {
+        RDB_del_expr(arg2p, ecp);
+        return NULL;
+    }
+
+    argp = RDB_table_ref(dbp->dbrootp->table_attr_tbp, ecp);
+    if (argp == NULL) {
+        RDB_del_expr(arg2p, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+    RDB_add_arg(exp, arg2p);
+
+    return exp;
+
+error:
+    RDB_del_expr(exp, ecp);
+    return NULL;
+}
+
+/*
+ * Raise in_use_error if there is a real table with an attribute of type <name>
+ */
+int
+RDB_cat_check_type_used(const char *name, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_object *tmptbp;
+    RDB_bool isempty;
+    RDB_expression *exp = attr_type_query(name, RDB_tx_db(txp), ecp);
+
+    if (exp == NULL)
+        return RDB_ERROR;
+
+    tmptbp = RDB_expr_to_vtable(exp, ecp, txp);
+    if (tmptbp == NULL) {
+        RDB_del_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+
+    if (RDB_table_is_empty(tmptbp, ecp, txp, &isempty) != RDB_OK) {
+        RDB_drop_table(tmptbp, ecp, txp);
+        return RDB_ERROR;
+    }
+    if (RDB_drop_table(tmptbp, ecp, txp) != RDB_OK)
+        return RDB_ERROR;
+
+    /* There is at least one real table attribute with this type */
+    if (!isempty) {
+        RDB_raise_in_use("table refers to type", ecp);
+        return RDB_ERROR;
+    }
+
+    return RDB_OK;
+}

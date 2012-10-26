@@ -1068,7 +1068,14 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
         case RDB_EX_GET_COMP:
             typ = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg, ecp, txp);
             if (typ == NULL)
-                return typ;
+                return NULL;
+
+            if (!RDB_type_is_scalar(typ)) {
+                RDB_raise_type_mismatch(
+                        "accessing components only possible with scalar types", ecp);
+                return NULL;
+            }
+
             attrp = RDB_get_icomp(typ, exp->def.op.name);
             if (attrp == NULL) {
                 RDB_raise_invalid_argument("component not found", ecp);

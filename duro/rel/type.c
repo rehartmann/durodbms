@@ -1066,7 +1066,10 @@ RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
 
-    /* !! should check if the type is still used by a table */
+    /* Check if the type is still used by a table */
+    ret = RDB_cat_check_type_used(name, ecp, txp);
+    if (ret != RDB_OK)
+        return ret;
 
     /* Delete selector */
     ret = RDB_drop_op(name, ecp, txp);
@@ -1076,7 +1079,6 @@ RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         }
         RDB_clear_err(ecp);
     }
-
 
     /* Delete type from database */
     wherep = RDB_ro_op("=", ecp);

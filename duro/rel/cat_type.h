@@ -14,4 +14,7 @@ int
 RDB_cat_get_type(const char *, RDB_exec_context *, RDB_transaction *,
         RDB_type **);
 
+int
+RDB_cat_check_type_used(const char *, RDB_exec_context *, RDB_transaction *);
+
 #endif /* CAT_TYPE_H_ */

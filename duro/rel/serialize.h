@@ -36,6 +36,10 @@ RDB_serialize_expr(RDB_object *, int *, RDB_expression *,
         RDB_exec_context *);
 
 int
+RDB_serialize_scalar_type(RDB_object *valp, int *posp, const char *,
+        RDB_exec_context *);
+
+int
 RDB_serialize_type(RDB_object *, int *, const RDB_type *,
         RDB_exec_context *);
 
