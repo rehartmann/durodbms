@@ -15,7 +15,7 @@
 
 /*
  * Functions for serializing/deserializing - needed for
- * persistent virtual tables (aka views)
+ * storing expressions and types in the catalog
  */
 
 enum {
@@ -25,7 +25,7 @@ enum {
 static int
 reserve_space(RDB_object *valp, int pos, size_t n, RDB_exec_context *ecp)
 {
-    /* If there is not enough, buffer space, reserve more */
+    /* If there is not enough buffer space, reserve more */
     if (valp->val.bin.len < pos + n) {
         /* Reserve more space than requested to reduce # of reallocations */
         int newlen = pos + n + RDB_BUF_INITLEN;
