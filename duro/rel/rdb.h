@@ -379,7 +379,7 @@ RDB_drop_table(RDB_object *, RDB_exec_context *, RDB_transaction *);
 int
 RDB_table_keys(RDB_object *, RDB_exec_context *, RDB_string_vec **);
 
-char *
+const char *
 RDB_table_name(const RDB_object *);
 
 int

@@ -95,7 +95,7 @@ getcomptype(const char *compname, void *arg)
     return NULL;
 }
 
-/** @addtogroup
+/** @addtogroup type
  * @{
  */
 
@@ -251,6 +251,8 @@ error:
 
     return RDB_ERROR;
 }
+
+/* @} */
 
 static int
 create_selector(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
@@ -496,7 +498,7 @@ cleanup:
     return ret;
 }
 
-/*@}*/
+/* @} */
 
 typedef struct check_tc_data {
     RDB_object *objp;

@@ -360,7 +360,7 @@ RDB_table_keys(RDB_object *tbp, RDB_exec_context *ecp, RDB_string_vec **keyvp)
 
 A pointer to the name of the table, or NULL if the table has no name.
  */
-char *
+const char *
 RDB_table_name(const RDB_object *tbp)
 {
     return tbp->val.tb.name;

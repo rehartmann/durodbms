@@ -1502,7 +1502,7 @@ RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
     RDB_type *tbtyp;
     int indexc;
     RDB_tbindex *indexv;
-    char *recmapname = NULL;
+    const char *recmapname = NULL;
 
     /* Read real table data from the catalog */
 

@@ -46,6 +46,84 @@ del_type(RDB_type *typ, RDB_exec_context *ecp)
     return ret;
 }    
 
+static int
+load_getter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_object opnameobj;
+    RDB_int cnt;
+
+    RDB_init_obj(&opnameobj);
+    if (RDB_string_to_obj(&opnameobj, typ->name, ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&opnameobj, "_get_", ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&opnameobj, compname, ecp) != RDB_OK)
+        goto error;
+
+    cnt = RDB_cat_load_ro_op(RDB_obj_string(&opnameobj), ecp, txp);
+    if (cnt == (RDB_int) RDB_ERROR)
+        goto error;
+    return RDB_destroy_obj(&opnameobj, ecp);
+
+error:
+    RDB_destroy_obj(&opnameobj, ecp);
+    return RDB_ERROR;
+}
+
+static int
+load_setter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_object opnameobj;
+    RDB_int cnt;
+
+    RDB_init_obj(&opnameobj);
+    if (RDB_string_to_obj(&opnameobj, typ->name, ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&opnameobj, "_set_", ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&opnameobj, compname, ecp) != RDB_OK)
+        goto error;
+
+    cnt = RDB_cat_load_upd_op(RDB_obj_string(&opnameobj), ecp, txp);
+    if (cnt == (RDB_int) RDB_ERROR)
+        goto error;
+    return RDB_destroy_obj(&opnameobj, ecp);
+
+error:
+    RDB_destroy_obj(&opnameobj, ecp);
+    return RDB_ERROR;
+}
+
+/*
+ * Load selector, getters and setters of user-defined type
+ */
+int
+RDB_load_type_ops(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int i;
+
+    for (i = 0; i < typ->def.scalar.repc; i++) {
+        int j;
+
+        if (RDB_cat_load_ro_op(typ->def.scalar.repv[i].name, ecp, txp)
+                == (RDB_int) RDB_ERROR)
+            return RDB_ERROR;
+
+        /* Load getters and setters */
+        for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
+            if (load_getter(typ, typ->def.scalar.repv[i].compv[j].name, ecp, txp)
+                    != RDB_OK)
+                return RDB_ERROR;
+            if (load_setter(typ, typ->def.scalar.repv[i].compv[j].name, ecp, txp)
+                    != RDB_OK)
+                return RDB_ERROR;
+        }
+    }
+    return RDB_OK;
+}
+
 /** @addtogroup type Type functions
  * @{
  */
@@ -362,84 +440,6 @@ RDB_type_attrs(RDB_type *typ, int *attrcp)
     }
     *attrcp = typ->def.tuple.attrc;
     return typ->def.tuple.attrv;
-}
-
-static int
-load_getter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-    RDB_object opnameobj;
-    RDB_int cnt;
-
-    RDB_init_obj(&opnameobj);
-    if (RDB_string_to_obj(&opnameobj, typ->name, ecp) != RDB_OK)
-        goto error;
-    if (RDB_append_string(&opnameobj, "_get_", ecp) != RDB_OK)
-        goto error;
-    if (RDB_append_string(&opnameobj, compname, ecp) != RDB_OK)
-        goto error;
-
-    cnt = RDB_cat_load_ro_op(RDB_obj_string(&opnameobj), ecp, txp);
-    if (cnt == (RDB_int) RDB_ERROR)
-        goto error;
-    return RDB_destroy_obj(&opnameobj, ecp);
-
-error:
-    RDB_destroy_obj(&opnameobj, ecp);
-    return RDB_ERROR;
-}
-
-static int
-load_setter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-    RDB_object opnameobj;
-    RDB_int cnt;
-
-    RDB_init_obj(&opnameobj);
-    if (RDB_string_to_obj(&opnameobj, typ->name, ecp) != RDB_OK)
-        goto error;
-    if (RDB_append_string(&opnameobj, "_set_", ecp) != RDB_OK)
-        goto error;
-    if (RDB_append_string(&opnameobj, compname, ecp) != RDB_OK)
-        goto error;
-
-    cnt = RDB_cat_load_upd_op(RDB_obj_string(&opnameobj), ecp, txp);
-    if (cnt == (RDB_int) RDB_ERROR)
-        goto error;
-    return RDB_destroy_obj(&opnameobj, ecp);
-
-error:
-    RDB_destroy_obj(&opnameobj, ecp);
-    return RDB_ERROR;
-}
-
-/*
- * Load selector, getters and setters of user-defined type
- */
-int
-RDB_load_type_ops(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    int i;
-
-    for (i = 0; i < typ->def.scalar.repc; i++) {
-        int j;
-
-        if (RDB_cat_load_ro_op(typ->def.scalar.repv[i].name, ecp, txp)
-                == (RDB_int) RDB_ERROR)
-            return RDB_ERROR;
-
-        /* Load getters and setters */
-        for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
-            if (load_getter(typ, typ->def.scalar.repv[i].compv[j].name, ecp, txp)
-                    != RDB_OK)
-                return RDB_ERROR;
-            if (load_setter(typ, typ->def.scalar.repv[i].compv[j].name, ecp, txp)
-                    != RDB_OK)
-                return RDB_ERROR;
-        }
-    }
-    return RDB_OK;
 }
 
 /** @struct RDB_possrep rdb.h <rel/rdb.h>
