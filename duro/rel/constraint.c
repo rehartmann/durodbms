@@ -72,6 +72,9 @@ RDB_read_constraints(RDB_exec_context *ecp, RDB_transaction *txp)
     } else {
         ret = RDB_ERROR;
     }
+    if (ret == RDB_OK) {
+        RDB_tx_db(txp)->dbrootp->constraints_read = RDB_TRUE;
+    }
 
 cleanup:
     RDB_destroy_obj(&constrs, ecp);
@@ -123,7 +126,6 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
     if (!RDB_tx_db(txp)->dbrootp->constraints_read) {
         if (RDB_read_constraints(ecp, txp) != RDB_OK)
             return RDB_ERROR;
-        RDB_tx_db(txp)->dbrootp->constraints_read = RDB_TRUE;
     }
 
     constrp = RDB_alloc(sizeof (RDB_constraint), ecp);
@@ -187,6 +189,16 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
     RDB_constraint *constrp;
     RDB_constraint *prevconstrp = NULL;
     RDB_dbroot *dbrootp = RDB_tx_db(txp)->dbrootp;
+
+    /*
+     * Read constraints because otherwise the RDB_delete() call
+     * may read the constraint that is meant to be deleted.
+     */
+    if (!dbrootp->constraints_read) {
+        if (RDB_read_constraints(ecp, txp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+    }
 
     /* Delete constraint from list */
     constrp = dbrootp->first_constrp;

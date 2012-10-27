@@ -1411,7 +1411,6 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             if (RDB_read_constraints(ecp, txp) != RDB_OK) {
                 return RDB_ERROR;
             }
-            dbrootp->constraints_read = RDB_TRUE;
         }
 
         /* Check if a constraint depends on this table */

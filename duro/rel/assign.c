@@ -1270,7 +1270,6 @@ check_constraints(int ninsc, const RDB_ma_insert ninsv[],
         if (RDB_read_constraints(ecp, txp) != RDB_OK) {
             return RDB_ERROR;
         }
-        dbrootp->constraints_read = RDB_TRUE;
     }
 
     constrp = dbrootp->first_constrp;

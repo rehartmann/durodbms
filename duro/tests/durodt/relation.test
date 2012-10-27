@@ -480,7 +480,7 @@ test real_default {public real table with default values} -setup $SETUP -body {
 6 120 xyy
 }
 
-test dbconstraint {db/table constraints} -setup $SETUP -body {
+test dbconstraint {db/table constraints 1} -setup $SETUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';
         begin transaction;
@@ -493,7 +493,7 @@ test dbconstraint {db/table constraints} -setup $SETUP -body {
             drop constraint cr;
         end operator;
 
-        var r real relation {no INTEGER, name STRING}
+        var r real relation {no integer, name string}
                 init relation {tuple {no 1, name 'one'}}
                 key {no};
 
@@ -512,11 +512,30 @@ test dbconstraint {db/table constraints} -setup $SETUP -body {
         end try;
 
         drop_constraint();
-
-        commit;
     }
 } -result {caught predicate violation: cr
 caught in_use_error
+}
+
+test dbconstraint2 {db/table constraints 2} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt -e dbenv << {
+        current_db := 'D';
+        begin transaction;
+        var r2 real rel {no int} key {no};
+        
+        constraint cr2 count(r2) <= 1;
+
+        commit;
+    }
+    # Check for bug which caused the constraint to be still in memory
+    # after DROP CONSTRAINT when constraints_read was false
+    exec $testdir/../../dli/durodt -e dbenv -d D << {
+        drop constraint cr2;
+        
+        begin tx;
+        drop var r2;
+        commit;
+    }
 }
 
 test utypetable {table with attribute of user-defined type} -body {
