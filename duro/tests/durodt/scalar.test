@@ -104,7 +104,13 @@ test deftype {user-defined types} -setup $SETUP -body {
         drop var V;
         drop type t;
 
-        type string5 possrep {value string} constraint LENGTH(THE_value(string5)) <= 5;
+        try
+            type string5 possrep {value string} constraint length(val) <= 5;
+		catch ex name_error;
+		    put_line('caught name_error');
+		end try;        
+
+        type string5 possrep {value string} constraint length(value) <= 5;
         implement type string5;
         end implement;
 
@@ -113,7 +119,7 @@ test deftype {user-defined types} -setup $SETUP -body {
         var s string5;
         
         s := string5('OK');
-        
+
         try
         	s := string5('Too long');
         catch err type_constraint_violation_error;
@@ -127,6 +133,7 @@ test deftype {user-defined types} -setup $SETUP -body {
 2
 5
 caught in_use_error
+caught name_error
 type constraint violation caught
 }
 

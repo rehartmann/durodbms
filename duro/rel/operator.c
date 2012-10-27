@@ -559,7 +559,7 @@ RDB_call_ro_op_by_name_e(const char *name, int argc, RDB_object *argv[],
 
     /* Check type constraint if the operator is a selector */
     if (retvalp->typ != NULL && RDB_is_selector(op)) {
-        if (RDB_check_type_constraint(retvalp, ecp, txp) != RDB_OK) {
+        if (RDB_check_type_constraint(retvalp, envp, ecp, txp) != RDB_OK) {
             /* Destroy illegal value */
             RDB_destroy_obj(retvalp, ecp);
             RDB_init_obj(retvalp);
@@ -1160,38 +1160,6 @@ RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     }
 
     return op;
-}
-
-int
-RDB_check_type_constraint(RDB_object *valp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-    int ret;
-
-    if (valp->typ->def.scalar.constraintp != NULL) {
-        RDB_bool result;
-        RDB_object tpl;
-
-        RDB_init_obj(&tpl);
-
-        /* Set tuple attribute */
-        ret = RDB_tuple_set(&tpl, valp->typ->name, valp, ecp);
-        if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl, ecp);
-            return ret;
-        }
-        ret = RDB_evaluate_bool(valp->typ->def.scalar.constraintp,
-                &RDB_tpl_get, &tpl, NULL, ecp, txp, &result);
-        RDB_destroy_obj(&tpl, ecp);
-        if (ret != RDB_OK) {
-            return ret;
-        }
-        if (!result) {
-            RDB_raise_type_constraint_violation("", ecp);
-            return RDB_ERROR;
-        }
-    }
-    return RDB_OK;
 }
 
 int

@@ -1180,7 +1180,7 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
     if (ret != RDB_OK)
         return RDB_ERROR;
     
-    ret = RDB_check_type_constraint(valp, ecp, txp);
+    ret = RDB_check_type_constraint(valp, envp, ecp, txp);
     if (ret != RDB_OK) {
         /* Destroy illegal value */
         RDB_destroy_obj(valp, ecp);

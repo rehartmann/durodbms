@@ -407,7 +407,7 @@ RDB_vtexp_to_obj(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *tbp);
 
 RDB_attr *
-RDB_get_icomp(RDB_type *, const char *compname);
+RDB_get_comp_attr(RDB_type *, const char *compname);
 
 int
 RDB_obj_ilen(const RDB_object *, size_t *, RDB_exec_context *);
@@ -452,8 +452,11 @@ RDB_check_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
         const RDB_type *checktyp, RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_check_type_constraint(RDB_object *valp, RDB_exec_context *,
-        RDB_transaction *);
+RDB_check_type_constraint(RDB_object *, RDB_environment *,
+        RDB_exec_context *, RDB_transaction *);
+
+int
+RDB_load_type_ops(RDB_type *, RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_constraint_count(RDB_dbroot *dbrootp);

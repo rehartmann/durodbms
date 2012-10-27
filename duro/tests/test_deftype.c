@@ -27,8 +27,7 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     if (constraintp == NULL) {
         return RDB_ERROR;
     }
-    RDB_add_arg(constraintp,
-            RDB_expr_comp(RDB_var_ref("TINYINT", ecp), "TINYINT", ecp));
+    RDB_add_arg(constraintp, RDB_var_ref("TINYINT", ecp));
     RDB_add_arg(constraintp, RDB_int_to_expr(100, ecp));
 
     ret = RDB_define_type("TINYINT", 1, &pr, constraintp, ecp, &tx);

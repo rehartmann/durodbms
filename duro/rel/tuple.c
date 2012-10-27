@@ -103,7 +103,10 @@ provide_entry(RDB_object *tplp, const char *attrname, RDB_exec_context *ecp,
 /**
  * RDB_tuple_set sets the attribute <var>name</var> of the tuple
 variable specified by <var>tplp</var> to the value specified by
-<var>valp</var>.
+<var>objp</var>.
+
+If <var>objp</var> is NULL, the attribute value is set to an object that
+has been initialized using RDB_init_obj().
 
 If an error occurs, an error value is left in *<var>ecp</var>.
 

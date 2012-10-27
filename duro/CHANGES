@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.16
 
+- Components are now accessed directly by their names in type constraints.
+
 - durodump.tcl exports only real tables.
 
 - IMPLEMENT TYPE now requires END IMPLEMENT.

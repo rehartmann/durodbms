@@ -30,8 +30,8 @@ test utype {user-defined types} -setup $SETUP -body {
     # Define type NAME. Only rep is a string without leading or trailing blanks
     #
     duro::type define NAME { {NAME { {NAME string} } } } \
-            {NOT ((the_NAME(NAME) MATCHES "^ .*") \
-                    OR (the_NAME(NAME) MATCHES ".* $"))} \
+            {NOT ((NAME MATCHES "^ .*") \
+                    OR (NAME MATCHES ".* $"))} \
             $tx
     
     duro::type implement NAME $tx
