@@ -1635,6 +1635,10 @@ RDB_rename_relation_type(const RDB_type *typ, int renc, const RDB_renaming renv[
     return newtyp;
 }
 
+/*
+ * Return a pointer to the RDB_attr structure that represents
+ * the component. typ must be scalar.
+ */
 RDB_attr *
 RDB_get_icomp(RDB_type *typ, const char *compname)
 {
