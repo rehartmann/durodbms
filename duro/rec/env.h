@@ -33,11 +33,17 @@ typedef struct RDB_environment {
     unsigned trace;
 } RDB_environment;
 
-#define RDB_internal_env(renvp) ((renvp)->envp)
+void *
+RDB_env_xdata(RDB_environment *);
 
-#define RDB_env_xdata(renvp) ((renvp)->xdata)
+void
+RDB_env_set_xdata(RDB_environment *, void *);
 
-#define RDB_env_trace(renvp) ((renvp)->trace)
+unsigned
+RDB_env_trace(RDB_environment *);
+
+void
+RDB_env_set_trace(RDB_environment *, unsigned);
 
 int
 RDB_open_env(const char *, RDB_environment **, int);

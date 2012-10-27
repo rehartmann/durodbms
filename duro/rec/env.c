@@ -142,3 +142,21 @@ RDB_bdb_env(RDB_environment *envp)
 {
     return envp->envp;
 }
+
+void *
+RDB_env_xdata(RDB_environment *envp)
+{
+    return envp->xdata;
+}
+
+void
+RDB_env_set_xdata(RDB_environment *envp, void *xd)
+{
+    envp->xdata = xd;
+}
+
+unsigned
+RDB_env_trace(RDB_environment *envp)
+{
+    return envp->trace;
+}

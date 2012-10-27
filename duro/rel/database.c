@@ -519,7 +519,7 @@ create_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         goto error;
 
-    RDB_env_xdata(envp) = dbrootp;
+    RDB_env_set_xdata(envp, dbrootp);
 
     return dbrootp;
 
@@ -560,7 +560,7 @@ error:
     if (crdbroot) {
         close_systables(dbrootp, ecp);
         free_dbroot(dbrootp, ecp);
-        RDB_env_xdata(envp) = NULL;
+        RDB_env_set_xdata(envp, NULL);
         lt_dlexit();
     }
 
