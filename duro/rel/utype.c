@@ -121,6 +121,16 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dd><var>txp</var> does not point to a running transaction.
 <dt>element_exists_error
 <dd>There is already a type with name <var>name</var>.
+<dt>type_mismatch_error
+<dd><var>constraintp</var> is not NULL and not of type boolean.
+<dd><var>constraintp</var> is not NULL and contains an operator
+invocation where the argument type does not match the parameter type.
+<dt>name_error
+<dd><var>constraintp</var> is not NULL and contains a variable
+reference that could not be resolved.
+<dt>operator_not_found_error
+<dd><var>constraintp</var> is not NULL and contains an invocation
+of an operator that has not been defined.
 </dl>
 
 The call may also fail for a @ref system-errors "system error",
@@ -251,8 +261,6 @@ error:
 
     return RDB_ERROR;
 }
-
-/* @} */
 
 static int
 create_selector(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
@@ -497,6 +505,8 @@ cleanup:
 
     return ret;
 }
+
+/* @} */
 
 /* @} */
 
