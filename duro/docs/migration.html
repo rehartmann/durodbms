@@ -3,25 +3,23 @@
 <title>Duro Documentation</title>
 <link rel="stylesheet" href="style.css">
 <body>
+
+<p><a href="index.html">Documentation home</a>
+
 <h2>Migrating data from older versions</h2>
 
 <p>Currently Duro contains no tool that migrates data to a newer version.
-So the only safe way to migrate data to a newer version is to perform the
-following steps:
-
-<ol>
-<li>Create a new database environment
-<li>Create the database(s)
-<li>Create the user-defined types and operators
-<li>Create the real tables and import the data from the old database environment
-<li>Create the virtual tables
-<li>Create the database constraints
-</ol>
+So the only safe way to migrate data from an old version to Duro 0.16
+is to create a new database environment and re-create the database(s), 
+user-defined types and operators, tables and database constraints.
 
 <p>Durodump can be used to extract the real tables and their data
-from the old DB environment and to import it into the new environment.
+from the old DB environment and to import them into the new environment.
 You may want to take durodump.tcl from the new version and use it
 under the old version to export the real tables because there are some issues
 with durodump.tcl in older versions.
+(For example, the restore script created by the old Durodump always
+tries to re-create the database which causes a problem if a user-defined
+type must be re-created first) 
 
 </html>
