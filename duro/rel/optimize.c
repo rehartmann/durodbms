@@ -891,7 +891,7 @@ transform_semi_minus_union1(RDB_expression *texp, RDB_expression *empty_exp,
 }
 
 /*
- * T! [SEMI]MINUS (T2 UNION T3) -> (T1 [SEMI]MINUS T2) [SEMI]MINUS T3
+ * T1 [SEMI]MINUS (T2 UNION T3) -> (T1 [SEMI]MINUS T2) [SEMI]MINUS T3
  * Returns the result.
  * Useful when there is a constraint of the form IS_EMPTY(T1 SEMIMINUS T2)
  * to optimize the constraint checking of an insert into T2.
