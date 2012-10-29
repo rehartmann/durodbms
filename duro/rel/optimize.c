@@ -464,6 +464,8 @@ table_cost(RDB_expression *exp)
             return exp->def.tbref.tbp->val.tb.stp != NULL ?
                     exp->def.tbref.tbp->val.tb.stp->est_cardinality : 0;
         case RDB_EX_OBJ:
+            if (exp->def.obj.kind != RDB_OB_TABLE)
+                return 0;
             return exp->def.obj.val.tb.stp != NULL ?
                     exp->def.obj.val.tb.stp->est_cardinality : 0;
         case RDB_EX_VAR:
@@ -538,11 +540,14 @@ table_cost(RDB_expression *exp)
         return table_cost(exp->def.op.args.firstp)
                 * table_cost(exp->def.op.args.firstp->nextp); /* !! */
     }
-    if (strcmp(exp->def.op.name, "isempty") == 0
+    if (strcmp(exp->def.op.name, "is_empty") == 0
             || strcmp(exp->def.op.name, "count") == 0)
         return table_cost(exp->def.op.args.firstp);
 
     /* Other operator */
+    if (exp->def.op.args.firstp != NULL)
+        return table_cost(exp->def.op.args.firstp);
+
     return 0;
 }
 
@@ -811,14 +816,14 @@ replace_empty(RDB_expression *exp, RDB_expression *empty_exp,
 
 /*
  * (T1 UNION T2) [SEMI]MINUS T3 -> (T1 [SEMI]MINUS T2) UNION (T1 [SEMI]MINUS T3)
- * Returns the new expression.
+ * Returns the result.
  * Useful when there is a constraint of the form IS_EMPTY(T1 SEMIMINUS T2)
  * so one of the children can be optimized away.
  * empty_exp points to an expression declared to be empty
  * by a constraint.
  */
 static RDB_expression *
-transform_semi_minus_union(RDB_expression *texp, RDB_expression *empty_exp,
+transform_semi_minus_union1(RDB_expression *texp, RDB_expression *empty_exp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
@@ -886,6 +891,63 @@ transform_semi_minus_union(RDB_expression *texp, RDB_expression *empty_exp,
 }
 
 /*
+ * T! [SEMI]MINUS (T2 UNION T3) -> (T1 [SEMI]MINUS T2) [SEMI]MINUS T3
+ * Returns the result.
+ * Useful when there is a constraint of the form IS_EMPTY(T1 SEMIMINUS T2)
+ * to optimize the constraint checking of an insert into T2.
+ */
+static RDB_expression *
+transform_semi_minus_union2(RDB_expression *texp, RDB_expression *empty_exp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret;
+    RDB_expression *ex1p, *ex2p, *ex3p;
+
+    ex1p = RDB_dup_expr(texp->def.op.args.firstp, ecp);
+    if (ex1p == NULL)
+        return NULL;
+    ex2p = RDB_dup_expr(texp->def.op.args.firstp->nextp->def.op.args.firstp,
+            ecp);
+    if (ex2p == NULL) {
+        RDB_del_expr(ex1p, ecp);
+        return NULL;
+    }
+    ex3p = RDB_ro_op(texp->def.op.name, ecp);
+    if (ex3p == NULL) {
+        RDB_del_expr(ex1p, ecp);
+        RDB_del_expr(ex2p, ecp);
+        return NULL;
+    }
+    RDB_add_arg(ex3p, ex1p);
+    RDB_add_arg(ex3p, ex2p);
+
+    ex2p = RDB_dup_expr(
+            texp->def.op.args.firstp->nextp->def.op.args.firstp->nextp,
+            ecp);
+    if (ex2p == NULL) {
+        RDB_del_expr(ex3p, ecp);
+        return NULL;
+    }
+
+    ex1p = RDB_ro_op(texp->def.op.name, ecp);
+    if (ex1p == NULL) {
+        RDB_del_expr(ex3p, ecp);
+        RDB_del_expr(ex2p, ecp);
+        return NULL;
+    }
+
+    RDB_add_arg(ex1p, ex3p);
+    RDB_add_arg(ex1p, ex2p);
+
+    ret = replace_empty(ex1p, empty_exp, ecp, txp);
+    if (ret != RDB_OK) {
+        RDB_del_expr(ex1p, ecp);
+        return NULL;
+    }
+    return ex1p;
+}
+
+/*
  * empty_exp must not be NULL.
  */
 static int
@@ -898,7 +960,15 @@ mutate_semi_minus(RDB_expression *texp, RDB_expression **tbpv, int cap,
 
     if (tbc < cap && texp->def.op.args.firstp->kind == RDB_EX_RO_OP
             && strcmp(texp->def.op.args.firstp->def.op.name, "union") == 0) {
-        tbpv[tbc] = transform_semi_minus_union(texp, empty_exp, ecp, txp);
+        tbpv[tbc] = transform_semi_minus_union1(texp, empty_exp, ecp, txp);
+        if (tbpv[tbc] == NULL)
+            return RDB_ERROR;
+        tbc++;
+    }
+    if (tbc < cap && texp->def.op.args.firstp->nextp->kind == RDB_EX_RO_OP
+            && strcmp(texp->def.op.args.firstp->nextp->def.op.name, "union")
+               == 0) {
+        tbpv[tbc] = transform_semi_minus_union2(texp, empty_exp, ecp, txp);
         if (tbpv[tbc] == NULL)
             return RDB_ERROR;
         tbc++;

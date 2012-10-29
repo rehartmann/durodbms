@@ -75,7 +75,7 @@ typedef struct get_comp_type_data {
     const RDB_possrep *repv;
 } get_comp_type_data;
 
-RDB_type *
+static RDB_type *
 getcomptype(const char *compname, void *arg)
 {
     int i, j;
