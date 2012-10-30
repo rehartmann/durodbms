@@ -22,7 +22,7 @@ the prompt is "no db".
 <p>To exit the interpreter, type Control-D or type "exit();".
 (Do not forget the parentheses and the semicolon)
 
-<p>For more information about invoking Duro D/T see <a href="../utils.html#durodt">Duro utilities</a>.
+<p>For more information about invoking Duro D/T see <a href="../utils.html#durodt">DuroDBMS utilities</a>.
 
 <h2>Declaring variables</h2>
 
@@ -105,7 +105,7 @@ no db>
 
 <h2>Types</h2>
 
-<p>Duro supports the following built-in scalar types:
+<p>DuroDBMS supports the following built-in scalar types:
 
 <ul>
 <li><code>boolean</code> (synonym <code>bool</code>)</li>
@@ -127,7 +127,7 @@ no db> var s string init 'Foo';
 <p>For non-scalar types, see the chapters on tuples, tables, and arrays,
 respectively.
 
-<p>Duro supports the usual arithmetical operators. Example:
+<p>DuroDBMS supports the usual arithmetical operators. Example:
 
 <pre>
 no db> put_line(cast_as_string(2 + 3 * 4));
@@ -517,8 +517,8 @@ Transaction committed.
 D> 
 </pre>
 
-<p>If we now want to insert an order, Duro will check if there is a corresponding
-entry in the customer table: 
+<p>If we now want to insert an order, DuroDBMS will check if there
+is a corresponding entry in the customer table: 
 
 <pre>
 D> begin tx;
@@ -793,7 +793,7 @@ where(r, (s) = ('one'))
 <p>For neither of these an index can be used. Not for the first,
 because the system-generated index on n is a hash index which supports only equality,
 and not for the second because there is no index on attribute s.
-This means that Duro will scan the entire table to evaluate the expression
+This means that DuroDBMS will scan the entire table to evaluate the expression
 which is quite inefficient for large tables.
 
 <p>We can create an index on s using the INDEX statement:  
@@ -811,7 +811,7 @@ where(r INDEX r_s, (s) = ('one'))
 </pre>
 
 As we can see in the output of the EXPLAIN statement,
-Duro now uses the index r_s to evaluate the expression.
+DuroDBMS now uses the index r_s to evaluate the expression.
 
 An index can be destroyed using DROP INDEX:
 

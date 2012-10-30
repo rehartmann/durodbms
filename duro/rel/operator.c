@@ -51,7 +51,7 @@ params_to_typesobj(int argc, RDB_parameter paramv[],
 /**
  * RDB_create_ro_op creates a read-only operator.
 
-To execute the operator, Duro will execute the function specified by
+To execute the operator, DuroDBMS will execute the function specified by
 <var>symname</var> from the library specified by <var>libname</var>.
 
 The name of the library must be passed without the file extension.
@@ -214,7 +214,7 @@ cleanup:
 /**
  * RDB_create_update_op creates an update operator.
 
-To execute the operator, Duro will execute the function specified by
+To execute the operator, DuroDBMS will execute the function specified by
 <var>symname</var> from the library specified by <var>libname</var>.
 
 The name of the library must be passed without the file extension.

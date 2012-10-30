@@ -2,28 +2,28 @@
 "http://www.w3.org/TR/html4/strict.dtd">
 <html lang="en">
 <head>
-<title>Duro expression syntax</title>
+<title>DuroDBMS expression syntax</title>
 <link rel="stylesheet" href="style.css">
 <body>
 <p><a href="index.html">Documentation home</a>
 
-<h2>Duro expression syntax</h2>
+<h2>DuroDBMS expression syntax</h2>
 
-<p>The language for Duro expressions is a subset of Tutorial D, as defined
+<p>The language for DuroDBMS expressions is a subset of Tutorial D, as defined
 in <cite>TTM</cite>, third edition and <cite>Database Explorations</cite>,
 with a few differences:
 
 <ol>
-<li>Duro uses a dot ('.') operator for tuple attribute extraction, in addition to FROM.
-<li>Duro supports a MATCHES operator which performs regular expression matching.
-<li>Duro uses the keyword SUBSET_OF for the subset operator
+<li>DuroDBMS uses a dot ('.') operator for tuple attribute extraction, in addition to FROM.
+<li>DuroDBMS supports a MATCHES operator which performs regular expression matching.
+<li>DuroDBMS uses the keyword SUBSET_OF for the subset operator
 and IN for the element-of operator.
-<li>Duro supports both single ("'") and double quotes ('"') as delimiters in string literals.
+<li>DuroDBMS supports both single ("'") and double quotes ('"') as delimiters in string literals.
 <li>GROUP and UNGROUP only support single grouping and ungrouping, as in
 the second edition of TTM.
 </ol>
 
-<h3>Duro expression syntax (EBNF notation)</h3>
+<h3>DuroDBMS expression syntax (EBNF notation)</h3>
 
 <pre>
 expression = project | where | rename | dyadic_relation_op_inv 

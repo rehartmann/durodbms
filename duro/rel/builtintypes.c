@@ -27,7 +27,7 @@
 
 @section error-types Error types
 
-Duro errors are scalar types.
+DuroDBMS errors are scalar types.
 They are shown below in Tutorial D notation.
 
 <pre>
@@ -104,7 +104,7 @@ Internal error.
 TYPE fatal_error POSSREP { };
 </pre>
 
-Fatal error. This means that future calls to Duro functions
+Fatal error. This means that future calls to DuroDBMS functions
 will most likely fail.
 
 */

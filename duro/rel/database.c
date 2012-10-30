@@ -1095,7 +1095,7 @@ The database *<var>txp</var> interacts with must be a user database.
 Passing a <var>keyv</var> of NULL is equivalent to specifiying a single key
 which consists of all attributes, that is, the table will be all-key.
 
-To enforce the key constraints, Duro creates a unique hash index
+To enforce the key constraints, DuroDBMS creates a unique hash index
 for each key.
 
 @returns
