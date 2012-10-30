@@ -13,7 +13,6 @@ The following software is required for running this version of Duro:
 - POSIX.2 regular expressions (e.g., GNU Regex)
 - GNU Libtool
 - Tcl 8.1 or later
-- GNU Readline
 
 Add the directories where the respective DLLs are located to PATH,
 together with the 'bin' subdirectory of the Duro root directory.

@@ -17,12 +17,15 @@
 #include <signal.h>
 #include <locale.h>
 
-#ifdef _WIN32
-#define USE_READLINE_STATIC /* Makes it compile under Windows */
-#define strncasecmp _strnicmp
+/* Don't use GNU readline under Windows */
+#ifndef _WIN32
+#define USE_READLINE
 #endif
+
+#ifdef USE_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
+#endif
 
 static void
 usage_error(void)
@@ -43,16 +46,28 @@ handle_sigint(int sig)
 static char *
 read_line_interactive(void)
 {
+    char *line;
+#ifdef USE_READLINE
     /* Read a line using GNU readline */
-    char *line = readline(Duro_dt_prompt());
+    line = readline(Duro_dt_prompt());
 
     /* Store line in history if it is not empty */
     if (line != NULL && line[0] != '\0')
         add_history(line);
 
     return line;
+#else
+    #define DURO_INPUT_LINE_LENGTH 256
+
+    fputs(Duro_dt_prompt(), stdout);
+    line = malloc(DURO_INPUT_LINE_LENGTH);
+    if (line == NULL)
+        return NULL;
+    return fgets(line, DURO_INPUT_LINE_LENGTH, stdin);
+#endif
 }
 
+#ifdef USE_READLINE
 char *
 generator(const char *text, int state)
 {
@@ -89,6 +104,7 @@ completion(const char *text, int start, int end)
     rl_attempted_completion_over = 1;
     return rl_completion_matches(text, generator);
 }
+#endif
 
 int
 main(int argc, char *argv[])
@@ -156,7 +172,9 @@ main(int argc, char *argv[])
         envp = NULL;
     }
 
+#ifdef USE_READLINE
     rl_attempted_completion_function = completion;
+#endif
 
     RDB_parse_set_readline_fn(&read_line_interactive);
 

@@ -111,7 +111,7 @@ else:
 
 if env['PLATFORM'] == 'win32':
     dli = env.Program(['dli/durodt.c'], LIBS = env['LIBS']
-            + ['readline', 'duro'])
+            + ['duro'])
 else:
     dli = env.Program(['dli/durodt.c'], LIBS = env['LIBS']
             + ['readline', libduro])
@@ -286,12 +286,12 @@ if env['PLATFORM'] != 'win32':
 # Distribution tarfile
 #
 
-# create .tar.gz, prepend filenames with duro-<version>
-env.Replace(TARFLAGS = '-c -z --exclude .sconsign --transform \'s,^,duro-'
+# create .tar.gz, prepend filenames with durodbms-<version>
+env.Replace(TARFLAGS = '-c -z --exclude .sconsign --transform \'s,^,durodbms-'
         + release + '/,S\'')
 
 if env.has_key('TAR'):
-    disttar = 'duro-' + release + '.tar.gz'
+    disttar = 'durodbms-' + release + '.tar.gz'
 
     env.Tar(disttar, Split('SConstruct README README.windows INSTALL '
             'COPYING AUTHORS CHANGES Doxyfile'))
