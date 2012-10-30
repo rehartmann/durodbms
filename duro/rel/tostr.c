@@ -498,15 +498,23 @@ append_ex(RDB_object *objp, const RDB_expression *exp, RDB_environment *envp,
     return RDB_OK;
 }
 
+/*
+ * Append the table definition to *objp.
+ * If the table has a name, append the name.
+ * Otherwise, if it's not a virtual table, append the value.
+ * Otherwise, append the defining expression.
+ */
 static int
 append_table_def(RDB_object *objp, const RDB_object *tbp, RDB_environment *envp,
         RDB_exec_context *ecp, RDB_transaction *txp, int options)
 {
-    RDB_expression *exp = RDB_vtable_expr(tbp);
+    RDB_expression *exp;
+    const char *tbname = RDB_table_name(tbp);
+    if (tbname != NULL) {
+        return RDB_append_string(objp, tbname, ecp);
+    }
+    exp = RDB_vtable_expr(tbp);
     if (exp == NULL) {
-        if (RDB_table_is_persistent(tbp)) {
-            return RDB_append_string(objp, RDB_table_name(tbp), ecp);
-        }
         return append_table_val(objp, tbp, envp, ecp, txp);
     }
     if (RDB_append_string(objp, "(", ecp) != RDB_OK)
