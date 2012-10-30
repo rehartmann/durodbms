@@ -1,5 +1,5 @@
 #
-# SCons build file for Duro
+# SCons build file for DuroDBMS
 # See the file COPYING for redistribution information.
 #
 # $Id$
@@ -32,7 +32,7 @@ else:
 
 prefix = ARGUMENTS.get('prefix', default_prefix)
 
-installdir = prefix + '/duro.' + release
+installdir = prefix + '/durodbms.' + release
 
 env.Replace(CPPPATH = ['.', bdbhome + '/include', '/usr/include/tcl'])
 env.Replace(LIBPATH = ['.', bdbhome + '/lib'])
@@ -45,7 +45,7 @@ if (os.environ.has_key('LDFLAGS')):
     env.Append(LINKFLAGS = os.environ['LDFLAGS'])
 
 #
-# Duro core library
+# DuroDBMS core library
 #
 
 if env.has_key('YACC'):
