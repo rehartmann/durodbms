@@ -229,7 +229,8 @@ testlib_hdrs = ['tests/point.h']
 
 tcltools = ['tcl/duroadmin.tcl', 'tcl/durodump.tcl']
 
-durodocs = ['docs/index.html', 'docs/expressions.html', 'docs/utils.html']
+durodocs = ['docs/index.html', 'docs/expressions.html', 'docs/utils.html',
+        'docs/migration.html', 'docs/style.css']
 
 durotcldocs = Split('docs/tcl/index.html docs/tcl/array.html '
         'docs/tcl/begin.html docs/tcl/call.html '
