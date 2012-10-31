@@ -1,7 +1,7 @@
 body {
   margin: 1em 2em;
-  font-family: "DejaVu Sans", Corbel, sans-serif
+  font-family: "DejaVu Sans", Verdana, sans-serif
 }
-pre, samp, tt {
+pre, samp, tt, code {
   font-family: "DejaVu Sans Mono", Consolas, monospace
 }

@@ -27,7 +27,8 @@ extern RDB_exec_context *RDB_parse_ecp;
 
 static int RDB_parse_interactive = 0;
 static int RDB_parse_case_insensitive = 1;
-static RDB_readline_fn *RDB_parse_readline_fnp;
+static RDB_read_line_fn *RDB_parse_read_line_fnp;
+static RDB_free_line_fn *RDB_parse_free_line_fnp;
 
 YY_BUFFER_STATE RDB_parse_buffer;
 
@@ -756,22 +757,28 @@ EXPLAIN {
     if (!RDB_parse_interactive)
         yyterminate();
 
-    line = (*RDB_parse_readline_fnp) ();
+    line = (*RDB_parse_read_line_fnp) ();
     if (line == NULL) {
         yy_delete_buffer(YY_CURRENT_BUFFER);
         yyterminate();
     }
 
     RDB_parse_buffer = yy_scan_string(line); 
-    free(line);
+    (*RDB_parse_free_line_fnp) (line);
 }
 
 %%
 
 void
-RDB_parse_set_readline_fn(RDB_readline_fn *fnp)
+RDB_parse_set_read_line_fn(RDB_read_line_fn *fnp)
 {
-    RDB_parse_readline_fnp = fnp;
+    RDB_parse_read_line_fnp = fnp;
+}
+
+void
+RDB_parse_set_free_line_fn(RDB_free_line_fn *fnp)
+{
+    RDB_parse_free_line_fnp = fnp;
 }
 
 RDB_bool

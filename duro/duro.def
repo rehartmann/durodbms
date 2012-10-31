@@ -237,7 +237,8 @@ RDB_expr_var_name
 RDB_op_u_data
 RDB_set_op_u_data
 RDB_set_op_cleanup_fn
-RDB_parse_set_readline_fn
+RDB_parse_set_read_line_fn
+RDB_parse_set_free_line_fn
 RDB_parse_set_case_insensitive
 RDB_token_name
 RDB_parse_tokens

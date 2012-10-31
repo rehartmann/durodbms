@@ -67,6 +67,11 @@ read_line_interactive(void)
 #endif
 }
 
+void
+free_line_interactive(char *line) {
+    free(line);
+}
+
 #ifdef USE_READLINE
 char *
 generator(const char *text, int state)
@@ -176,7 +181,8 @@ main(int argc, char *argv[])
     rl_attempted_completion_function = completion;
 #endif
 
-    RDB_parse_set_readline_fn(&read_line_interactive);
+    RDB_parse_set_read_line_fn(&read_line_interactive);
+    RDB_parse_set_free_line_fn(&free_line_interactive);
 
     RDB_init_exec_context(&ec);
 

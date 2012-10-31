@@ -37,7 +37,10 @@ RDB_parse_node *
 RDB_parse_stmt_string(const char *, RDB_exec_context *);
 
 void
-RDB_parse_set_readline_fn(RDB_readline_fn *fnp);
+RDB_parse_set_read_line_fn(RDB_read_line_fn *fnp);
+
+void
+RDB_parse_set_free_line_fn(RDB_free_line_fn *fnp);
 
 RDB_bool
 RDB_parse_get_interactive(void);
