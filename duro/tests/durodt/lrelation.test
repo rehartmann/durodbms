@@ -50,6 +50,13 @@ test private {creating private table and inserting tuples} -body {
         end try;
         
         put((tuple from relation {a int} {tuple {a 7}}).a); put_line('');
+
+        -- Error in INIT clause
+        try
+            var r2 private relation {i int} init undef() key {i};
+        catch err operator_not_found_error;
+            put_line('caught operator_not_found_error');
+        end try;
     }
 } -result {double creation caught
 1
@@ -57,6 +64,7 @@ Y
 3
 type mismatch
 7
+caught operator_not_found_error
 }
 
 test deedum {TABLE_DEE and TABLE_DUM} -body {

@@ -454,7 +454,7 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
     RDB_parse_node *defaultnodep;
     RDB_attr *default_attrv;
     int default_attrc = 0;
-    RDB_bool freekeys;
+    RDB_bool freekeys = RDB_FALSE;
     int keyc;
     RDB_string_vec *keyv = NULL;
     RDB_object *tbp = NULL;
@@ -596,7 +596,14 @@ error:
     } else if (tbtyp != NULL && !RDB_type_is_scalar(tbtyp)) {
         RDB_del_nonscalar_type(tbtyp, ecp);
     }
-    /* !! Destroy keyv */
+    if (freekeys) {
+        int i;
+
+        for (i = 0; i < keyc; i++) {
+            RDB_free(keyv[i].strv);
+        }
+        RDB_free(keyv);
+    }
     return RDB_ERROR;
 }
 

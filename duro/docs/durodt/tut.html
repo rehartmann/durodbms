@@ -284,7 +284,7 @@ no db>
 <p>Tuple variables can be declared as follows:</p>
 
 <pre>
-no db>var t tuple {i integer, s string};
+no db> var t tuple {i integer, s string};
 no db>
 </pre>
 
@@ -293,14 +293,14 @@ Like scalar variables, tuple variables can be explicitly initialized
 when they are declared:</p>
 
 <pre>
-no db>var t tup {i integer, s string} init tup {i 1, s 'One'};
+no db> var t tup {i integer, s string} init tup {i 1, s 'One'};
 no db>
 </pre>
 
 Or shorter:
 
 <pre>
-no db>var t init tup {i 1, s 'One'};
+no db> var t init tup {i 1, s 'One'};
 no db>
 </pre>
 
@@ -309,7 +309,7 @@ ordering in Duro D/T, so the statement above is perfectly equivalent
 to the following:
 
 <pre>
-no db>var t init tup {s 'One', i 1};
+no db> var t init tup {s 'One', i 1};
 no db>
 </pre>
 
@@ -327,7 +327,7 @@ no db> update t {i := 4, s := 'Four'};
 <p>Accessing tuple attributes:
 
 <pre>
-no db>put_line(t.s);
+no db> put_line(t.s);
 Four
 no db>
 </pre>
@@ -348,7 +348,7 @@ In Duro D/T, a database environment can be created using the built-in
 update operator create_env():</p>
 
 <pre>
-no db>create_env('dbenv');
+no db> create_env('dbenv');
 no db>
 </pre>
 
@@ -357,7 +357,7 @@ to an existing database environment. connect() takes one argument
 of type <code>string</code> which specifies the database environment:</p>
 
 <pre>
-no db>connect('dbenv');
+no db> connect('dbenv');
 no db>
 </pre>
 
@@ -366,7 +366,7 @@ database can be created using the built-in
 update operator create_db().</p>
 
 <pre>
-no db>create_db('D');
+no db> create_db('D');
 no db>
 </pre>
 
@@ -374,7 +374,7 @@ no db>
 A database can be selected by assigning the variable:</p>
 
 <pre>
-no db>current_db := 'D';
+no db> current_db := 'D';
 1 element affected.
 D>
 </pre>
@@ -772,7 +772,7 @@ D> for i := 1 to 10; insert r tup{n i, s cast_as_string(i)}; end for;
 1 element affected.
 1 element affected.
 D> explain r where n=1 order();
-where(r INDEX r$0, (n) = (1))
+(r INDEX r$0) where (n = 1)
 D> commit;
 Transaction committed.
 </pre>
@@ -786,9 +786,9 @@ Now let's try other WHERE expressions:
 D> begin tx;
 Transaction started.
 D> explain r where n>1 order();
-where(r, (n) > (1))
+(r) where (n > 1)
 D> explain r where s='one' order();
-where(r, (s) = ('one'))
+(r) where (s = 'one')
 </pre>
 
 <p>For neither of these an index can be used. Not for the first,
@@ -808,7 +808,7 @@ Now we can use the index:
 
 <pre>
 D> explain r where s='one' order();
-where(r INDEX r_s, (s) = ('one'))
+(r INDEX r_s) where (s = 'one')
 </pre>
 
 As we can see in the output of the EXPLAIN statement,

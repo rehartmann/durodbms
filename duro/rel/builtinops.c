@@ -270,9 +270,9 @@ The length of the operand.
 
 <hr>
 
-<h3 id="op_substring">OPERATOR substring</h3>
+<h3 id="op_substr">OPERATOR substr</h3>
 
-OPERATOR substring(s string, start integer, length integer) RETURNS
+OPERATOR substr(s string, start integer, length integer) RETURNS
 string;
 
 <h4>Description</h4>
@@ -1200,7 +1200,7 @@ length_string(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-substring(int argc, RDB_object *argv[], RDB_operator *op,
+substr(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     int start = argv[1]->val.int_val;
@@ -1211,37 +1211,38 @@ substring(int argc, RDB_object *argv[], RDB_operator *op,
 
     /* Operands must not be negative */
     if (len < 0 || start < 0) {
-        RDB_raise_invalid_argument("invalid SUBSTRING argument", ecp);
+        RDB_raise_invalid_argument("invalid substr argument", ecp);
         return RDB_ERROR;
     }
 
     /* Find start of substring */
     bstart = 0;
     for (i = 0; i < start && bstart < argv[0]->val.bin.len - 1; i++) {
-        cl = mblen(((char *) argv[0]->val.bin.datap) + bstart, 4);
+        cl = mblen(((char *) argv[0]->val.bin.datap) + bstart, MB_CUR_MAX);
         if (cl == -1) {
-            RDB_raise_invalid_argument("invalid SUBSTRING argument", ecp);
+            RDB_raise_invalid_argument("invalid substr argument", ecp);
             return RDB_ERROR;
         }
         bstart += cl;
     }
     if (bstart >= argv[0]->val.bin.len - 1) {
-        RDB_raise_invalid_argument("invalid SUBSTRING argument", ecp);
+        RDB_raise_invalid_argument("invalid substr argument", ecp);
         return RDB_ERROR;
     }
 
     /* Find end of substring */
     blen = 0;
     for (i = 0; i < len && bstart + blen < argv[0]->val.bin.len; i++) {
-        cl = mblen(((char *) argv[0]->val.bin.datap) + bstart + blen, 4);
+        cl = mblen(((char *) argv[0]->val.bin.datap) + bstart + blen,
+                MB_CUR_MAX);
         if (cl == -1) {
-            RDB_raise_invalid_argument("invalid SUBSTRING argument", ecp);
+            RDB_raise_invalid_argument("invalid substr argument", ecp);
             return RDB_ERROR;
         }
         blen += cl > 0 ? cl : 1;
     }
     if (bstart + blen >= argv[0]->val.bin.len) {
-        RDB_raise_invalid_argument("invalid SUBSTRING argument", ecp);
+        RDB_raise_invalid_argument("invalid substr argument", ecp);
         return RDB_ERROR;
     }
 
@@ -1656,7 +1657,7 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
     argtv[1] = &RDB_INTEGER;
     argtv[2] = &RDB_INTEGER;
 
-    ret = RDB_put_global_ro_op("substring", 3, argtv, &RDB_STRING, &substring, ecp);
+    ret = RDB_put_global_ro_op("substr", 3, argtv, &RDB_STRING, &substr, ecp);
     if (ret != RDB_OK)
         return ret;
 

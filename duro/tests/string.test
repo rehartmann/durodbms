@@ -38,26 +38,26 @@ test string {string functions} -setup $SETUP -body {
         error "wrong string value: $str"
     }
 
-    set str [duro::expr {substring("ABC-.+abc", 2, 3)} $tx]
+    set str [duro::expr {substr("ABC-.+abc", 2, 3)} $tx]
     if {$str != "C-."} {
         error "wrong string value: $str"
     }
     
-    set str [duro::expr {substring('ABC-.+ab', 2, 6)} $tx]
+    set str [duro::expr {substr('ABC-.+ab', 2, 6)} $tx]
     if {$str != "C-.+ab"} {
         error "wrong string value: $str"
     }
     
-    set str [duro::expr {substring("ABC-.+ab", 0, 8)} $tx]
+    set str [duro::expr {substr("ABC-.+ab", 0, 8)} $tx]
     if {$str != "ABC-.+ab"} {
         error "wrong string value: $str"
     }
-    
-    if {![catch {[duro::expr {substring("ABC-.+ab", 2, 7)} $tx]}]} {
+
+    if {![catch {[duro::expr {substr("ABC-.+ab", 2, 7)} $tx]}]} {
         error "should have failed"
     }
     
-    if {![catch {[duro::expr {substring("ABC-.+ab", 0, 9)} $tx]}]} {
+    if {![catch {[duro::expr {substr("ABC-.+ab", 0, 9)} $tx]}]} {
         error "should have failed"
     }
 
