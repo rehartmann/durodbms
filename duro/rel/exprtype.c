@@ -647,6 +647,8 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         }
 
         argtyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, ecp, txp);
+        if (argtyp == NULL)
+            goto error;
         attrtyp = RDB_type_attr_type(argtyp,
                 exp->def.op.args.firstp->nextp->def.varname);
         if (attrtyp != &RDB_INTEGER && attrtyp != &RDB_FLOAT
@@ -672,6 +674,8 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         }
 
         argtyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, ecp, txp);
+        if (argtyp == NULL)
+            goto error;
         attrtyp = RDB_type_attr_type(argtyp,
                 exp->def.op.args.firstp->nextp->def.varname);
         if (argtyp->kind != RDB_TP_RELATION) {
@@ -697,6 +701,8 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         }
 
         argtyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, ecp, txp);
+        if (argtyp == NULL)
+            goto error;
         attrtyp = RDB_type_attr_type(argtyp,
                 exp->def.op.args.firstp->nextp->def.varname);
 

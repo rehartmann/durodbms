@@ -2395,6 +2395,7 @@ exec_catch(const RDB_parse_node *catchp, const RDB_type *errtyp,
     }
 
     RDB_clear_err(ecp);
+    err_line = -1;
 
     ret = exec_stmts(catchp->nextp->nextp->kind == RDB_NODE_TOK ?
     		catchp->nextp->nextp->nextp->val.children.firstp :

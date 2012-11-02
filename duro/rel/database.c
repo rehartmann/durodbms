@@ -1085,7 +1085,6 @@ for compatibility with future versions
 The candidate keys for the table are specified by <var>keyc</var>
 and <var>keyv</var>.
 
-At least one candidate key must be specified.
 A candidate key may not be a subset of another.
 If a single candidate key is specified, that key
 may be empty (not contain any attributes).

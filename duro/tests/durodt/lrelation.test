@@ -15,8 +15,8 @@ set testdir [::tcltest::configure -testdir]
 
 test private {creating private table and inserting tuples} -body {
     exec $testdir/../../dli/durodt << {
-        var r private relation {i int, d float, c string} key {i};
-        insert r relation {} {};
+        var pr1 private relation {i int, d float, c string} key {i};
+        insert pr1 relation {} {};
 
         try
             var ir private relation {i int} key {i};
@@ -25,46 +25,70 @@ test private {creating private table and inserting tuples} -body {
             put_line("double creation caught");
         end try;
 
-        var s private relation {i int} init relation { tuple {i 1}, tuple {i 2} }
+        var pr2 private relation {i int} init relation { tuple {i 1}, tuple {i 2} }
                 key {i};
 
         var a init 1;
-        insert r relation {tuple {i a, d 1.0, c 'X'}, tuple {i 2, d 1.1, c 'Y'}};
+        insert pr1 relation {tuple {i a, d 1.0, c 'X'}, tuple {i 2, d 1.1, c 'Y'}};
 
-        insert r tuple {i 2 + 1, d 1.0, c 'Z'}; 
-
-        update r where i=3 { c:= 'ZZ' };
-
-        delete r where i<>2;
-
-        put(count(r)); put_line('');
-        put_line((tuple from r where i=2).c);
-        put(sum(s, i)); put_line('');
-        drop var r;
-        
-        -- test invalid relation selector
         try
-            var r init relation {a int} {tuple {a 'x'}};
-        catch err type_mismatch_error;
-            put_line("type mismatch");
+            insert pr1 tuple{i 1, d 2.0, c 'Z'};
+        catch err key_violation_error;
+            put_line('key_violation_error');
         end try;
-        
+
+        insert pr1 tuple {i 2 + 1, d 1.0, c 'Z'}; 
+
+        update pr1 where i=3 { c:= 'ZZ' };
+
+        delete pr1 where i<>2;
+
+        put(count(pr1)); put_line('');
+        put_line((tuple from pr1 where i = 2).c);
+
+        -- SUM with non-existent table
+        try
+            put(sum(prinv, i)); put_line('');
+        catch err name_error;
+            put_line('name_error');
+        end try;
+
+        put(sum(pr2, i)); put_line('');
+        drop var pr1;
+
+        -- Private table without KEY
+        var pr3 private rel {n int, m int};
+        insert pr3 tup {n 1, m 1};
+        insert pr3 tup {n 1, m 2};
+        insert pr3 tup {n 2, m 1};
+        put(sum(extend pr3: {s := n + m}, s)); put_line('');
+
+        -- Invalid relation selector
+        try
+            var pr4 init relation {a int} {tuple {a 'x'}};
+        catch err type_mismatch_error;
+            put_line('type_mismatch_error');
+        end try;
+
         put((tuple from relation {a int} {tuple {a 7}}).a); put_line('');
 
         -- Error in INIT clause
         try
-            var r2 private relation {i int} init undef() key {i};
+            var pr5 private relation {i int} init undef() key {i};
         catch err operator_not_found_error;
-            put_line('caught operator_not_found_error');
+            put_line('operator_not_found_error');
         end try;
     }
 } -result {double creation caught
+key_violation_error
 1
 Y
+name_error
 3
-type mismatch
+8
+type_mismatch_error
 7
-caught operator_not_found_error
+operator_not_found_error
 }
 
 test deedum {TABLE_DEE and TABLE_DUM} -body {

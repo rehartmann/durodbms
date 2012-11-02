@@ -46,24 +46,36 @@ test insert {creating table and inserting tuples} -setup $SETUP -body {
         
         -- Test table with 2 keys
 
-        var r2 real relation{no int, id string, str string} key {no} key {id};
+        var r2 real relation {no int, id string, str string} key {no} key {id};
         insert r2 tup{no 1, id '1', str 'xxx'};
 
         -- Test key #1
         try
-            insert r2 tup{no 1, id '2', str 'yyy'};
+            insert r2 tup {no 1, id '2', str 'yyy'};
         catch err key_violation_error;
             put_line('key violation caught (1)');
         end try;
 
         -- Test key #2
         try
-            insert r2 tup{no 1, id '2', str 'zzz'};
+            insert r2 tup {no 1, id '2', str 'zzz'};
         catch err key_violation_error;
             put_line('key violation caught (2)');
         end try;
 
         insert r2 tup{no 2, id '2', str 'xxx'};
+
+        -- Table without KEY (implicit all-key)
+        var r3 real rel {n int, s string};
+        insert r3 tup {n 1, s 'a'};
+        insert r3 tup {n 1, s 'b'};
+        insert r3 tup {n 2, s 'a'};
+        try
+            insert r3 tup {n 1, s 'a'};
+        catch err element_exists_error;
+            put_line('element_exists_error');
+        end try;
+        put(count(r3)); put_line(' tuples');
 
         commit;
     }
@@ -72,6 +84,8 @@ test insert {creating table and inserting tuples} -setup $SETUP -body {
 Y
 key violation caught (1)
 key violation caught (2)
+element_exists_error
+3 tuples
 }
 
 test foreach_drop {DROP in FOREACH} -setup $SETUP -body {

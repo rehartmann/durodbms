@@ -1,8 +1,13 @@
 $Id$
 
-Summary of Changes for Duro
+Summary of Changes for DuroDBMS
 
-Changes for Duro 0.16
+Changes for DuroDBMS 0.17
+
+- KEY no longer mandatory when creating real or private tables
+  even when there is no INIT value
+
+Changes for DuroDBMS 0.16
 
 - Components are now accessed directly by their names in type constraints.
 

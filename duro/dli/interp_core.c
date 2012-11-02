@@ -453,10 +453,10 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
     RDB_parse_node *keylistnodep;
     RDB_parse_node *defaultnodep;
     RDB_attr *default_attrv;
+    int keyc;
+    RDB_string_vec *keyv;
     int default_attrc = 0;
     RDB_bool freekeys = RDB_FALSE;
-    int keyc;
-    RDB_string_vec *keyv = NULL;
     RDB_object *tbp = NULL;
     RDB_expression *initexp = NULL;
     RDB_transaction *txp = txnp != NULL ? &txnp->tx : NULL;
@@ -496,6 +496,7 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
             keylistnodep = nodep->nextp->nextp->nextp;
         }
     }
+    defaultnodep = keylistnodep->nextp;
 
     /*
      * Check if the variable already exists
@@ -518,31 +519,28 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
     RDB_init_obj(tbp);
 
     if (keylistnodep->kind == RDB_NODE_INNER
-            && keylistnodep->val.children.firstp->kind == RDB_NODE_TOK
-            && keylistnodep->val.children.firstp->val.token == TOK_KEY) {
+            && keylistnodep->val.children.firstp != NULL) {
+        /* Get keys from KEY nodes */
         keyv = keylist_to_keyv(keylistnodep, &keyc, ecp);
         if (keyv == NULL)
             goto error;
         freekeys = RDB_TRUE;
-
-        /*
-         * Make defaultnodep point to the node after the keylist
-         */
-        defaultnodep = keylistnodep->nextp;
     } else {
-        /* Get keys from the INIT expression */
-        keyc = RDB_infer_keys(initexp, &get_var, current_varmapp,
-                ecp, txnp != NULL ? &txnp->tx : NULL, &keyv, &freekeys);
-        if (keyc == RDB_ERROR) {
-            keyv = NULL;
-            goto error;
-        }
-
         /*
-         * No KEY node, so keylistnodep points either to the DEFAULT node
-         * or to the trailing semicolon
+         * Key list is empty - if there is an INIT expression,
+         * get the keys from it, otherwise pass
+         * a keyv of NULL which means the table is all-key
          */
-        defaultnodep = keylistnodep;
+        if (initexp != NULL) {
+            keyc = RDB_infer_keys(initexp, &get_var, current_varmapp,
+                    ecp, txnp != NULL ? &txnp->tx : NULL, &keyv, &freekeys);
+            if (keyc == RDB_ERROR) {
+                keyv = NULL;
+                goto error;
+            }
+        } else {
+            keyv = NULL;
+        }
     }
 
     if (defaultnodep->kind == RDB_NODE_INNER) {
@@ -613,8 +611,8 @@ Duro_exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
     int keyc;
     RDB_string_vec *keyv;
     const char *varname;
-    RDB_bool freekeys;
     RDB_attr *default_attrv;
+    RDB_bool freekeys = RDB_FALSE;
     int default_attrc = 0;
     RDB_parse_node *keylistnodep;
     RDB_parse_node *defaultnodep;
@@ -661,37 +659,31 @@ Duro_exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
             keylistnodep = nodep->nextp->nextp->nextp;
         }
     }
+    defaultnodep = keylistnodep->nextp;
 
     if (keylistnodep->kind == RDB_NODE_INNER
-            && keylistnodep->val.children.firstp->kind == RDB_NODE_TOK
-            && keylistnodep->val.children.firstp->val.token == TOK_KEY) {
+            && keylistnodep->val.children.firstp != NULL) {
+        /* Get keys from KEY node(s) */
         keyv = keylist_to_keyv(keylistnodep, &keyc, ecp);
         if (keyv == NULL)
             goto error;
         freekeys = RDB_TRUE;
-
-        /*
-         * Make defaultnodep point to the node after the last KEY node
-         */
-        defaultnodep = keylistnodep->nextp;
-        while (defaultnodep->kind == RDB_NODE_INNER
-                && defaultnodep->val.children.firstp->kind == RDB_NODE_TOK
-                && defaultnodep->val.children.firstp->val.token == TOK_KEY)
-            defaultnodep = defaultnodep->nextp->nextp->nextp->nextp;
     } else {
-        /* Get keys from the INIT expression */
-        keyc = RDB_infer_keys(initexp, &get_var, current_varmapp,
-                ecp, &txnp->tx, &keyv, &freekeys);
-        if (keyc == RDB_ERROR) {
-            keyv = NULL;
-            goto error;
-        }
-
         /*
-         * No KEY node, keylistnodep points either to the DEFAULT node
-         * or to the trailing semicolon
+         * Key list is empty - if there is an INIT expression,
+         * get the keys from it, otherwise pass
+         * a keyv of NULL which means the table is all-key
          */
-        defaultnodep = keylistnodep;
+        if (initexp != NULL) {
+            keyc = RDB_infer_keys(initexp, &get_var, current_varmapp,
+                    ecp, txnp != NULL ? &txnp->tx : NULL, &keyv, &freekeys);
+            if (keyc == RDB_ERROR) {
+                keyv = NULL;
+                goto error;
+            }
+        } else {
+            keyv = NULL;
+        }
     }
 
     if (!RDB_type_is_relation(tbtyp)) {
