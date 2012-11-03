@@ -13,7 +13,7 @@ namespace import ::tcltest::*
 
 set testdir [::tcltest::configure -testdir]
 
-test def_output {Default output} -match regexp -body {
+test std_output {Standard output} -match regexp -body {
     exec $testdir/../../dli/durodt << {
         put('Test ');
         put(3);
@@ -27,9 +27,9 @@ test def_output {Default output} -match regexp -body {
 
 test file_output {File Output} -match regexp -body {
     exec $testdir/../../dli/durodt << {
-        VAR is IO_STREAM;
+        VAR is io_stream;
 
-        OPEN(is, 'out.txt', 'w');
+        open(is, 'out.txt', 'w');
 
         put(is, 'Test ');
         put(is, 3);
@@ -38,7 +38,7 @@ test file_output {File Output} -match regexp -body {
 
         put_line(is, 'Duro');
 
-        CLOSE(is);
+        close(is);
     }
     set f [open out.txt r]
     puts [read $f]
@@ -60,14 +60,14 @@ test stdout_output {STDOUT output} -match regexp -body {
 } -result {Test 31.70*TRUEDuro
 }
 
-test stderr_output {STDERR output} -match regexp -body {
+test stderr_output {stderr output} -match regexp -body {
     exec $testdir/../../dli/durodt << {
-        put(STDERR, 'Test ');
-        put(STDERR, 3);
-        put(STDERR, 1.7);
-        put(STDERR, TRUE);
+        put(stderr, 'Test ');
+        put(stderr, 3);
+        put(stderr, 1.7);
+        put(stderr, TRUE);
 
-        put_line(STDERR, 'Duro');
+        put_line(stderr, 'Duro');
     } 2> out.txt
     set f [open out.txt r]
     puts [read $f]
@@ -80,18 +80,29 @@ test stderr_output {STDERR output} -match regexp -body {
 test file_input {File input} -body {
     set f [open in.txt w]
     puts $f {Duro%$-}
+    puts $f { xy= }
     close $f    
 
     set res [exec $testdir/../../dli/durodt << {
-        VAR IS IO_STREAM;
+        VAR is io_stream;
 
-        OPEN(IS, 'in.txt', 'r');
-        VAR LINE STRING;
-        get_line(IS, LINE);
-        put_line(LINE);
-        CLOSE(IS);
+        open(IS, 'in.txt', 'r');
+        VAR line string;
+        get_line(is, line);
+        put_line(line);
+        get_line(is, line);
+        put_line(line);
+        put(eof(is)); put_line('');
+        get_line(is, line);
+        put_line(line);
+        put(eof(is)); put_line('');
+        close(is);
     }]
     file delete -force in.txt
     return $res
 } -result {Duro%$-
+ xy= 
+FALSE
+
+TRUE
 }

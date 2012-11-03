@@ -6,3 +6,5 @@ core
 *.gz
 *.16
 *.directory
+libdurotcl.so.0.17
+libduro.so.0.17
