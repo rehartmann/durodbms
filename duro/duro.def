@@ -224,6 +224,8 @@ RDB_get_parameter
 RDB_operator_source
 RDB_operator_name
 RDB_is_selector
+RDB_is_getter
+RDB_is_setter
 RDB_return_type
 RDB_next_attr_sorted
 RDB_obj_set_typeinfo

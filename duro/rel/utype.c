@@ -506,6 +506,38 @@ cleanup:
     return ret;
 }
 
+/**
+ * Check if the operator *<var>op</var> is a getter operator.
+ */
+RDB_bool
+RDB_is_getter(const RDB_operator *op)
+{
+    /*
+     * An operator is treated as a getter if it is read-only, has one argument
+     * and the name contains the substring "_get_".
+     */
+    if (op->rtyp == NULL && op->paramc != 1)
+        return RDB_FALSE;
+
+    return (RDB_bool) (strstr(op->name, "_get_") != NULL);
+}
+
+/**
+ * Check if the operator *<var>op</var> is a setter operator.
+ */
+RDB_bool
+RDB_is_setter(const RDB_operator *op)
+{
+    /*
+     * An operator is treated as a setter if it is an update operator,
+     * has two arguments and the name contains the substring "_set_".
+     */
+    if (op->rtyp != NULL && op->paramc != 2)
+        return RDB_FALSE;
+
+    return (RDB_bool) (strstr(op->name, "_set_") != NULL);
+}
+
 /* @} */
 
 /* @} */

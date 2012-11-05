@@ -16,7 +16,7 @@ with_durotcl = int(ARGUMENTS.get('with_durotcl', 1))
 
 release = '0.17'
 
-env = Environment(ENV = os.environ, tools = ['default','textfile'])
+env = Environment(ENV = os.environ, tools = ['default', 'textfile'])
 
 oshlibsuffix = env['SHLIBSUFFIX']
 
@@ -28,8 +28,7 @@ else:
     default_prefix = '/usr/local'
     env.Replace(SHLIBSUFFIX = env['SHLIBSUFFIX'] + '.' + release)
     env.Replace(LIBS = ['db', 'ltdl', 'm'])
-    durolibs = ['db', 'ltdl']
-
+    durolibs = ['db', 'ltdl', 'm']
 prefix = ARGUMENTS.get('prefix', default_prefix)
 
 installdir = prefix + '/durodbms.' + release

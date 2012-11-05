@@ -6,6 +6,7 @@
  */
 
 #include "duro.h"
+#include <rel/typeimpl.h>
 #include <string.h>
 
 static int
@@ -417,7 +418,7 @@ Duro_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     Tcl_CmdInfo cmdinfo;
     TclState *statep;
     RDB_exec_context *oldecp;
-    int issetter = argc == 2 && strstr(RDB_operator_name(op), "_set_") != NULL;
+    RDB_bool issetter = RDB_is_setter(op);
     Tcl_Interp *interp = RDB_ec_get_property(ecp, "TCL_INTERP");
     if (interp == NULL) {
         RDB_raise_resource_not_found("Tcl interpreter not found", ecp);
@@ -588,7 +589,7 @@ Duro_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
 
             if (RDB_type_is_scalar(argtyp)) {
                 if (issetter && i == 0) {
-                    /* It�s the argument of setter, so use internal rep */
+                    /* It's the argument of setter, so use internal rep */
                     convtyp = argtyp->def.scalar.arep;
                 } else {
                     convtyp = argtyp;
@@ -610,11 +611,6 @@ Duro_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     return RDB_OK;
-}
-
-static RDB_bool
-is_getter(const char *name, int argc) {
-    return (RDB_bool) (argc == 1 && strstr(name, "_get_") != NULL);
 }
 
 static RDB_bool
@@ -718,7 +714,7 @@ Duro_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     for (i = 0; i < argc; i++) {
         /* If the operator is a getter or cmp, pass actual rep */
-        opargv[i + 1] = (is_getter(RDB_operator_name(op), argc) && i == 0)
+        opargv[i + 1] = (RDB_is_getter(op) && i == 0)
                 || is_compare(RDB_operator_name(op), argc) ?
                 Duro_irep_to_tcl(interp, argv[i], ecp, txp)
                 : Duro_to_tcl(interp, argv[i], ecp, txp);

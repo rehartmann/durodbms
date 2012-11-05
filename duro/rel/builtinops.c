@@ -9,9 +9,11 @@
 #include "internal.h"
 #include "tostr.h"
 #include "optimize.h"
+
 #include <regex.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 
 RDB_op_map RDB_builtin_ro_op_map;
 
@@ -443,12 +445,12 @@ OPERATOR all(R <em>RELATION</em>, ATTR boolean) RETURNS boolean;
 
 <h4>Description</h4>
 
-The <code>all<code> aggregate operator.
+The <code>all</code> aggregate operator.
 For the semantics, see RDB_all().
 
 <hr>
 
-<h3 id="op_avg">OPERATOR AVG</h3>
+<h3 id="op_avg">OPERATOR avg</h3>
 
 OPERATOR avg(R <em>RELATION</em>, ATTR INTEGER) RETURNS float;
 
@@ -461,7 +463,7 @@ For the semantics, see RDB_avg().
 
 <hr>
 
-<h3 id="op_max">OPERATOR MAX</h3>
+<h3 id="op_max">OPERATOR max</h3>
 
 OPERATOR max(R <em>RELATION</em>, attr integer) RETURNS integer;
 
@@ -474,7 +476,7 @@ For the semantics, see RDB_max().
 
 <hr>
 
-<h3 id="op_min">OPERATOR MIN</h3>
+<h3 id="op_min">OPERATOR min</h3>
 
 OPERATOR min(R <em>RELATION</em>, attr integer) RETURNS INTEGER;
 
@@ -487,7 +489,7 @@ For the semantics, see RDB_min().
 
 <hr>
 
-<h3 id="op_sum">OPERATOR SUM</h3>
+<h3 id="op_sum">OPERATOR sum</h3>
 
 OPERATOR SUM(R <em>RELATION</em>, attr integer) RETURNS integer;
 
@@ -668,11 +670,48 @@ The transitive closure operator.
 
 OPERATOR where(R <em>RELATION</em>, B boolean) RETURNS <em>RELATION</em>;
 
+The relational WHERE operator.
+
 <hr>
 
 <h3 id="op_wrap">OPERATOR wrap</h3>
 
 OPERATOR wrap(R <em>RELATION</em>, SRC_ATTRS ARRAY OF STRING, DST_ATTR STRING ...) RETURNS <em>RELATION</em>;
+
+The relational WRAP operator.
+
+<hr>
+
+<h3 id="op_sqrt">OPERATOR sqrt</h3>
+
+OPERATOR sqrt(x FLOAT) RETURNS FLOAT;
+
+The square root operator.
+
+<hr>
+
+<h3 id="op_sin">OPERATOR sin</h3>
+
+OPERATOR sin (x FLOAT) RETURNS FLOAT;
+
+The sine operator.
+
+<hr>
+
+<h3 id="op_cos">OPERATOR cos</h3>
+
+OPERATOR cos(x FLOAT) RETURNS FLOAT;
+
+The cosine operator.
+
+<hr>
+
+<h3 id="op_atan">OPERATOR atan</h3>
+
+OPERATOR atan(x FLOAT) RETURNS FLOAT;
+
+The arc tangent operator.
+
 */
 
 /*
@@ -1540,6 +1579,44 @@ length_array(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
+math_sqrt(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    double d = (double) RDB_obj_float(argv[0]);
+    if (d < 0.0) {
+        RDB_raise_invalid_argument(
+                "square root of negative number is undefined", ecp);
+        return RDB_ERROR;
+    }
+    RDB_float_to_obj(retvalp, (RDB_float) sqrt(d));
+    return RDB_OK;
+}
+
+static int
+math_sin(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_float_to_obj(retvalp, (RDB_float) sin(RDB_obj_float(argv[0])));
+    return RDB_OK;
+}
+
+static int
+math_cos(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_float_to_obj(retvalp, (RDB_float) cos(RDB_obj_float(argv[0])));
+    return RDB_OK;
+}
+
+static int
+math_atan(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_float_to_obj(retvalp, (RDB_float) atan(RDB_obj_float(argv[0])));
+    return RDB_OK;
+}
+
+static int
 op_getenv(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
@@ -2065,6 +2142,25 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
             != RDB_OK) {
         return RDB_ERROR;
     }
+
+    argtv[0] = &RDB_FLOAT;
+
+    ret = RDB_put_global_ro_op("sqrt", 1, argtv, &RDB_FLOAT, &math_sqrt, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = RDB_put_global_ro_op("sin", 1, argtv, &RDB_FLOAT, &math_sin, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = RDB_put_global_ro_op("cos", 1, argtv, &RDB_FLOAT, &math_cos, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = RDB_put_global_ro_op("atan", 1, argtv, &RDB_FLOAT, &math_atan, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
 
     argtv[0] = &RDB_STRING;
 

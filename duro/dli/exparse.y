@@ -790,68 +790,8 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $7);
         RDB_parse_add_child($$, $8);
     }
-    | TOK_OPERATOR TOK_ID '(' id_type_commalist ')' TOK_RETURNS type ';'
-            ne_statement_list TOK_END TOK_OPERATOR {
-        $$ = new_parse_inner();
-        if ($$ == NULL) {
-            RDB_parse_del_node($1, RDB_parse_ecp);
-            RDB_parse_del_node($2, RDB_parse_ecp);
-            RDB_parse_del_node($3, RDB_parse_ecp);
-            RDB_parse_del_node($4, RDB_parse_ecp);
-            RDB_parse_del_node($5, RDB_parse_ecp);
-            RDB_parse_del_node($6, RDB_parse_ecp);
-            RDB_parse_del_node($7, RDB_parse_ecp);
-            RDB_parse_del_node($8, RDB_parse_ecp);
-            RDB_parse_del_node($9, RDB_parse_ecp);
-            RDB_parse_del_node($10, RDB_parse_ecp);
-            RDB_parse_del_node($11, RDB_parse_ecp);
-            YYERROR;
-        }
-        RDB_parse_add_child($$, $1);
-        RDB_parse_add_child($$, $2);
-        RDB_parse_add_child($$, $3);
-        RDB_parse_add_child($$, $4);
-        RDB_parse_add_child($$, $5);
-        RDB_parse_add_child($$, $6);
-        RDB_parse_add_child($$, $7);
-        RDB_parse_add_child($$, $8);
-        RDB_parse_add_child($$, $9);
-        RDB_parse_add_child($$, $10);
-        RDB_parse_add_child($$, $11);
-    }
-    | TOK_OPERATOR TOK_ID '(' id_type_commalist ')' TOK_UPDATES '{' id_commalist '}' ';'
-            ne_statement_list TOK_END TOK_OPERATOR {
-        $$ = new_parse_inner();
-        if ($$ == NULL) {
-            RDB_parse_del_node($1, RDB_parse_ecp);
-            RDB_parse_del_node($2, RDB_parse_ecp);
-            RDB_parse_del_node($3, RDB_parse_ecp);
-            RDB_parse_del_node($4, RDB_parse_ecp);
-            RDB_parse_del_node($5, RDB_parse_ecp);
-            RDB_parse_del_node($6, RDB_parse_ecp);
-            RDB_parse_del_node($7, RDB_parse_ecp);
-            RDB_parse_del_node($8, RDB_parse_ecp);
-            RDB_parse_del_node($9, RDB_parse_ecp);
-            RDB_parse_del_node($10, RDB_parse_ecp);
-            RDB_parse_del_node($11, RDB_parse_ecp);
-            RDB_parse_del_node($12, RDB_parse_ecp);
-            RDB_parse_del_node($13, RDB_parse_ecp);
-            YYERROR;
-        }
-        RDB_parse_add_child($$, $1);
-        RDB_parse_add_child($$, $2);
-        RDB_parse_add_child($$, $3);
-        RDB_parse_add_child($$, $4);
-        RDB_parse_add_child($$, $5);
-        RDB_parse_add_child($$, $6);
-        RDB_parse_add_child($$, $7);
-        RDB_parse_add_child($$, $8);
-        RDB_parse_add_child($$, $9);
-        RDB_parse_add_child($$, $10);
-        RDB_parse_add_child($$, $11);
-        RDB_parse_add_child($$, $12);
-        RDB_parse_add_child($$, $13);
-    }
+    | ro_op_def     
+    | update_op_def
     | TOK_TRY ne_statement_list ne_catch_def_list TOK_END TOK_TRY {
         $$ = new_parse_inner();
         if ($$ == NULL) {
@@ -1077,6 +1017,115 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $5);
         RDB_parse_add_child($$, $6);
         RDB_parse_add_child($$, $7);
+    }
+    | TOK_IMPLEMENT TOK_TYPE TOK_ID TOK_AS type ';' op_def_list
+            TOK_END TOK_IMPLEMENT ';' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            RDB_parse_del_node($4, RDB_parse_ecp);
+            RDB_parse_del_node($5, RDB_parse_ecp);
+            RDB_parse_del_node($6, RDB_parse_ecp);
+            RDB_parse_del_node($7, RDB_parse_ecp);
+            RDB_parse_del_node($8, RDB_parse_ecp);
+            RDB_parse_del_node($9, RDB_parse_ecp);
+            RDB_parse_del_node($10, RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+        RDB_parse_add_child($$, $5);
+        RDB_parse_add_child($$, $6);
+        RDB_parse_add_child($$, $7);
+        RDB_parse_add_child($$, $8);
+        RDB_parse_add_child($$, $9);
+        RDB_parse_add_child($$, $10);
+    }
+    ;
+
+ro_op_def: TOK_OPERATOR TOK_ID '(' id_type_commalist ')' TOK_RETURNS type ';'
+            ne_statement_list TOK_END TOK_OPERATOR {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            RDB_parse_del_node($4, RDB_parse_ecp);
+            RDB_parse_del_node($5, RDB_parse_ecp);
+            RDB_parse_del_node($6, RDB_parse_ecp);
+            RDB_parse_del_node($7, RDB_parse_ecp);
+            RDB_parse_del_node($8, RDB_parse_ecp);
+            RDB_parse_del_node($9, RDB_parse_ecp);
+            RDB_parse_del_node($10, RDB_parse_ecp);
+            RDB_parse_del_node($11, RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+        RDB_parse_add_child($$, $5);
+        RDB_parse_add_child($$, $6);
+        RDB_parse_add_child($$, $7);
+        RDB_parse_add_child($$, $8);
+        RDB_parse_add_child($$, $9);
+        RDB_parse_add_child($$, $10);
+        RDB_parse_add_child($$, $11);
+    }
+    ;
+
+update_op_def: TOK_OPERATOR TOK_ID '(' id_type_commalist ')' TOK_UPDATES '{' id_commalist '}' ';'
+            ne_statement_list TOK_END TOK_OPERATOR {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            RDB_parse_del_node($4, RDB_parse_ecp);
+            RDB_parse_del_node($5, RDB_parse_ecp);
+            RDB_parse_del_node($6, RDB_parse_ecp);
+            RDB_parse_del_node($7, RDB_parse_ecp);
+            RDB_parse_del_node($8, RDB_parse_ecp);
+            RDB_parse_del_node($9, RDB_parse_ecp);
+            RDB_parse_del_node($10, RDB_parse_ecp);
+            RDB_parse_del_node($11, RDB_parse_ecp);
+            RDB_parse_del_node($12, RDB_parse_ecp);
+            RDB_parse_del_node($13, RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+        RDB_parse_add_child($$, $5);
+        RDB_parse_add_child($$, $6);
+        RDB_parse_add_child($$, $7);
+        RDB_parse_add_child($$, $8);
+        RDB_parse_add_child($$, $9);
+        RDB_parse_add_child($$, $10);
+        RDB_parse_add_child($$, $11);
+        RDB_parse_add_child($$, $12);
+        RDB_parse_add_child($$, $13);
+    }
+    ;
+
+op_def_list: /* empty */ {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            YYERROR;
+        }
+    }
+    | op_def_list ro_op_def {
+        $$ = $1;
+        RDB_parse_add_child($$, $2);
+    }
+    | op_def_list update_op_def {
+        $$ = $1;
+        RDB_parse_add_child($$, $2);
     }
     ;
 

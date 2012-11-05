@@ -1876,6 +1876,7 @@ exec_typeimpl(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
     int ret;
     RDB_transaction tmp_tx;
+    RDB_type *ityp = NULL;
 
     if (txnp == NULL) {
         RDB_database *dbp;
@@ -1894,8 +1895,14 @@ exec_typeimpl(RDB_parse_node *nodep, RDB_exec_context *ecp)
         }
     }
 
+    if (nodep->nextp->val.token == TOK_AS) {
+        ityp = Duro_parse_node_to_type_retry(nodep->nextp->nextp, ecp);
+        if (ityp == NULL)
+            return RDB_ERROR;
+    }
+
     ret = RDB_implement_type(RDB_expr_var_name(nodep->exp),
-            NULL, (RDB_int) -1, ecp, txnp != NULL ? &txnp->tx : &tmp_tx);
+            ityp, (RDB_int) -1, ecp, txnp != NULL ? &txnp->tx : &tmp_tx);
     if (ret != RDB_OK)
         goto error;
 
@@ -1949,6 +1956,8 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     struct Duro_op_data *opdatap;
     return_info retinfo;
     varmap_node *ovarmapp;
+    int isselector;
+    RDB_type *getter_utyp = NULL;
 
     if (interrupted) {
         interrupted = 0;
@@ -2010,7 +2019,43 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     retinfo.objp = retvalp;
     retinfo.typ = RDB_return_type(op);
+
+    /*
+     * Selectors and getters of user-defined types
+     * require special treatment, because they are accessing
+     * the actual type
+     */
+
+    /*
+     * If the operator is a selector, the type of the return expression
+     * is the type that is used as the actual representation
+     */
+    isselector = RDB_is_selector(op)
+            && (retinfo.typ->def.scalar.arep != NULL);
+    if (isselector) {
+        retinfo.typ = retinfo.typ->def.scalar.arep;
+    }
+
+    /*
+     * If the operator is a getter, set the argument type
+     * to the type that is used as the actual representation
+     */
+    if (RDB_is_getter(op)
+            && (RDB_obj_type(argv[0])->def.scalar.arep != NULL)) {
+        getter_utyp = RDB_obj_type(argv[0]);
+        RDB_obj_set_typeinfo(argv[0], getter_utyp->def.scalar.arep);
+    }
+
     ret = exec_stmts(opdatap->stmtlistp, ecp, &retinfo);
+
+    /* Set type of return value to the user-defined type */
+    if (isselector) {
+        RDB_obj_set_typeinfo(retinfo.objp, op->rtyp);
+    }
+
+    if (getter_utyp != NULL) {
+        RDB_obj_set_typeinfo(argv[0], getter_utyp);
+    }
 
     /*
      * Keep arguments from being destroyed
@@ -2052,6 +2097,7 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     RDB_parse_node *attrnodep;
     varmap_node *ovarmapp;
     struct Duro_op_data *opdatap;
+    RDB_type *setter_utyp = NULL;
 
     if (interrupted) {
         interrupted = 0;
@@ -2111,7 +2157,21 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
         }
     }
 
+    /*
+     * If the operator is a setter, set the type of the first argument
+     * to the type that is used as the actual representation
+     */
+    if (RDB_is_setter(op)
+            && (RDB_obj_type(argv[0])->def.scalar.arep != NULL)) {
+        setter_utyp = RDB_obj_type(argv[0]);
+        RDB_obj_set_typeinfo(argv[0], setter_utyp->def.scalar.arep);
+    }
+
     ret = exec_stmts(opdatap->stmtlistp, ecp, NULL);
+
+    if (setter_utyp != NULL) {
+        RDB_obj_set_typeinfo(argv[0], setter_utyp);
+    }
 
     /*
      * Keep arguments from being destroyed

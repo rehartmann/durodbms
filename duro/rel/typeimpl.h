@@ -5,7 +5,7 @@
 
 /*
 This file is part of Duro, a relational database management system.
-Copyright (C) 2003 René Hartmann.
+Copyright (C) 2003-2012 Rene Hartmann.
 
 Duro is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,14 +25,20 @@ along with Duro; if not, write to the Free Software Foundation, Inc.,
 #include <rel/rdb.h>
 
 int
-RDB_implement_type(const char *name, RDB_type *, RDB_int, RDB_exec_context *,
+RDB_implement_type(const char *, RDB_type *, RDB_int, RDB_exec_context *,
         RDB_transaction *);
 
 void *
-RDB_obj_irep(RDB_object *valp, size_t *lenp);
+RDB_obj_irep(RDB_object *, size_t *);
 
 int
-RDB_irep_to_obj(RDB_object *valp, RDB_type *, const void *datap, size_t len,
+RDB_irep_to_obj(RDB_object *, RDB_type *, const void *, size_t,
         RDB_exec_context *);
+
+RDB_bool
+RDB_is_getter(const RDB_operator *);
+
+RDB_bool
+RDB_is_setter(const RDB_operator *);
 
 #endif
