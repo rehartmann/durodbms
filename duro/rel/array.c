@@ -34,11 +34,6 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
     RDB_qresult *qrp = NULL;
     RDB_tbindex *indexp = NULL;
 
-    if (arrp->kind == RDB_OB_ARRAY) {
-        if (RDB_destroy_obj(arrp, ecp) != RDB_OK)
-            return RDB_ERROR;
-    }
-
     if (seqitc > 0) {
         indexp = RDB_expr_sortindex(texp);
         if (indexp == NULL || !RDB_index_sorts(indexp, seqitc, seqitv)) {
@@ -55,6 +50,11 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
         /* Add duplicate remover, if necessary */
         if (RDB_duprem(qrp, ecp, txp) != RDB_OK)
             goto error;
+    }
+
+    if (arrp->kind == RDB_OB_ARRAY) {
+        if (RDB_destroy_obj(arrp, ecp) != RDB_OK)
+            return RDB_ERROR;
     }
 
     arrp->kind = RDB_OB_ARRAY;

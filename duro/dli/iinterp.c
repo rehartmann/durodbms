@@ -548,35 +548,52 @@ static int
 exec_load(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
     RDB_object srctb;
+    RDB_object *srctbp;
     int ret;
-    RDB_expression *exp;
+    RDB_expression *tbexp;
     RDB_object *dstp;
+    const char *srcvarname;
     int seqitc;
     RDB_parse_node *seqitnodep;
     RDB_seq_item *seqitv = NULL;
 
-    exp = RDB_parse_node_expr(nodep, ecp, txnp != NULL ? &txnp->tx : NULL);
-    if (exp == NULL) {
+    RDB_init_obj(&srctb);
+
+    tbexp = RDB_parse_node_expr(nodep, ecp, txnp != NULL ? &txnp->tx : NULL);
+    if (tbexp == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
     }
-    dstp = Duro_lookup_var(RDB_expr_var_name(exp), ecp);
+    dstp = Duro_lookup_var(RDB_expr_var_name(tbexp), ecp);
     if (dstp == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
     }
 
-    exp = RDB_parse_node_expr(nodep->nextp->nextp, ecp,
+    tbexp = RDB_parse_node_expr(nodep->nextp->nextp, ecp,
             txnp != NULL ? &txnp->tx : NULL);
-    if (exp == NULL) {
+    if (tbexp == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
     }
 
-    RDB_init_obj(&srctb);
-    if (Duro_evaluate_retry(exp, ecp, &srctb) != RDB_OK) {
-        ret = RDB_ERROR;
-        goto cleanup;
+    /*
+     * If the expression is a variable reference, look up the variable,
+     * otherwise evaluate the expression
+     */
+    srcvarname = RDB_expr_var_name(tbexp);
+    if (srcvarname != NULL) {
+        srctbp = Duro_lookup_var(srcvarname, ecp);
+        if (srctbp == NULL) {
+            ret = RDB_ERROR;
+            goto cleanup;
+        }
+    } else {
+        if (Duro_evaluate_retry(tbexp, ecp, &srctb) != RDB_OK) {
+            ret = RDB_ERROR;
+            goto cleanup;
+        }
+        srctbp = &srctb;
     }
 
     seqitnodep = nodep->nextp->nextp->nextp->nextp->nextp;
@@ -593,12 +610,13 @@ exec_load(RDB_parse_node *nodep, RDB_exec_context *ecp)
         goto cleanup;
     }
 
-    ret = RDB_table_to_array(dstp, &srctb, seqitc, seqitv, 0, ecp,
+    ret = RDB_table_to_array(dstp, srctbp, seqitc, seqitv, 0, ecp,
             txnp != NULL ? &txnp->tx : NULL);
 
 cleanup:
     if (seqitv != NULL)
         RDB_free(seqitv);
+    RDB_destroy_obj(&srctb, ecp);
     return ret;
 }
 
@@ -925,6 +943,8 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
     foreach_iter it;
     RDB_parse_node *seqitnodep;
     RDB_seq_item *seqitv = NULL;
+    const char *srcvarname;
+    RDB_object tb;
     RDB_transaction *txp = txnp != NULL ? &txnp->tx : NULL;
     const char *varname = RDB_expr_var_name(nodep->exp);
     RDB_object *varp = Duro_lookup_transient_var(varname);
@@ -952,10 +972,21 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
         return RDB_ERROR;
     }
 
-    RDB_init_obj(&it.tb);
-    /* !! Inefficient if tbexp is a table name - applies to LOAD too */
-    if (Duro_evaluate_retry(tbexp, ecp, &it.tb) != RDB_OK) {
-        goto error;
+    RDB_init_obj(&tb);
+    /*
+     * If the expression is a variable reference, look up the variable,
+     * otherwise evaluate the expression
+     */
+    srcvarname = RDB_expr_var_name(tbexp);
+    if (srcvarname != NULL) {
+        it.tbp = Duro_lookup_var(srcvarname, ecp);
+        if (it.tbp == NULL)
+            goto error;
+    } else {
+        if (Duro_evaluate_retry(tbexp, ecp, &tb) != RDB_OK) {
+            goto error;
+        }
+        it.tbp = &tb;
     }
 
     seqitnodep = nodep->nextp->nextp->nextp->nextp->nextp;
@@ -970,7 +1001,7 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
                     != RDB_OK) {
         goto error;
     }
-    it.qrp = RDB_table_iterator(&it.tb, seqitc, seqitv, ecp, txp);
+    it.qrp = RDB_table_iterator(it.tbp, seqitc, seqitv, ecp, txp);
     if (it.qrp == NULL)
         goto error;
 
@@ -1026,11 +1057,11 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
 
     RDB_free(seqitv);
     if (RDB_del_qresult(it.qrp, ecp, txp) != RDB_OK) {
-        RDB_destroy_obj(&it.tb, ecp);
+        RDB_destroy_obj(&tb, ecp);
         return RDB_ERROR;
     }
 
-    RDB_destroy_obj(&it.tb, ecp);
+    RDB_destroy_obj(&tb, ecp);
 
     /* Ignore not_found */
     if (ret == RDB_ERROR) {
@@ -1045,7 +1076,7 @@ error:
         RDB_del_qresult(it.qrp, ecp, txp);
         current_foreachp = it.prevp;
     }
-    RDB_destroy_obj(&it.tb, ecp);
+    RDB_destroy_obj(&tb, ecp);
     RDB_free(seqitv);
     return RDB_ERROR;
 }

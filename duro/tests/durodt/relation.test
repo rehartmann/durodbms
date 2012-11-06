@@ -157,6 +157,11 @@ test ra {relational algebra} -setup $SETUP -body {
             put_line(tpb.b);
         end foreach;
 
+        var tp tup same_heading_as(t1);
+        foreach tp in t1 order (b asc);
+            put_line(tp.b);
+        end foreach;
+
         commit;
     }
 } -result {2
@@ -166,6 +171,8 @@ FALSE
 2
 1
 2
+x
+y
 x
 y
 }
@@ -282,53 +289,99 @@ test logic {Logic operators} -setup $SETUP -body {
 
         begin transaction;
 
-        var t real relation {i int, j int} key {i, j};
+        var t real relation {a int, b int} key {a, b};
 
-        insert t relation { tuple {i 1, j 1}, tuple {i 1, j 2},
-                tuple {i 2, j 1}, tuple {i 2, j 2} };
+        insert t relation { tuple {a 1, b 1}, tuple {a 1, b 2},
+                tuple {a 2, b 1}, tuple {a 2, b 2} };
 
-        var va virtual t where i=1 or j=1;
-        var vo virtual t where i=1 and j=1;
-        var vx virtual t where i=1 xor j=1;
-        
-        var a array tuple {i int, j int};
+        var va virtual t where a=1 or b=1;
+        var vo virtual t where a=1 and b=1;
+        var vx virtual t where a=1 xor b=1;
 
-        load a from va order(i asc, j asc);
-        
+        var arr array tuple {a int, b int};
+
+        try
+            load arr from vo order(i asc, b asc);
+        catch err;
+            put_line('invalid order clause');
+        end try;
+
+        -- Virtual table as variable
+        load arr from va order(a asc, b asc);
+
         var i int;
-        for i:= 0 to LENGTH(a)-1;
-			put(a[i].i);
+        for i:= 0 to length(arr)-1;
+			put(arr[i].a);
 			put(' ');
-			put(a[i].j); put_line('');			
+			put(arr[i].b); put_line('');			
 		end for;
 
-		put_line("");
+		put_line('');
 
-        load a from vo order(i asc, j asc);
+        -- Virtual table as expression
+        load arr from t where a=1 or b=1 order(a asc, b asc);
+
+        for i:= 0 to length(arr)-1;
+			put(arr[i].a);
+			put(' ');
+			put(arr[i].b); put_line('');			
+		end for;
+
+		put_line('');
+
+        load arr from vo order(a asc, b asc);
         
-        for i:= 0 to LENGTH(a)-1;
-			put(a[i].i);
+        for i:= 0 to length(arr)-1;
+			put(arr[i].a);
 			put(' ');
-			put(a[i].j); put_line('');			
+			put(arr[i].b); put_line('');			
 		end for;
 
-		put_line("");
+		put_line('');
 
-        load a from vx order(i asc, j asc);
-
-        for i:= 0 to LENGTH(a)-1;
-			put(a[i].i);
+        load arr from t where a=1 and b=1 order(a asc, b asc);
+        
+        for i:= 0 to length(arr)-1;
+			put(arr[i].a);
 			put(' ');
-			put(a[i].j); put_line('');			
+			put(arr[i].b); put_line('');			
+		end for;
+
+		put_line('');
+
+        load arr from vx order(a asc, b asc);
+        for i:= 0 to length(arr)-1;
+			put(arr[i].a);
+			put(' ');
+			put(arr[i].b); put_line('');			
+		end for;
+
+		put_line('');
+
+        load arr from t where a=1 xor b=1 order(a asc, b asc);
+        for i:= 0 to length(arr)-1;
+			put(arr[i].a);
+			put(' ');
+			put(arr[i].b); put_line('');			
 		end for;
 
         commit;
     }
-} -result {1 1
+} -result {invalid order clause
+1 1
 1 2
 2 1
 
 1 1
+1 2
+2 1
+
+1 1
+
+1 1
+
+1 2
+2 1
 
 1 2
 2 1
@@ -366,29 +419,29 @@ test summarize {SUMMARIZE} -setup $SETUP -body {
 
         begin transaction;
 
-        var t real relation {i int, j int} key {i, j};
+        var t real relation {a int, b int} key {a, b};
 
-		insert t tup {i 1, j 0};
-		insert t tup {i 1, j 1};
-		insert t tup {i 2, j 1};
-		insert t tup {i 2, j 2};
+		insert t tup {a 1, b 0};
+		insert t tup {a 1, b 1};
+		insert t tup {a 2, b 1};
+		insert t tup {a 2, b 2};
 
-		var v virtual SUMMARIZE t PER t {i} ADD (
-				SUM(j) AS A_SUM,
-		        ALL(j > 0) AS A_ALL,
-		        AND(j > 0) AS A_AND,
-		        ANY(j > 0) AS A_ANY,
-		        OR(j > 0) AS A_OR);
+		var v virtual SUMMARIZE t PER t {a} ADD (
+				SUM(b) AS A_SUM,
+		        ALL(b > 0) AS A_ALL,
+		        AND(b > 0) AS A_AND,
+		        ANY(b > 0) AS A_ANY,
+		        OR(b > 0) AS A_OR);
 
         var arr array tuple same_heading_as (v);
 
-        load arr from v order(i asc);
+        load arr from v order(a asc);
 
         var i int;
-        for i:= 0 to LENGTH(arr)-1;
-			put(arr[i].A_SUM);			
+        for i:= 0 to length(arr)-1;
+			put(arr[i].A_SUM);
 			put(' ');
-			put(arr[i].A_ALL);			
+			put(arr[i].A_ALL);
 			put(' ');
 			put(arr[i].A_AND);
 			put(' ');

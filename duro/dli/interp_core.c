@@ -793,7 +793,7 @@ check_foreach_depends(const RDB_object *tbp, RDB_exec_context *ecp)
 {
     foreach_iter *itp = current_foreachp;
     while (itp != NULL) {
-        if (RDB_table_refers(&itp->tb, tbp)) {
+        if (RDB_table_refers(itp->tbp, tbp)) {
             RDB_raise_in_use("FOREACH refers to table", ecp);
             return RDB_ERROR;
         }

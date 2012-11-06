@@ -49,7 +49,7 @@ typedef struct Duro_varmap_node {
 
 typedef struct foreach_iter {
     RDB_qresult *qrp;
-    RDB_object tb;
+    RDB_object* tbp;
     struct foreach_iter *prevp; /* for chaining nested FOREACHs */
 } foreach_iter;
 
