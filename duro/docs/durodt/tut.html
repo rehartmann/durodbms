@@ -316,7 +316,7 @@ no db>
 <p>Tuples variables can be assigned and updated:</p>
 
 <pre>
-no db>t := tup {i 2, s 'Two'};
+no db> t := tup {i 2, s 'Two'};
 1 element affected.
 no db> update t {i := 3};
 1 element affected.
@@ -335,7 +335,7 @@ no db>
 <p>Alternative form:
 
 <pre>
-no db>put_line(s from t);
+no db> put_line(s from t);
 Four
 no db>
 </pre>
@@ -823,9 +823,9 @@ Index r_s dropped.
 
 <p>INDEX is supported for physically stored tables.
 Currently real tables are physically stored and virtual tables are not,
-but this may change in future versions of Duro.
+but this may change in future versions of DuroDBMS.
 
 <p>Note that INDEX and DROP INDEX are low-level operators;
-access to them may be restricted in future versions of Duro.
+access to them may be restricted in future versions of DuroDBMS.
 
 </html>
