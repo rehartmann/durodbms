@@ -95,12 +95,12 @@ OPERATOR close(ios io_stream) UPDATES {};
 
 Close I/O stream <var>ios</var>.
 
-OPERATOR eof() RETURNS BOOLEAN;
+OPERATOR eof() RETURNS boolean;
 
 Return TRUE if the end-of-file indicator was set while reading
 from standard input.
 
-OPERATOR eof(ios io_stream) RETURNS BOOLEAN;
+OPERATOR eof(ios io_stream) RETURNS boolean;
 
 Return TRUE if the end-of-file indicator was set while reading
 from <var>ios</var>.
