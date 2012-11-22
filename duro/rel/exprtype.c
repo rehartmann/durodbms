@@ -932,6 +932,11 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             && (argtv[0] == NULL || argtv[0]->kind == RDB_TP_ARRAY)) {
         /* Array length operator */
         typ = &RDB_INTEGER;
+    } else if (strcmp(exp->def.op.name, "index_of") == 0
+            && argc == 2
+            && (argtv[0] == NULL || argtv[0]->kind == RDB_TP_ARRAY)) {
+        /* Array index operator */
+        typ = &RDB_INTEGER;
     } else if (strcmp(exp->def.op.name, "[]") == 0
             && argc == 2
             && (argtv[0] == NULL || argtv[0]->kind == RDB_TP_ARRAY)) {

@@ -11,6 +11,7 @@
 #include <gen/strfns.h>
 
 #include <stddef.h>
+#include <string.h>
 
 static int
 types_query(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
@@ -356,12 +357,37 @@ error:
     return RDB_ERROR;
 }
 
+/*
+ * Create expression which represents the type
+ */
+static RDB_expression *
+scalar_type_to_expr(const char *name, RDB_exec_context *ecp)
+{
+    int pos = 0;
+    RDB_expression *exp = RDB_obj_to_expr(NULL, ecp);
+    if (exp == NULL)
+        return NULL;
+    /* Start with a buffer of 1 bytes */
+    if (RDB_binary_set(RDB_expr_obj(exp), 0, "\0", (size_t) 1, ecp)
+            != RDB_OK) {
+        RDB_del_expr(exp, ecp);
+        return NULL;
+    }
+    if (RDB_serialize_scalar_type(RDB_expr_obj(exp), &pos, name, ecp)
+            != RDB_OK) {
+        RDB_del_expr(exp, ecp);
+        return NULL;
+    }
+    /* Set length to actual length */
+    RDB_expr_obj(exp)->val.bin.len = pos;
+    return exp;
+}
+
 static RDB_expression *
 attr_type_query(const char *name, RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_expression *exp;
     RDB_expression *argp, *arg2p;
-    int pos = 0;
 
     /* Create expression sys_tableattrs WHERE type = <type given by name> */
 
@@ -379,22 +405,9 @@ attr_type_query(const char *name, RDB_database *dbp, RDB_exec_context *ecp)
     /*
      * Create expression which represents the type
      */
-    argp = RDB_obj_to_expr(NULL, ecp);
+    argp = scalar_type_to_expr(name, ecp);
     if (argp == NULL)
         return NULL;
-    /* Start with a buffer of 1 bytes */
-    if (RDB_binary_set(RDB_expr_obj(argp), 0, "\0", (size_t) 1, ecp)
-            != RDB_OK) {
-        RDB_del_expr(argp, ecp);
-        goto error;
-    }
-    if (RDB_serialize_scalar_type(RDB_expr_obj(argp), &pos, name, ecp)
-            != RDB_OK) {
-        RDB_del_expr(argp, ecp);
-        goto error;
-    }
-    /* Set length to actual length */
-    RDB_expr_obj(argp)->val.bin.len = pos;
 
     RDB_add_arg(exp, argp);
 
@@ -420,6 +433,154 @@ error:
     return NULL;
 }
 
+static RDB_expression *
+ro_op_type_query(const char *name, RDB_database *dbp, RDB_exec_context *ecp)
+{
+    RDB_expression *exp, *ex2p;
+    RDB_expression *argp, *arg2p;
+
+    /*
+     * Create expression sys_ro_ops
+     * WHERE index_of(argtypes, <type given by name>) >= 0
+     * OR rtype = <type given by name>
+     */
+
+    argp = RDB_var_ref("argtypes", ecp);
+    if (argp == NULL)
+        goto error;
+
+    exp = RDB_ro_op("index_of", ecp);
+    if (exp == NULL) {
+        RDB_del_expr(argp, ecp);
+        return NULL;
+    }
+    RDB_add_arg(exp, argp);
+
+    /*
+     * Create expression which represents the type
+     */
+    argp = scalar_type_to_expr(name, ecp);
+    if (argp == NULL)
+        goto error;
+    RDB_add_arg(exp, argp);
+
+    argp = exp;
+    exp = RDB_ro_op(">=", ecp);
+    RDB_add_arg(exp, argp);
+
+    argp = RDB_int_to_expr(0, ecp);
+    if (argp == NULL)
+        goto error;
+    RDB_add_arg(exp, argp);
+
+    argp = RDB_var_ref("rtype", ecp);
+    if (argp == NULL)
+        goto error;
+
+    ex2p = RDB_ro_op("=", ecp);
+    if (ex2p == NULL) {
+        RDB_del_expr(argp, NULL);
+        goto error;
+    }
+    RDB_add_arg(ex2p, argp);
+
+    argp = scalar_type_to_expr(name, ecp);
+    if (argp == NULL) {
+        RDB_del_expr(ex2p, NULL);
+        goto error;
+    }
+    RDB_add_arg(ex2p, argp);
+
+    arg2p = RDB_ro_op("or", ecp);
+    if (arg2p == NULL) {
+        RDB_del_expr(ex2p, NULL);
+        goto error;
+    }
+    RDB_add_arg(arg2p, exp);
+    RDB_add_arg(arg2p, ex2p);
+
+    exp = RDB_ro_op("where", ecp);
+    if (exp == NULL) {
+        RDB_del_expr(arg2p, ecp);
+        return NULL;
+    }
+
+    argp = RDB_table_ref(dbp->dbrootp->ro_ops_tbp, ecp);
+    if (argp == NULL) {
+        RDB_del_expr(arg2p, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+    RDB_add_arg(exp, arg2p);
+
+    return exp;
+
+error:
+    RDB_del_expr(exp, ecp);
+    return NULL;
+}
+
+static RDB_expression *
+upd_op_type_query(const char *name, RDB_database *dbp, RDB_exec_context *ecp)
+{
+    RDB_expression *exp;
+    RDB_expression *argp, *arg2p;
+
+    /*
+     * Create expression sys_upd_ops
+     * WHERE index_of(argtypes, <type given by name>) >= 0
+     */
+
+    argp = RDB_var_ref("argtypes", ecp);
+    if (argp == NULL)
+        goto error;
+
+    exp = RDB_ro_op("index_of", ecp);
+    if (exp == NULL) {
+        RDB_del_expr(argp, ecp);
+        return NULL;
+    }
+    RDB_add_arg(exp, argp);
+
+    /*
+     * Create expression which represents the type
+     */
+    argp = scalar_type_to_expr(name, ecp);
+    if (argp == NULL)
+        goto error;
+    RDB_add_arg(exp, argp);
+
+    argp = exp;
+    exp = RDB_ro_op(">=", ecp);
+    RDB_add_arg(exp, argp);
+
+    argp = RDB_int_to_expr(0, ecp);
+    if (argp == NULL)
+        goto error;
+    RDB_add_arg(exp, argp);
+
+    arg2p = exp;
+    exp = RDB_ro_op("where", ecp);
+    if (exp == NULL) {
+        RDB_del_expr(arg2p, ecp);
+        return NULL;
+    }
+
+    argp = RDB_table_ref(dbp->dbrootp->upd_ops_tbp, ecp);
+    if (argp == NULL) {
+        RDB_del_expr(arg2p, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+    RDB_add_arg(exp, arg2p);
+
+    return exp;
+
+error:
+    RDB_del_expr(exp, ecp);
+    return NULL;
+}
+
 /*
  * Raise in_use_error if there is a real table with an attribute of type <name>
  */
@@ -429,6 +590,7 @@ RDB_cat_check_type_used(const char *name, RDB_exec_context *ecp,
 {
     RDB_object *tmptbp;
     RDB_bool isempty;
+    RDB_object tpl;
     RDB_expression *exp = attr_type_query(name, RDB_tx_db(txp), ecp);
 
     if (exp == NULL)
@@ -447,11 +609,73 @@ RDB_cat_check_type_used(const char *name, RDB_exec_context *ecp,
     if (RDB_drop_table(tmptbp, ecp, txp) != RDB_OK)
         return RDB_ERROR;
 
-    /* There is at least one real table attribute with this type */
     if (!isempty) {
+        /* There is at least one real table attribute with this type */
         RDB_raise_in_use("table refers to type", ecp);
         return RDB_ERROR;
     }
 
-    return RDB_OK;
+    exp = upd_op_type_query(name, RDB_tx_db(txp), ecp);
+    if (exp == NULL)
+        return RDB_ERROR;
+
+    tmptbp = RDB_expr_to_vtable(exp, ecp, txp);
+    if (tmptbp == NULL) {
+        RDB_del_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+
+    if (RDB_table_is_empty(tmptbp, ecp, txp, &isempty) != RDB_OK) {
+        RDB_drop_table(tmptbp, ecp, txp);
+        return RDB_ERROR;
+    }
+    if (RDB_drop_table(tmptbp, ecp, txp) != RDB_OK)
+        return RDB_ERROR;
+
+    if (!isempty) {
+        /* There is at least one update operator definition referencing this type */
+        RDB_raise_in_use("update operator refers to type", ecp);
+        return RDB_ERROR;
+    }
+
+    exp = ro_op_type_query(name, RDB_tx_db(txp), ecp);
+    if (exp == NULL)
+        return RDB_ERROR;
+
+    tmptbp = RDB_expr_to_vtable(exp, ecp, txp);
+    if (tmptbp == NULL) {
+        RDB_del_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+
+    RDB_init_obj(&tpl);
+    /* Only a selector is permitted */
+    if (RDB_extract_tuple(tmptbp, ecp, txp, &tpl) != RDB_OK) {
+        RDB_type *errtyp = RDB_obj_type(RDB_get_err(ecp));
+        if (errtyp == &RDB_INVALID_ARGUMENT_ERROR) {
+            /* More than 1 tuple */
+            RDB_drop_table(tmptbp, ecp, txp);
+            RDB_destroy_obj(&tpl, ecp);
+            RDB_clear_err(ecp);
+            RDB_raise_in_use("read-only operator refers to type", ecp);
+            return RDB_ERROR;
+        }
+        if (errtyp != &RDB_NOT_FOUND_ERROR) {
+            /* Unexpected error */
+            RDB_drop_table(tmptbp, ecp, txp);
+            RDB_destroy_obj(&tpl, ecp);
+            return RDB_ERROR;
+        }
+    } else {
+        if (strcmp(RDB_tuple_get_string(&tpl, "name"), name) != 0) {
+            /* Not a selector */
+            RDB_destroy_obj(&tpl, ecp);
+            RDB_raise_in_use(RDB_tuple_get_string(&tpl, "name"), ecp);
+            return RDB_ERROR;
+        }
+    }
+    if (RDB_drop_table(tmptbp, ecp, txp) != RDB_OK)
+        return RDB_ERROR;
+
+    return RDB_destroy_obj(&tpl, ecp);
 }

@@ -751,8 +751,8 @@ RDB_call_update_op(RDB_operator *op, int argc, RDB_object *argv[],
 }
 
 /**
- * RDB_drop_op deletes the operator with the name <var>name</var>
-from the database. This affects all overloaded versions.
+ * RDB_drop_op deletes the operator with the name <var>name</var>.
+ * This affects all overloaded versions.
 
 @returns RDB_OK on success, RDB_ERROR if an error occurred.
 

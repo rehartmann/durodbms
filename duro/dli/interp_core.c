@@ -25,6 +25,8 @@ Duro_module sys_module;
 /* Top-level Duro_module */
 static Duro_module root_module;
 
+RDB_operator *inner_op = NULL;
+
 /*
  * Points to the local variables in the current scope.
  * Linked list from inner to outer scope.

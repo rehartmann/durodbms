@@ -4,8 +4,12 @@ Summary of Changes for DuroDBMS
 
 Changes for DuroDBMS 0.17
 
+- index_of() operator supports searching in arrays
+
 - KEY no longer mandatory when creating real or private tables
   even when there is no INIT value
+
+- IMPLEMENT TYPE now supports multiple possible representations
 
 Changes for DuroDBMS 0.16
 

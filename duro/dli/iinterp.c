@@ -37,6 +37,8 @@ static RDB_object prompt;
 
 static const char *leave_targetname;
 
+static const char *impl_typename;
+
 void
 Duro_exit_interp(void)
 {
@@ -250,6 +252,7 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
     Duro_init_vars();
 
     leave_targetname = NULL;
+    impl_typename = NULL;
     current_foreachp = NULL;
 
     RDB_init_op_map(&sys_module.upd_op_map);
@@ -1853,6 +1856,17 @@ exec_typedrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     RDB_transaction tmp_tx;
     RDB_type *typ;
 
+    /*
+     * DROP TYPE is not allowed in user-defined operators,
+     * to prevent a type used by an operator from being dropped
+     * while the operator is being executed
+     */
+    if (inner_op != NULL) {
+        RDB_raise_syntax("DROP TYPE not permitted in user-defined operators",
+                ecp);
+        return RDB_ERROR;
+    }
+
     if (txnp == NULL) {
         RDB_database *dbp;
 
@@ -1927,8 +1941,16 @@ exec_typeimpl(RDB_parse_node *nodep, RDB_exec_context *ecp)
     }
 
     if (nodep->nextp->val.token == TOK_AS) {
+        return_info retinfo;
+
         ityp = Duro_parse_node_to_type_retry(nodep->nextp->nextp, ecp);
         if (ityp == NULL)
+            return RDB_ERROR;
+        impl_typename = RDB_expr_var_name(nodep->exp);
+        ret = exec_stmts(nodep->nextp->nextp->nextp->nextp->val.children.firstp,
+                ecp, &retinfo);
+        impl_typename = NULL;
+        if (ret != RDB_OK)
             return RDB_ERROR;
     }
 
@@ -1989,6 +2011,7 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     varmap_node *ovarmapp;
     int isselector;
     RDB_type *getter_utyp = NULL;
+    RDB_operator *parent_op;
 
     if (interrupted) {
         interrupted = 0;
@@ -2077,7 +2100,10 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_obj_set_typeinfo(argv[0], getter_utyp->def.scalar.arep);
     }
 
+    parent_op = inner_op;
+    inner_op = op;
     ret = exec_stmts(opdatap->stmtlistp, ecp, &retinfo);
+    inner_op = parent_op;
 
     /* Set type of return value to the user-defined type */
     if (isselector) {
@@ -2128,6 +2154,7 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     RDB_parse_node *attrnodep;
     varmap_node *ovarmapp;
     struct Duro_op_data *opdatap;
+    RDB_operator *parent_op;
     RDB_type *setter_utyp = NULL;
 
     if (interrupted) {
@@ -2198,7 +2225,10 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_obj_set_typeinfo(argv[0], setter_utyp->def.scalar.arep);
     }
 
+    parent_op = inner_op;
+    inner_op = op;
     ret = exec_stmts(opdatap->stmtlistp, ecp, NULL);
+    inner_op = parent_op;
 
     if (setter_utyp != NULL) {
         RDB_obj_set_typeinfo(argv[0], setter_utyp);
@@ -2239,8 +2269,10 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
     int i;
     int argc;
     const char *opname;
+    RDB_object opnameobj; /* Only used when the name is modified */
     RDB_parse_node *stmtp = parentp->val.children.firstp->nextp;
 
+    RDB_init_obj(&opnameobj);
     argc = (int) RDB_parse_nodelist_length(stmtp->nextp->nextp) / 2;
     opname = RDB_expr_var_name(stmtp->exp);
 
@@ -2290,7 +2322,8 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
         attrnodep = attrnodep->nextp->nextp;
     }
 
-    ro = (RDB_bool) (stmtp->nextp->nextp->nextp->nextp->val.token == TOK_RETURNS);
+    ro = (RDB_bool)
+            (stmtp->nextp->nextp->nextp->nextp->val.token == TOK_RETURNS);
 
     if (ro) {
         rtyp = RDB_parse_node_to_type(stmtp->nextp->nextp->nextp->nextp->nextp,
@@ -2298,6 +2331,26 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
                 txnp != NULL ? &txnp->tx : &tmp_tx);
         if (rtyp == NULL)
             goto error;
+
+        if (impl_typename != NULL) {
+            /* Only selector and getters allowed */
+            if (strstr(opname, "get_") == opname) {
+                /* Prepend operator name with <typename>_ */
+                if (RDB_string_to_obj(&opnameobj, impl_typename, ecp) != RDB_OK)
+                    goto error;
+                if (RDB_append_string(&opnameobj, "_", ecp) != RDB_OK)
+                    goto error;
+                if (RDB_append_string(&opnameobj, opname, ecp) != RDB_OK)
+                    goto error;
+                opname = RDB_obj_string(&opnameobj);
+            } else if (!RDB_type_is_scalar(rtyp)
+                    || strcmp(RDB_type_name(rtyp), impl_typename) != 0) {
+                /* Not a selector */
+                RDB_raise_syntax("invalid operator", ecp);
+                goto error;
+            }
+        }
+
         ret = RDB_create_ro_op(opname, argc, paramv, rtyp,
 #ifdef _WIN32
                 "duro",
@@ -2310,6 +2363,23 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
         if (ret != RDB_OK)
             goto error;
     } else {
+        if (impl_typename != NULL) {
+            /* Only setters allowed */
+            if (strstr(opname, "set_") == opname) {
+                /* Prepend operator name with <typename>_ */
+                if (RDB_string_to_obj(&opnameobj, impl_typename, ecp) != RDB_OK)
+                    goto error;
+                if (RDB_append_string(&opnameobj, "_", ecp) != RDB_OK)
+                    goto error;
+                if (RDB_append_string(&opnameobj, opname, ecp) != RDB_OK)
+                    goto error;
+                opname = RDB_obj_string(&opnameobj);
+            } else {
+                RDB_raise_syntax("invalid operator", ecp);
+                goto error;
+            }
+        }
+
         attrnodep = stmtp->nextp->nextp->val.children.firstp;
         for (i = 0; i < argc; i++) {
             /* Skip comma */
@@ -2345,6 +2415,7 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
     }
     if ((ret == RDB_OK) && RDB_parse_get_interactive())
         printf(ro ? "Read-only operator %s created.\n" : "Update operator %s created.\n", opname);
+    RDB_destroy_obj(&opnameobj, ecp);
     return ret;
 
 error:
@@ -2352,6 +2423,7 @@ error:
         RDB_rollback(ecp, &tmp_tx);
     RDB_free(paramv);
     RDB_destroy_obj(&code, ecp);
+    RDB_destroy_obj(&opnameobj, ecp);
     return RDB_ERROR;
 }
 
@@ -2360,6 +2432,16 @@ exec_opdrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
     int ret;
     RDB_transaction tmp_tx;
+
+    /*
+     * DROP OPERATOR is not allowed in user-defined operators,
+     * to prevent an operator from being dropped while it is executed
+     */
+    if (inner_op != NULL) {
+        RDB_raise_syntax("DROP OPERATOR not permitted in user-defined operators",
+                ecp);
+        return RDB_ERROR;
+    }
 
     /* !! delete from opmap */
 

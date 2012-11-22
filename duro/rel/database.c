@@ -80,13 +80,11 @@ free_dbroot(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
 static int
 close_table(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp)
 {
-    int ret;
     RDB_dbroot *dbrootp;
     RDB_database *dbp;
 
     if (tbp->val.tb.stp != NULL) {
-        ret = RDB_close_stored_table(tbp->val.tb.stp, ecp);
-        if (ret != RDB_OK)
+        if (RDB_close_stored_table(tbp->val.tb.stp, ecp) != RDB_OK)
             return RDB_ERROR;
         tbp->val.tb.stp = NULL;
     }
@@ -94,7 +92,7 @@ close_table(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp)
     /*
      * Remove table from all RDB_databases in list
      */
-    dbrootp = (RDB_dbroot *)RDB_env_xdata(envp);
+    dbrootp = (RDB_dbroot *) RDB_env_xdata(envp);
     for (dbp = dbrootp->first_dbp; dbp != NULL; dbp = dbp->nextdbp) {
         RDB_object *foundtbp = RDB_hashmap_get(&dbp->tbmap, tbp->val.tb.name);
         if (foundtbp != NULL) {

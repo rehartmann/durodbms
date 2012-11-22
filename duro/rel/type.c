@@ -18,35 +18,6 @@
 #include <locale.h>
 
 static int
-del_type(RDB_type *typ, RDB_exec_context *ecp)
-{
-    int ret = RDB_OK;
-
-    if (RDB_type_is_scalar(typ)) {
-        RDB_free(typ->name);
-        if (typ->def.scalar.repc > 0) {
-            int i, j;
-            
-            for (i = 0; i < typ->def.scalar.repc; i++) {
-                for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
-                    RDB_free(typ->def.scalar.repv[i].compv[j].name);
-                }
-                RDB_free(typ->def.scalar.repv[i].compv);
-            }
-            RDB_free(typ->def.scalar.repv);
-        }
-        if (typ->def.scalar.arep != NULL
-                && !RDB_type_is_scalar(typ->def.scalar.arep)) {
-            ret = RDB_del_nonscalar_type(typ->def.scalar.arep, ecp);
-        }
-        RDB_free(typ);
-    } else {
-        ret = RDB_del_nonscalar_type(typ, ecp);
-    }
-    return ret;
-}    
-
-static int
 load_getter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
@@ -543,8 +514,6 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     return typ;
 }
 
-/*@}*/
-
 /**
  * Delete *typ from memory. The type must be non-scalar.
  */
@@ -553,9 +522,8 @@ RDB_del_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
 {
     int i;
     int ret = RDB_OK;
-    enum RDB_tp_kind kind = typ->kind;
 
-    switch (kind) {
+    switch (typ->kind) {
         case RDB_TP_TUPLE:
             for (i = 0; i < typ->def.tuple.attrc; i++) {
                 RDB_type *attrtyp = typ->def.tuple.attrv[i].typ;
@@ -574,136 +542,18 @@ RDB_del_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
             break;
         case RDB_TP_SCALAR:
             RDB_raise_invalid_argument("type is scalar", ecp);
-            ret = RDB_ERROR;
-            break;
+            return RDB_ERROR;
         default:
-            RDB_raise_internal("invalid type structure", ecp);
+            /* !! RDB_raise_internal("invalid type structure", ecp); */
             abort();
-            /* return RDB_ERROR; */
     }
-    typ->kind = (enum RDB_tp_kind) -1; /* for error detection */
-    if (kind != RDB_TP_SCALAR)
-        RDB_free(typ);
+    typ->kind = (enum RDB_tp_kind) -1; /* for debugging */
+    RDB_free(typ);
     return ret;
 }
 
 /**
- * Delete the user-defined type with name specified by <var>name</var>.
-
-It is not possible to destroy built-in types.
-
-@returns
-
-On success, RDB_OK is returned. Any other return value indicates an error.
-
-@par Errors:
-
-<dl>
-<dt>no_running_tx_error
-<dd>*<var>txp</var> is not a running transaction.
-<dt>name_error
-<dd>A type with name <var>name</var> was not found.
-<dt>invalid_argument_error
-<dd>The type is not user-defined.
-</dl>
-
-The call may also fail for a @ref system-errors "system error",
-in which case the transaction may be implicitly rolled back.
- */
-int
-RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    int ret;
-    RDB_int cnt;
-    RDB_type *typ;
-    RDB_expression *wherep, *argp;
-    RDB_type *ntp = NULL;
-
-    if (!RDB_tx_is_running(txp)) {
-        RDB_raise_no_running_tx(ecp);
-        return RDB_ERROR;
-    }
-
-    /*
-     * Check if the type is a built-in type
-     */
-    if (RDB_hashmap_get(&RDB_builtin_type_map, name) != NULL) {
-        RDB_raise_invalid_argument("cannot drop a built-in type", ecp);
-        return RDB_ERROR;
-    }
-
-    /* Check if the type is still used by a table */
-    ret = RDB_cat_check_type_used(name, ecp, txp);
-    if (ret != RDB_OK)
-        return ret;
-
-    /* Delete selector */
-    ret = RDB_drop_op(name, ecp, txp);
-    if (ret != RDB_OK) {
-        if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR) {
-            return RDB_ERROR;
-        }
-        RDB_clear_err(ecp);
-    }
-
-    /* Delete type from database */
-    wherep = RDB_ro_op("=", ecp);
-    if (wherep == NULL) {
-        return RDB_ERROR;
-    }
-    argp = RDB_var_ref("typename", ecp);
-    if (argp == NULL) {
-        RDB_del_expr(wherep, ecp);
-        return RDB_ERROR;
-    }
-    RDB_add_arg(wherep, argp);
-    argp = RDB_string_to_expr(name, ecp);
-    if (argp == NULL) {
-        RDB_del_expr(wherep, ecp);
-        return RDB_ERROR;
-    }
-    RDB_add_arg(wherep, argp);
-
-    cnt = RDB_delete(txp->dbp->dbrootp->types_tbp, wherep, ecp, txp);
-    if (cnt == 0) {
-        RDB_raise_name("type not found", ecp);
-        return RDB_ERROR;
-    }
-    if (cnt == (RDB_int) RDB_ERROR) {
-        RDB_del_expr(wherep, ecp);
-        return RDB_ERROR;
-    }
-    cnt = RDB_delete(txp->dbp->dbrootp->possrepcomps_tbp, wherep, ecp,
-            txp);
-    if (cnt == (RDB_int) RDB_ERROR) {
-        RDB_del_expr(wherep, ecp);
-        return ret;
-    }
-
-    /*
-     * Delete type in memory, if it's in the type map
-     */
-    typ = RDB_hashmap_get(&txp->dbp->dbrootp->typemap, name);
-    if (typ != NULL) {
-        /* Delete type from type map by puting a NULL pointer into it */
-        ret = RDB_hashmap_put(&txp->dbp->dbrootp->typemap, name, ntp);
-        if (ret != RDB_OK) {
-            return RDB_ERROR;
-        }
-
-        /*
-         * Delete RDB_type struct last because name may be identical
-         * to typ->name
-         */
-        if (del_type(typ, ecp) != RDB_OK)
-            return RDB_ERROR;
-    }
-
-    return RDB_OK;
-}
-
-/**
- * RDB_type_equals checks if two types are equal.
+ * Check if two types are equal.
 
 Nonscalar types are equal if their definition is the same.
 
@@ -759,7 +609,7 @@ RDB_type_equals(const RDB_type *typ1, const RDB_type *typ2)
 }  
 
 /**
- * RDB_type_name returns the name of a type.
+ * Return the name of a type.
 
 @returns
 

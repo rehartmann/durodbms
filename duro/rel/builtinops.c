@@ -66,7 +66,7 @@ OPERATOR &lt;= (integer, integer) RETURNS boolean;
 
 OPERATOR &lt;= (float, float) RETURNS boolean;
 
-OPERATOR &lt;= (STRING, STRING) RETURNS boolean;
+OPERATOR &lt;= (string, string) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -85,7 +85,7 @@ OPERATOR &gt; (integer, integer) RETURNS boolean;
 
 OPERATOR &gt; (float, float) RETURNS boolean;
 
-OPERATOR &gt; (STRING, STRING) RETURNS boolean;
+OPERATOR &gt; (string, string) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -258,9 +258,9 @@ The result of the concatenation of the operands.
 
 <hr>
 
-<h3 id="op_length">OPERATOR LENGTH</h3>
+<h3 id="op_length">OPERATOR length</h3>
 
-OPERATOR length (STRING) RETURNS integer;
+OPERATOR length (string) RETURNS integer;
 
 <h4>Description</h4>
 
@@ -353,11 +353,11 @@ Converts the operand to a string.
 
 <h4>Return value</h4>
 
-The operand, converted to STRING.
+The operand, converted to string.
 
 <hr>
 
-<h3 id="op_length">OPERATOR getenv</h3>
+<h3 id="op_getenv">OPERATOR getenv</h3>
 
 OPERATOR getenv (name string) RETURNS string;
 
@@ -520,7 +520,7 @@ The IF-THEN-ELSE operator.
 
 <h3 id="op_tuple">OPERATOR TUPLE</h3>
 
-OPERATOR TUPLE(ATTRNAME STRING, ATTRVAL <em>ANY</em>, ...) RETURNS <em>TUPLE</em>;
+OPERATOR TUPLE(ATTRNAME string, ATTRVAL <em>ANY</em>, ...) RETURNS <em>TUPLE</em>;
 
 <h4>Description</h4>
 
@@ -545,6 +545,34 @@ OPERATOR array(<em>ANY</em>, ...) RETURNS <em>ARRAY</em>;
 <h4>Description</h4>
 
 The array selector.
+
+<hr>
+
+<h3 id="op_array_length">OPERATOR length</h3>
+
+OPERATOR length (<em>ARRAY</em>) RETURNS integer;
+
+<h4>Description</h4>
+
+The array length operator.
+
+<h4>Return value</h4>
+
+The length of the operand.
+
+<hr>
+
+<h3 id="op_index_of">OPERATOR index_of</h3>
+
+OPERATOR index_of (ARR <em>ARRAY</em>, DATA <em>ANY</em>) RETURNS integer;
+
+<h4>Description</h4>
+
+Returns the index of the first occurrence of DATA in the array ARR.
+
+<h4>Return value</h4>
+
+The index, or -1 if DATA does not appear in the array.
 
 <hr>
 
@@ -600,25 +628,25 @@ OPERATOR minus(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION<
 
 <h3 id="op_project">OPERATOR project</h3>
 
-OPERATOR project(R1 <em>RELATION</em>, ATTRNAME STRING ...) RETURNS <em>RELATION</em>;
+OPERATOR project(R1 <em>RELATION</em>, ATTRNAME string ...) RETURNS <em>RELATION</em>;
 
 <hr>
 
 <h3 id="op_remove">OPERATOR remove</h3>
 
-OPERATOR remove(R <em>RELATION</em>, ATTRNAME STRING ...) RETURNS <em>RELATION</em>;
+OPERATOR remove(R <em>RELATION</em>, ATTRNAME string ...) RETURNS <em>RELATION</em>;
 
 <hr>
 
 <h3 id="op_rename">OPERATOR rename</h3>
 
-OPERATOR rename(R <em>RELATION</em>, SRC_ATTRNAME STRING, DST_ATTRNAME STRING ...) RETURNS <em>RELATION</em>;
+OPERATOR rename(R <em>RELATION</em>, SRC_ATTRNAME string, DST_ATTRNAME string ...) RETURNS <em>RELATION</em>;
 
 <hr>
 
 <h3 id="op_ungroup">OPERATOR ungroup</h3>
 
-OPERATOR ungroup(R <em>RELATION</em>, ATTRNAME STRING) RETURNS <em>RELATION</em>;
+OPERATOR ungroup(R <em>RELATION</em>, ATTRNAME string) RETURNS <em>RELATION</em>;
 
 <hr>
 
@@ -630,13 +658,13 @@ OPERATOR union(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION<
 
 <h3 id="op_update">OPERATOR update</h3>
 
-OPERATOR update(R1 <em>RELATION</em>, DST_ATTRNAME <em>STRING</em>, SRC_EXPR <em>ANY</em>, ...) RETURNS <em>RELATION</em>;
+OPERATOR update(R1 <em>RELATION</em>, DST_ATTRNAME string, SRC_EXPR <em>ANY</em>, ...) RETURNS <em>RELATION</em>;
 
 <hr>
 
 <h3 id="op_unwrap">OPERATOR unwrap</h3>
 
-OPERATOR unwrap(ATTRNAME STRING, ...) RETURNS <em>RELATION</em>;
+OPERATOR unwrap(ATTRNAME string, ...) RETURNS <em>RELATION</em>;
 
 <hr>
 
@@ -654,7 +682,7 @@ OPERATOR semiminus(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELAT
 
 <h3 id="op_summarize">OPERATOR summarize</h3>
 
-OPERATOR summarize(R1 <em>RELATION</em>, R2 <em>RELATION</em>, EXPR <em>ANY</em>, ATTRNAME STRING, ...) RETURNS <em>RELATION</em>;
+OPERATOR summarize(R1 <em>RELATION</em>, R2 <em>RELATION</em>, EXPR <em>ANY</em>, ATTRNAME string, ...) RETURNS <em>RELATION</em>;
 
 <hr>
 
@@ -676,7 +704,7 @@ The relational WHERE operator.
 
 <h3 id="op_wrap">OPERATOR wrap</h3>
 
-OPERATOR wrap(R <em>RELATION</em>, SRC_ATTRS ARRAY OF STRING, DST_ATTR STRING ...) RETURNS <em>RELATION</em>;
+OPERATOR wrap(R <em>RELATION</em>, SRC_ATTRS ARRAY OF string, DST_ATTR string ...) RETURNS <em>RELATION</em>;
 
 The relational WRAP operator.
 
@@ -1561,20 +1589,58 @@ length_array(int argc, RDB_object *argv[], RDB_operator *op,
     RDB_int len;
 
     if (argc != 1) {
-        RDB_raise_invalid_argument("invalid number of arguments to LENGTH",
+        RDB_raise_invalid_argument("invalid number of arguments to length()",
                 ecp);
         return RDB_ERROR;
     }
-    
     if (argv[0]->kind != RDB_OB_ARRAY && argv[0]->kind != RDB_OB_INITIAL) {
         RDB_raise_type_mismatch("invalid argument type", ecp);
         return RDB_ERROR;
     }
+
     len = RDB_array_length(argv[0], ecp);
     if (len == (RDB_int) RDB_ERROR)
         return RDB_ERROR;
     
     RDB_int_to_obj(retvalp, len);
+    return RDB_OK;
+}
+
+static int
+op_index_of(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_int i;
+    RDB_int len;
+    RDB_object *objp;
+    RDB_bool iseq;
+
+    if (argc != 2) {
+        RDB_raise_invalid_argument("invalid number of arguments to index_of()",
+                ecp);
+        return RDB_ERROR;
+    }
+    if (argv[0]->kind != RDB_OB_ARRAY && argv[0]->kind != RDB_OB_INITIAL) {
+        RDB_raise_type_mismatch("invalid argument type", ecp);
+        return RDB_ERROR;
+    }
+
+    len = RDB_array_length(argv[0], ecp);
+    if (len == (RDB_int) RDB_ERROR)
+        return RDB_ERROR;
+
+    for (i = (RDB_int) 0; i < len; i++) {
+        objp = RDB_array_get(argv[0], i, ecp);
+        if (objp == NULL)
+            return RDB_ERROR;
+        if (RDB_obj_equals(objp, argv[1], ecp, txp, &iseq) != RDB_OK)
+            return RDB_ERROR;
+        if (iseq) {
+            RDB_int_to_obj(retvalp, i);
+            return RDB_OK;
+        }
+    }
+    RDB_int_to_obj(retvalp, -1);
     return RDB_OK;
 }
 
@@ -2051,6 +2117,9 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
         return RDB_ERROR;
 
     if (RDB_put_global_ro_op("array", -1, NULL, NULL, &op_array, ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    if (RDB_put_global_ro_op("index_of", -1, NULL, NULL, &op_index_of, ecp) != RDB_OK)
         return RDB_ERROR;
 
     if (RDB_put_global_ro_op("project", -1, NULL, NULL, &op_project, ecp)

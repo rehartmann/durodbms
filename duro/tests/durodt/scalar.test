@@ -79,7 +79,7 @@ test deftype {user-defined types} -setup $SETUP -body {
         implement type t;
         end implement;
 
-        CURRENT_DB := 'D';
+        current_db := 'D';
         begin transaction;
         var V t;
         put(THE_a(V)); put_line('');
@@ -201,7 +201,7 @@ test defroop {read-only user-defined operators} -setup $SETUP -body {
             end case;
         end operator;
 
-        CURRENT_DB := 'D';
+        current_db := 'D';
         begin tx;
 
         put_line(testop());
@@ -226,15 +226,13 @@ test defroop {read-only user-defined operators} -setup $SETUP -body {
 
 test defupdop {user-defined update operators} -setup $SETUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
-        CURRENT_DB := 'D';
+        current_db := 'D';
         begin transaction;
 
         operator op(s string, i integer) updates {s};
             i := i + 1;
 
-            type LENGTH_T possrep { m FLOAT } constraint (m >= 0.0);
-
-            drop type LENGTH_T;
+            type length_t possrep { m FLOAT } constraint (m >= 0.0);
 
             operator op1(s string) returns string;
                 return s || 'y';
@@ -247,9 +245,6 @@ test defupdop {user-defined update operators} -setup $SETUP -body {
             s := op1(s);
             op2(s);
 
-            drop operator op1;
-            drop operator op2;
-
             return;
         end operator;
 
@@ -258,7 +253,17 @@ test defupdop {user-defined update operators} -setup $SETUP -body {
         op(a, b);
         put_line("a = " || a || ", b = " || cast_as_string(b));
 
+        drop operator op1;
+        drop operator op2;
+
+        drop type length_t;
+
         op(a, b);
+
+        drop operator op1;
+        drop operator op2;
+
+        drop type length_t;
 
         drop var a;
 
@@ -269,7 +274,7 @@ test defupdop {user-defined update operators} -setup $SETUP -body {
 
 test trycatch {TRY .. CATCH} -setup $SETUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
-        CURRENT_DB := 'D';
+        current_db := 'D';
         begin transaction;
 
         operator test() updates {};

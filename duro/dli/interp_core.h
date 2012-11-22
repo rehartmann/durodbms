@@ -69,6 +69,8 @@ extern tx_node *txnp;
 
 extern Duro_module sys_module;
 
+extern RDB_operator *inner_op;
+
 int
 Duro_add_varmap(RDB_exec_context *);
 
