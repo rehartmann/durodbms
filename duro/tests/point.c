@@ -9,10 +9,6 @@
  * Defines selector, setters, and getters for type POINT
  */
 
-#ifndef M_PI_2
-#define M_PI_2 (1.57079632679489661923)
-#endif
-
 int
 POINT(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *valp)
@@ -107,8 +103,7 @@ POINT_get_THETA(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context
 {
     i_point *iptp = RDB_obj_irep((RDB_object *) argv[0], NULL);
 
-    RDB_float_to_obj(valp, iptp->x != 0.0 ?
-            atan(iptp->y / iptp->x) : M_PI_2);
+    RDB_float_to_obj(valp, atan2((double) iptp->y, (double) iptp->x));
 
     return RDB_OK;
 }
@@ -119,7 +114,7 @@ POINT_set_LENGTH(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_contex
 {
     i_point *iptp = RDB_obj_irep(argv[0], NULL);
     float len = (float) RDB_obj_float(argv[1]);
-    float theta = iptp->x != 0.0 ? atan(iptp->y / iptp->x) : M_PI_2;
+    float theta = atan2((double) iptp->y, (double) iptp->x);
 
     iptp->x = cos(theta) * len;
     iptp->y = sin(theta) * len;

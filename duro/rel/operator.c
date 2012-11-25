@@ -1041,8 +1041,8 @@ RDB_obj_not_equals(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 /*
- * Get operator by name. If txp is NULL, envp must not be NULL
- * and is used to look up the operator in memory.
+ * Get operator by name. If txp is NULL and envp is not NULL
+ * envp will be used to look up the operator in memory.
  * If txp is not NULL, envp is ignored.
  */
 RDB_operator *
@@ -1082,6 +1082,10 @@ RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         dbrootp = RDB_tx_db(txp)->dbrootp;
     } else if (envp != NULL) {
         dbrootp = RDB_env_xdata(envp);
+        if (dbrootp == NULL) {
+            RDB_raise_operator_not_found(name, ecp);
+            return NULL;
+        }
     } else {
         if (typmismatch) {
             RDB_raise_type_mismatch(name, ecp);
@@ -1169,9 +1173,6 @@ RDB_add_selector(RDB_type *typ, RDB_exec_context *ecp)
     RDB_operator *datap;
     int argc = typ->def.scalar.repv[0].compc;
     RDB_type **argtv = NULL;
-
-    if (RDB_init_builtin_ops(ecp) != RDB_OK)
-        return RDB_ERROR;
 
     if (argc > 0) {
         argtv = RDB_alloc(sizeof(RDB_type *) * argc, ecp);

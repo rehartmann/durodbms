@@ -1472,7 +1472,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         if (updv[i].condp != NULL) {
             if (RDB_check_expr_type(updv[i].condp,
                     updv[i].tbp->typ->def.basetyp,
-                    &RDB_BOOLEAN, ecp, txp) != RDB_OK) {
+                    &RDB_BOOLEAN, NULL, ecp, txp) != RDB_OK) {
                 return RDB_ERROR;
             }
         }
@@ -1482,7 +1482,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         if (delv[i].condp != NULL) {
             if (RDB_check_expr_type(delv[i].condp,
                     delv[i].tbp->typ->def.basetyp,
-                    &RDB_BOOLEAN, ecp, txp) != RDB_OK) {
+                    &RDB_BOOLEAN, NULL, ecp, txp) != RDB_OK) {
                 return RDB_ERROR;
             }
         }
@@ -1503,7 +1503,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
             if (RDB_type_is_scalar(attrp->typ)) {
                 if (RDB_check_expr_type(updv[i].updv[j].exp,
                         updv[i].tbp->typ->def.basetyp, attrp->typ,
-                        ecp, txp) != RDB_OK) {
+                        NULL, ecp, txp) != RDB_OK) {
                     return RDB_ERROR;
                 }
             }

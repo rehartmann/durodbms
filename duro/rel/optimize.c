@@ -984,7 +984,7 @@ index_joins(RDB_expression *otexp, RDB_expression *itexp,
     RDB_object *tbp;
     int tbc;
     int i;
-    RDB_type *ottyp = RDB_expr_type(otexp, NULL, NULL, ecp, txp);
+    RDB_type *ottyp = RDB_expr_type(otexp, NULL, NULL, NULL, ecp, txp);
     if (ottyp == NULL)
         return RDB_ERROR;
 
@@ -1200,7 +1200,7 @@ RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
     }
 
     /* Set expression types so it is known which names cannot refer to tables */
-    if (RDB_expr_type(tbp->val.tb.exp, NULL, NULL, ecp, txp) == NULL)
+    if (RDB_expr_type(tbp->val.tb.exp, NULL, NULL, NULL, ecp, txp) == NULL)
         return NULL;
     return RDB_optimize_expr(tbp->val.tb.exp, seqitc, seqitv, NULL,
             ecp, txp);

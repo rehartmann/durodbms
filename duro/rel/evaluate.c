@@ -294,7 +294,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
 
     if (strcmp(exp->def.op.name, "extend") == 0) {
         RDB_type *typ = RDB_expr_type(exp->def.op.args.firstp, NULL, NULL,
-                ecp, txp);
+                envp, ecp, txp);
         if (typ == NULL)
             return RDB_ERROR;
 
@@ -463,7 +463,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
          */
         if (valpv[i]->typ == NULL) {
             valpv[i]->typ = RDB_expr_type(argp, getfnp != NULL ? get_type : NULL,
-                    getfnp != NULL ? &gtinfo : NULL, ecp, txp);
+                    getfnp != NULL ? &gtinfo : NULL, envp, ecp, txp);
             if (valpv[i]->typ == NULL) {
                 ret = RDB_ERROR;
                 goto cleanup;

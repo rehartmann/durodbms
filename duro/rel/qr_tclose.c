@@ -231,7 +231,7 @@ RDB_next_tclose_tuple(RDB_qresult *qrp, RDB_object *tplp,
     if (qrp->matp == NULL)
         return RDB_ERROR;
 
-    reltyp = RDB_expr_type(qrp->exp->def.op.args.firstp, NULL, NULL, ecp, txp);
+    reltyp = RDB_expr_type(qrp->exp->def.op.args.firstp, NULL, NULL, NULL, ecp, txp);
     if (reltyp == NULL) {
         return RDB_ERROR;
     }

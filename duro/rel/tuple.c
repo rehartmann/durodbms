@@ -865,7 +865,7 @@ RDB_invunwrap_tuple(const RDB_object *tplp, RDB_expression *exp,
     RDB_expression *argp;
     int attrc = RDB_expr_list_length(&exp->def.op.args) - 1;
     RDB_type *srcreltyp = RDB_expr_type(exp->def.op.args.firstp, NULL, NULL,
-            ecp, txp);
+            NULL, ecp, txp);
     RDB_type *srctuptyp = srcreltyp->def.basetyp;
     RDB_wrapping *wrapv = RDB_alloc(sizeof(RDB_wrapping) * attrc, ecp);
     if (wrapv == NULL) {

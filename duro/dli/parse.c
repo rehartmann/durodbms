@@ -1251,7 +1251,7 @@ tup_rel_node_to_type(RDB_parse_node *nodep, RDB_gettypefn *getfnp, void *getarg,
         exp = RDB_parse_node_expr(nodep->nextp->nextp->nextp, ecp, txp);
         if (exp == NULL)
             return NULL;
-        typ = RDB_expr_type(exp, getfnp, getarg, ecp, txp);
+        typ = RDB_expr_type(exp, getfnp, getarg, NULL, ecp, txp);
         if (typ == NULL)
             return NULL;
         if (nodep->val.token == TOK_TUPLE) {
@@ -1318,7 +1318,7 @@ RDB_parse_node_to_type(RDB_parse_node *nodep, RDB_gettypefn *getfnp, void *getar
                         nodep->val.children.firstp->nextp->nextp, ecp, txp);
                 if (exp == NULL)
                     return NULL;
-                typ = RDB_expr_type(exp, getfnp, getarg, ecp, txp);
+                typ = RDB_expr_type(exp, getfnp, getarg, NULL, ecp, txp);
                 if (typ == NULL)
                     return NULL;
                 return RDB_dup_nonscalar_type(typ, ecp);

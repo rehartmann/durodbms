@@ -332,7 +332,7 @@ RDB_table_keys(RDB_object *tbp, RDB_exec_context *ecp, RDB_string_vec **keyvp)
         int keyc;
         RDB_string_vec *keyv;
 
-        keyc = RDB_infer_keys(tbp->val.tb.exp, NULL, NULL, ecp, NULL,
+        keyc = RDB_infer_keys(tbp->val.tb.exp, NULL, NULL, NULL, ecp, NULL,
                 &keyv, &freekey);
         if (keyc == RDB_ERROR)
             return RDB_ERROR;

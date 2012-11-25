@@ -297,7 +297,7 @@ Duro_exec_vardef(RDB_parse_node *nodep, RDB_exec_context *ecp)
         } else {
             /* No type available (tuple or array) - set type */
             typ = RDB_expr_type(initexp, Duro_get_var_type,
-                    NULL, ecp, txnp != NULL ? &txnp->tx : NULL);
+                    NULL, envp, ecp, txnp != NULL ? &txnp->tx : NULL);
             if (typ == NULL)
                 goto error;
             typ = RDB_dup_nonscalar_type(typ, ecp);
@@ -474,7 +474,7 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
             return RDB_ERROR;
         keylistnodep = nodep->nextp->nextp->nextp->nextp;
         tbtyp = RDB_expr_type(initexp, Duro_get_var_type,
-                NULL, ecp, txnp != NULL ? &txnp->tx : NULL);
+                NULL, envp, ecp, txnp != NULL ? &txnp->tx : NULL);
         if (tbtyp == NULL) {
             return RDB_ERROR;
         }
@@ -535,7 +535,7 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
          */
         if (initexp != NULL) {
             keyc = RDB_infer_keys(initexp, &get_var, current_varmapp,
-                    ecp, txnp != NULL ? &txnp->tx : NULL, &keyv, &freekeys);
+                    envp, ecp, txnp != NULL ? &txnp->tx : NULL, &keyv, &freekeys);
             if (keyc == RDB_ERROR) {
                 keyv = NULL;
                 goto error;
@@ -637,7 +637,7 @@ Duro_exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
             return RDB_ERROR;
         keylistnodep = nodep->nextp->nextp->nextp->nextp;
         tbtyp = RDB_expr_type(initexp, Duro_get_var_type,
-                NULL, ecp, &txnp->tx);
+                NULL, envp, ecp, &txnp->tx);
         if (tbtyp == NULL) {
             return RDB_ERROR;
         }
@@ -678,7 +678,7 @@ Duro_exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
          */
         if (initexp != NULL) {
             keyc = RDB_infer_keys(initexp, &get_var, current_varmapp,
-                    ecp, txnp != NULL ? &txnp->tx : NULL, &keyv, &freekeys);
+                    envp, ecp, txnp != NULL ? &txnp->tx : NULL, &keyv, &freekeys);
             if (keyc == RDB_ERROR) {
                 keyv = NULL;
                 goto error;

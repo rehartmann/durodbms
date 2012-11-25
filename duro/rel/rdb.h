@@ -35,6 +35,9 @@ enum {
     RDB_UNBUFFERED = 1
 };
 
+#define RDB_GETTER_INFIX "_get_"
+#define RDB_SETTER_INFIX "_set_"
+
 typedef struct {
     char *name;
     int compc;
@@ -226,7 +229,7 @@ typedef int RDB_ro_op_func(int, RDB_object *[], RDB_operator *,
 #endif
 
 /*
- * Built-in primitive data types
+ * Built-in scalar data types
  */
 RDB_EXTERN_VAR RDB_type RDB_BOOLEAN;
 RDB_EXTERN_VAR RDB_type RDB_INTEGER;
@@ -848,7 +851,7 @@ RDB_evaluate(RDB_expression *, RDB_getobjfn *, void *, RDB_environment *,
 
 RDB_type *
 RDB_expr_type(RDB_expression *, RDB_gettypefn *, void *,
-        RDB_exec_context *, RDB_transaction *);
+        RDB_environment *, RDB_exec_context *, RDB_transaction *);
 
 const char *
 RDB_expr_op_name(const RDB_expression *);
@@ -1001,10 +1004,10 @@ RDB_object *
 RDB_raise_system(const char *, RDB_exec_context *);
 
 RDB_object *
-RDB_raise_resource_not_found(const char *info, RDB_exec_context *);
+RDB_raise_resource_not_found(const char *, RDB_exec_context *);
 
 RDB_object *
-RDB_raise_internal(const char *info, RDB_exec_context *);
+RDB_raise_internal(const char *, RDB_exec_context *);
 
 RDB_object *
 RDB_raise_lock_not_granted(RDB_exec_context *);
@@ -1022,10 +1025,10 @@ void
 RDB_errcode_to_error(int errcode, RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_ec_set_property(RDB_exec_context *, const char *name, void *);
+RDB_ec_set_property(RDB_exec_context *, const char *, void *);
 
 void *
-RDB_ec_get_property(RDB_exec_context *, const char *name);
+RDB_ec_get_property(RDB_exec_context *, const char *);
 
 void *
 RDB_alloc(size_t, RDB_exec_context *);

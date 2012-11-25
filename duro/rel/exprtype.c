@@ -110,7 +110,7 @@ cleanup:
 
 static RDB_type *
 where_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_type *condtyp;
     RDB_type *reltyp;
@@ -124,7 +124,7 @@ where_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         return NULL;
     }
 
-    reltyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, ecp, txp);
+    reltyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, envp, ecp, txp);
     if (reltyp == NULL)
         return NULL;
 
@@ -139,10 +139,10 @@ where_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         tmap.arg2 = reltyp->def.basetyp;
         tmap.getfn2p = get_tuple_attr_type;
         condtyp = RDB_expr_type(exp->def.op.args.lastp, get_chained_map_type,
-                &tmap, ecp, txp);
+                &tmap, envp, ecp, txp);
     } else {
         condtyp = RDB_expr_type(exp->def.op.args.lastp, get_tuple_attr_type,
-                reltyp->def.basetyp, ecp, txp);
+                reltyp->def.basetyp, envp, ecp, txp);
     }
     if (condtyp == NULL) {
         return NULL;
@@ -160,7 +160,7 @@ where_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 
 static RDB_type *
 extend_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     RDB_attr *attrv;
@@ -176,7 +176,7 @@ extend_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     }
 
     attrc = (argc - 1) / 2;
-    arg1typ = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, ecp, txp);
+    arg1typ = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, envp, ecp, txp);
     if (arg1typ == NULL)
         return NULL;
 
@@ -197,7 +197,7 @@ extend_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     }
     argp = exp->def.op.args.firstp->nextp;
     for (i = 0; i < attrc; i++) {
-        attrv[i].typ = RDB_expr_type_tpltyp(argp, tpltyp, ecp, txp);
+        attrv[i].typ = RDB_expr_type_tpltyp(argp, tpltyp, envp, ecp, txp);
         if (attrv[i].typ == NULL) {
             int j;
 
@@ -395,7 +395,7 @@ group_type(const RDB_expression *exp, RDB_type *argtv[],
 
 static RDB_type *
 tuple_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     int attrc;
@@ -430,7 +430,7 @@ tuple_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         argp = argp->nextp;
 
         attrv[i].name = RDB_obj_string(attrobjp);
-        attrv[i].typ = RDB_expr_type(argp, getfnp, arg, ecp, txp);
+        attrv[i].typ = RDB_expr_type(argp, getfnp, arg, envp, ecp, txp);
         if (attrv[i].typ == NULL)
             goto cleanup;
 
@@ -446,7 +446,7 @@ cleanup:
 
 static RDB_type *
 array_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_type *rtyp = NULL;
     RDB_type *basetyp;
@@ -455,7 +455,7 @@ array_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         RDB_raise_internal("argument required for ARRAY", ecp);
         goto error;
     }
-    basetyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, ecp, txp);
+    basetyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, envp, ecp, txp);
     if (basetyp == NULL) {
         RDB_raise_invalid_argument("type required for ARRAY argument", ecp);
         goto error;
@@ -483,7 +483,7 @@ error:
  */
 static RDB_type *
 relation_type(const RDB_expression *exp, RDB_type **argtv,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_type *rtyp;
     RDB_type *tpltyp;
@@ -502,7 +502,7 @@ relation_type(const RDB_expression *exp, RDB_type **argtv,
          * If the type of the first arg hasn't been passed in argtv[0],
          * get type of first expression
          */
-        tpltyp = RDB_expr_type(exp->def.op.args.firstp, NULL, NULL, ecp, txp);
+        tpltyp = RDB_expr_type(exp->def.op.args.firstp, NULL, NULL, envp, ecp, txp);
         if (tpltyp == NULL)
             return NULL;
     }
@@ -584,7 +584,7 @@ rename_type(const RDB_expression *exp, RDB_type **argtv,
 
 static RDB_type *
 expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     RDB_type *typ;
@@ -603,19 +603,19 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
      * WHERE, EXTEND, etc. require special treatment
      */
     if (strcmp(exp->def.op.name, "where") == 0) {
-        return where_type(exp, getfnp, arg, ecp, txp);
+        return where_type(exp, getfnp, arg, envp, ecp, txp);
     }
     if (strcmp(exp->def.op.name, "extend") == 0) {
-        return extend_type(exp, getfnp, arg, ecp, txp);
+        return extend_type(exp, getfnp, arg, envp, ecp, txp);
     }
     if (strcmp(exp->def.op.name, "summarize") == 0) {
         return RDB_summarize_type(&exp->def.op.args, 0, NULL, ecp, txp);
     }
     if (strcmp(exp->def.op.name, "tuple") == 0) {
-        return tuple_type(exp, getfnp, arg, ecp, txp);
+        return tuple_type(exp, getfnp, arg, envp, ecp, txp);
     }
     if (strcmp(exp->def.op.name, "array") == 0) {
-        return array_type(exp, getfnp, arg, ecp, txp);
+        return array_type(exp, getfnp, arg, envp, ecp, txp);
     }
 
     if (strcmp(exp->def.op.name, "remove") == 0) {
@@ -646,7 +646,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
         }
 
-        argtyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, ecp, txp);
+        argtyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, envp, ecp, txp);
         if (argtyp == NULL)
             goto error;
         attrtyp = RDB_type_attr_type(argtyp,
@@ -673,7 +673,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
         }
 
-        argtyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, ecp, txp);
+        argtyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, envp, ecp, txp);
         if (argtyp == NULL)
             goto error;
         attrtyp = RDB_type_attr_type(argtyp,
@@ -700,7 +700,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
         }
 
-        argtyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, ecp, txp);
+        argtyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, envp, ecp, txp);
         if (argtyp == NULL)
             goto error;
         attrtyp = RDB_type_attr_type(argtyp,
@@ -729,7 +729,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
          * The expression may not have a type (e.g. if it's an array).
          * In this case RDB_NOT_FOUND is raised, which is caught.
          */
-        argtv[i] = RDB_expr_type(argp, getfnp, arg, ecp, txp);
+        argtv[i] = RDB_expr_type(argp, getfnp, arg, envp, ecp, txp);
         if (argtv[i] == NULL) {
             if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
                 goto error;
@@ -746,7 +746,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         }
         typ = &RDB_INTEGER;
     } else if (strcmp(exp->def.op.name, "relation") == 0) {
-        typ = relation_type(exp, argtv, ecp, txp);
+        typ = relation_type(exp, argtv, envp, ecp, txp);
     } else if (strcmp(exp->def.op.name, "rename") == 0) {
         typ = rename_type(exp, argtv, ecp, txp);
     } else if (strcmp(exp->def.op.name, "wrap") == 0) {
@@ -969,7 +969,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             }
         }
 
-        op = RDB_get_ro_op(exp->def.op.name, argc, argtv, NULL, ecp, txp);
+        op = RDB_get_ro_op(exp->def.op.name, argc, argtv, envp, ecp, txp);
         if (op == NULL)
             goto error;
         if (op->rtyp == NULL) {
@@ -1032,11 +1032,14 @@ var_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
  * Get the type of an expression. The type is managed by the expression.
  * After RDB_expr_type() has been called once, future calls will return the same type.
  *
+ * If txp is NULL, envp will be used to look up operators from the cache.
+ * If txp is not NULL, envp is ignored.
+ *
  * @returns The type of the expression, or NULL on failure.
  */
 RDB_type *
 RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_attr *attrp;
     RDB_type *typ;
@@ -1067,7 +1070,8 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
         case RDB_EX_VAR:
             return var_expr_type(exp, getfnp, getarg, ecp, txp);
         case RDB_EX_TUPLE_ATTR:
-            typ = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg, ecp, txp);
+            typ = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg,
+                    envp, ecp, txp);
             if (typ == NULL)
                 return NULL;
             typ = RDB_type_attr_type(typ, exp->def.op.name);
@@ -1077,7 +1081,8 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
             }
             return typ;
         case RDB_EX_GET_COMP:
-            typ = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg, ecp, txp);
+            typ = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg,
+                    envp, ecp, txp);
             if (typ == NULL)
                 return NULL;
 
@@ -1094,7 +1099,7 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
             }
             return attrp->typ;
         case RDB_EX_RO_OP:
-            exp->typ = expr_op_type(exp, getfnp, getarg, ecp, txp);
+            exp->typ = expr_op_type(exp, getfnp, getarg, envp, ecp, txp);
             return exp->typ;
     }
     abort();
@@ -1108,8 +1113,8 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
  */
 RDB_type *
 RDB_expr_type_tpltyp(RDB_expression *exp, const RDB_type *tpltyp,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     return RDB_expr_type(exp, &get_tuple_attr_type, (RDB_type *) tpltyp,
-            ecp, txp);
+            envp, ecp, txp);
 }

@@ -712,7 +712,7 @@ The relational WRAP operator.
 
 <h3 id="op_sqrt">OPERATOR sqrt</h3>
 
-OPERATOR sqrt(x FLOAT) RETURNS FLOAT;
+OPERATOR sqrt(x float) RETURNS float;
 
 The square root operator.
 
@@ -720,7 +720,7 @@ The square root operator.
 
 <h3 id="op_sin">OPERATOR sin</h3>
 
-OPERATOR sin (x FLOAT) RETURNS FLOAT;
+OPERATOR sin (x float) RETURNS float;
 
 The sine operator.
 
@@ -728,7 +728,7 @@ The sine operator.
 
 <h3 id="op_cos">OPERATOR cos</h3>
 
-OPERATOR cos(x FLOAT) RETURNS FLOAT;
+OPERATOR cos(x float) RETURNS float;
 
 The cosine operator.
 
@@ -736,9 +736,17 @@ The cosine operator.
 
 <h3 id="op_atan">OPERATOR atan</h3>
 
-OPERATOR atan(x FLOAT) RETURNS FLOAT;
+OPERATOR atan(x float) RETURNS float;
 
 The arc tangent operator.
+
+<hr>
+
+<h3 id="op_atan2">OPERATOR atan</h3>
+
+OPERATOR atan(y float, x float) RETURNS float;
+
+The atan2 operator.
 
 */
 
@@ -1678,7 +1686,17 @@ static int
 math_atan(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_float_to_obj(retvalp, (RDB_float) atan(RDB_obj_float(argv[0])));
+    RDB_float_to_obj(retvalp, (RDB_float) atan((double) RDB_obj_float(argv[0])));
+    return RDB_OK;
+}
+
+static int
+math_atan2(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_float_to_obj(retvalp,
+            (RDB_float) atan2((double) RDB_obj_float(argv[0]),
+                              (double) RDB_obj_float(argv[1])));
     return RDB_OK;
 }
 
@@ -1717,13 +1735,8 @@ RDB_put_global_ro_op(const char *name, int argc, RDB_type **argtv,
 int
 RDB_init_builtin_ops(RDB_exec_context *ecp)
 {
-    static RDB_bool initialized = RDB_FALSE;
     RDB_type *argtv[3];
     int ret;
-
-    if (initialized)
-        return RDB_OK;
-    initialized = RDB_TRUE;
 
     RDB_init_op_map(&RDB_builtin_ro_op_map);
 
@@ -2230,6 +2243,11 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
+    argtv[1] = &RDB_FLOAT;
+
+    ret = RDB_put_global_ro_op("atan2", 2, argtv, &RDB_FLOAT, &math_atan2, ecp);
+    if (ret != RDB_OK)
+        return ret;
 
     argtv[0] = &RDB_STRING;
 

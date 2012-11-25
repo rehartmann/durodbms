@@ -41,4 +41,8 @@ RDB_is_getter(const RDB_operator *);
 RDB_bool
 RDB_is_setter(const RDB_operator *);
 
+int
+RDB_drop_typeimpl_ops(const RDB_type *typ, RDB_exec_context *,
+        RDB_transaction *);
+
 #endif

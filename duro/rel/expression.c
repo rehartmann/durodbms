@@ -1006,9 +1006,10 @@ RDB_create_binexpr(RDB_expression *arg1, RDB_expression *arg2,
 
 int
 RDB_check_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
-        const RDB_type *checktyp, RDB_exec_context *ecp, RDB_transaction *txp)
+        const RDB_type *checktyp, RDB_environment *envp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_type *typ = RDB_expr_type_tpltyp(exp, tuptyp, ecp, txp);
+    RDB_type *typ = RDB_expr_type_tpltyp(exp, tuptyp, envp, ecp, txp);
     if (typ == NULL)
         return RDB_ERROR;
 
@@ -1219,7 +1220,7 @@ int
 RDB_expr_to_empty_table(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    RDB_type *typ = RDB_expr_type_tpltyp(exp, NULL, ecp, txp);
+    RDB_type *typ = RDB_expr_type_tpltyp(exp, NULL, NULL, ecp, txp);
     if (typ == NULL)
         return RDB_ERROR;
 

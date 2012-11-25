@@ -17,6 +17,17 @@
 #include <string.h>
 #include <locale.h>
 
+int
+RDB_getter_name(const RDB_type *typ, const char *compname,
+        RDB_object *strobjp, RDB_exec_context *ecp)
+{
+    if (RDB_string_to_obj(strobjp, typ->name, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_append_string(strobjp, RDB_GETTER_INFIX, ecp) != RDB_OK)
+        return RDB_ERROR;
+    return RDB_append_string(strobjp, compname, ecp);
+}
+
 static int
 load_getter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
         RDB_transaction *txp)
@@ -25,11 +36,7 @@ load_getter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
     RDB_int cnt;
 
     RDB_init_obj(&opnameobj);
-    if (RDB_string_to_obj(&opnameobj, typ->name, ecp) != RDB_OK)
-        goto error;
-    if (RDB_append_string(&opnameobj, "_get_", ecp) != RDB_OK)
-        goto error;
-    if (RDB_append_string(&opnameobj, compname, ecp) != RDB_OK)
+    if (RDB_getter_name(typ, compname, &opnameobj, ecp) != RDB_OK)
         goto error;
 
     cnt = RDB_cat_load_ro_op(RDB_obj_string(&opnameobj), ecp, txp);
@@ -42,6 +49,17 @@ error:
     return RDB_ERROR;
 }
 
+int
+RDB_setter_name(const RDB_type *typ, const char *compname,
+        RDB_object *strobjp, RDB_exec_context *ecp)
+{
+    if (RDB_string_to_obj(strobjp, typ->name, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_append_string(strobjp, RDB_SETTER_INFIX, ecp) != RDB_OK)
+        return RDB_ERROR;
+    return RDB_append_string(strobjp, compname, ecp);
+}
+
 static int
 load_setter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
         RDB_transaction *txp)
@@ -50,11 +68,7 @@ load_setter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
     RDB_int cnt;
 
     RDB_init_obj(&opnameobj);
-    if (RDB_string_to_obj(&opnameobj, typ->name, ecp) != RDB_OK)
-        goto error;
-    if (RDB_append_string(&opnameobj, "_set_", ecp) != RDB_OK)
-        goto error;
-    if (RDB_append_string(&opnameobj, compname, ecp) != RDB_OK)
+    if (RDB_setter_name(typ, compname, &opnameobj, ecp) != RDB_OK)
         goto error;
 
     cnt = RDB_cat_load_upd_op(RDB_obj_string(&opnameobj), ecp, txp);
@@ -1106,7 +1120,7 @@ aggr_type(const RDB_expression *exp, const RDB_type *tpltyp,
             RDB_raise_invalid_argument("invalid number of aggregate arguments", ecp);
             return NULL;
         }
-        return RDB_expr_type_tpltyp(exp->def.op.args.firstp, tpltyp, ecp, txp);
+        return RDB_expr_type_tpltyp(exp->def.op.args.firstp, tpltyp, NULL, ecp, txp);
     } else if (strcmp(exp->def.op.name, "any") == 0
             || strcmp(exp->def.op.name, "all") == 0) {
         return &RDB_BOOLEAN;
@@ -1136,10 +1150,10 @@ RDB_summarize_type(RDB_expr_list *expsp,
     addc = (expc - 2) / 2;
     attrc = addc + avgc;
 
-    tb1typ = RDB_expr_type(expsp->firstp, NULL, NULL, ecp, txp);
+    tb1typ = RDB_expr_type(expsp->firstp, NULL, NULL, NULL, ecp, txp);
     if (tb1typ == NULL)
         return NULL;
-    tb2typ = RDB_expr_type(expsp->firstp->nextp, NULL, NULL, ecp, txp);
+    tb2typ = RDB_expr_type(expsp->firstp->nextp, NULL, NULL, NULL, ecp, txp);
     if (tb2typ == NULL)
         goto error;
    

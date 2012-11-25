@@ -441,15 +441,15 @@ RDB_obj_to_field(RDB_field *, RDB_object *, RDB_exec_context *);
 #define RDB_pkey_len(tbp) ((tbp)->val.tb.keyv[0].strc)
 
 RDB_type *
-RDB_expr_type_tpltyp(RDB_expression *, const RDB_type *, RDB_exec_context *,
-        RDB_transaction *);
+RDB_expr_type_tpltyp(RDB_expression *, const RDB_type *, RDB_environment *,
+        RDB_exec_context *, RDB_transaction *);
 
 RDB_type *
 RDB_tuple_type(const RDB_object *tplp, RDB_exec_context *);
 
 int
 RDB_check_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
-        const RDB_type *checktyp, RDB_exec_context *, RDB_transaction *);
+        const RDB_type *checktyp, RDB_environment *, RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_check_type_constraint(RDB_object *, RDB_environment *,
@@ -467,7 +467,7 @@ RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
 
 int
 RDB_infer_keys(RDB_expression *, RDB_getobjfn *, void *,
-        RDB_exec_context *, RDB_transaction *,
+        RDB_environment *, RDB_exec_context *, RDB_transaction *,
         RDB_string_vec **, RDB_bool *);
 
 void
@@ -518,5 +518,13 @@ RDB_op_type_relation(int , RDB_object *[], RDB_type *,
 int
 RDB_op_relation(int, RDB_object *[], RDB_operator *,
         RDB_exec_context *, RDB_transaction *, RDB_object *);
+
+int
+RDB_getter_name(const RDB_type *, const char *,
+        RDB_object *, RDB_exec_context *);
+
+int
+RDB_setter_name(const RDB_type *typ, const char *,
+        RDB_object *, RDB_exec_context *);
 
 #endif

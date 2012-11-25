@@ -24,7 +24,7 @@ RDB_vtexp_to_obj(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *tbp)
 {
     /* Create type */
-    RDB_type *tbtyp = RDB_expr_type(exp, NULL, NULL, ecp, txp);
+    RDB_type *tbtyp = RDB_expr_type(exp, NULL, NULL, NULL, ecp, txp);
     if (tbtyp == NULL) {
         return RDB_ERROR;
     }
@@ -145,12 +145,13 @@ RDB_check_project_keyloss(RDB_expression *exp,
 }
 
 static RDB_string_vec *
-all_key(RDB_expression *exp, RDB_exec_context *ecp)
+all_key(RDB_expression *exp, RDB_environment *envp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int attrc;
     int i;
     RDB_string_vec *keyv;
-    RDB_type *tbtyp = RDB_expr_type_tpltyp(exp, NULL, ecp, NULL);
+    RDB_type *tbtyp = RDB_expr_type_tpltyp(exp, NULL, envp, ecp, txp);
     if (tbtyp == NULL)
         return NULL;
 
@@ -193,11 +194,11 @@ infer_join_keys(RDB_expression *exp, RDB_exec_context *ecp,
     RDB_string_vec *newkeyv;
     RDB_bool free1, free2;
 
-    keyc1 = RDB_infer_keys(exp->def.op.args.firstp, NULL, NULL, ecp, NULL,
+    keyc1 = RDB_infer_keys(exp->def.op.args.firstp, NULL, NULL, NULL, ecp, NULL,
             &keyv1, &free1);
     if (keyc1 < 0)
         return keyc1;
-    keyc2 = RDB_infer_keys(exp->def.op.args.firstp, NULL, NULL, ecp, NULL,
+    keyc2 = RDB_infer_keys(exp->def.op.args.firstp, NULL, NULL, NULL, ecp, NULL,
             &keyv2, &free2);
     if (keyc2 < 0)
         return keyc2;
@@ -251,7 +252,8 @@ error:
 }
 
 static int
-infer_project_keys(RDB_expression *exp, RDB_exec_context *ecp,
+infer_project_keys(RDB_expression *exp, RDB_environment *envp,
+        RDB_exec_context *ecp, RDB_transaction *txp,
         RDB_string_vec **keyvp, RDB_bool *caller_must_freep)
 {
     int keyc;
@@ -261,7 +263,7 @@ infer_project_keys(RDB_expression *exp, RDB_exec_context *ecp,
     RDB_bool *presv;
     RDB_bool freekeys;
 
-    keyc = RDB_infer_keys(exp->def.op.args.firstp, NULL, NULL, ecp, NULL,
+    keyc = RDB_infer_keys(exp->def.op.args.firstp, NULL, NULL, envp, ecp, txp,
             &keyv, &freekeys);
     if (keyc < 0)
         return keyc;
@@ -274,7 +276,7 @@ infer_project_keys(RDB_expression *exp, RDB_exec_context *ecp,
     if (newkeyc == 0) {
         /* Table is all-key */
         newkeyc = 1;
-        newkeyv = all_key(exp, ecp);
+        newkeyv = all_key(exp, envp, ecp, txp);
         if (newkeyv == NULL) {
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
@@ -324,7 +326,7 @@ infer_group_keys(RDB_expression *exp, RDB_exec_context *ecp,
 {
     int i, j;
     RDB_string_vec *newkeyv;
-    RDB_type *tbtyp = RDB_expr_type_tpltyp(exp, NULL, ecp, NULL);
+    RDB_type *tbtyp = RDB_expr_type_tpltyp(exp, NULL, NULL, ecp, NULL);
 
     /*
      * Key consists of all attributes which are not grouped
@@ -430,8 +432,8 @@ error:
  */
 int
 RDB_infer_keys(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
-       RDB_exec_context *ecp, RDB_transaction *txp, RDB_string_vec **keyvp,
-       RDB_bool *caller_must_freep)
+       RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp,
+       RDB_string_vec **keyvp, RDB_bool *caller_must_freep)
 {
     switch (exp->kind) {
         case RDB_EX_OBJ:
@@ -478,23 +480,23 @@ RDB_infer_keys(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             || (strcmp(exp->def.op.name, "extend") == 0)
             || (strcmp(exp->def.op.name, "divide") == 0)) {
         return RDB_infer_keys(exp->def.op.args.firstp, NULL, NULL,
-                ecp, NULL, keyvp, caller_must_freep);
+                envp, ecp, txp, keyvp, caller_must_freep);
     }
     if (strcmp(exp->def.op.name, "join") == 0) {
         *caller_must_freep = RDB_TRUE;
     	return infer_join_keys(exp, ecp, keyvp);
     }
     if (strcmp(exp->def.op.name, "project") == 0) {
-    	return infer_project_keys(exp, ecp, keyvp, caller_must_freep);
+    	return infer_project_keys(exp, envp, ecp, txp, keyvp, caller_must_freep);
     }
     if (strcmp(exp->def.op.name, "summarize") == 0) {
         return RDB_infer_keys(exp->def.op.args.firstp->nextp, NULL, NULL,
-                ecp, NULL, keyvp, caller_must_freep);
+                envp, ecp, txp, keyvp, caller_must_freep);
     }
     if (strcmp(exp->def.op.name, "rename") == 0) {
         RDB_bool freekey;
         int keyc = RDB_infer_keys(exp->def.op.args.firstp, NULL, NULL,
-                ecp, NULL, keyvp, &freekey);
+                envp, ecp, txp, keyvp, &freekey);
         if (keyc == RDB_ERROR)
             return RDB_ERROR;
 
@@ -516,9 +518,8 @@ RDB_infer_keys(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     /*
      * For all other relational operators, assume all-key table
      */
-    *keyvp = all_key(exp, ecp);
+    *keyvp = all_key(exp, envp, ecp, txp);
     if (*keyvp == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     *caller_must_freep = RDB_TRUE;

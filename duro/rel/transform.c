@@ -488,7 +488,7 @@ swap_project_where(RDB_expression *exp, RDB_expression *chexp,
     int attrc;
     char **attrv;
     RDB_expression *argp;
-    RDB_type *chtyp = RDB_expr_type(chexp, NULL, NULL, ecp, txp);
+    RDB_type *chtyp = RDB_expr_type(chexp, NULL, NULL, NULL, ecp, txp);
     if (chtyp == NULL)
         return RDB_ERROR;
 
@@ -670,7 +670,7 @@ RDB_remove_to_project(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         argp = argp->nextp;
     }                
 
-    chtyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, ecp, txp);
+    chtyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, NULL, ecp, txp);
     if (chtyp == NULL)
         return RDB_ERROR;
     if (chtyp->kind == RDB_TP_RELATION) {

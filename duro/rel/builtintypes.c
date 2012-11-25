@@ -196,6 +196,19 @@ RDB_add_type(RDB_type *typ, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
+/** @addtogroup type
+ * @{
+ */
+
+/**
+ * Initialize built-in types and operators.
+ *
+ * RDB_init_builtin_types() may be called more than once.
+ *
+ * It is called by RDB_create_db_from_env() and RDB_get_db_from_env().
+ * If neither of these functions have been called, RDB_init_builtin_types()
+ * must be called to make built-in types and operators available.
+ */
 int
 RDB_init_builtin_types(RDB_exec_context *ecp)
 {
@@ -708,6 +721,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_SYNTAX_ERROR.def.scalar.sysimpl = RDB_TRUE;
     RDB_SYNTAX_ERROR.compare_op = NULL;
 
+    if (RDB_init_builtin_ops(ecp) != RDB_OK)
+        return RDB_ERROR;
+
     RDB_init_hashmap(&RDB_builtin_type_map, 32);
 
     /*
@@ -819,3 +835,5 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
 
     return RDB_OK;
 }
+
+/*@}*/

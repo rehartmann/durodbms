@@ -78,30 +78,34 @@ test deftype {user-defined types} -setup $SETUP -body {
 
         implement type t;
         end implement;
-
-        current_db := 'D';
-        begin transaction;
-        var V t;
-        put(THE_a(V)); put_line('');
-        put(THE_b(V)); put_line('');
+    }
+    exec $testdir/../../dli/durodt -e dbenv -d D << {
+        -- Check selector access w/o tx
+        var v init t(0, 0);
         
-        V := t(1, 2);
-        put(THE_a(V)); put_line('');
-        put(THE_b(V)); put_line('');
+        put(the_a(v)); put_line('');
+        put(the_b(v)); put_line('');
 
-        THE_a(V) := 5;
-        put(THE_a(V)); put_line('');
+        v := t(1, 2);
+        put(the_a(v)); put_line('');
+        put(the_b(v)); put_line('');
 
+        the_a(v) := 5;
+        put(the_a(v)); put_line('');
+
+        begin tx;
+        var v2 t;
         commit;
+        drop var v2;
 
-        -- Dropping t must fail because V still exists
+        -- Dropping t must fail because v still exists
         try
             drop type t;
 		catch ex in_use_error;
 		    put_line('caught in_use_error');
 		end try;
 
-        drop var V;
+        drop var v;
         drop type t;
 
         try
@@ -135,6 +139,101 @@ test deftype {user-defined types} -setup $SETUP -body {
 caught in_use_error
 caught name_error
 type constraint violation caught
+}
+
+test deftypemr {user-defined type with multiple possreps} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+		type fixed2
+		    possrep fixed2r { r rational }
+		    possrep fixed2i { i integer };
+
+		implement type fixed2 as integer;
+		
+		operator fixed2r(r rational) returns fixed2;
+		return cast_as_integer(r*100.0);
+		end operator;
+
+		operator fixed2i(i integer) returns fixed2;
+		return i;
+		end operator;
+
+		operator get_r(f2 fixed2) returns rational;
+		return cast_as_rational(f2) / 100.0;
+		end operator;
+
+		operator set_r(f2 fixed2, r rational) updates {f2};
+		f2 := cast_as_integer(r*100.0);
+		end operator;
+
+		operator get_i(f2 fixed2) returns integer;
+		return f2;
+		end operator;
+
+		operator set_i(f2 fixed2, i integer) updates {f2};
+		f2 := i;
+		end operator;
+
+		end implement;
+
+        var f1 fixed2;
+        var f2 init fixed2r(1.00);
+        var f3 init fixed2i(100);
+    }
+    exec $testdir/../../dli/durodt -e dbenv -d D << {
+        var f1 fixed2;
+        var f2 init fixed2r(1.23);
+        var f3 init fixed2i(321);
+
+        put(the_i(f1)); put_line('');
+        put(the_r(f1)); put_line('');
+        put(the_i(f2)); put_line('');
+        put(the_r(f2)); put_line('');
+        put(the_i(f3)); put_line('');
+        put(the_r(f3)); put_line('');
+
+        the_i(f1) := 20;
+        put(the_i(f1)); put_line('');
+        put(the_r(f1)); put_line('');
+
+        var p private relation {id int, amount fixed2} key {id};
+        
+        insert p rel { tuple { id 1, amount fixed2r(3.5) },
+                       tuple { id 2, amount fixed2i(1420) } };
+
+        var tp tuple same_heading_as(p);
+
+        foreach tp in p order(id asc);
+             put(the_i(tp.amount)); put_line('');
+             put(the_r(tp.amount)); put_line('');
+        end foreach;
+
+        var p2 private relation {id int, amount fixed2}
+                init rel { tuple { id 1, amount fixed2r(500.11) },
+                       tuple { id 2, amount fixed2i(20012) } };
+
+        foreach tp in p2 order(id asc);
+             put(the_i(tp.amount)); put_line('');
+             put(the_r(tp.amount)); put_line('');
+        end foreach;
+    }
+} -result {0
+0.0
+123
+1.23
+321
+3.21
+20
+0.2
+350
+3.5
+1420
+14.2
+50011
+500.11
+20012
+200.12
 }
 
 test defroop {read-only user-defined operators} -setup $SETUP -body {
@@ -175,13 +274,12 @@ test defroop {read-only user-defined operators} -setup $SETUP -body {
         end operator;
 
         /*
-         * Reverse string.
+         * Reverse string
          */
         operator reverse(s string) returns string;
             var res string;	-- automatically initialized to ''
-            var len init LENGTH(s);
 
-            var i integer init len - 1;
+            var i integer init length(s) - 1;
             while i >= 0;
                 res := res || substr(s, i, 1);
                 i := i - 1;
@@ -208,12 +306,14 @@ test defroop {read-only user-defined operators} -setup $SETUP -body {
 
         put_line(reverse("Madam, I'm Adam."));
 
+        commit;
+
+        -- Test without tx
+
         put(fib(6)); put_line('');
 
         put(sgn(5)); put_line('');
         put(sgn(0)); put_line('');
-
-        commit;
 
         drop operator testop;
     }

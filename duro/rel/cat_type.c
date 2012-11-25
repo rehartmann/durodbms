@@ -585,13 +585,13 @@ error:
  * Raise in_use_error if there is a real table with an attribute of type <name>
  */
 int
-RDB_cat_check_type_used(const char *name, RDB_exec_context *ecp,
+RDB_cat_check_type_used(RDB_type *typ, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_object *tmptbp;
     RDB_bool isempty;
     RDB_object tpl;
-    RDB_expression *exp = attr_type_query(name, RDB_tx_db(txp), ecp);
+    RDB_expression *exp = attr_type_query(typ->name, RDB_tx_db(txp), ecp);
 
     if (exp == NULL)
         return RDB_ERROR;
@@ -615,7 +615,7 @@ RDB_cat_check_type_used(const char *name, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
-    exp = upd_op_type_query(name, RDB_tx_db(txp), ecp);
+    exp = upd_op_type_query(typ->name, RDB_tx_db(txp), ecp);
     if (exp == NULL)
         return RDB_ERROR;
 
@@ -638,7 +638,7 @@ RDB_cat_check_type_used(const char *name, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
-    exp = ro_op_type_query(name, RDB_tx_db(txp), ecp);
+    exp = ro_op_type_query(typ->name, RDB_tx_db(txp), ecp);
     if (exp == NULL)
         return RDB_ERROR;
 
@@ -666,11 +666,22 @@ RDB_cat_check_type_used(const char *name, RDB_exec_context *ecp,
             RDB_destroy_obj(&tpl, ecp);
             return RDB_ERROR;
         }
+        RDB_clear_err(ecp);
     } else {
-        if (strcmp(RDB_tuple_get_string(&tpl, "name"), name) != 0) {
-            /* Not a selector */
-            RDB_destroy_obj(&tpl, ecp);
+        if (!typ->def.scalar.sysimpl) {
+            /*
+             * No system-generated selector,
+             * so a read-only operator is not acceptible
+             */
             RDB_raise_in_use(RDB_tuple_get_string(&tpl, "name"), ecp);
+            RDB_destroy_obj(&tpl, ecp);
+            return RDB_ERROR;
+        }
+        if (strcmp(RDB_tuple_get_string(&tpl, "name"),
+                typ->def.scalar.repv[0].name) != 0) {
+            /* Not a selector */
+            RDB_raise_in_use(RDB_tuple_get_string(&tpl, "name"), ecp);
+            RDB_destroy_obj(&tpl, ecp);
             return RDB_ERROR;
         }
     }

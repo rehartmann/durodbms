@@ -1097,13 +1097,14 @@ RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
         char *opname;
         RDB_object *argv[1];
 
-        opname = RDB_alloc(strlen(valp->typ->name) + strlen(compname) + 6, ecp);
+        opname = RDB_alloc(strlen(valp->typ->name) + strlen(compname)
+                + strlen(RDB_GETTER_INFIX) + 1, ecp);
         if (opname == NULL) {
             return RDB_ERROR;
         }
 
         strcpy(opname, valp->typ->name);
-        strcat(opname, "_get_");
+        strcat(opname, RDB_GETTER_INFIX);
         strcat(opname, compname);
         argv[0] = (RDB_object *) valp;
 
@@ -1156,19 +1157,20 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
         RDB_type *argtv[2];
         RDB_operator *op;
 
-        opname = RDB_alloc(strlen(valp->typ->name) + strlen(compname) + 6, ecp);
+        opname = RDB_alloc(strlen(valp->typ->name) + strlen(compname)
+                + strlen(RDB_SETTER_INFIX) + 1, ecp);
         if (opname == NULL) {
             return RDB_ERROR;
         }
 
         strcpy(opname, valp->typ->name);
-        strcat(opname, "_set_");
+        strcat(opname, RDB_SETTER_INFIX);
         strcat(opname, compname);
         argv[0] = valp;
         argv[1] = (RDB_object *) compvalp;
         argtv[0] = RDB_obj_type(argv[0]);
         argtv[1] = RDB_obj_type(argv[1]);
-        
+
         op = RDB_get_update_op_e(opname, 2, argtv, envp, ecp, txp);
         RDB_free(opname);
         if (op == NULL)

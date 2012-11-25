@@ -163,7 +163,7 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
 
         constrtyp = RDB_expr_type(constraintp,
             getcomptype, &getcomptypedata,
-            ecp, txp);
+            NULL, ecp, txp);
         if (constrtyp == NULL)
             return RDB_ERROR;
         if (constrtyp != &RDB_BOOLEAN) {
@@ -320,7 +320,6 @@ in which case the transaction may be implicitly rolled back.
 int
 RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int ret;
     RDB_int cnt;
     RDB_type *typ;
     RDB_expression *wherep, *argp;
@@ -339,18 +338,22 @@ RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
 
-    /* Check if the type is still used by a table */
-    ret = RDB_cat_check_type_used(name, ecp, txp);
-    if (ret != RDB_OK)
-        return ret;
+    typ = RDB_get_type(name, ecp, txp);
+    if (typ == NULL)
+        return RDB_ERROR;
 
-    /* Delete selector */
-    ret = RDB_drop_op(name, ecp, txp);
-    if (ret != RDB_OK) {
-        if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR) {
-            return RDB_ERROR;
+    /* Check if the type is still used by a table */
+    if (RDB_cat_check_type_used(typ, ecp, txp) != RDB_OK)
+        return RDB_ERROR;
+
+    if (typ->def.scalar.sysimpl) {
+        /* Delete system-generated selector */
+        if (RDB_drop_op(typ->def.scalar.repv[0].name, ecp, txp) != RDB_OK) {
+            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR) {
+                return RDB_ERROR;
+            }
+            RDB_clear_err(ecp);
         }
-        RDB_clear_err(ecp);
     }
 
     /* Delete type from database */
@@ -384,27 +387,25 @@ RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
             txp);
     if (cnt == (RDB_int) RDB_ERROR) {
         RDB_del_expr(wherep, ecp);
-        return ret;
+        return RDB_ERROR;
     }
 
     /*
-     * Delete type in memory, if it's in the type map
+     * Delete type in memory
      */
-    typ = RDB_hashmap_get(&txp->dbp->dbrootp->typemap, name);
-    if (typ != NULL) {
-        /* Delete type from type map by puting a NULL pointer into it */
-        ret = RDB_hashmap_put(&txp->dbp->dbrootp->typemap, name, ntp);
-        if (ret != RDB_OK) {
-            return RDB_ERROR;
-        }
 
-        /*
-         * Delete RDB_type struct last because name may be identical
-         * to typ->name
-         */
-        if (del_type(typ, ecp) != RDB_OK)
-            return RDB_ERROR;
+    /* Delete type from type map by putting a NULL pointer into it */
+    if (RDB_hashmap_put(&txp->dbp->dbrootp->typemap, name, ntp) != RDB_OK) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
     }
+
+    /*
+     * Delete RDB_type struct last because name may be identical
+     * to typ->name
+     */
+    if (del_type(typ, ecp) != RDB_OK)
+        return RDB_ERROR;
 
     return RDB_OK;
 }
@@ -480,12 +481,12 @@ the following conventions apply:
 representation. It takes one argument for each component.
 <dt>Getters
 <dd>A getter is a read-only operator whose name consists of the
-type and a component name, separated by "_get_".
+type and a component name, separated by RDB_GETTER_INFIX.
 It takes one argument. The argument must be of the user-defined type in question.
 The return type must be the component type.
 <dt>Setters
 <dd>A setter is an update operator whose name consists of the
-type and a component name, separated by "_set_".
+type and a component name, separated by RDB_SETTER_INFIX.
 It takes two arguments. The first argument is an update argument
 and must be of the user-defined type in question.
 The second argument is read-only and must be of the type of
@@ -532,23 +533,23 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
     int ret;
     int i;
     RDB_type *typ = NULL;
-    RDB_bool sysimpl = (arep == NULL) && (areplen == -1);
 
     if (!RDB_tx_is_running(txp)) {
         RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
-    if (sysimpl) {
+    typ = RDB_get_type(name, ecp, txp);
+    if (typ == NULL)
+        return RDB_ERROR;
+    typ->def.scalar.sysimpl = (arep == NULL) && (areplen == -1);
+
+    if (typ->def.scalar.sysimpl) {
         /*
          * No actual rep given, so selector and getters/setters must be provided
          * by the system
          */
         int compc;
-
-        typ = RDB_get_type(name, ecp, txp);
-        if (typ == NULL)
-            return RDB_ERROR;
 
         /* # of possreps must be one */
         if (typ->def.scalar.repc != 1) {
@@ -568,12 +569,14 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
         }
 
         typ->def.scalar.arep = arep;
-        typ->def.scalar.sysimpl = sysimpl;
         typ->ireplen = arep->ireplen;
 
         ret = create_selector(typ, ecp, txp);
         if (ret != RDB_OK)
             return RDB_ERROR;
+    } else {
+        typ->def.scalar.arep = arep;
+        typ->ireplen = arep != NULL ? arep->ireplen : areplen;
     }
 
     /*
@@ -606,7 +609,7 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
         goto cleanup;
     }
     upd[1].name = "i_sysimpl";
-    upd[1].exp = RDB_bool_to_expr(sysimpl, ecp);
+    upd[1].exp = RDB_bool_to_expr(typ->def.scalar.sysimpl, ecp);
     if (upd[1].exp == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
@@ -661,12 +664,12 @@ RDB_is_getter(const RDB_operator *op)
 {
     /*
      * An operator is treated as a getter if it is read-only, has one argument
-     * and the name contains the substring "_get_".
+     * and the name contains the substring RDB_GETTER_INFIX.
      */
     if (op->rtyp == NULL && op->paramc != 1)
         return RDB_FALSE;
 
-    return (RDB_bool) (strstr(op->name, "_get_") != NULL);
+    return (RDB_bool) (strstr(op->name, RDB_GETTER_INFIX) != NULL);
 }
 
 /**
@@ -677,12 +680,64 @@ RDB_is_setter(const RDB_operator *op)
 {
     /*
      * An operator is treated as a setter if it is an update operator,
-     * has two arguments and the name contains the substring "_set_".
+     * has two arguments and the name contains the substring RDB_SETTER_INFIX.
      */
     if (op->rtyp != NULL && op->paramc != 2)
         return RDB_FALSE;
 
-    return (RDB_bool) (strstr(op->name, "_set_") != NULL);
+    return (RDB_bool) (strstr(op->name, RDB_SETTER_INFIX) != NULL);
+}
+
+/**
+ * Delete selector, getter, and setter operators.
+ */
+int
+RDB_drop_typeimpl_ops(const RDB_type *typ, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    int i, j;
+    RDB_object opnameobj;
+
+    if (!RDB_type_is_scalar(typ)) {
+        RDB_raise_invalid_argument("type must be scalar", ecp);
+        return RDB_ERROR;
+    }
+
+    RDB_init_obj(&opnameobj);
+    for (i = 0; i < typ->def.scalar.repc; i++) {
+        if (RDB_drop_op(typ->def.scalar.repv[i].name, ecp, txp) != RDB_OK) {
+            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR)
+                goto error;
+            RDB_clear_err(ecp);
+        }
+        for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
+            if (RDB_getter_name(typ, typ->def.scalar.repv[i].compv[j].name,
+                    &opnameobj, ecp) != RDB_OK) {
+                goto error;
+            }
+            if (RDB_drop_op(RDB_obj_string(&opnameobj), ecp, txp) != RDB_OK) {
+                if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR)
+                    goto error;
+                RDB_clear_err(ecp);
+            }
+
+            if (RDB_setter_name(typ, typ->def.scalar.repv[i].compv[j].name,
+                    &opnameobj, ecp) != RDB_OK) {
+                goto error;
+            }
+            if (RDB_drop_op(RDB_obj_string(&opnameobj), ecp, txp) != RDB_OK) {
+                if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR)
+                    goto error;
+                RDB_clear_err(ecp);
+            }
+        }
+    }
+
+    return RDB_destroy_obj(&opnameobj, ecp);
+
+error:
+    RDB_destroy_obj(&opnameobj, ecp);
+    return RDB_ERROR;
 }
 
 /* @} */
