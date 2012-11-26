@@ -104,6 +104,9 @@ Duro_get_var_type(const char *, void *);
 int
 Duro_evaluate_retry(RDB_expression *, RDB_exec_context *, RDB_object *);
 
+RDB_type *
+Duro_expr_type_retry(RDB_expression *, RDB_exec_context *);
+
 int
 Duro_exec_vardef(RDB_parse_node *, RDB_exec_context *);
 

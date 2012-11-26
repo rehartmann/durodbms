@@ -336,44 +336,6 @@ evaluate_retry_bool(RDB_expression *exp, RDB_exec_context *ecp, RDB_bool *result
     return RDB_OK;
 }
 
-static RDB_type *
-expr_type_retry(RDB_expression *exp, RDB_exec_context *ecp)
-{
-    RDB_transaction tx;
-    RDB_database *dbp;
-    RDB_type *typ = RDB_expr_type(exp, &Duro_get_var_type, NULL,
-            envp, ecp, txnp != NULL ? &txnp->tx : NULL);
-    /*
-     * Success or error different from OPERATOR_NOT_FOUND_ERROR
-     * -> return
-     */
-    if (typ != NULL
-            || RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR)
-        return typ;
-    /*
-     * If a transaction is already active or no environment is
-     * available, give up
-     */
-    if (txnp != NULL || envp == NULL)
-        return typ;
-    /*
-     * Start transaction and retry.
-     */
-    dbp = Duro_get_db(ecp);
-    if (dbp == NULL) {
-        return NULL;
-    }
-
-    if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
-        return NULL;
-    typ = RDB_expr_type(exp, &Duro_get_var_type, NULL, envp, ecp, &tx);
-    if (typ != NULL) {
-        RDB_commit(ecp, &tx);
-        return typ;
-    }
-    return RDB_commit(ecp, &tx) == RDB_OK ? typ : NULL;
-}
-
 /*
  * Call update operator. nodep points to the operator name token.
  */
@@ -402,8 +364,7 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp,
         exp = RDB_parse_node_expr(argp, ecp, txp);
         if (exp == NULL)
             return RDB_ERROR;
-        argtv[argc] = RDB_expr_type(exp, &Duro_get_var_type, NULL,
-                envp, ecp, txp);
+        argtv[argc] = Duro_expr_type_retry(exp, ecp);
         if (argtv[argc] == NULL)
             return RDB_ERROR;
 
@@ -1000,7 +961,7 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
     if (tbexp == NULL)
         return RDB_ERROR;
 
-    tbtyp = RDB_expr_type(tbexp, &Duro_get_var_type, NULL, envp, ecp, txp);
+    tbtyp = Duro_expr_type_retry(tbexp, ecp);
     if (tbtyp == NULL)
         return RDB_ERROR;
     if (!RDB_type_is_relation(tbtyp)) {
@@ -2545,7 +2506,7 @@ exec_return(RDB_parse_node *stmtp, RDB_exec_context *ecp,
         /*
          * Typecheck
          */
-        rtyp = expr_type_retry(retexp, ecp);
+        rtyp = Duro_expr_type_retry(retexp, ecp);
         if (rtyp == NULL)
             return RDB_ERROR;
         if (!RDB_type_equals(rtyp, retinfop->typ)) {

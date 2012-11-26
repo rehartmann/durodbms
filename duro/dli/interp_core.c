@@ -208,7 +208,7 @@ Duro_evaluate_retry(RDB_expression *exp, RDB_exec_context *ecp, RDB_object *resu
         return ret;
     /*
      * If a transaction is already active or no environment is
-     * available, give up
+     * available, stop
      */
     if (txnp != NULL || envp == NULL)
         return ret;
@@ -230,6 +230,44 @@ Duro_evaluate_retry(RDB_expression *exp, RDB_exec_context *ecp, RDB_object *resu
         return ret;
     }
     return RDB_commit(ecp, &tx);
+}
+
+RDB_type *
+Duro_expr_type_retry(RDB_expression *exp, RDB_exec_context *ecp)
+{
+    RDB_transaction tx;
+    RDB_database *dbp;
+    RDB_type *typ = RDB_expr_type(exp, &Duro_get_var_type, NULL,
+            envp, ecp, txnp != NULL ? &txnp->tx : NULL);
+    /*
+     * Success or error different from OPERATOR_NOT_FOUND_ERROR
+     * -> return
+     */
+    if (typ != NULL
+            || RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR)
+        return typ;
+    /*
+     * If a transaction is already active or no environment is
+     * available, give up
+     */
+    if (txnp != NULL || envp == NULL)
+        return typ;
+    /*
+     * Start transaction and retry.
+     */
+    dbp = Duro_get_db(ecp);
+    if (dbp == NULL) {
+        return NULL;
+    }
+
+    if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
+        return NULL;
+    typ = RDB_expr_type(exp, &Duro_get_var_type, NULL, envp, ecp, &tx);
+    if (typ != NULL) {
+        RDB_commit(ecp, &tx);
+        return typ;
+    }
+    return RDB_commit(ecp, &tx) == RDB_OK ? typ : NULL;
 }
 
 int
@@ -296,8 +334,7 @@ Duro_exec_vardef(RDB_parse_node *nodep, RDB_exec_context *ecp)
             }
         } else {
             /* No type available (tuple or array) - set type */
-            typ = RDB_expr_type(initexp, Duro_get_var_type,
-                    NULL, envp, ecp, txnp != NULL ? &txnp->tx : NULL);
+            typ = Duro_expr_type_retry(initexp, ecp);
             if (typ == NULL)
                 goto error;
             typ = RDB_dup_nonscalar_type(typ, ecp);
@@ -473,8 +510,7 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
         if (initexp == NULL)
             return RDB_ERROR;
         keylistnodep = nodep->nextp->nextp->nextp->nextp;
-        tbtyp = RDB_expr_type(initexp, Duro_get_var_type,
-                NULL, envp, ecp, txnp != NULL ? &txnp->tx : NULL);
+        tbtyp = Duro_expr_type_retry(initexp, ecp);
         if (tbtyp == NULL) {
             return RDB_ERROR;
         }
@@ -953,12 +989,13 @@ Duro_parse_node_to_type_retry(RDB_parse_node *nodep, RDB_exec_context *ecp)
     RDB_type *typ = RDB_parse_node_to_type(nodep, &Duro_get_var_type,
             NULL, ecp, txnp != NULL ? &txnp->tx : NULL);
     /*
-     * Success or error different from NAME_ERROR
+     * Success or error different from NAME_ERROR and OPERATOR_NOT_FOUND_ERROR
      * -> return
      */
     if (typ != NULL)
         return typ;
-    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NAME_ERROR)
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NAME_ERROR
+            && RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR)
         return NULL;
     /*
      * If a transaction is already active or no environment is

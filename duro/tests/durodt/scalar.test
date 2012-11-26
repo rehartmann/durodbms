@@ -372,6 +372,19 @@ test defupdop {user-defined update operators} -setup $SETUP -body {
 } -result {a = xyz, b = 1
 }
 
+test optype {operator return type} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt -e dbenv << {
+        current_db := 'D';
+        operator zero() returns int;
+            return 0;
+        end operator;
+    }
+    exec $testdir/../../dli/durodt -e dbenv << {
+        current_db := 'D';
+        var i same_type_as(zero());
+    }
+}
+
 test trycatch {TRY .. CATCH} -setup $SETUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';
