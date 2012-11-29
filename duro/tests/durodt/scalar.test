@@ -372,7 +372,7 @@ test defupdop {user-defined update operators} -setup $SETUP -body {
 } -result {a = xyz, b = 1
 }
 
-test optype {operator return type} -setup $SETUP -body {
+test typeinf {type inference} -setup $SETUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';
         operator zero() returns int;
@@ -382,7 +382,10 @@ test optype {operator return type} -setup $SETUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';
         var i same_type_as(zero());
+        var j init zero();
+        put(i); put(' '); put(j); put_line('');
     }
+} -result {0 0
 }
 
 test trycatch {TRY .. CATCH} -setup $SETUP -body {

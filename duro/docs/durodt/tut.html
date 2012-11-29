@@ -667,14 +667,69 @@ D> implement type len; end implement;
 Type len implemented.
 </pre>
 
-<p>This currently works only for types with exactly one possible representation.
-Full type implementation functionality is available through the
-<a href="../api/html/group__typeimpl.html">C interface</a>
-or the Tcl interface
-(<a href="../tcl/type.html">duro::type</a>).
+<p>This works only for types with exactly one possible representation.
+If a user-defined type has more than one possible representation,
+an actual representation must be specified together with
+selector, getter, and setter operators which provide
+the mapping between the possible representations and the actual representation.
+These operators are accessing the actual representation.
 
-<p>Future versions of Duro D/T may allow to specify an internal representation
-between IMPLEMENT TYPE and END IMPLEMENT.
+<p>The example code below shows how the type POINT from <em>TTM</em>, chapter 3,
+can be implemented using Duro D/T.
+
+<pre>
+type point
+    possrep cartesian { x float, y float }
+    possrep polar { r float, theta float };
+
+implement type point as tuple { x float, y float };
+
+    operator cartesian(x float, y float) returns point;
+        return tuple { x x, y y };
+    end operator;
+
+    operator get_x(p point) returns float;
+        return p.x;
+    end operator;
+
+    operator get_y(p point) returns float;
+        return p.y;
+    end operator;
+
+    operator set_x(p point, x_ float) updates { p };
+        update p { x := x_ };
+    end operator;
+
+    operator set_y(p point, y_ float) updates { p };
+        update p { y := y_ };
+    end operator;
+
+    operator polar(r float, theta float) returns point;
+        return tuple { x r * cos(theta), y r * sin(theta) };
+    end operator;
+
+    operator get_r(p point) returns float;
+        return sqrt(p.x * p.x + p.y * p.y);
+    end operator;
+
+    operator set_r(p point, r float) updates {p};
+        var theta init atan2(p.y, p.x);
+
+        update p { x := cos(theta) * r, y := sin(theta) * r };
+    end operator;
+
+    operator set_theta(p point, theta float) updates {r};
+        var r init sqrt(p.x * p.x + p.y * p.y);
+
+        update p { x := cos(theta) * r, y := sin(theta) * r };
+    end operator;
+
+    operator get_theta(p point) returns float;
+        return atan2(p.y, p.x);
+    end operator;
+
+end implement;
+</pre>
 
 <p>After a type has been defined and implemented,
 it can be used to declare and assign variables, like so:
