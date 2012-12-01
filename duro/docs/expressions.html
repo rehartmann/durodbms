@@ -11,11 +11,11 @@
 
 <p>The language for DuroDBMS expressions is a subset of Tutorial D, as defined
 in <cite>TTM</cite>, third edition and <cite>Database Explorations</cite>,
-with a few differences:
+with a number of differences. The most important are:
 
 <ol>
 <li>DuroDBMS uses a dot ('.') operator for tuple attribute extraction, in addition to FROM.
-<li>DuroDBMS supports a MATCHES operator which performs regular expression matching.
+<li>DuroDBMS supports LIKE and REGEX_LIKE operators for pattern matching.
 <li>DuroDBMS uses the keyword SUBSET_OF for the subset operator
 and IN for the element-of operator.
 <li>DuroDBMS supports both single ("'") and double quotes ('"') as delimiters in string literals.
@@ -101,7 +101,8 @@ rel_expression = expression | expression '=' expression
         | expression '&lt;' expression
         | expression SUBSET_OF expression
         | expression IN expression
-        | expression MATCHES expression.
+        | expression LIKE expression
+        | expression REGEX_LIKE expression.
 
 ifthenelse = IF expression THEN expression ELSE expression.
 

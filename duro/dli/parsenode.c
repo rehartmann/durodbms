@@ -296,8 +296,6 @@ RDB_token_name(int tok)
             return "COMMIT";
         case TOK_ROLLBACK:
             return "ROLLBACK";
-        case TOK_MATCHES:
-            return "MATCHES";
         case TOK_IN:
             return "IN";
         case TOK_SUBSET_OF:
@@ -316,6 +314,10 @@ RDB_token_name(int tok)
             return "<=";
         case TOK_GE:
             return ">=";
+        case TOK_LIKE:
+            return "LIKE";
+        case TOK_REGEX_LIKE:
+            return "REGEX_LIKE";
         case TOK_COUNT:
             return "COUNT";
         case TOK_SUM:

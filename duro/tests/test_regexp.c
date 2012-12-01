@@ -41,7 +41,7 @@ test_regexp(RDB_database *dbp, RDB_exec_context *ecp)
     }
     RDB_add_arg(exp, argp);
 
-    argp = RDB_ro_op("matches", ecp);
+    argp = RDB_ro_op("regex_like", ecp);
     if (argp == NULL) {
         goto error;
     }

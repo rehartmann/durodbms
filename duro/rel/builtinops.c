@@ -10,10 +10,15 @@
 #include "tostr.h"
 #include "optimize.h"
 
-#include <regex.h>
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+#include <regex.h>
+#ifdef _WIN32
+#include "Shlwapi.h"
+#else
+#include <fnmatch.h>
+#endif
 
 RDB_op_map RDB_builtin_ro_op_map;
 
@@ -272,7 +277,7 @@ The length of the operand.
 
 <hr>
 
-<h3 id="op_substr">OPERATOR substr</h3>
+<h3 id="substr">OPERATOR substr</h3>
 
 OPERATOR substr(s string, start integer, length integer) RETURNS
 string;
@@ -295,9 +300,24 @@ START.
 
 <hr>
 
-<h3 id="op_matches">OPERATOR matches</h3>
+<h3 id="op_like">OPERATOR like</h3>
 
-OPERATOR matches (s string, pattern string) RETURNS boolean;
+OPERATOR like (s string, pattern string) RETURNS boolean;
+
+<h4>Description</h4>
+
+Pattern matching operator. A period ('.') matches a single character;
+an asterisk ('*') matches multiple characters.
+
+<h4>Return value</h4>
+
+RDB_TRUE if s matches pattern, RDB_FALSE otherwise.
+
+<hr>
+
+<h3 id="op_regex_like">OPERATOR regex_like</h3>
+
+OPERATOR regex_like (s string, pattern string) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -305,7 +325,7 @@ The regular expression matching operator.
 
 <h4>Return value</h4>
 
-RDB_TRUE if S matches PATTERN, RDB_FALSE otherwise.
+RDB_TRUE if s matches pattern, RDB_FALSE otherwise.
 
 <hr>
 
@@ -1275,7 +1295,7 @@ length_string(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-substr(int argc, RDB_object *argv[], RDB_operator *op,
+op_substr(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     int start = argv[1]->val.int_val;
@@ -1336,7 +1356,7 @@ substr(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-concat(int argc, RDB_object *argv[], RDB_operator *op,
+op_concat(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     size_t s1len = strlen(argv[0]->val.bin.datap);
@@ -1369,7 +1389,26 @@ concat(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-matches(int argc, RDB_object *argv[], RDB_operator *op,
+op_like(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+#ifdef _WIN32
+    BOOL res = PathMatchSpec(RDB_obj_string(argv[0]), RDB_obj_string(argv[1]));
+    RDB_bool_to_obj(retvalp, (RDB_bool) res);
+#else /* Use POSIX fnmatch() */
+    int ret = fnmatch(RDB_obj_string(argv[1]), RDB_obj_string(argv[0]),
+            FNM_NOESCAPE);
+    if (ret != 0 && ret != FNM_NOMATCH) {
+        RDB_raise_system("fnmatch() failed", ecp);
+        return RDB_ERROR;
+    }
+    RDB_bool_to_obj(retvalp, (RDB_bool) (ret == 0));
+#endif
+    return RDB_OK;
+}
+
+static int
+op_regex_like(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     regex_t reg;
@@ -1813,21 +1852,26 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
     argtv[1] = &RDB_INTEGER;
     argtv[2] = &RDB_INTEGER;
 
-    ret = RDB_put_global_ro_op("substr", 3, argtv, &RDB_STRING, &substr, ecp);
+    ret = RDB_put_global_ro_op("substr", 3, argtv, &RDB_STRING, &op_substr, ecp);
     if (ret != RDB_OK)
         return ret;
 
     argtv[0] = &RDB_STRING;
     argtv[1] = &RDB_STRING;
 
-    ret = RDB_put_global_ro_op("||", 2, argtv, &RDB_STRING, &concat, ecp);
+    ret = RDB_put_global_ro_op("||", 2, argtv, &RDB_STRING, &op_concat, ecp);
     if (ret != RDB_OK)
         return ret;
 
     argtv[0] = &RDB_STRING;
     argtv[1] = &RDB_STRING;
 
-    ret = RDB_put_global_ro_op("matches", 2, argtv, &RDB_BOOLEAN, &matches, ecp);
+    ret = RDB_put_global_ro_op("like", 2, argtv, &RDB_BOOLEAN, &op_like, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = RDB_put_global_ro_op("regex_like", 2, argtv, &RDB_BOOLEAN,
+            &op_regex_like, ecp);
     if (ret != RDB_OK)
         return ret;
 

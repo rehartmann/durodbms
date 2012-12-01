@@ -219,8 +219,12 @@ ADD {
     return create_token(TOK_ADD);
 }
 
-MATCHES {
-    return create_token(TOK_MATCHES);
+LIKE {
+    return create_token(TOK_LIKE);
+}
+
+REGEX_LIKE {
+    return create_token(TOK_REGEX_LIKE);
 }
 
 IN {

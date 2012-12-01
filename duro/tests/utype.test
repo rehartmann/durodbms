@@ -21,17 +21,17 @@ test utype {user-defined types} -setup $SETUP -body {
 
     # Create Database
     duro::db create $dbenv TEST
-    
+
     # Create type
 
     set tx [duro::begin $dbenv TEST]
-    
+
     #
     # Define type NAME. Only rep is a string without leading or trailing blanks
     #
     duro::type define NAME { {NAME { {NAME string} } } } \
-            {NOT ((NAME MATCHES "^ .*") \
-                    OR (NAME MATCHES ".* $"))} \
+            {NOT ((NAME regex_like "^ .*") \
+                    OR (NAME regex_like ".* $"))} \
             $tx
     
     duro::type implement NAME $tx

@@ -22,8 +22,8 @@ oshlibsuffix = env['SHLIBSUFFIX']
 
 if env['PLATFORM'] == 'win32':
     default_prefix = 'C:'
-    env.Replace(LIBS = ['libdb53', 'ltdl'])
-    durolibs = ['libdb53', 'ltdl', 'regex']
+    env.Replace(LIBS = ['libdb53', 'ltdl', 'shlwapi'])
+    durolibs = ['libdb53', 'ltdl', 'regex', 'shlwapi']
 else:
     default_prefix = '/usr/local'
     env.Replace(SHLIBSUFFIX = env['SHLIBSUFFIX'] + '.' + release)

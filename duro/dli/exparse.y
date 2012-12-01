@@ -102,7 +102,6 @@ yyerror(const char *);
 %token TOK_DEFAULT "DEFAULT"
 %token TOK_COMMIT "COMMIT"
 %token TOK_ROLLBACK "ROLLBACK"
-%token TOK_MATCHES "MATCHES"
 %token TOK_IN "IN"
 %token TOK_SUBSET_OF "SUBSET_OF"
 %token TOK_OR "OR"
@@ -113,6 +112,8 @@ yyerror(const char *);
 %token TOK_NE "<>"
 %token TOK_LE "<="
 %token TOK_GE ">="
+%token TOK_LIKE "LIKE"
+%token TOK_REGEX_LIKE "REGEX_LIKE"
 %token TOK_COUNT "COUNT"
 %token TOK_SUM "SUM"
 %token TOK_AVG "AVG"
@@ -169,7 +170,7 @@ yyerror(const char *);
 %left TOK_OR TOK_XOR
 %left TOK_AND
 %left TOK_NOT
-%left '=' '<' '>' TOK_NE TOK_LE TOK_GE TOK_IN TOK_SUBSET_OF TOK_MATCHES
+%left '=' '<' '>' TOK_NE TOK_LE TOK_GE TOK_IN TOK_SUBSET_OF TOK_LIKE TOK_REGEX_LIKE
 %left '+' '-' TOK_CONCAT
 %left '*' '/'
 %left '.' UPLUS UMINUS '['
@@ -1971,7 +1972,19 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
     }
-    | expression TOK_MATCHES expression {
+    | expression TOK_LIKE expression {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+    }
+    | expression TOK_REGEX_LIKE expression {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);

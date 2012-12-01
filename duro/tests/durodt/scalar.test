@@ -431,4 +431,27 @@ test with {WITH expression} -body {
 7
 }
 
+test like {LIKE operator} -body {
+    exec $testdir/../../dli/durodt -e dbenv << {
+        put_line(if 'abc' like '?bc' then 'true' else 'false');
+        put_line(if 'aabc' like '?bc' then 'true' else 'false');
+        put_line(if 'abc' like 'a*c' then 'true' else 'false');
+        put_line(if 'ac' like 'a*c' then 'true' else 'false');
+        put_line(if 'aca' like 'a*c' then 'true' else 'false');
+        put_line(if '\x' like '\?' then 'true' else 'false');
+        put_line(if 'a/b' like 'a?b' then 'true' else 'false');
+        put_line(if 'ab/cd/eF' like 'a*F' then 'true' else 'false');
+        put_line(if 'ab/cd/eF' like 'a\/*F' then 'true' else 'false');
+    }
+} -result {true
+false
+true
+true
+false
+true
+true
+true
+false
+}
+
 cleanupTests
