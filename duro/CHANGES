@@ -4,6 +4,10 @@ Summary of Changes for DuroDBMS
 
 Changes for DuroDBMS 0.17
 
+- Added LIKE operator
+
+- Renamed MATCHES to REGEX_LIKE
+
 - index_of() operator supports searching in arrays
 
 - KEY no longer mandatory when creating real or private tables

@@ -28,7 +28,7 @@ test_regexp(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_obj(&array);
 
-    /* Creating selection (NAME regmatch "o") */
+    /* Creating selection (NAME REGEX_LIKE "o") */
 
     exp = RDB_ro_op("where", ecp);
     if (exp == NULL) {

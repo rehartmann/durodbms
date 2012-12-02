@@ -354,7 +354,8 @@ append_ro_op_ex(RDB_object *objp, const RDB_expression *exp, RDB_environment *en
             || strcmp(exp->def.op.name, "+") == 0
             || strcmp(exp->def.op.name, "-") == 0
             || strcmp(exp->def.op.name, "||") == 0
-            || strcmp(exp->def.op.name, "matches") == 0
+            || strcmp(exp->def.op.name, "like") == 0
+            || strcmp(exp->def.op.name, "regex_like") == 0
             || strcmp(exp->def.op.name, "and") == 0
             || strcmp(exp->def.op.name, "or") == 0
             || strcmp(exp->def.op.name, "where") == 0
