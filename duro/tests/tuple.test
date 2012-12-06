@@ -182,7 +182,7 @@ test tuple {tuple-valued attributes} -setup $SETUP -body {
         error "Tuple is $tpl, should be $stpl"
     }
 
-    duro_assert {UPDATE TUPLE{A 1, B "b"} {A := 2} = TUPLE{A 2, B "b"}} $tx
+    duro_assert {UPDATE TUPLE{A 1, B "b"} : {A := 2} = TUPLE{A 2, B "b"}} $tx
 
     if {[duro::expr {TUPLE FROM WH} $tx] != "SCATTR Bla"} {
         error "SCATTR should be \"Bla\", but is not"

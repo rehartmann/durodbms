@@ -1249,14 +1249,17 @@ get_empty(RDB_expression *exp)
     return NULL;
 }
 
-/*
- * Check if the assignments violate a constraint
+/**
+ * Get optimized constraints and invoke *applyfn
+ * with the optimized expression as argument.
+ * Stop if *applyfn returns a value different from RDB_OK
  */
-static int
-check_constraints(int ninsc, const RDB_ma_insert ninsv[],
+int
+RDB_apply_constraints(int ninsc, const RDB_ma_insert ninsv[],
         int nupdc, const RDB_ma_update nupdv[],
         int ndelc, const RDB_ma_delete ndelv[],
         int copyc, const RDB_ma_copy copyv[],
+        RDB_apply_constraint_fn *applyfnp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
@@ -1279,7 +1282,6 @@ check_constraints(int ninsc, const RDB_ma_insert ninsv[],
          */
         if (expr_refers_target(constrp->exp, ninsc, ninsv, nupdc, nupdv,
                 ndelc, ndelv, copyc, copyv)) {
-            RDB_bool b;
             RDB_expression *empty_tbexp;
             RDB_expression *opt_check_exp;
 
@@ -1308,22 +1310,268 @@ check_constraints(int ninsc, const RDB_ma_insert ninsv[],
             if (opt_check_exp == NULL) {
                 return RDB_ERROR;
             }
-
-            ret = RDB_evaluate_bool(opt_check_exp, NULL, NULL, NULL, ecp, txp, &b);
-            RDB_del_expr(opt_check_exp, ecp);
-            RDB_ec_set_property(ecp, "$empty", NULL);
+            ret = (*applyfnp) (opt_check_exp, constrp->name, ecp, txp);
             if (ret != RDB_OK) {
-                return RDB_ERROR;
+                RDB_del_expr(opt_check_exp, ecp);
+                return ret;
             }
-            if (!b) {
-                RDB_raise_predicate_violation(constrp->name, ecp);
+            if (RDB_del_expr(opt_check_exp, ecp) != RDB_OK) {
                 return RDB_ERROR;
-            }
-            if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
-                fputs("Constraint check successful.\n", stderr);
             }
         }
         constrp = constrp->nextp;
+    }
+    return RDB_OK;
+}
+
+static int
+eval_constraint(RDB_expression *exp, const char *name,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_bool b;
+    int ret = RDB_evaluate_bool(exp, NULL, NULL, NULL, ecp, txp, &b);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+    if (!b) {
+        RDB_raise_predicate_violation(name, ecp);
+        return RDB_ERROR;
+    }
+    if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
+        fputs("Constraint check successful.\n", stderr);
+    }
+    return RDB_OK;
+}
+
+/*
+ * Check if the assignments violate a constraint
+ */
+static int
+check_constraints(int insc, const RDB_ma_insert insv[],
+        int updc, const RDB_ma_update updv[],
+        int delc, const RDB_ma_delete delv[],
+        int copyc, const RDB_ma_copy copyv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    return RDB_apply_constraints(insc, insv, updc, updv, delc, delv,
+            copyc, copyv, &eval_constraint, ecp, txp);
+}
+
+static int
+check_assign_types(int insc, const RDB_ma_insert insv[],
+        int updc, const RDB_ma_update updv[],
+        int delc, const RDB_ma_delete delv[],
+        int copyc, const RDB_ma_copy copyv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int i, j;
+
+    /*
+     * Check if conditions are of type BOOLEAN
+     */
+
+    for (i = 0; i < updc; i++) {
+        if (updv[i].condp != NULL) {
+            if (RDB_check_expr_type(updv[i].condp,
+                    updv[i].tbp->typ->def.basetyp,
+                    &RDB_BOOLEAN, NULL, ecp, txp) != RDB_OK) {
+                return RDB_ERROR;
+            }
+        }
+    }
+
+    for (i = 0; i < delc; i++) {
+        if (delv[i].condp != NULL) {
+            if (RDB_check_expr_type(delv[i].condp,
+                    delv[i].tbp->typ->def.basetyp,
+                    &RDB_BOOLEAN, NULL, ecp, txp) != RDB_OK) {
+                return RDB_ERROR;
+            }
+        }
+    }
+
+    /*
+     * Check types of updated attributes
+     */
+    for (i = 0; i < updc; i++) {
+        for (j = 0; j < updv[i].updc; j++) {
+            RDB_attr *attrp = RDB_tuple_type_attr(
+                    updv[i].tbp->typ->def.basetyp, updv[i].updv[j].name);
+            if (attrp == NULL) {
+                RDB_raise_name(updv[i].updv[j].name, ecp);
+                return RDB_ERROR;
+            }
+
+            if (RDB_type_is_scalar(attrp->typ)) {
+                if (RDB_check_expr_type(updv[i].updv[j].exp,
+                        updv[i].tbp->typ->def.basetyp, attrp->typ,
+                        NULL, ecp, txp) != RDB_OK) {
+                    return RDB_ERROR;
+                }
+            }
+        }
+    }
+
+    /*
+     * Check types of copied values
+     */
+    for (i = 0; i < copyc; i++) {
+        RDB_type *srctyp = RDB_obj_type(copyv[i].srcp);
+
+        if (srctyp != NULL) {
+            /* If destination carries a value, types must match */
+            if (copyv[i].dstp->kind != RDB_OB_INITIAL
+                    && (copyv[i].dstp->typ == NULL
+                     || !RDB_type_equals(copyv[i].srcp->typ,
+                                    copyv[i].dstp->typ))) {
+                RDB_raise_type_mismatch("source does not match destination",
+                        ecp);
+                return RDB_ERROR;
+            }
+        }
+    }
+    return RDB_OK;
+}
+
+/*
+ * Check if the same target is assigned twice
+ * or if there is a later assignment that depends on a target
+ */
+static int
+check_conflicts_deps(int insc, const RDB_ma_insert insv[],
+        int updc, const RDB_ma_update updv[],
+        int delc, const RDB_ma_delete delv[],
+        int copyc, const RDB_ma_copy copyv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int i, j;
+
+    for (i = 0; i < insc; i++) {
+        for (j = i + 1; j < insc; j++) {
+            if (insv[i].tbp == insv[j].tbp) {
+                RDB_raise_invalid_argument("target is assigned twice", ecp);
+                return RDB_ERROR;
+            }
+        }
+        for (j = 0; j < updc; j++) {
+            if (insv[i].tbp == updv[j].tbp) {
+                RDB_raise_invalid_argument("target is assigned twice", ecp);
+                return RDB_ERROR;
+            }
+            if (updv[j].condp != NULL
+                    && RDB_expr_refers(updv[j].condp, insv[i].tbp)) {
+                RDB_raise_not_supported("update condition depends on target", ecp);
+                return RDB_ERROR;
+            }
+        }
+        for (j = 0; j < delc; j++) {
+            if (insv[i].tbp == delv[j].tbp) {
+                RDB_raise_invalid_argument("target is assigned twice", ecp);
+                return RDB_ERROR;
+            }
+            if (delv[j].condp != NULL
+                    && RDB_expr_refers(delv[j].condp, insv[i].tbp)) {
+                RDB_raise_not_supported("delete condition depends on target", ecp);
+                return RDB_ERROR;
+            }
+        }
+        for (j = 0; j < copyc; j++) {
+            if (copyv[j].dstp->kind == RDB_OB_TABLE
+                    && insv[i].tbp == copyv[j].dstp) {
+                RDB_raise_invalid_argument("target is assigned twice", ecp);
+                return RDB_ERROR;
+            }
+
+            /*
+             * Check if a presviously modified table is source of a copy
+             */
+            if (copyv[j].srcp->kind == RDB_OB_TABLE
+                    && RDB_table_refers(copyv[j].srcp, insv[i].tbp)) {
+                RDB_raise_not_supported(
+                        "Table is both source and target of assignment", ecp);
+                return RDB_ERROR;
+            }
+        }
+    }
+    for (i = 0; i < updc; i++) {
+        for (j = i + 1; j < updc; j++) {
+            if (updv[i].tbp == updv[j].tbp) {
+                RDB_raise_invalid_argument("target is assigned twice", ecp);
+                return RDB_ERROR;
+            }
+            if (updv[j].condp != NULL
+                    && RDB_expr_refers(updv[j].condp, updv[i].tbp)) {
+                RDB_raise_not_supported("update condition depends on target", ecp);
+                return RDB_ERROR;
+            }
+        }
+        for (j = 0; j < delc; j++) {
+            if (updv[i].tbp == delv[j].tbp) {
+                RDB_raise_invalid_argument("target is assigned twice", ecp);
+                return RDB_ERROR;
+            }
+            if (delv[j].condp != NULL
+                    && RDB_expr_refers(delv[j].condp, updv[i].tbp)) {
+                RDB_raise_not_supported("delete condition depends on target", ecp);
+                return RDB_ERROR;
+            }
+        }
+        for (j = 0; j < copyc; j++) {
+            if (copyv[j].dstp->kind == RDB_OB_TABLE
+                    && updv[i].tbp == copyv[j].dstp) {
+                RDB_raise_invalid_argument("target is assigned twice", ecp);
+                return RDB_ERROR;
+            }
+            if (copyv[j].srcp->kind == RDB_OB_TABLE
+                    && RDB_table_refers(copyv[j].srcp, updv[i].tbp)) {
+                RDB_raise_not_supported(
+                        "Table is both source and target of assignment", ecp);
+                return RDB_ERROR;
+            }
+        }
+    }
+    for (i = 0; i < delc; i++) {
+        for (j = i + 1; j < delc; j++) {
+            if (delv[i].tbp == delv[j].tbp) {
+                RDB_raise_invalid_argument("target is assigned twice", ecp);
+                return RDB_ERROR;
+            }
+            if (delv[j].condp != NULL
+                    && RDB_expr_refers(delv[j].condp, delv[i].tbp)) {
+                RDB_raise_not_supported("delete condition depends on target", ecp);
+                return RDB_ERROR;
+            }
+        }
+        for (j = 0; j < copyc; j++) {
+            if (copyv[j].dstp->kind == RDB_OB_TABLE
+                    && delv[i].tbp == copyv[j].dstp) {
+                RDB_raise_invalid_argument("target is assigned twice", ecp);
+                return RDB_ERROR;
+            }
+            if (copyv[j].srcp->kind == RDB_OB_TABLE
+                    && RDB_table_refers(copyv[j].srcp, delv[i].tbp)) {
+                RDB_raise_not_supported(
+                        "Table is both source and target of assignment", ecp);
+                return RDB_ERROR;
+            }
+        }
+    }
+
+    for (i = 0; i < copyc; i++) {
+        for (j = i + 1; j < copyc; j++) {
+            if (copyv[i].dstp == copyv[j].dstp) {
+                RDB_raise_invalid_argument("target is assigned twice", ecp);
+                return RDB_ERROR;
+            }
+            if (copyv[j].srcp->kind == RDB_OB_TABLE
+                    && copyv[i].dstp->kind == RDB_OB_TABLE
+                    && copyv[j].srcp->kind == RDB_OB_TABLE
+                    && RDB_table_refers(copyv[j].srcp, copyv[i].dstp)) {
+                RDB_raise_not_supported(
+                        "Table is both source and target of assignment", ecp);
+                return RDB_ERROR;
+            }
+        }
     }
     return RDB_OK;
 }
@@ -1427,7 +1675,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         int copyc, const RDB_ma_copy copyv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int i, j;
+    int i;
     RDB_int rcount, cnt;
     int ninsc;
     int nupdc;
@@ -1464,69 +1712,9 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         return RDB_ERROR;
     }
 
-    /*
-     * Check if conditions are of type BOOLEAN
-     */
-
-    for (i = 0; i < updc; i++) {
-        if (updv[i].condp != NULL) {
-            if (RDB_check_expr_type(updv[i].condp,
-                    updv[i].tbp->typ->def.basetyp,
-                    &RDB_BOOLEAN, NULL, ecp, txp) != RDB_OK) {
-                return RDB_ERROR;
-            }
-        }
-    }
-
-    for (i = 0; i < delc; i++) {
-        if (delv[i].condp != NULL) {
-            if (RDB_check_expr_type(delv[i].condp,
-                    delv[i].tbp->typ->def.basetyp,
-                    &RDB_BOOLEAN, NULL, ecp, txp) != RDB_OK) {
-                return RDB_ERROR;
-            }
-        }
-    }
-
-    /*
-     * Check types of updated attributes
-     */
-    for (i = 0; i < updc; i++) {
-        for (j = 0; j < updv[i].updc; j++) {
-            RDB_attr *attrp = RDB_tuple_type_attr(
-                    updv[i].tbp->typ->def.basetyp, updv[i].updv[j].name);
-            if (attrp == NULL) {
-                RDB_raise_name(updv[i].updv[j].name, ecp);
-                return RDB_ERROR;
-            }
-
-            if (RDB_type_is_scalar(attrp->typ)) {
-                if (RDB_check_expr_type(updv[i].updv[j].exp,
-                        updv[i].tbp->typ->def.basetyp, attrp->typ,
-                        NULL, ecp, txp) != RDB_OK) {
-                    return RDB_ERROR;
-                }
-            }
-        }
-    }
-
-    /*
-     * Check types of copied values
-     */
-    for (i = 0; i < copyc; i++) {
-        RDB_type *srctyp = RDB_obj_type(copyv[i].srcp);
-
-        if (srctyp != NULL) {
-            /* If destination carries a value, types must match */
-            if (copyv[i].dstp->kind != RDB_OB_INITIAL
-                    && (copyv[i].dstp->typ == NULL
-                     || !RDB_type_equals(copyv[i].srcp->typ,
-                                    copyv[i].dstp->typ))) {
-                RDB_raise_type_mismatch("source does not match destination",
-                        ecp);
-                return RDB_ERROR;
-            }
-        }
+    if (check_assign_types(insc, insv, updc, updv, delc, delv,
+            copyc, copyv, ecp, txp) != RDB_OK) {
+        return RDB_ERROR;
     }
 
     /*
@@ -1554,158 +1742,10 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         goto cleanup;
     }
 
-    /*
-     * Check if the same target is assigned twice
-     * or if there is a later assignment that depends on a target
-     */
-    for (i = 0; i < ninsc; i++) {
-        for (j = i + 1; j < ninsc; j++) {
-            if (ninsv[i].tbp == ninsv[j].tbp) {
-                RDB_raise_invalid_argument("target is assigned twice", ecp);
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-        }
-        for (j = 0; j < nupdc; j++) {
-            if (ninsv[i].tbp == nupdv[j].tbp) {
-                RDB_raise_invalid_argument("target is assigned twice", ecp);
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-            if (nupdv[j].condp != NULL
-                    && RDB_expr_refers(nupdv[j].condp, ninsv[i].tbp)) {
-                RDB_raise_not_supported("update condition depends on target", ecp);
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-        }
-        for (j = 0; j < ndelc; j++) {
-            if (ninsv[i].tbp == ndelv[j].tbp) {
-                RDB_raise_invalid_argument("target is assigned twice", ecp);
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-            if (ndelv[j].condp != NULL
-                    && RDB_expr_refers(ndelv[j].condp, ninsv[i].tbp)) {
-                RDB_raise_not_supported("delete condition depends on target", ecp);
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-        }
-        for (j = 0; j < copyc; j++) {
-            if (copyv[j].dstp->kind == RDB_OB_TABLE
-                    && insv[i].tbp == copyv[j].dstp) {
-                RDB_raise_invalid_argument("target is assigned twice", ecp);
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-
-            /*
-             * Check if a presviously modified table is source of a copy
-             */
-            if (copyv[j].srcp->kind == RDB_OB_TABLE
-                    && RDB_table_refers(copyv[j].srcp, insv[i].tbp)) {
-                RDB_raise_not_supported(
-                        "Table is both source and target of assignment", ecp);
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-        }
-    }
-    for (i = 0; i < nupdc; i++) {
-        for (j = i + 1; j < updc; j++) {
-            if (nupdv[i].tbp == nupdv[j].tbp) {
-                RDB_raise_invalid_argument("target is assigned twice", ecp);
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-            if (nupdv[j].condp != NULL
-                    && RDB_expr_refers(nupdv[j].condp, nupdv[i].tbp)) {
-                RDB_raise_not_supported("update condition depends on target", ecp);
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-        }
-        for (j = 0; j < ndelc; j++) {
-            if (updv[i].tbp == ndelv[j].tbp) {
-                RDB_raise_invalid_argument("target is assigned twice", ecp);
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-            if (ndelv[j].condp != NULL
-                    && RDB_expr_refers(ndelv[j].condp, nupdv[i].tbp)) {
-                RDB_raise_not_supported("delete condition depends on target", ecp);
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-        }
-        for (j = 0; j < copyc; j++) {
-            if (copyv[j].dstp->kind == RDB_OB_TABLE
-                    && updv[i].tbp == copyv[j].dstp) {
-                RDB_raise_invalid_argument("target is assigned twice", ecp);
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-            if (copyv[j].srcp->kind == RDB_OB_TABLE
-                    && RDB_table_refers(copyv[j].srcp, updv[i].tbp)) {
-                RDB_raise_not_supported(
-                        "Table is both source and target of assignment", ecp);
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-        }
-    }
-    for (i = 0; i < ndelc; i++) {
-        for (j = i + 1; j < ndelc; j++) {
-            if (ndelv[i].tbp == ndelv[j].tbp) {
-                RDB_raise_invalid_argument("target is assigned twice", ecp);
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-            if (ndelv[j].condp != NULL
-                    && RDB_expr_refers(ndelv[j].condp, ndelv[i].tbp)) {
-                RDB_raise_not_supported("delete condition depends on target", ecp);
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-        }
-        for (j = 0; j < copyc; j++) {
-            if (copyv[j].dstp->kind == RDB_OB_TABLE
-                    && ndelv[i].tbp == copyv[j].dstp) {
-                RDB_raise_invalid_argument("target is assigned twice", ecp);
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-            if (copyv[j].srcp->kind == RDB_OB_TABLE
-                    && RDB_table_refers(copyv[j].srcp, delv[i].tbp)) {
-                RDB_raise_not_supported(
-                        "Table is both source and target of assignment", ecp);
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-        }
-    }
-
-    for (i = 0; i < copyc; i++) {
-        for (j = i + 1; j < copyc; j++) {
-            if (copyv[j].dstp->kind == RDB_OB_TABLE
-                    && copyv[i].dstp->kind == RDB_OB_TABLE
-                    && copyv[i].dstp == copyv[j].dstp) {
-                RDB_raise_invalid_argument("target is assigned twice", ecp);
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-            if (copyv[j].srcp->kind == RDB_OB_TABLE
-                    && copyv[i].dstp->kind == RDB_OB_TABLE
-                    && copyv[j].srcp->kind == RDB_OB_TABLE
-                    && RDB_table_refers(copyv[j].srcp, copyv[i].dstp)) {
-                RDB_raise_not_supported(
-                        "Table is both source and target of assignment", ecp);
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-        }
-    }
+    rcount = check_conflicts_deps(ninsc, ninsv, nupdc, nupdv,
+            ndelc, ndelv, copyc, copyv, ecp, txp);
+    if (rcount != RDB_OK)
+        goto cleanup;
 
     /*
      * Check constraints

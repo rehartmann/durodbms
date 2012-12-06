@@ -355,7 +355,7 @@ update_node_expr(RDB_parse_node *argnodep,
         return NULL;
     RDB_add_arg(rexp, argp);
 
-    nodep = argnodep->nextp->nextp->val.children.firstp;
+    nodep = argnodep->nextp->nextp->nextp->val.children.firstp;
     if (nodep != NULL) {
         for (;;) {
             argp = RDB_string_to_expr(

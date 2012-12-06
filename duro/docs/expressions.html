@@ -65,9 +65,9 @@ dyadic_relation_op_inv = expression UNION expression
         | expression MATCHING expression
         | expression NOT MATCHING expression.
 
-extend = EXTEND expression : '{' [id ':=' expression {',' id ':=' expression}] '}'.
+extend = EXTEND expression ':' '{' [id ':=' expression {',' id ':=' expression}] '}'.
 
-update = UPDATE expression '{' id ':=' expression {',' id ':=' expression} '}'.
+update = UPDATE expression ':' '{' id ':=' expression {',' id ':=' expression} '}'.
 
 summarize = SUMMARIZE expression PER expression
            ADD '(' [summary AS id {',' summary AS id}] ')'.

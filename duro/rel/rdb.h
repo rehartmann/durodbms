@@ -67,7 +67,6 @@ typedef struct RDB_expression RDB_expression;
 typedef struct RDB_expr_list {
     RDB_expression *firstp;
     RDB_expression *lastp;
-    struct RDB_expr_list *nextp;
 } RDB_expr_list;
 
 /**
@@ -221,6 +220,9 @@ typedef void RDB_op_cleanup_func(RDB_operator *);
 typedef int RDB_ro_op_func(int, RDB_object *[], RDB_operator *,
         RDB_exec_context *, struct RDB_transaction *,
         RDB_object *);
+
+typedef int RDB_apply_constraint_fn(RDB_expression *, const char *,
+        RDB_exec_context *, struct RDB_transaction *);
 
 #if defined (_WIN32) && !defined (NO_DLL_IMPORT)
 #define RDB_EXTERN_VAR __declspec(dllimport)
@@ -441,10 +443,18 @@ typedef struct {
 } RDB_ma_copy;
 
 RDB_int
-RDB_multi_assign(int insc, const RDB_ma_insert insv[],
-        int updc, const RDB_ma_update updv[],
-        int delc, const RDB_ma_delete delv[],
-        int copyc, const RDB_ma_copy copyv[],
+RDB_multi_assign(int, const RDB_ma_insert[],
+        int, const RDB_ma_update[],
+        int, const RDB_ma_delete[],
+        int, const RDB_ma_copy[],
+        RDB_exec_context *, RDB_transaction *);
+
+int
+RDB_apply_constraints(int, const RDB_ma_insert[],
+        int, const RDB_ma_update[],
+        int, const RDB_ma_delete[],
+        int, const RDB_ma_copy[],
+        RDB_apply_constraint_fn *,
         RDB_exec_context *, RDB_transaction *);
 
 int

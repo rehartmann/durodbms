@@ -154,7 +154,7 @@ test vtables {virtual tables} -setup $SETUP -body {
 
     duro::table expr -global TS2 {T1 WHERE K = 1} $tx
 
-    duro_assert {UPDATE T4 {B := A + B} = RELATION {
+    duro_assert {UPDATE T4: {B := A + B} = RELATION {
         TUPLE {A 1, B 2},
         TUPLE {A 1, B 3},
         TUPLE {A 2, B 3},

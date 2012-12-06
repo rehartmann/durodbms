@@ -5,6 +5,8 @@
  * See the file COPYING for redistribution information.
  */
 
+%expect 2
+
 %{
 #define YYDEBUG 1
 
@@ -990,7 +992,7 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
-    }    
+    }
     | TOK_EXPLAIN expression TOK_ORDER '(' order_item_commalist ')' ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
@@ -1011,6 +1013,18 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $6);
         RDB_parse_add_child($$, $7);
     }
+    | TOK_EXPLAIN assignment ';' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+    }     
     | TOK_RAISE expression ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
@@ -1711,7 +1725,7 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $5);
         RDB_parse_add_child($$, $6);
     }
-    | TOK_UPDATE expression '{' ne_id_assign_commalist '}' {
+    | TOK_UPDATE expression ':' '{' ne_id_assign_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -1719,6 +1733,7 @@ expression: expression '{' id_commalist '}' {
             RDB_parse_del_node($3, RDB_parse_ecp);
             RDB_parse_del_node($4, RDB_parse_ecp);
             RDB_parse_del_node($5, RDB_parse_ecp);
+            RDB_parse_del_node($6, RDB_parse_ecp);
             YYERROR;
         }
         RDB_parse_add_child($$, $1);
@@ -1726,6 +1741,7 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
         RDB_parse_add_child($$, $5);
+        RDB_parse_add_child($$, $6);
     }
     | TOK_SUMMARIZE expression TOK_PER expression
            TOK_ADD '(' summarize_add_commalist ')' {

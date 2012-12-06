@@ -38,7 +38,7 @@ test insert {creating table and inserting tuples} -setup $SETUP -body {
         var s real init r key {i};
 
         var t init tuple {i 2 + 1, d 1.0, c 'Z'};
-        insert r update t {i := i + 1};
+        insert r update t : {i := i + 1};
 
         put_line(cast_as_string(count(r)));
         put_line(cast_as_string(count(s)));
