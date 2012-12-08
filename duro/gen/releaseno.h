@@ -8,6 +8,6 @@
 #ifndef RELEASENO_H_
 #define RELEASENO_H_
 
-extern char *RDB_release_number;
+RDB_EXTERN_VAR char *RDB_release_number;
 
 #endif /* RELEASENO_H_ */

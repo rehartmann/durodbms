@@ -45,6 +45,7 @@ RDB_drop_table_index
 RDB_define_type
 RDB_get_type
 RDB_tx_is_running
+RDB_tx_db
 RDB_begin_tx
 RDB_commit
 RDB_rollback
@@ -244,3 +245,4 @@ RDB_parse_set_free_line_fn
 RDB_parse_set_case_insensitive
 RDB_token_name
 RDB_parse_tokens
+RDB_release_number
