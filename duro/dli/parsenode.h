@@ -40,6 +40,9 @@ typedef struct RDB_parse_node {
 
     /* White space or comment before the node */
     RDB_object *whitecommp;
+
+    /* Can be used to attach some data to the node */
+    void *xdata;
 } RDB_parse_node;
 
 RDB_parse_node *

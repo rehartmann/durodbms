@@ -695,7 +695,7 @@ ro_op_node_expr(RDB_parse_node *argnodep,
     const char *opnamep = RDB_expr_var_name(argnodep->exp);
     
     // Readonly operator
-    if (strncmp(opnamep, "the_", 4) == 0) {
+    if (strncmp(opnamep, RDB_THE_PREFIX, sizeof(RDB_THE_PREFIX) - 1) == 0) {
         RDB_expression *argp;
 
         if (argnodep->nextp->nextp == NULL) {
@@ -706,7 +706,8 @@ ro_op_node_expr(RDB_parse_node *argnodep,
                 argnodep->nextp->nextp, 0), ecp, txp), ecp);
         if (argp == NULL)
             return NULL;
-        rexp = RDB_expr_comp(argp, opnamep + 4, ecp);
+        rexp = RDB_expr_comp(argp, opnamep + sizeof(RDB_THE_PREFIX) - 1,
+                ecp);
     } else {
         rexp = RDB_ro_op(opnamep, ecp);
         if (rexp == NULL)

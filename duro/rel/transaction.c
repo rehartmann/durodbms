@@ -264,7 +264,21 @@ RDB_TRUE if the transaction is running, RDB_FALSE otherwise.
 RDB_bool
 RDB_tx_is_running(RDB_transaction *txp)
 {
-    return (RDB_bool)(txp->txid != NULL);
+    return (RDB_bool) (txp->txid != NULL);
+}
+
+/**
+ * Return the database the transaction pointed
+ * to by <var>txp</var> interacts with.
+
+@returns
+
+A pointer to the RDB_database structure that represents the database.
+ */
+RDB_database *
+RDB_tx_db(RDB_transaction *txp)
+{
+    return txp->dbp;
 }
 
 /*@}*/

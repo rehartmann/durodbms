@@ -38,6 +38,8 @@ enum {
 #define RDB_GETTER_INFIX "_get_"
 #define RDB_SETTER_INFIX "_set_"
 
+#define RDB_THE_PREFIX "the_"
+
 typedef struct {
     char *name;
     int compc;
@@ -599,24 +601,14 @@ RDB_type_attr_type(const RDB_type *, const char *);
 RDB_bool
 RDB_is_selector(const RDB_operator *);
 
+RDB_possrep *
+RDB_comp_possrep(const RDB_type *, const char *);
+
 int
 RDB_init_builtin_types(RDB_exec_context *);
 
-/** @addtogroup tx
- * @{
- */
-
-/**
-Return the database the transaction pointed
-to by <var>txp</var> interacts with.
-
-@returns
-
-A pointer to the RDB_database structure that represents the database.
- */
-#define RDB_tx_db(txp) ((txp)->dbp)
-
-/** @} */
+RDB_database *
+RDB_tx_db(RDB_transaction *);
 
 RDB_bool
 RDB_tx_is_running(RDB_transaction *);

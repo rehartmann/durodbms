@@ -98,6 +98,24 @@ test deftype {user-defined types} -setup $SETUP -body {
         commit;
         drop var v2;
 
+        -- Check multiple assignment
+        the_a(v) := 9; the_b(v) := -7;
+        put(the_a(v)); put_line('');
+        put(the_b(v)); put_line('');
+
+        var i int;
+        the_a(v) := 15; i := 4;
+        put(the_a(v)); put_line('');
+        put(the_b(v)); put_line('');
+        put(i); put_line('');
+
+        -- Conflicting assignment
+        try
+            the_a(v) := 24, the_a(v) := 42;
+		catch ex syntax_error;
+		    put_line('invalid assignment caught');
+		end try;     
+
         -- Dropping t must fail because v still exists
         try
             drop type t;
@@ -136,6 +154,12 @@ test deftype {user-defined types} -setup $SETUP -body {
 1
 2
 5
+9
+-7
+15
+-7
+4
+invalid assignment caught
 caught in_use_error
 caught name_error
 type constraint violation caught

@@ -13,19 +13,19 @@
 #include <stddef.h>
 #include <string.h>
 
-RDB_environment *envp = NULL;
+RDB_environment *Duro_envp = NULL;
 
-tx_node *txnp = NULL;
+tx_node *Duro_txnp = NULL;
 
-sig_atomic_t interrupted;
+sig_atomic_t Duro_interrupted;
 
 /* System Duro_module, contains STDIN, STDOUT etc. */
-Duro_module sys_module;
+Duro_module Duro_sys_module;
 
 /* Top-level Duro_module */
 static Duro_module root_module;
 
-RDB_operator *inner_op = NULL;
+RDB_operator *Duro_inner_op = NULL;
 
 /*
  * Points to the local variables in the current scope.
@@ -102,7 +102,7 @@ void
 Duro_init_vars(void)
 {
     RDB_init_hashmap(&root_module.varmap, DEFAULT_VARMAP_SIZE);
-    RDB_init_hashmap(&sys_module.varmap, DEFAULT_VARMAP_SIZE);
+    RDB_init_hashmap(&Duro_sys_module.varmap, DEFAULT_VARMAP_SIZE);
     current_varmapp = NULL;
 }
 
@@ -112,7 +112,7 @@ Duro_destroy_vars(void)
     Duro_destroy_varmap(&root_module.varmap);
 
     /* Destroy only the varmap, not the variables as they are global */
-    RDB_destroy_hashmap(&sys_module.varmap);
+    RDB_destroy_hashmap(&Duro_sys_module.varmap);
 }
 
 /*
@@ -147,7 +147,7 @@ lookup_transient_var(const char *name, varmap_node *varmapp)
         return objp;
 
     /* Search in system Duro_module */
-    return RDB_hashmap_get(&sys_module.varmap, name);
+    return RDB_hashmap_get(&Duro_sys_module.varmap, name);
 }
 
 RDB_object *
@@ -163,9 +163,9 @@ Duro_lookup_var(const char *name, RDB_exec_context *ecp)
     if (objp != NULL)
         return objp;
 
-    if (txnp != NULL) {
+    if (Duro_txnp != NULL) {
         /* Try to get table from DB */
-        objp = RDB_get_table(name, ecp, &txnp->tx);
+        objp = RDB_get_table(name, ecp, &Duro_txnp->tx);
     }
     if (objp == NULL)
         RDB_raise_name(name, ecp);
@@ -197,8 +197,8 @@ Duro_evaluate_retry(RDB_expression *exp, RDB_exec_context *ecp, RDB_object *resu
     RDB_database *dbp;
     int ret;
 
-    ret = RDB_evaluate(exp, &get_var, current_varmapp, envp, ecp,
-            txnp != NULL ? &txnp->tx : NULL, resultp);
+    ret = RDB_evaluate(exp, &get_var, current_varmapp, Duro_envp, ecp,
+            Duro_txnp != NULL ? &Duro_txnp->tx : NULL, resultp);
     /*
      * Success or error different from OPERATOR_NOT_FOUND_ERROR
      * -> return
@@ -210,7 +210,7 @@ Duro_evaluate_retry(RDB_expression *exp, RDB_exec_context *ecp, RDB_object *resu
      * If a transaction is already active or no environment is
      * available, stop
      */
-    if (txnp != NULL || envp == NULL)
+    if (Duro_txnp != NULL || Duro_envp == NULL)
         return ret;
     /*
      * Start transaction and retry.
@@ -224,7 +224,7 @@ Duro_evaluate_retry(RDB_expression *exp, RDB_exec_context *ecp, RDB_object *resu
 
     if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
         return RDB_ERROR;
-    ret = RDB_evaluate(exp, &get_var, current_varmapp, envp, ecp, &tx, resultp);
+    ret = RDB_evaluate(exp, &get_var, current_varmapp, Duro_envp, ecp, &tx, resultp);
     if (ret != RDB_OK) {
         RDB_commit(ecp, &tx);
         return ret;
@@ -238,7 +238,7 @@ Duro_expr_type_retry(RDB_expression *exp, RDB_exec_context *ecp)
     RDB_transaction tx;
     RDB_database *dbp;
     RDB_type *typ = RDB_expr_type(exp, &Duro_get_var_type, NULL,
-            envp, ecp, txnp != NULL ? &txnp->tx : NULL);
+            Duro_envp, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
     /*
      * Success or error different from OPERATOR_NOT_FOUND_ERROR
      * -> return
@@ -250,7 +250,7 @@ Duro_expr_type_retry(RDB_expression *exp, RDB_exec_context *ecp)
      * If a transaction is already active or no environment is
      * available, give up
      */
-    if (txnp != NULL || envp == NULL)
+    if (Duro_txnp != NULL || Duro_envp == NULL)
         return typ;
     /*
      * Start transaction and retry.
@@ -262,7 +262,7 @@ Duro_expr_type_retry(RDB_expression *exp, RDB_exec_context *ecp)
 
     if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
         return NULL;
-    typ = RDB_expr_type(exp, &Duro_get_var_type, NULL, envp, ecp, &tx);
+    typ = RDB_expr_type(exp, &Duro_get_var_type, NULL, Duro_envp, ecp, &tx);
     if (typ != NULL) {
         RDB_commit(ecp, &tx);
         return typ;
@@ -277,7 +277,7 @@ Duro_exec_vardef(RDB_parse_node *nodep, RDB_exec_context *ecp)
     RDB_type *typ = NULL;
     RDB_expression *initexp = NULL;
     const char *varname = RDB_expr_var_name(nodep->exp);
-    RDB_transaction *txp = txnp != NULL ? &txnp->tx : NULL;
+    RDB_transaction *txp = Duro_txnp != NULL ? &Duro_txnp->tx : NULL;
 
     /* Init value without type? */
     if (nodep->nextp->kind == RDB_NODE_TOK && nodep->nextp->val.token == TOK_INIT) {
@@ -498,7 +498,7 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
     RDB_bool freekeys = RDB_FALSE;
     RDB_object *tbp = NULL;
     RDB_expression *initexp = NULL;
-    RDB_transaction *txp = txnp != NULL ? &txnp->tx : NULL;
+    RDB_transaction *txp = Duro_txnp != NULL ? &Duro_txnp->tx : NULL;
     RDB_type *tbtyp = NULL;
     const char *varname = RDB_expr_var_name(nodep->exp);
 
@@ -571,7 +571,7 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
          */
         if (initexp != NULL) {
             keyc = RDB_infer_keys(initexp, &get_var, current_varmapp,
-                    envp, ecp, txnp != NULL ? &txnp->tx : NULL, &keyv, &freekeys);
+                    Duro_envp, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL, &keyv, &freekeys);
             if (keyc == RDB_ERROR) {
                 keyv = NULL;
                 goto error;
@@ -658,7 +658,7 @@ Duro_exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
     RDB_object *tbp = NULL;
     RDB_expression *initexp = NULL;
 
-    if (txnp == NULL) {
+    if (Duro_txnp == NULL) {
         RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
@@ -668,12 +668,12 @@ Duro_exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
     /* Init value without type? */
     if (nodep->nextp->nextp->kind == RDB_NODE_TOK && nodep->nextp->nextp->val.token == TOK_INIT) {
         /* No type - get INIT value */
-        initexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp, ecp, &txnp->tx);
+        initexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp, ecp, &Duro_txnp->tx);
         if (initexp == NULL)
             return RDB_ERROR;
         keylistnodep = nodep->nextp->nextp->nextp->nextp;
         tbtyp = RDB_expr_type(initexp, Duro_get_var_type,
-                NULL, envp, ecp, &txnp->tx);
+                NULL, Duro_envp, ecp, &Duro_txnp->tx);
         if (tbtyp == NULL) {
             return RDB_ERROR;
         }
@@ -683,13 +683,13 @@ Duro_exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
             return RDB_ERROR;
     } else {
         tbtyp = RDB_parse_node_to_type(nodep->nextp->nextp, &Duro_get_var_type,
-                NULL, ecp, &txnp->tx);
+                NULL, ecp, &Duro_txnp->tx);
         if (tbtyp == NULL)
             return RDB_ERROR;
         if (nodep->nextp->nextp->nextp->kind == RDB_NODE_TOK
                 && nodep->nextp->nextp->nextp->val.token == TOK_INIT) {
             /* Get INIT value */
-            initexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp->nextp, ecp, &txnp->tx);
+            initexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp->nextp, ecp, &Duro_txnp->tx);
             if (initexp == NULL)
                 return RDB_ERROR;
             keylistnodep = nodep->nextp->nextp->nextp->nextp->nextp;
@@ -714,7 +714,7 @@ Duro_exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
          */
         if (initexp != NULL) {
             keyc = RDB_infer_keys(initexp, &get_var, current_varmapp,
-                    envp, ecp, txnp != NULL ? &txnp->tx : NULL, &keyv, &freekeys);
+                    Duro_envp, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL, &keyv, &freekeys);
             if (keyc == RDB_ERROR) {
                 keyv = NULL;
                 goto error;
@@ -738,14 +738,14 @@ Duro_exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
     }
 
     tbp = RDB_create_table_from_type(varname, tbtyp, keyc, keyv,
-            default_attrc, default_attrv, ecp, &txnp->tx);
+            default_attrc, default_attrv, ecp, &Duro_txnp->tx);
     if (tbp == NULL) {
         goto error;
     }
 
     if (initexp != NULL) {
-        if (RDB_evaluate(initexp, &get_var, current_varmapp, envp,
-                ecp, &txnp->tx, tbp) != RDB_OK) {
+        if (RDB_evaluate(initexp, &get_var, current_varmapp, Duro_envp,
+                ecp, &Duro_txnp->tx, tbp) != RDB_OK) {
             goto error;
         }
     }
@@ -770,7 +770,7 @@ error:
 
         RDB_init_exec_context(&ec);
         if (tbp != NULL) {
-            RDB_drop_table(tbp, &ec, &txnp->tx);
+            RDB_drop_table(tbp, &ec, &Duro_txnp->tx);
         } else if (tbtyp != NULL && !RDB_type_is_scalar(tbtyp)) {
             RDB_del_nonscalar_type(tbtyp, &ec);
         }
@@ -798,12 +798,12 @@ Duro_exec_vardef_virtual(RDB_parse_node *nodep, RDB_exec_context *ecp)
     RDB_expression *texp;
     const char *varname = RDB_expr_var_name(nodep->exp);
 
-    if (txnp == NULL) {
+    if (Duro_txnp == NULL) {
         RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
-    defexp = RDB_parse_node_expr(nodep->nextp->nextp, ecp, &txnp->tx);
+    defexp = RDB_parse_node_expr(nodep->nextp->nextp, ecp, &Duro_txnp->tx);
     if (defexp == NULL)
         return RDB_ERROR;
 
@@ -811,14 +811,14 @@ Duro_exec_vardef_virtual(RDB_parse_node *nodep, RDB_exec_context *ecp)
     if (texp == NULL)
         return RDB_ERROR;
 
-    tbp = RDB_expr_to_vtable(texp, ecp, &txnp->tx);
+    tbp = RDB_expr_to_vtable(texp, ecp, &Duro_txnp->tx);
     if (tbp == NULL) {
         RDB_del_expr(texp, ecp);
         return RDB_ERROR;
     }
-    if (RDB_set_table_name(tbp, varname, ecp, &txnp->tx) != RDB_OK)
+    if (RDB_set_table_name(tbp, varname, ecp, &Duro_txnp->tx) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_add_table(tbp, ecp, &txnp->tx) != RDB_OK)
+    if (RDB_add_table(tbp, ecp, &Duro_txnp->tx) != RDB_OK)
         return RDB_ERROR;
 
     if (RDB_parse_get_interactive())
@@ -876,7 +876,7 @@ Duro_exec_vardrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
      * Delete persistent table
      */
 
-    if (txnp == NULL) {
+    if (Duro_txnp == NULL) {
         RDB_raise_name(varname, ecp);
         return RDB_ERROR;
     }
@@ -886,14 +886,14 @@ Duro_exec_vardrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
      * depends on the foreach expression
      */
 
-    objp = RDB_get_table(varname, ecp, &txnp->tx);
+    objp = RDB_get_table(varname, ecp, &Duro_txnp->tx);
     if (objp == NULL)
         return RDB_ERROR;
 
     if (check_foreach_depends(objp, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (RDB_drop_table(objp, ecp, &txnp->tx) != RDB_OK)
+    if (RDB_drop_table(objp, ecp, &Duro_txnp->tx) != RDB_OK)
         return RDB_ERROR;
 
     if (RDB_parse_get_interactive())
@@ -959,7 +959,7 @@ RDB_database *
 Duro_get_db(RDB_exec_context *ecp)
 {
     char *dbname;
-    RDB_object *dbnameobjp = RDB_hashmap_get(&sys_module.varmap, "current_db");
+    RDB_object *dbnameobjp = RDB_hashmap_get(&Duro_sys_module.varmap, "current_db");
     if (dbnameobjp == NULL) {
         RDB_raise_resource_not_found("no database", ecp);
         return NULL;
@@ -969,12 +969,12 @@ Duro_get_db(RDB_exec_context *ecp)
         RDB_raise_not_found("no database", ecp);
         return NULL;
     }
-    if (envp == NULL) {
+    if (Duro_envp == NULL) {
         RDB_raise_resource_not_found("no connection", ecp);
         return NULL;
     }
 
-    return RDB_get_db_from_env(dbname, envp, ecp);
+    return RDB_get_db_from_env(dbname, Duro_envp, ecp);
 }
 
 /*
@@ -987,7 +987,7 @@ Duro_parse_node_to_type_retry(RDB_parse_node *nodep, RDB_exec_context *ecp)
     RDB_database *dbp;
     RDB_transaction tx;
     RDB_type *typ = RDB_parse_node_to_type(nodep, &Duro_get_var_type,
-            NULL, ecp, txnp != NULL ? &txnp->tx : NULL);
+            NULL, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
     /*
      * Success or error different from NAME_ERROR and OPERATOR_NOT_FOUND_ERROR
      * -> return
@@ -1001,7 +1001,7 @@ Duro_parse_node_to_type_retry(RDB_parse_node *nodep, RDB_exec_context *ecp)
      * If a transaction is already active or no environment is
      * available, give up
      */
-    if (txnp != NULL || envp == NULL)
+    if (Duro_txnp != NULL || Duro_envp == NULL)
         return NULL;
     /*
      * Start transaction and retry.
@@ -1058,7 +1058,7 @@ init_obj_by_selector(RDB_object *objp, RDB_possrep *rep,
     }
 
     /* Call selector */
-    ret = RDB_call_ro_op_by_name_e(rep->name, rep->compc, objpv, envp, ecp,
+    ret = RDB_call_ro_op_by_name_e(rep->name, rep->compc, objpv, Duro_envp, ecp,
             txp, objp);
 
 cleanup:

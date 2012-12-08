@@ -73,6 +73,13 @@ tuple_to_operator(const char *name, const RDB_object *tplp,
     } else {
         op->modhdl = NULL;
     }
+    if (argtv != NULL) {
+        for (i = 0; i < argc; i++) {
+            if (argtv[i] != NULL && !RDB_type_is_scalar(argtv[i]))
+                RDB_del_nonscalar_type(argtv[i], ecp);
+        }
+        RDB_free(argtv);
+    }
     return op;
 
 error:
@@ -94,13 +101,13 @@ RDB_int
 RDB_cat_load_ro_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_expression *exp, *wexp, *argp;
-    RDB_qresult *qrp;
     const char *symname;
-    RDB_object *vtbp;
     RDB_object tpl;
     RDB_object typesobj;
     int ret;
     RDB_operator *op;
+    RDB_qresult *qrp = NULL;
+    RDB_object *vtbp = NULL;
     RDB_int opcount = 0;
 
     /*
@@ -179,7 +186,14 @@ RDB_cat_load_ro_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp
         return RDB_ERROR;
     }
     RDB_clear_err(ecp);
+
+    ret = RDB_del_qresult(qrp, ecp, txp);
+    qrp = NULL;
+    if (ret != RDB_OK)
+        goto error;
+
     ret = RDB_drop_table(vtbp, ecp, txp);
+    vtbp = NULL;
     if (ret != RDB_OK)
         goto error;
 
@@ -187,7 +201,10 @@ RDB_cat_load_ro_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp
     return opcount;
 
 error:
-    RDB_drop_table(vtbp, ecp, txp);
+    if (qrp != NULL)
+        RDB_del_qresult(qrp, ecp, txp);
+    if (vtbp != NULL)
+        RDB_drop_table(vtbp, ecp, txp);
     RDB_destroy_obj(&tpl, ecp);
     return RDB_ERROR;
 } /* RDB_cat_load_ro_op */

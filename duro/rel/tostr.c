@@ -474,7 +474,7 @@ append_ex(RDB_object *objp, const RDB_expression *exp, RDB_environment *envp,
                 return ret;
             break;
         case RDB_EX_GET_COMP:
-            ret = RDB_append_string(objp, "the_", ecp);
+            ret = RDB_append_string(objp, RDB_THE_PREFIX, ecp);
             if (ret != RDB_OK)
                 return ret;
             ret = RDB_append_string(objp, exp->def.op.name, ecp);

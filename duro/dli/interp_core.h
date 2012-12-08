@@ -38,7 +38,7 @@ typedef struct Duro_module {
     /* Global transient variables */
     RDB_hashmap varmap;
 
-    /* System-defined update operators (not stored), only used in sys_module */
+    /* System-defined update operators (not stored), only used in Duro_sys_module */
     RDB_op_map upd_op_map;
 } Duro_module;
 
@@ -61,15 +61,15 @@ struct Duro_op_data {
     char **argnamev;
 };
 
-extern sig_atomic_t interrupted;
+extern sig_atomic_t Duro_interrupted;
 
-extern RDB_environment *envp;
+extern RDB_environment *Duro_envp;
 
-extern tx_node *txnp;
+extern tx_node *Duro_txnp;
 
-extern Duro_module sys_module;
+extern Duro_module Duro_sys_module;
 
-extern RDB_operator *inner_op;
+extern RDB_operator *Duro_inner_op;
 
 int
 Duro_add_varmap(RDB_exec_context *);
