@@ -5,7 +5,29 @@
 <p><a href="../index.html">Documentation home</a>
 <h1>Duro D/T Tutorial</h1>
 
-<h2>Invoking the interpreter</h2>
+<h2>Table of contents</h2>
+
+<ul>
+<li><a href="#invoke">Invoking the interpreter</a>
+<li><a href="#declare">Declaring variables</a>
+<li><a href="#assign">Assignment</a>
+<li><a href="#types">Built-in types</a>
+<li><a href="#comments">Comments</a>
+<li><a href="#control">Control statements</a>
+<li><a href="#tuples">Tuples</a>
+<li><a href="#dbs">Databases and database environments</a>
+<li><a href="#tables">Tables</a>
+<li><a href="#dbconstraints">Database constraints</a>
+<li><a href="#arrays">Arrays</a>
+<li><a href="#foreach">FOREACH</a>
+<li><a href="#io">I/O</a>
+<li><a href="#user-ops">User-defined operators</a>
+<li><a href="#user-types">User-defined types</a>
+<li><a href="#exception">Exception handling</a>
+<li><a href="#performance">Performance</a>
+</ul>
+
+<h2 id="invoke">Invoking the interpreter</h2>
 
 <p>To invoke the interpreter, type <samp>durodt</samp>:
 
@@ -25,7 +47,7 @@ the prompt is "no db".
 
 <p>For more information about invoking Duro D/T see <a href="../utils.html#durodt">DuroDBMS utilities</a>.
 
-<h2>Declaring variables</h2>
+<h2 id="declare">Declaring variables</h2>
 
 <p>In Duro D/T, variables are typed, as required by TTM.
 They must be declared before they can be used.
@@ -79,7 +101,7 @@ no db> drop var i;
 no db>
 </pre>
 
-<h2>Assignment</h2>
+<h2 id="assign">Assignment</h2>
 
 <p>Once a variable has been declared, a value can be assigned
 to it. For example:
@@ -104,7 +126,7 @@ no db> i := j, j := i;
 no db>
 </pre>
 
-<h2>Types</h2>
+<h2 id="types">Built-in types</h2>
 
 <p>DuroDBMS supports the following built-in scalar types:
 
@@ -138,7 +160,7 @@ no db>
 
 <p>For details on the built-in operator <code>put_line</code>, see the chapter on I/O below.
 
-<h2>Comments</h2>
+<h2 id="comments">Comments</h2>
 
 <p>Duro D/T supports line comments and multi-line comments.
 
@@ -154,7 +176,7 @@ comment. */
 
 <p>Lines starting with #! are ignored to allow for Unix interpreter files.</p>
 
-<h2>Control statements</h2>
+<h2 id="control">Control statements</h2>
 
 <h3>IF</h3>
 
@@ -279,7 +301,7 @@ Zero
 no db>
 </pre>
 
-<h2>Tuples</h2>
+<h2 id="tuples">Tuples</h2>
 
 <p>Tuple variables can be declared as follows:</p>
 
@@ -340,7 +362,7 @@ Four
 no db>
 </pre>
 
-<h2>Databases and database environments</h2>
+<h2 id="dbs">Databases and database environments</h2>
 
 <p>Database environments are the places where databases and tables are physically stored.
 Therefore a database environment must exist before a database can be created.
@@ -408,7 +430,7 @@ Transaction rolled back.
 D>
 </pre>
 
-<h2>Tables</h2>
+<h2 id="tables">Tables</h2>
 
 <p>Creating a real persistent table:
 
@@ -493,7 +515,7 @@ Transaction committed.
 D> 
 </pre>
 
-<h2>Database constraints</h2>
+<h2 id="dbconstraints">Database constraints</h2>
 
 <p>Imagine there is one table for customers and one for orders:</p>
 
@@ -541,7 +563,7 @@ Constraint orders_customers dropped.
 D>
 </pre>
 
-<h2>Arrays</h2>
+<h2 id="arrays">Arrays</h2>
 
 <p>Example: Printing all tuples of table r in an unspecified order:
 
@@ -554,7 +576,7 @@ D>   put(a[i]); put_line('');
 D> end for;
 </pre>
 
-<h2>FOREACH</h2>
+<h2 id="foreach">FOREACH</h2>
 
 <p>Duro D/T supports a FOREACH statement.
 The example below prints all tuples of table r in an unspecified order
@@ -567,7 +589,7 @@ D>   put(t); put_line('');
 D> end foreach;
 </pre>
 
-<h2>I/O</h2>
+<h2 id="io">I/O</h2>
 
 <p>Duro D/T provides a number of operators for I/O.
 
@@ -620,7 +642,7 @@ it in <code>line</code>, without the trailing newline.</p>
 
 <p>File I/O is also supported. See the <a href="../api/html/io-ops.html">list of I/O operators</a>.
 
-<h2>User-defined operators</h2>
+<h2 id="user-ops">User-defined operators</h2>
 
 <p>Defining a read-only operator:
 
@@ -650,7 +672,7 @@ Operator incr dropped.
 D>
 </pre>
 
-<h2>User-defined types</h2>
+<h2 id="user-types">User-defined types</h2>
 
 <p>Example for defining a type:</p>
 
@@ -741,7 +763,14 @@ D> l := len(1.0);
 D>
 </pre>
 
-<h2>Exception handling</h2>
+<pre>
+D> var p point;
+D> p := cartesian(1.0, 1.0);
+1 element affected.
+D>
+</pre>
+
+<h2 id="exception">Exception handling</h2>
 
 <p>By default, if an error occurs, execution is stopped.
 
@@ -803,7 +832,7 @@ catch err;
 end try;
 </pre>
 
-<h3>Performance</h3>
+<h2 id="performance">Performance</h2>
 
 <p>Duro D/T features an EXPLAIN statement which shows how a relational expression is executed.
 
