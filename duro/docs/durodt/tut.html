@@ -432,7 +432,13 @@ D>
 
 <h2 id="tables">Tables</h2>
 
-<p>Creating a real persistent table:
+<p>As required by <em>TTM</em>, tables are variables in DuroDBMS,
+thus a table is created by declarating a variable. 
+
+<p>A table is persistent if and only if it belongs to a database.
+A running transaction is required to create or access database tables.
+
+<p>Creating a real database table:
 
 <pre>
 D> begin tx;
@@ -453,7 +459,10 @@ D> insert r2 tup{no 1};
 1 element affected.
 </pre>
 
-<p>Creating a private (real transient) table:
+<p>Private tables are transient, they do not belong to any database
+and do not require a transaction to create or access them.
+
+<p>Creating a private table:
 
 <pre>
 D> var p private rel{no int, name string} key {no};

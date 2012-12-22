@@ -861,6 +861,9 @@ RDB_expr_op_name(const RDB_expression *);
 const char *
 RDB_expr_var_name(const RDB_expression *);
 
+RDB_bool
+RDB_expr_is_op(const RDB_expression *, const char *);
+
 int
 RDB_evaluate_bool(RDB_expression *, RDB_getobjfn *getfnp, void *getdata,
         RDB_environment *, RDB_exec_context *, RDB_transaction *, RDB_bool *);

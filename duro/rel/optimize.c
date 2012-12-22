@@ -41,10 +41,19 @@ enum {
     tbpv_cap = 256
 };
 
-static RDB_bool is_and(const RDB_expression *exp)
+static RDB_bool
+expr_is_binop(const RDB_expression *exp, const char *name)
 {
-    return (RDB_bool) (exp->kind == RDB_EX_RO_OP
-            && strcmp (exp->def.op.name, "and") == 0);
+    return RDB_expr_is_op(exp, name)
+            && exp->def.op.args.firstp != NULL
+            && exp->def.op.args.firstp->nextp != NULL
+            && exp->def.op.args.firstp->nextp->nextp == NULL;
+}
+
+static RDB_bool
+is_and(const RDB_expression *exp)
+{
+    return expr_is_binop(exp, "and");
 }
 
 static int
@@ -565,8 +574,7 @@ mutate_where(RDB_expression *texp, RDB_expression **tbpv, int cap,
     RDB_expression *condp = texp->def.op.args.firstp->nextp;
 
     if (chexp->kind == RDB_EX_TBP
-        || (chexp->kind == RDB_EX_RO_OP
-            && strcmp(chexp->def.op.name, "project") == 0
+        || (RDB_expr_is_op(chexp, "project")
             && chexp->def.op.args.firstp->kind == RDB_EX_TBP)) {
         if (eliminate_not(condp, ecp, txp) != RDB_OK)
             return RDB_ERROR;
@@ -606,8 +614,7 @@ mutate_where(RDB_expression *texp, RDB_expression **tbpv, int cap,
                 if (split_by_index(nexp, indexp, ecp, txp) != RDB_OK)
                     return RDB_ERROR;
             }
-        } else if (tbpv[i]->kind == RDB_EX_RO_OP
-                && strcmp(tbpv[i]->def.op.name, "project") == 0
+        } else if (RDB_expr_is_op(tbpv[i], "project")
                 && tbpv[i]->def.op.args.firstp->kind == RDB_EX_TBP
                 && tbpv[i]->def.op.args.firstp->def.tbref.indexp != NULL) {
             RDB_tbindex *indexp = tbpv[i]->def.op.args.firstp->def.tbref.indexp;
@@ -815,7 +822,7 @@ replace_empty(RDB_expression *exp, RDB_expression *empty_exp,
 }
 
 /*
- * (T1 UNION T2) [SEMI]MINUS T3 -> (T1 [SEMI]MINUS T2) UNION (T1 [SEMI]MINUS T3)
+ * (T1 UNION T2) [SEMI]MINUS T3 -> (T1 [SEMI]MINUS T3) UNION (T2 [SEMI]MINUS T3)
  * Returns the result.
  * Useful when there is a constraint of the form IS_EMPTY(T1 SEMIMINUS T2)
  * so one of the children can be optimized away.
@@ -847,6 +854,7 @@ transform_semi_minus_union1(RDB_expression *texp, RDB_expression *empty_exp,
         RDB_del_expr(ex2p, ecp);
         return NULL;
     }
+    /* Make *ex3p T1 [SEMI]MINUS T3 */
     RDB_add_arg(ex3p, ex1p);
     RDB_add_arg(ex3p, ex2p);
 
@@ -870,6 +878,7 @@ transform_semi_minus_union1(RDB_expression *texp, RDB_expression *empty_exp,
         RDB_del_expr(ex3p, ecp);
         return NULL;
     }
+    /* Make *ex4p T2 [SEMI]MINUS T3 */
     RDB_add_arg(ex4p, ex1p);
     RDB_add_arg(ex4p, ex2p);
 
@@ -948,6 +957,41 @@ transform_semi_minus_union2(RDB_expression *texp, RDB_expression *empty_exp,
 }
 
 /*
+ * Transform *texp of form T1 MINUS (T3 UNION T4) UNION T2 MINUS (T3 UNION T4)
+ * further to ((T1 MINUS T3) MINUS T4) UNION ((T2 MINUS T3) MINUS T4)
+ */
+static RDB_expression *
+transform_semi_minus_union3(RDB_expression *texp, RDB_expression *empty_exp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_expression *ex1p, *ex2p, *rexp;
+
+    ex1p = transform_semi_minus_union2(texp->def.op.args.firstp,
+            empty_exp, ecp, txp);
+    if (ex1p == NULL)
+        return NULL;
+    ex2p = transform_semi_minus_union2(texp->def.op.args.firstp->nextp,
+            empty_exp, ecp, txp);
+    if (ex2p == NULL) {
+        RDB_del_expr(ex1p, ecp);
+        return NULL;
+    }
+    rexp = RDB_ro_op("union", ecp);
+    if (rexp == NULL) {
+        RDB_del_expr(ex1p, ecp);
+        RDB_del_expr(ex2p, ecp);
+        return NULL;
+    }
+    RDB_add_arg(rexp, ex1p);
+    RDB_add_arg(rexp, ex2p);
+    if (replace_empty(ex1p, empty_exp, ecp, txp) != RDB_OK) {
+        RDB_del_expr(rexp, ecp);
+        return NULL;
+    }
+    return rexp;
+}
+
+/*
  * empty_exp must not be NULL.
  */
 static int
@@ -958,16 +1002,38 @@ mutate_semi_minus(RDB_expression *texp, RDB_expression **tbpv, int cap,
     if (tbc < 0)
         return RDB_ERROR;
 
-    if (tbc < cap && texp->def.op.args.firstp->kind == RDB_EX_RO_OP
-            && strcmp(texp->def.op.args.firstp->def.op.name, "union") == 0) {
+    if (tbc < cap && expr_is_binop(texp->def.op.args.firstp, "union")) {
         tbpv[tbc] = transform_semi_minus_union1(texp, empty_exp, ecp, txp);
         if (tbpv[tbc] == NULL)
             return RDB_ERROR;
         tbc++;
+        if (tbc < cap
+                && expr_is_binop(tbpv[tbc - 1], "union")
+                && expr_is_binop(tbpv[tbc - 1]->def.op.args.firstp, "minus")
+                && expr_is_binop(tbpv[tbc - 1]->def.op.args.firstp
+                        ->def.op.args.firstp->nextp,
+                        "union")
+                && expr_is_binop(tbpv[tbc - 1]->def.op.args.firstp->nextp, "minus")
+                && expr_is_binop(tbpv[tbc - 1]->def.op.args.firstp->nextp
+                        ->def.op.args.firstp->nextp,
+                        "union"))
+        {
+            /*
+             * Expression was of form (T1 UNION T2) MINUS (T3 UNION T4)
+             * and tbpv[tbc - 1] is now
+             * (T1 MINUS (T3 UNION T4)) UNION (T2 MINUS (T3 UNION T4))
+             * Transform expression further to
+             * ((T1 MINUS T3) MINUS T4) UNION ((T2 MINUS T3) MINUS T4)
+             */
+            tbpv[tbc] = transform_semi_minus_union3(tbpv[tbc - 1], empty_exp, ecp, txp);
+            if (tbpv[tbc] == NULL) {
+                RDB_del_expr(tbpv[tbc - 1], ecp);
+                return RDB_ERROR;
+            }
+            tbc++;
+        }
     }
-    if (tbc < cap && texp->def.op.args.firstp->nextp->kind == RDB_EX_RO_OP
-            && strcmp(texp->def.op.args.firstp->nextp->def.op.name, "union")
-               == 0) {
+    if (tbc < cap && expr_is_binop(texp->def.op.args.firstp->nextp, "union")) {
         tbpv[tbc] = transform_semi_minus_union2(texp, empty_exp, ecp, txp);
         if (tbpv[tbc] == NULL)
             return RDB_ERROR;

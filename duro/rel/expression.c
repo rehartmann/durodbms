@@ -1285,3 +1285,12 @@ RDB_expr_resolve_tbnames(RDB_expression *exp, RDB_exec_context *ecp,
     }
     return RDB_OK;
 }
+
+/**
+ * Check if *<var>op</var> is an operator with name <var>name</var>.
+ */
+RDB_bool
+RDB_expr_is_op(const RDB_expression *exp, const char *name)
+{
+    return (exp->kind == RDB_EX_RO_OP) && (strcmp(exp->def.op.name, name) == 0);
+}

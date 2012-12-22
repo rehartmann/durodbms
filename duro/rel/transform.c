@@ -46,16 +46,12 @@ transform_union(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 {
     RDB_bool compl, teq;
 
-    if (exp->def.op.args.firstp->kind == RDB_EX_RO_OP
-            && strcmp(exp->def.op.args.firstp->def.op.name, "project") == 0
-            && exp->def.op.args.firstp->nextp->kind == RDB_EX_RO_OP
-            && strcmp(exp->def.op.args.firstp->nextp->def.op.name, "project") == 0) {
+    if (RDB_expr_is_op(exp->def.op.args.firstp, "project")
+            && RDB_expr_is_op(exp->def.op.args.firstp->nextp, "project") == 0) {
         RDB_expression *wex1p = exp->def.op.args.firstp->def.op.args.firstp;
         RDB_expression *wex2p = exp->def.op.args.firstp->nextp->def.op.args.firstp;
-        if (wex1p->kind == RDB_EX_RO_OP
-                && strcmp(wex1p->def.op.name, "where") == 0
-                && wex2p->kind == RDB_EX_RO_OP
-                && strcmp(wex2p->def.op.name, "where") == 0) {
+        if (RDB_expr_is_op(wex1p, "where")
+                && RDB_expr_is_op(wex2p, "where") == 0) {
             if (RDB_expr_equals(wex1p->def.op.args.firstp,
                     wex2p->def.op.args.firstp,
                     ecp, txp, &teq) != RDB_OK)
@@ -588,7 +584,7 @@ transform_project(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 
         if (strcmp(chexp->def.op.name, "project") == 0) {
             /*
-             * Merge projects by eliminating the child
+             * Merge nested projection by eliminating the child
              */
             argp = chexp->def.op.args.firstp->nextp;
             while (argp != NULL) {
@@ -626,8 +622,7 @@ transform_project(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         } else {
             return RDB_transform(chexp, getfnp, arg, ecp, txp);
         }
-    } while (exp->kind == RDB_EX_RO_OP
-            && strcmp(exp->def.op.name, "project") == 0);
+    } while (RDB_expr_is_op(exp, "project"));
     assert(exp->kind <= RDB_EX_RO_OP);
     if (exp->kind == RDB_EX_RO_OP) {
         argp = exp->def.op.args.firstp;
@@ -858,7 +853,7 @@ transform_is_empty(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
        return RDB_ERROR;
 
     /* Add projection, if not already present */
-    if (chexp->kind != RDB_EX_RO_OP || strcmp(chexp->def.op.name, "project") != 0
+    if (!RDB_expr_is_op(chexp, "project")
             || chexp->def.op.args.firstp->nextp != NULL) {
         RDB_expression *pexp = RDB_ro_op("project", ecp);
         if (pexp == NULL)
