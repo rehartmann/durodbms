@@ -61,7 +61,7 @@ no db>
 
 <p>This creates a variable named i. Note that Duro D/T is case
 insensitive, so there is no diffence between "var i integer;"
-and "VAR I INTEGER;". More accurately, keywords are case insensitive
+and "VAR I INTEGER;". More precisely, keywords are case insensitive
 whereas identifiers are automatically converted to lowercase.
 This tutorial shows example code in lowercase.
 
@@ -145,6 +145,7 @@ no db> var b bool init true;
 no db> var i int init 1;
 no db> var f float init 1.0;
 no db> var s string init 'Foo';
+no db> var b binary init X'466f6f';
 </pre>
 
 <p>For non-scalar types, see the chapters on tuples, tables, and arrays,
@@ -625,8 +626,8 @@ no db>
 <h3>put</h3>
 
 <p><code>put</code> works like <code>put_line</code>, except that its output is not
-followed by a newline.  It is defined for all built-in scalar types
-except <code>binary</code> and also for tuple and relation arguments:
+followed by a newline. Unlike <code>put_line</code>, it is defined
+for all built-in scalar types and also for tuple and relation arguments:
 
 <pre>
 no db> put('2 + 2 = '); put(2 + 2); put_line('');

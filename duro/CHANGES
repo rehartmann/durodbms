@@ -4,6 +4,8 @@ Summary of Changes for DuroDBMS
 
 Changes for DuroDBMS 0.17
 
+- Improved support for type binary.
+
 - Assigning components in a multiple assignment now supported.
 
 - Added LIKE operator

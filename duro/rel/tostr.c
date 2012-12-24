@@ -127,6 +127,26 @@ append_quoted_string(RDB_object *objp, const RDB_object *strp,
     return ret;
 }
 
+static int
+append_hex_binary(RDB_object *objp, const RDB_object *binp,
+        RDB_exec_context *ecp)
+{
+    int i;
+    char buf[3];
+
+    if (RDB_append_string(objp, "X'", ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    buf[2] = '\0';
+    for (i = 0; i < binp->val.bin.len; i++) {
+        sprintf(buf, "%02x", ((char *) binp->val.bin.datap)[i]);
+        if (RDB_append_string(objp, buf, ecp) != RDB_OK)
+            return RDB_ERROR;
+    }
+
+    return (RDB_append_string(objp, "'", ecp));
+}
+
 /*
  * Generate selector invocation and append it to *objp.
  * *txp is passed to RDB_obj_comp (may be needed to read the getter operator
@@ -256,6 +276,9 @@ append_obj(RDB_object *objp, const RDB_object *srcp, RDB_environment *envp,
              } else if (srcp->typ == &RDB_STRING) {
                  /* String */
                  ret = append_quoted_string(objp, srcp, ecp);
+             } else if (srcp->typ == &RDB_BINARY) {
+                 /* Binary */
+                 ret = append_hex_binary(objp, srcp, ecp);
              } else {
                  /* Other type - convert to string */
                  RDB_object dst;
@@ -277,12 +300,15 @@ append_obj(RDB_object *objp, const RDB_object *srcp, RDB_environment *envp,
             return append_array(objp, srcp, envp, ecp, txp);
         }
     }
-    if (srcp->kind == RDB_OB_TUPLE) {
-        return append_tuple(objp, srcp, envp, ecp, txp);
-    }
-    if (srcp->kind == RDB_OB_INITIAL) {
-        /* Treat as empty tuple */
-        return RDB_append_string(objp, "TUPLE { }", ecp);
+    switch (srcp->kind) {
+        case RDB_OB_TUPLE:
+            return append_tuple(objp, srcp, envp, ecp, txp);
+        case RDB_OB_ARRAY:
+            return append_array(objp, srcp, envp, ecp, txp);
+        case RDB_OB_INITIAL:
+            /* Treat as empty tuple */
+            return RDB_append_string(objp, "TUPLE { }", ecp);
+        default: ;
     }
     RDB_raise_invalid_argument("unable to convert RDB_object to string", ecp);
     return RDB_ERROR;

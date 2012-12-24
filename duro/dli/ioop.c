@@ -11,6 +11,7 @@
 #include <rel/rdb.h>
 #include <rel/opmap.h>
 #include <rel/tostr.h>
+#include <rel/typeimpl.h>
 
 #include <errno.h>
 #include <string.h>
@@ -67,6 +68,8 @@ OPERATOR put_line(ios io_stream, line string) UPDATES {};
 Write <var>line</var> to the I/O stream <var>ios</var>, followed by a newline.
 
 OPERATOR put(io_stream ios, data string) UPDATES {};
+
+OPERATOR put(io_stream ios, data binary) UPDATES {};
 
 OPERATOR put(io_stream ios, data integer) UPDATES {};
 
@@ -171,6 +174,18 @@ op_put_string(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
+op_put_binary(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    if (fwrite(RDB_obj_irep(argv[0], NULL), RDB_binary_length(argv[0]), 1,
+            stdout) != 1) {
+        RDB_errcode_to_error(errno, ecp, txp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int
 op_put_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -253,6 +268,24 @@ op_put_iostream_string(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     if (fputs(RDB_obj_string(argv[1]), iostreams[fno]) < 0) {
+        RDB_errcode_to_error(errno, ecp, txp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int
+op_put_iostream_binary(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    /* Get file number from arg #1 */
+    int fno = get_fileno(argv[0], ecp);
+    if (fno == RDB_ERROR) {
+        return RDB_ERROR;
+    }
+
+    if (fwrite(RDB_obj_irep(argv[1], NULL), RDB_binary_length(argv[1]), 1,
+            iostreams[fno]) != 1) {
         RDB_errcode_to_error(errno, ecp, txp);
         return RDB_ERROR;
     }
@@ -442,7 +475,8 @@ op_open(int argc, RDB_object *argv[], RDB_operator *op,
     return init_iostream(argv[0], fno, ecp);
 }
 
-int op_eof(int argc, RDB_object *argv[], RDB_operator *op,
+int
+op_eof(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, struct RDB_transaction *txp,
         RDB_object *resultp)
 {
@@ -450,7 +484,8 @@ int op_eof(int argc, RDB_object *argv[], RDB_operator *op,
     return RDB_OK;
 }
 
-int op_eof_iostream(int argc, RDB_object *argv[], RDB_operator *op,
+int
+op_eof_iostream(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, struct RDB_transaction *txp,
         RDB_object *resultp)
 {
@@ -467,11 +502,13 @@ int
 RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
 {
     static RDB_parameter put_string_params[1];
+    static RDB_parameter put_binary_params[1];
     static RDB_parameter put_int_params[1];
     static RDB_parameter put_float_params[1];
     static RDB_parameter put_bool_params[1];
 
     static RDB_parameter put_iostream_string_params[2];
+    static RDB_parameter put_iostream_binary_params[2];
     static RDB_parameter put_iostream_int_params[2];
     static RDB_parameter put_iostream_float_params[2];
     static RDB_parameter put_iostream_bool_params[2];
@@ -485,6 +522,8 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
 
     put_string_params[0].typ = &RDB_STRING;
     put_string_params[0].update = RDB_FALSE;
+    put_binary_params[0].typ = &RDB_BINARY;
+    put_binary_params[0].update = RDB_FALSE;
     put_int_params[0].typ = &RDB_INTEGER;
     put_int_params[0].update = RDB_FALSE;
     put_float_params[0].typ = &RDB_FLOAT;
@@ -496,6 +535,10 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     put_iostream_string_params[0].update = RDB_FALSE;
     put_iostream_string_params[1].typ = &RDB_STRING;
     put_iostream_string_params[1].update = RDB_FALSE;
+    put_iostream_binary_params[0].typ = &RDB_IO_STREAM;
+    put_iostream_binary_params[0].update = RDB_FALSE;
+    put_iostream_binary_params[1].typ = &RDB_BINARY;
+    put_iostream_binary_params[1].update = RDB_FALSE;
     put_iostream_int_params[0].typ = &RDB_IO_STREAM;
     put_iostream_int_params[0].update = RDB_FALSE;
     put_iostream_int_params[1].typ = &RDB_INTEGER;
@@ -537,6 +580,9 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     if (RDB_put_upd_op(opmapp, "put", 1, put_string_params, &op_put_string, ecp)
             != RDB_OK)
         return RDB_ERROR;
+    if (RDB_put_upd_op(opmapp, "put", 1, put_binary_params, &op_put_binary, ecp)
+            != RDB_OK)
+        return RDB_ERROR;
     if (RDB_put_upd_op(opmapp, "put", 1, put_int_params, &op_put_int, ecp)
             != RDB_OK)
         return RDB_ERROR;
@@ -552,6 +598,9 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
 
     if (RDB_put_upd_op(opmapp, "put", 2, put_iostream_string_params,
             &op_put_iostream_string, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_put_upd_op(opmapp, "put", 2, put_iostream_binary_params,
+            &op_put_iostream_binary, ecp) != RDB_OK)
         return RDB_ERROR;
     if (RDB_put_upd_op(opmapp, "put", 2, put_iostream_int_params,
             &op_put_iostream_int, ecp) != RDB_OK)

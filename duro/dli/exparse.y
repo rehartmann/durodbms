@@ -65,6 +65,7 @@ yyerror(const char *);
 %token TOK_ID "identifier"
 %token TOK_LIT_INTEGER "integer literal"
 %token TOK_LIT_STRING "character literal"
+%token TOK_LIT_BINARY "hex binary literal"
 %token TOK_LIT_FLOAT "floating point literal"
 %token TOK_LIT_BOOLEAN "boolean literal"
 %token TOK_WHERE "WHERE"
@@ -2295,6 +2296,7 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $6);
     }
     | TOK_LIT_STRING
+    | TOK_LIT_BINARY
     | TOK_LIT_INTEGER
     | TOK_LIT_FLOAT
     | TOK_LIT_BOOLEAN

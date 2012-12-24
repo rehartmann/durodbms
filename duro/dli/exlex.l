@@ -14,6 +14,7 @@
 #define YYSTYPE RDB_parse_node *
 
 #include <rel/rdb.h>
+#include <rel/typeimpl.h>
 #include "parsenode.h"
 #include "exparse.h"
 #include <string.h>
@@ -559,6 +560,31 @@ EXPLAIN {
     		whitecommp, RDB_parse_ecp);
     whitecommp = NULL;
     return TOK_LIT_STRING;
+}
+
+X\'([a-fA-F0-9][a-fA-F0-9])*\' {
+    int i;
+    char buf[3];
+    char *datap;
+    size_t len = (strlen(yytext) - 3) / 2;
+    RDB_expression *exp = RDB_obj_to_expr(NULL, RDB_parse_ecp);
+    if (exp == NULL)
+        yyterminate();
+
+    if (RDB_irep_to_obj(RDB_expr_obj(exp), &RDB_BINARY, NULL,
+            len, RDB_parse_ecp) != RDB_OK)
+        yyterminate(); 
+
+    datap = RDB_obj_irep(RDB_expr_obj(exp), NULL);
+    buf[2] = '\0';
+    for (i = 0; i < len; i++) {
+        buf[0] = yytext[2 + i * 2];
+        buf[1] = yytext[3 + i * 2];
+        datap[i] = (char) strtol(buf, NULL, 16);
+    }
+    yylval = RDB_new_parse_expr(exp, whitecommp, RDB_parse_ecp);
+    whitecommp = NULL;
+    return TOK_LIT_BINARY;    
 }
 
 \' {

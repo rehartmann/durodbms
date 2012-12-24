@@ -439,7 +439,8 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
                 if (valp->val.bin.datap == NULL) {
                     return RDB_ERROR;
                 }
-                memcpy(valp->val.bin.datap, datap, len);
+                if (datap != NULL)
+                    memcpy(valp->val.bin.datap, datap, len);
             }
             break;
         case RDB_OB_TUPLE:
@@ -701,10 +702,12 @@ RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
                 return RDB_ERROR;
             return RDB_OK;
         case RDB_OB_BIN:
-            if (dstvalp->kind == RDB_OB_BIN)
-                RDB_free(dstvalp->val.bin.datap);
-            else
+            if (dstvalp->kind == RDB_OB_BIN) {
+                if (dstvalp->val.bin.len > 0)
+                    RDB_free(dstvalp->val.bin.datap);
+            } else {
                 dstvalp->kind = srcvalp->kind;
+            }
             dstvalp->val.bin.len = srcvalp->val.bin.len;
             if (dstvalp->val.bin.len > 0) {
                 dstvalp->val.bin.datap = RDB_alloc(srcvalp->val.bin.len, ecp);

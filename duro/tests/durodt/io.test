@@ -38,6 +38,8 @@ test file_output {File Output} -match regexp -body {
 
         put_line(is, 'Duro');
 
+        put(is, X'4464'); put_line('');
+
         close(is);
     }
     set f [open out.txt r]
@@ -46,6 +48,7 @@ test file_output {File Output} -match regexp -body {
 
     file delete -force out.txt
 } -output {Test 31.70*TRUEDuro
+Dd
 }
 
 test stdout_output {STDOUT output} -match regexp -body {

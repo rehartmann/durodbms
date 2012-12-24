@@ -352,7 +352,7 @@ RDB_obj_to_expr(const RDB_object *objp, RDB_exec_context *ecp)
     RDB_expression *exp = new_expr(ecp);
     if (exp == NULL)
         return NULL;
-        
+
     exp->kind = RDB_EX_OBJ;
     RDB_init_obj(&exp->def.obj);
     if (objp != NULL) {        

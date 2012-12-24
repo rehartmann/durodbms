@@ -4,7 +4,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2009 Ren� Hartmann.
+ * Copyright (C) 2009 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
