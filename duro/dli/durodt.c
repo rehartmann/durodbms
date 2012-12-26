@@ -11,7 +11,6 @@
 #include "parse.h"
 #include "iinterp.h"
 
-#include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
@@ -25,6 +24,8 @@
 #ifdef USE_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
+#else
+#include <stdio.h>
 #endif
 
 static void
@@ -134,8 +135,10 @@ main(int argc, char *argv[])
     sigact.sa_handler = &handle_sigint;
     sigemptyset(&sigact.sa_mask);
     sigact.sa_flags = 0;
-    if (sigaction(SIGINT, &sigact, NULL) == -1)
+    if (sigaction(SIGINT, &sigact, NULL) == -1) {
         fprintf(stderr, "sigaction(): %s\n", strerror(errno));
+        exit(2);
+    }
 #endif
 
     /* Set char/string locales according to the environmen */

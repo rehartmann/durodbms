@@ -15,7 +15,6 @@
 #include <gen/hashtabit.h>
 #include <gen/strfns.h>
 #include <string.h>
-#include <stdio.h>
 #include <ctype.h>
 
 /** @defgroup db Database functions
