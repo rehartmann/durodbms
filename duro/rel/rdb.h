@@ -784,6 +784,9 @@ RDB_binary_get(const RDB_object *, size_t pos, size_t len,
 size_t
 RDB_binary_length(const RDB_object *);
 
+int
+RDB_binary_resize(RDB_object *, size_t, RDB_exec_context *);
+
 void
 RDB_set_obj_type(RDB_object *, RDB_type *typ);
 

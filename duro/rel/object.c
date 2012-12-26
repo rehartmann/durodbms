@@ -392,7 +392,12 @@ RDB_obj_irep(RDB_object *valp, size_t *lenp)
 
 /**
  * Initialize the value pointed to by valp with the internal
- * representation given by datap and len.
+ * representation given by <var>datap<var> and <var>len<var>.
+ *
+ * @arg len The length of the internal represenation in bytes.
+ * @arg datap   A pointer to the internal representation.
+ * If datap is NULL, len bytes are allocated but the internal representation
+ * is undefined.
  * 
  * @returns
  * 
@@ -1349,7 +1354,7 @@ RDB_binary_get(const RDB_object *objp, size_t pos, size_t len,
 
 /**
  * RDB_binary_length returns the number of bytes stored in the
-RDB_object pointed to by <var>valp</var>. The RDB_object
+RDB_object pointed to by <var>objp</var>. The RDB_object
 must be of type BINARY.
 
 @returns
@@ -1360,6 +1365,27 @@ size_t
 RDB_binary_length(const RDB_object *objp)
 {
     return objp->val.bin.len;
+}
+
+/**
+ * RDB_binary_resize sets the returns the number of bytes stored in the
+RDB_object pointed to by <var>objp</var> to <var>len</var>.
+If <var>len</var> is greater than the original length, the value of the
+bytes added is undefined.
+
+@returns
+
+The length of the RDB_object.
+ */
+int
+RDB_binary_resize(RDB_object *objp, size_t len, RDB_exec_context *ecp)
+{
+    void *datap = RDB_realloc(objp->val.bin.datap, len, ecp);
+    if (datap == NULL)
+        return RDB_ERROR;
+    objp->val.bin.datap = datap;
+    objp->val.bin.len = len;
+    return RDB_OK;
 }
 
 /**

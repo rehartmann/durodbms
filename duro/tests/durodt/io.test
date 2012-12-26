@@ -89,7 +89,7 @@ test file_input {File input} -body {
     set res [exec $testdir/../../dli/durodt << {
         VAR is io_stream;
 
-        open(IS, 'in.txt', 'r');
+        open(is, 'in.txt', 'r');
         VAR line string;
         get_line(is, line);
         put_line(line);
@@ -100,6 +100,12 @@ test file_input {File input} -body {
         put_line(line);
         put(eof(is)); put_line('');
         close(is);
+
+        open(is, 'in.txt', 'r');
+        VAR bin binary;
+        read(is, bin, 7);
+        close(is);
+        put(bin); put_line('');
     }]
     file delete -force in.txt
     return $res
@@ -108,4 +114,5 @@ test file_input {File input} -body {
 FALSE
 
 TRUE
+Duro%$-
 }

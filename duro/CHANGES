@@ -4,6 +4,10 @@ Summary of Changes for DuroDBMS
 
 Changes for DuroDBMS 0.17
 
+- getenv() returns an empty string if the environment variable does not exist.
+
+- Added read() operators for reading binary data.
+
 - Improved support for type binary.
 
 - Assigning components in a multiple assignment now supported.

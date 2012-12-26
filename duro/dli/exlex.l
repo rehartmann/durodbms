@@ -568,12 +568,16 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
     char *datap;
     size_t len = (strlen(yytext) - 3) / 2;
     RDB_expression *exp = RDB_obj_to_expr(NULL, RDB_parse_ecp);
-    if (exp == NULL)
+    if (exp == NULL) {
+        yylval = NULL;
         yyterminate();
+    }
 
     if (RDB_irep_to_obj(RDB_expr_obj(exp), &RDB_BINARY, NULL,
-            len, RDB_parse_ecp) != RDB_OK)
+            len, RDB_parse_ecp) != RDB_OK) {
+        yylval = NULL;
         yyterminate(); 
+    }
 
     datap = RDB_obj_irep(RDB_expr_obj(exp), NULL);
     buf[2] = '\0';
@@ -595,6 +599,7 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
 	else
 	    sprintf(buf, "unbalanced ' at line %d", yylineno);
     RDB_raise_syntax(buf, RDB_parse_ecp);
+    yylval = NULL;
     return TOK_INVALID;
 }
 
@@ -606,6 +611,7 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
 	else 
 	    sprintf(buf, "unbalanced \" at line %d", yylineno);
     RDB_raise_syntax(buf, RDB_parse_ecp);
+    yylval = NULL;
     return TOK_INVALID;
 }
 

@@ -1745,12 +1745,8 @@ op_getenv(int argc, RDB_object *argv[], RDB_operator *op,
 {
     char *valp = getenv(RDB_obj_string(argv[0]));
 
-    /* If the environment variable does not exist, raise RESOURCE_NOT_FOUND */
-    if (valp == NULL) {
-        RDB_raise_resource_not_found(RDB_obj_string(argv[0]), ecp);
-        return RDB_ERROR;
-    }
-    return RDB_string_to_obj(retvalp, valp, ecp);
+    /* If the environment variable does not exist, return empty string */
+    return RDB_string_to_obj(retvalp, valp != NULL ? valp : "", ecp);
 }
 
 int

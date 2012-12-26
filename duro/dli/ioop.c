@@ -63,6 +63,10 @@ OPERATOR get_line(line string) UPDATES {line};
 
 Read a line from standard input and store it in line, without the trailing newline.
 
+OPERATOR read(data binary, count integer) UPDATES {data};
+
+Read up to count bytes from standard input and store it in <var>data</var>.
+
 OPERATOR put_line(ios io_stream, line string) UPDATES {};
 
 Write <var>line</var> to the I/O stream <var>ios</var>, followed by a newline.
@@ -88,6 +92,10 @@ Write <var>data</var> to the I/O stream <var>ios</var>.
 OPERATOR get_line(io_stream ios, line string) UPDATES {line};
 
 Read a line from I/O stream <var>ios</var> and store it in line, without the trailing newline.
+
+OPERATOR read(io_stream ios, data binary, count integer) UPDATES {data};
+
+Read up to count bytes from <var>ios</var> and store it in <var>data</var>.
 
 OPERATOR open(ios io_stream, string path, string mode) UPDATES {ios};
 
@@ -402,13 +410,56 @@ static int
 op_get_line_iostream(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    /* Get file number from arg #1 */
+    /* Get file number from first arg */
     int fno = get_fileno(argv[0], ecp);
     if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }
 
     return get_line(iostreams[fno], argv[1], ecp, txp);
+}
+
+static int
+read_iostream(FILE *fp, RDB_object *binobjp, size_t len,
+        RDB_exec_context *ecp)
+{
+    size_t readc;
+
+    /* Allocate memory for the input */
+    if (RDB_irep_to_obj(binobjp, &RDB_BINARY, NULL, len, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    /* Read input */
+    readc = fread(RDB_obj_irep(binobjp, NULL), 1, len, fp);
+
+    /* If less than len bytes were read, shorten *binobjp accordingly */
+    if (readc < len) {
+        if (RDB_binary_resize(binobjp, readc, ecp) != RDB_OK)
+            return RDB_ERROR;
+    }
+
+    return RDB_OK;
+}
+
+static int
+op_read(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    return read_iostream(stdin, argv[0], (size_t) RDB_obj_int(argv[1]), ecp);
+}
+
+static int
+op_read_iostream(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int fno = get_fileno(argv[0], ecp);
+    if (fno == RDB_ERROR) {
+        return RDB_ERROR;
+    }
+
+    return read_iostream(iostreams[fno], argv[1],
+            (size_t) RDB_obj_int(argv[2]), ecp);
 }
 
 static int
@@ -514,6 +565,8 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     static RDB_parameter put_iostream_bool_params[2];
 
     static RDB_parameter get_line_params[1];
+    static RDB_parameter read_params[2];
+    static RDB_parameter read_iostream_params[3];
     static RDB_parameter get_line_iostream_params[2];
     static RDB_parameter open_params[3];
     static RDB_parameter close_params[1];
@@ -558,6 +611,17 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     get_line_iostream_params[0].update = RDB_FALSE;
     get_line_iostream_params[1].typ = &RDB_STRING;
     get_line_iostream_params[1].update = RDB_TRUE;
+
+    read_params[0].typ = &RDB_BINARY;
+    read_params[0].update = RDB_TRUE;
+    read_params[1].typ = &RDB_INTEGER;
+    read_params[1].update = RDB_FALSE;
+    read_iostream_params[0].typ = &RDB_IO_STREAM;
+    read_iostream_params[0].update = RDB_FALSE;
+    read_iostream_params[1].typ = &RDB_BINARY;
+    read_iostream_params[1].update = RDB_TRUE;
+    read_iostream_params[2].typ = &RDB_INTEGER;
+    read_iostream_params[2].update = RDB_FALSE;
 
     close_params[0].typ = &RDB_IO_STREAM;
     close_params[0].update = RDB_FALSE;
@@ -617,6 +681,13 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
         return RDB_ERROR;
     if (RDB_put_upd_op(opmapp, "get_line", 2, get_line_iostream_params,
             &op_get_line_iostream, ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    if (RDB_put_upd_op(opmapp, "read", 2, read_params, &op_read, ecp)
+            != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_put_upd_op(opmapp, "read", 3, read_iostream_params,
+            &op_read_iostream, ecp) != RDB_OK)
         return RDB_ERROR;
 
     if (RDB_put_upd_op(opmapp, "close", 1, close_params, &op_close, ecp)
