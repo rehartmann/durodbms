@@ -1380,10 +1380,16 @@ The length of the RDB_object.
 int
 RDB_binary_resize(RDB_object *objp, size_t len, RDB_exec_context *ecp)
 {
-    void *datap = RDB_realloc(objp->val.bin.datap, len, ecp);
-    if (datap == NULL)
-        return RDB_ERROR;
-    objp->val.bin.datap = datap;
+    void *datap;
+
+    if (len > 0) {
+        datap = RDB_realloc(objp->val.bin.datap, len, ecp);
+        if (datap == NULL)
+            return RDB_ERROR;
+        objp->val.bin.datap = datap;
+    } else {
+        RDB_free(objp->val.bin.datap);
+    }
     objp->val.bin.len = len;
     return RDB_OK;
 }

@@ -19,10 +19,12 @@ test std_output {Standard output} -match regexp -body {
         put(3);
         put(1.7);
         put(TRUE);
+        put(X'446f');
+        put(X'');
 
         put_line('Duro');
     }
-} -result {Test 31.70*TRUEDuro
+} -result {Test 31.70*TRUEDoDuro
 }
 
 test file_output {File Output} -match regexp -body {
@@ -51,16 +53,17 @@ test file_output {File Output} -match regexp -body {
 Dd
 }
 
-test stdout_output {STDOUT output} -match regexp -body {
+test stdout_output {stdout output} -match regexp -body {
     exec $testdir/../../dli/durodt << {
-        put(STDOUT, 'Test ');
-        put(STDOUT, 3);
-        put(STDOUT, 1.7);
-        put(STDOUT, TRUE);
+        put(stdout, 'Test ');
+        put(stdout, 3);
+        put(stdout, 1.7);
+        put(stdout, TRUE);
+        put(stdout, X'444f');
 
-        put_line(STDOUT, 'Duro');
+        put_line(stdout, 'Duro');
     }
-} -result {Test 31.70*TRUEDuro
+} -result {Test 31.70*TRUEDODuro
 }
 
 test stderr_output {stderr output} -match regexp -body {

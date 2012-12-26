@@ -185,10 +185,14 @@ static int
 op_put_binary(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    if (fwrite(RDB_obj_irep(argv[0], NULL), RDB_binary_length(argv[0]), 1,
-            stdout) != 1) {
-        RDB_errcode_to_error(errno, ecp, txp);
-        return RDB_ERROR;
+    size_t len = RDB_binary_length(argv[0]);
+
+    /* If there is no data, do nothing */
+    if (len > 0) {
+        if (fwrite(RDB_obj_irep(argv[0], NULL), len, 1, stdout) != 1) {
+            RDB_errcode_to_error(errno, ecp, txp);
+            return RDB_ERROR;
+        }
     }
     return RDB_OK;
 }
