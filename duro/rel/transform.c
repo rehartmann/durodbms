@@ -849,9 +849,6 @@ transform_is_empty(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 {
     RDB_expression *chexp = exp->def.op.args.firstp;
 
-    if (RDB_transform(chexp, getfnp, arg, ecp, txp) != RDB_OK)
-       return RDB_ERROR;
-
     /* Add projection, if not already present */
     if (!RDB_expr_is_op(chexp, "project")
             || chexp->def.op.args.firstp->nextp != NULL) {
@@ -920,9 +917,6 @@ RDB_transform(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     }
     if (strcmp(exp->def.op.name, "is_empty") == 0) {
         return transform_is_empty(exp, getfnp, arg, ecp, txp);
-    }
-    if (strcmp(exp->def.op.name, "to_tuple") == 0) {
-        return RDB_OK;
     }
     return RDB_OK;
 } /* RDB_transform */

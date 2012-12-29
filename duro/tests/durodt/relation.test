@@ -605,6 +605,65 @@ test dbconstraint2 {db/table constraints 2} -setup $SETUP -body {
     }
 }
 
+# Test referential constraint, including optimization and EXPLAIN <assignment>
+test refconstraint {referential constraint} -setup $SETUP -body {
+    puts -nonewline [exec $testdir/../../dli/durodt -e dbenv -d D << {
+        begin tx;
+        var customers real rel {cust_id int, name string} key {cust_id};
+        var orders real rel {order_id int, cust_id int} key {order_id};
+        constraint o_c is_empty(orders {cust_id} minus customers {cust_id});
+
+        insert customers tup{cust_id 1, name 'James'};
+        
+        insert orders tup{order_id 1, cust_id 1};
+
+        try
+            insert orders tup{order_id 2, cust_id 2};
+        catch err predicate_violation_error;
+            put_line('insert into orders caught');
+        end try;
+
+        try
+            delete customers where cust_id=1;
+        catch err predicate_violation_error;
+            put_line('delete from customers caught');
+        end try;
+
+        commit;
+    }]
+    #
+    # Check optimization
+    #
+    set checks [exec $testdir/../../dli/durodt -e dbenv -d D << {
+        begin tx;
+        explain insert orders tup{order_id 2, cust_id 2};
+        commit;
+    }]
+    if {[string match {*orders*} $checks]} {
+        puts "check #1 refers to orders: $checks"
+    }
+    set checks [exec $testdir/../../dli/durodt -e dbenv -d D << {
+        begin tx;
+        explain insert customers tup{cust_id 2, name 'John'};
+        commit;
+    }]
+    if {[string match {*orders*} $checks]
+            || [string match {*customers*} $checks]} {
+        puts "check #2 refers to orders or customers: $checks"
+    }    
+    set checks [exec $testdir/../../dli/durodt -e dbenv -d D << {
+        begin tx;
+        explain delete orders where order_id=1;
+        commit;
+    }]
+    if {[string match {*orders*} $checks]
+            || [string match {*customers*} $checks]} {
+        puts "check #3 refers to orders or customers: $checks"
+    }    
+} -output {insert into orders caught
+delete from customers caught
+}
+
 test utypetable {table with attribute of user-defined type} -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';

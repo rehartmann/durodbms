@@ -402,6 +402,8 @@ RDB_token_name(int tok)
             return "CATCH";
         case TOK_IMPLEMENT:
             return "IMPLEMENT";
+        case TOK_EXPLAIN:
+            return "EXPLAIN";
     }
     chtok[0] = (char) tok;
     chtok[1] = '\0';

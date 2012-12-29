@@ -249,8 +249,9 @@ replace_targets_real(RDB_object *tbp,
     for (i = 0; i < delc; i++) {
         if (delv[i].tbp == tbp) {
             if (delv[i].condp != NULL) {
-                RDB_expression *argp, *wexp;
-                exp = RDB_ro_op("minus", ecp);
+                /* Create <Table> WHERE NOT <condition> */
+                RDB_expression *argp, *nexp;
+                exp = RDB_ro_op("where", ecp);
                 if (exp == NULL)
                     return NULL;
                 argp = RDB_table_ref(tbp, ecp);
@@ -260,26 +261,18 @@ replace_targets_real(RDB_object *tbp,
                 }
                 RDB_add_arg(exp, argp);
 
-                wexp = RDB_ro_op("where", ecp);
-                if (wexp == NULL) {
+                nexp = RDB_ro_op("not", ecp);
+                if (nexp == NULL) {
                     RDB_del_expr(exp, ecp);
                     return NULL;
                 }
-                argp = RDB_table_ref(tbp, ecp);
-                if (argp == NULL) {
-                    RDB_del_expr(exp, ecp);
-                    RDB_del_expr(wexp, ecp);
-                    return NULL;
-                }
-                RDB_add_arg(wexp, argp);
                 argp = RDB_dup_expr(delv[i].condp, ecp);
                 if (argp == NULL) {
                     RDB_del_expr(exp, ecp);
-                    RDB_del_expr(wexp, ecp);
                     return NULL;
                 }
-                RDB_add_arg(wexp, argp);
-                RDB_add_arg(exp, wexp);
+                RDB_add_arg(nexp, argp);
+                RDB_add_arg(exp, nexp);
             } else {
                 /* condition is NULL - table will become empty */
                 RDB_type *tbtyp = RDB_dup_nonscalar_type(tbp->typ, ecp);

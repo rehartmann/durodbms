@@ -475,7 +475,8 @@ cleanup:
  * start a transaction and try again.
  */
 static int
-exec_call_retry(const RDB_parse_node *nodep, RDB_exec_context *ecp) {
+exec_call_retry(const RDB_parse_node *nodep, RDB_exec_context *ecp)
+{
     int ret;
     RDB_transaction tx;
     RDB_database *dbp;

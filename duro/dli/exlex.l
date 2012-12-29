@@ -91,12 +91,16 @@ RDB_parse_start_stmt(void)
     RDB_parse_start_token = TOK_START_STMT;
 }
 
-static int create_token(int tok)
-{
-    yylval = RDB_new_parse_token(tok, whitecommp, RDB_parse_ecp);
-    whitecommp = NULL;
-    return tok;
-}
+/*
+ * Create a token, consuming *whitecommp and
+ * checking for error.
+ */
+#define RETURN_TOKEN(tok) \
+yylval = RDB_new_parse_token(tok, whitecommp, RDB_parse_ecp); \
+whitecommp = NULL; \
+if (yylval == NULL) \
+    yyterminate(); \
+return tok;
 
 %}
 
@@ -117,193 +121,195 @@ yylloc.first_line = yylloc.last_line = yylineno;
 %}
 
 WHERE {
-    return create_token(TOK_WHERE);
+    RETURN_TOKEN(TOK_WHERE);
 }
 
 UNION {
-    return create_token(TOK_UNION);
+    RETURN_TOKEN(TOK_UNION);
 }
 
 INTERSECT {
-    return create_token(TOK_INTERSECT);
+    RETURN_TOKEN(TOK_INTERSECT);
 }
 
 MINUS {
-    return create_token(TOK_MINUS);
+    RETURN_TOKEN(TOK_MINUS);
 }
 
 SEMIMINUS {
-    return create_token(TOK_SEMIMINUS);
+    RETURN_TOKEN(TOK_SEMIMINUS);
 }
 
 SEMIJOIN {
-    return create_token(TOK_SEMIJOIN);
+    RETURN_TOKEN(TOK_SEMIJOIN);
 }
 
 MATCHING {
-    return create_token(TOK_MATCHING);
+    RETURN_TOKEN(TOK_MATCHING);
 }
 
 JOIN {
-    return create_token(TOK_JOIN);
+    RETURN_TOKEN(TOK_JOIN);
 }
 
 WRAP {
-    return create_token(TOK_WRAP);
+    RETURN_TOKEN(TOK_WRAP);
 }
 
 UNWRAP {
-    return create_token(TOK_UNWRAP);
+    RETURN_TOKEN(TOK_UNWRAP);
 }
 
 GROUP {
-    return create_token(TOK_GROUP);
+    RETURN_TOKEN(TOK_GROUP);
 }
 
 UNGROUP {
-    return create_token(TOK_UNGROUP);
+    RETURN_TOKEN(TOK_UNGROUP);
 }
 
 FROM {
-    return create_token(TOK_FROM);
+    RETURN_TOKEN(TOK_FROM);
 }
 
 TUPLE {
-    return create_token(TOK_TUPLE);
+    RETURN_TOKEN(TOK_TUPLE);
 }
 
 TUP {
-    return create_token(TOK_TUPLE);
+    RETURN_TOKEN(TOK_TUPLE);
 }
 
 RELATION {
-    return create_token(TOK_RELATION);
+    RETURN_TOKEN(TOK_RELATION);
 }
 
 REL {
-    return create_token(TOK_RELATION);
+    RETURN_TOKEN(TOK_RELATION);
 }
 
 ARRAY {
-    return create_token(TOK_ARRAY);
+    RETURN_TOKEN(TOK_ARRAY);
 }
 
 BUT {
-    return create_token(TOK_BUT);
+    RETURN_TOKEN(TOK_BUT);
 }
 
 AS {
-    return create_token(TOK_AS);
+    RETURN_TOKEN(TOK_AS);
 }
 
 EXTEND {
-    return create_token(TOK_EXTEND);
+    RETURN_TOKEN(TOK_EXTEND);
 }
 
 RENAME {
-    return create_token(TOK_RENAME);
+    RETURN_TOKEN(TOK_RENAME);
 }
 
 SUMMARIZE {
-    return create_token(TOK_SUMMARIZE);
+    RETURN_TOKEN(TOK_SUMMARIZE);
 }
 
 DIVIDEBY {
-    return create_token(TOK_DIVIDEBY);
+    RETURN_TOKEN(TOK_DIVIDEBY);
 }
 
 PER {
-    return create_token(TOK_PER);
+    RETURN_TOKEN(TOK_PER);
 }
 
 ADD {
-    return create_token(TOK_ADD);
+    RETURN_TOKEN(TOK_ADD);
 }
 
 LIKE {
-    return create_token(TOK_LIKE);
+    RETURN_TOKEN(TOK_LIKE);
 }
 
 REGEX_LIKE {
-    return create_token(TOK_REGEX_LIKE);
+    RETURN_TOKEN(TOK_REGEX_LIKE);
 }
 
 IN {
-    return create_token(TOK_IN);
+    RETURN_TOKEN(TOK_IN);
 }
 
 SUBSET_OF {
-    return create_token(TOK_SUBSET_OF);
+    RETURN_TOKEN(TOK_SUBSET_OF);
 }
 
 OR {
-    return create_token(TOK_OR);
+    RETURN_TOKEN(TOK_OR);
 }
 
 AND {
-    return create_token(TOK_AND);
+    RETURN_TOKEN(TOK_AND);
 }
 
 XOR {
-    return create_token(TOK_XOR);
+    RETURN_TOKEN(TOK_XOR);
 }
 
 NOT {
-    return create_token(TOK_NOT);
+    RETURN_TOKEN(TOK_NOT);
 }
 
 IF {
-    return create_token(TOK_IF);
+    RETURN_TOKEN(TOK_IF);
 }
 
 THEN {
-    return create_token(TOK_THEN);
+    RETURN_TOKEN(TOK_THEN);
 }
 
 ELSE {
-    return create_token(TOK_ELSE);
+    RETURN_TOKEN(TOK_ELSE);
 }
 
 END {
-    return create_token(TOK_END);
+    RETURN_TOKEN(TOK_END);
 }
 
 CASE {
-    return create_token(TOK_CASE);
+    RETURN_TOKEN(TOK_CASE);
 }
 
 WHEN {
-    return create_token(TOK_WHEN);
+    RETURN_TOKEN(TOK_WHEN);
 }
 
 FOR {
-    return create_token(TOK_FOR);
+    RETURN_TOKEN(TOK_FOR);
 }
 
 FOREACH {
-    return create_token(TOK_FOREACH);
+    RETURN_TOKEN(TOK_FOREACH);
 }
 
 DO {
-    return create_token(TOK_FOR);
+    RETURN_TOKEN(TOK_FOR);
 }
 
 TO {
-    return create_token(TOK_TO);
+    RETURN_TOKEN(TOK_TO);
 }
 
 WHILE {
-    return create_token(TOK_WHILE);
+    RETURN_TOKEN(TOK_WHILE);
 }
 
 LEAVE {
-    return create_token(TOK_LEAVE);
+    RETURN_TOKEN(TOK_LEAVE);
 }
 
 TRUE {
     yylval = RDB_new_parse_expr(RDB_bool_to_expr(RDB_TRUE, RDB_parse_ecp),
     		whitecommp, RDB_parse_ecp);
     whitecommp = NULL;
+    if (yylval == NULL)
+        yyterminate();
     return TOK_LIT_BOOLEAN;
 }
 
@@ -311,211 +317,213 @@ FALSE {
     yylval = RDB_new_parse_expr(RDB_bool_to_expr(RDB_FALSE, RDB_parse_ecp),
     		whitecommp, RDB_parse_ecp);
     whitecommp = NULL;
+    if (yylval == NULL)
+        yyterminate();
     return TOK_LIT_BOOLEAN;
 }
 
 COUNT {
-    return create_token(TOK_COUNT);
+    RETURN_TOKEN(TOK_COUNT);
 }
 
 SUM {
-    return create_token(TOK_SUM);
+    RETURN_TOKEN(TOK_SUM);
 }
 
 AVG {
-    return create_token(TOK_AVG);
+    RETURN_TOKEN(TOK_AVG);
 }
 
 MAX {
-    return create_token(TOK_MAX);
+    RETURN_TOKEN(TOK_MAX);
 }
 
 MIN {
-    return create_token(TOK_MIN);
+    RETURN_TOKEN(TOK_MIN);
 }
 
 ALL {
-    return create_token(TOK_ALL);
+    RETURN_TOKEN(TOK_ALL);
 }
 
 ANY {
-    return create_token(TOK_ANY);
+    RETURN_TOKEN(TOK_ANY);
 }
 
 SAME_TYPE_AS {
-    return create_token(TOK_SAME_TYPE_AS);
+    RETURN_TOKEN(TOK_SAME_TYPE_AS);
 }
 
 SAME_HEADING_AS {
-    return create_token(TOK_SAME_HEADING_AS);
+    RETURN_TOKEN(TOK_SAME_HEADING_AS);
 }
 
 TABLE_DEE {
-    return create_token(TOK_TABLE_DEE);
+    RETURN_TOKEN(TOK_TABLE_DEE);
 }
 
 DEE {
-    return create_token(TOK_TABLE_DEE);
+    RETURN_TOKEN(TOK_TABLE_DEE);
 }
 
 TABLE_DUM {
-    return create_token(TOK_TABLE_DUM);
+    RETURN_TOKEN(TOK_TABLE_DUM);
 }
 
 DUM {
-    return create_token(TOK_TABLE_DUM);
+    RETURN_TOKEN(TOK_TABLE_DUM);
 }
 
 VAR {
-    return create_token(TOK_VAR);
+    RETURN_TOKEN(TOK_VAR);
 }
 
 DROP {
-    return create_token(TOK_DROP);
+    RETURN_TOKEN(TOK_DROP);
 }
 
 REAL {
-    return create_token(TOK_REAL);
+    RETURN_TOKEN(TOK_REAL);
 }
 
 PRIVATE {
-    return create_token(TOK_PRIVATE);
+    RETURN_TOKEN(TOK_PRIVATE);
 }
 
 BASE {
-    return create_token(TOK_REAL);
+    RETURN_TOKEN(TOK_REAL);
 }
 
 VIRTUAL {
-    return create_token(TOK_VIRTUAL);
+    RETURN_TOKEN(TOK_VIRTUAL);
 }
 
 KEY {
-    return create_token(TOK_KEY);
+    RETURN_TOKEN(TOK_KEY);
 }
 
 DEFAULT {
-    return create_token(TOK_DEFAULT);
+    RETURN_TOKEN(TOK_DEFAULT);
 }
 
 INIT {
-    return create_token(TOK_INIT);
+    RETURN_TOKEN(TOK_INIT);
 }
 
 BEGIN {
-    return create_token(TOK_BEGIN);
+    RETURN_TOKEN(TOK_BEGIN);
 }
 
 TRANSACTION {
-    return create_token(TOK_TX);
+    RETURN_TOKEN(TOK_TX);
 }
 
 TX {
-    return create_token(TOK_TX);
+    RETURN_TOKEN(TOK_TX);
 }
 
 COMMIT {
-    return create_token(TOK_COMMIT);
+    RETURN_TOKEN(TOK_COMMIT);
 }
 
 ROLLBACK {
-    return create_token(TOK_ROLLBACK);
+    RETURN_TOKEN(TOK_ROLLBACK);
 }
 
 INSERT {
-    return create_token(TOK_INSERT);
+    RETURN_TOKEN(TOK_INSERT);
 }
 
 DELETE {
-    return create_token(TOK_DELETE);
+    RETURN_TOKEN(TOK_DELETE);
 }
 
 UPDATE {
-    return create_token(TOK_UPDATE);
+    RETURN_TOKEN(TOK_UPDATE);
 }
 
 CALL {
-    return create_token(TOK_CALL);
+    RETURN_TOKEN(TOK_CALL);
 }
 
 TYPE {
-    return create_token(TOK_TYPE);
+    RETURN_TOKEN(TOK_TYPE);
 }
 
 POSSREP {
-    return create_token(TOK_POSSREP);
+    RETURN_TOKEN(TOK_POSSREP);
 }
 
 CONSTRAINT {
-    return create_token(TOK_CONSTRAINT);
+    RETURN_TOKEN(TOK_CONSTRAINT);
 }
 
 OPERATOR {
-    return create_token(TOK_OPERATOR);
+    RETURN_TOKEN(TOK_OPERATOR);
 }
 
 RETURNS {
-    return create_token(TOK_RETURNS);
+    RETURN_TOKEN(TOK_RETURNS);
 }
 
 UPDATES {
-    return create_token(TOK_UPDATES);
+    RETURN_TOKEN(TOK_UPDATES);
 }
 
 RETURN {
-    return create_token(TOK_RETURN);
+    RETURN_TOKEN(TOK_RETURN);
 }
 
 LOAD {
-    return create_token(TOK_LOAD);
+    RETURN_TOKEN(TOK_LOAD);
 }
 
 ORDER {
-    return create_token(TOK_ORDER);
+    RETURN_TOKEN(TOK_ORDER);
 }
 
 ASC {
-    return create_token(TOK_ASC);
+    RETURN_TOKEN(TOK_ASC);
 }
 
 DESC {
-    return create_token(TOK_DESC);
+    RETURN_TOKEN(TOK_DESC);
 }
 
 WITH {
-    return create_token(TOK_WITH);
+    RETURN_TOKEN(TOK_WITH);
 }
 
 TRY {
-    return create_token(TOK_TRY);
+    RETURN_TOKEN(TOK_TRY);
 }
 
 CATCH {
-    return create_token(TOK_CATCH);
+    RETURN_TOKEN(TOK_CATCH);
 }
 
 RAISE {
-    return create_token(TOK_RAISE);
+    RETURN_TOKEN(TOK_RAISE);
 }
 
 IMPLEMENT {
-    return create_token(TOK_IMPLEMENT);
+    RETURN_TOKEN(TOK_IMPLEMENT);
 }
 
 INDEX {
-    return create_token(TOK_INDEX);
+    RETURN_TOKEN(TOK_INDEX);
 }
 
 ORDERED {
-    return create_token(TOK_ORDERED);
+    RETURN_TOKEN(TOK_ORDERED);
 }
 
 EXPLAIN {
-    return create_token(TOK_EXPLAIN);
+    RETURN_TOKEN(TOK_EXPLAIN);
 } 
 
 \|\| {
-    return create_token(TOK_CONCAT);
+    RETURN_TOKEN(TOK_CONCAT);
 }
 
 [a-zA-Z][a-zA-Z0-9_#]* {
@@ -530,6 +538,8 @@ EXPLAIN {
     yylval = RDB_new_parse_expr(RDB_var_ref(yytext, RDB_parse_ecp),
     		whitecommp, RDB_parse_ecp);
     whitecommp = NULL;
+    if (yylval == NULL)
+        yyterminate();
     return TOK_ID;
 }
 
@@ -541,6 +551,8 @@ EXPLAIN {
     yylval = RDB_new_parse_expr(RDB_string_to_expr(yytext + 1, RDB_parse_ecp),
     		whitecommp, RDB_parse_ecp);
     whitecommp = NULL;
+    if (yylval == NULL)
+        yyterminate();
     return TOK_LIT_STRING;
 }
 
@@ -559,6 +571,8 @@ EXPLAIN {
     yylval = RDB_new_parse_expr(RDB_string_to_expr(yytext + 1, RDB_parse_ecp),
     		whitecommp, RDB_parse_ecp);
     whitecommp = NULL;
+    if (yylval == NULL)
+        yyterminate();
     return TOK_LIT_STRING;
 }
 
@@ -588,6 +602,8 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
     }
     yylval = RDB_new_parse_expr(exp, whitecommp, RDB_parse_ecp);
     whitecommp = NULL;
+    if (yylval == NULL)
+        yyterminate();
     return TOK_LIT_BINARY;    
 }
 
@@ -619,6 +635,8 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
     yylval = RDB_new_parse_expr(RDB_int_to_expr((RDB_int) atoi(yytext),
     		RDB_parse_ecp), whitecommp, RDB_parse_ecp);
     whitecommp = NULL;
+    if (yylval == NULL)
+        yyterminate();
     return TOK_LIT_INTEGER;
 }
 
@@ -626,6 +644,8 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
     yylval = RDB_new_parse_expr(RDB_float_to_expr((RDB_float) atof(yytext),
     		RDB_parse_ecp), whitecommp, RDB_parse_ecp);
     whitecommp = NULL;
+    if (yylval == NULL)
+        yyterminate();
     return TOK_LIT_FLOAT;
 }
 
@@ -633,36 +653,48 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
     yylval = RDB_new_parse_expr(RDB_float_to_expr((RDB_float) atof(yytext),
     		RDB_parse_ecp), whitecommp, RDB_parse_ecp);
     whitecommp = NULL;
+    if (yylval == NULL)
+        yyterminate();
     return TOK_LIT_FLOAT;
 }
 
 \<> {
     yylval = RDB_new_parse_token(TOK_NE, whitecommp, RDB_parse_ecp);
     whitecommp = NULL;
+    if (yylval == NULL)
+        yyterminate();
     return TOK_NE;
 }
 
 !=  {
     yylval = RDB_new_parse_token(TOK_NE, whitecommp, RDB_parse_ecp);
     whitecommp = NULL;
+    if (yylval == NULL)
+        yyterminate();
     return TOK_NE;
 }
 
 \<= {
     yylval = RDB_new_parse_token(TOK_LE, whitecommp, RDB_parse_ecp);
     whitecommp = NULL;
+    if (yylval == NULL)
+        yyterminate();
     return TOK_LE;
 }
 
 \>=   {
     yylval = RDB_new_parse_token(TOK_GE, whitecommp, RDB_parse_ecp);
     whitecommp = NULL;
+    if (yylval == NULL)
+        yyterminate();
     return TOK_GE;
 }
 
 := {
     yylval = RDB_new_parse_token(TOK_ASSIGN, whitecommp, RDB_parse_ecp);
     whitecommp = NULL;
+    if (yylval == NULL)
+        yyterminate();
     return TOK_ASSIGN;
 }
 
@@ -770,6 +802,8 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
 [=><+\-*/{},().;\[\]:] {
     yylval = RDB_new_parse_token(yytext[0], whitecommp, RDB_parse_ecp);
     whitecommp = NULL;
+    if (yylval == NULL)
+        yyterminate();
     return yytext[0];
 }
 

@@ -793,20 +793,75 @@ mutate_full_vt(RDB_expression *texp, RDB_expression **tbpv, int cap,
 }
 
 /*
- * If *exp or a subexpression of *exp is equal to *empty_exp, replace it
- * with an empty relation.
+ * Check if *exp is a subset of *ex2p.
+ * If the check says *exp is also empty set *resultp to RDB_TRUE.
+ * Otherwise, set *resultp to RDB_FALSE. (Note that doesn't necessarily
+ * mean that *exp is nonempty)
+ */
+static int
+expr_is_subset(RDB_expression *exp, RDB_expression *ex2p,
+        RDB_bool *resultp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    /* Check for equality */
+    if (RDB_expr_equals(exp, ex2p, ecp, txp, resultp) != RDB_OK)
+        return RDB_ERROR;
+    if (*resultp)
+        return RDB_OK;
+
+    if (expr_is_binop(exp, "minus") && expr_is_binop(ex2p, "minus")) {
+        /*
+         * Handle that case that both expressions are a MINUS operator invocation
+         * If exp #1 is of form T1 MINUS T2
+         * and exp #2 is T3 MINUS T4 then exp #1 is a subset of exp #2
+         * if T1 is a subset of T3 and T4 is a subset of T2
+         */
+        RDB_bool r1, r2;
+        if (expr_is_subset(exp->def.op.args.firstp,
+                ex2p->def.op.args.firstp, &r1, ecp, txp) != RDB_OK)
+            return RDB_ERROR;
+        if (expr_is_subset(ex2p->def.op.args.firstp->nextp,
+                exp->def.op.args.firstp->nextp, &r2, ecp, txp) != RDB_OK)
+            return RDB_ERROR;
+        *resultp = (RDB_bool) (r1 && r2);
+    } else if (RDB_expr_is_op(exp, "project")
+            && RDB_expr_is_op(ex2p, "project")) {
+        /*
+         * If both expressions are projections they are subsets if they are
+         * of the same type and their arg #1 are subsets
+         */
+        RDB_type *typ1, *typ2;
+        typ1 = RDB_expr_type(exp, NULL, NULL, NULL, ecp, txp);
+        if (typ1 == NULL)
+            return RDB_ERROR;
+        typ2 = RDB_expr_type(ex2p, NULL, NULL, NULL, ecp, txp);
+        if (typ2 == NULL)
+            return RDB_ERROR;
+        if (RDB_type_equals(typ1, typ2)) {
+            return expr_is_subset(exp->def.op.args.firstp,
+                    ex2p->def.op.args.firstp, resultp, ecp, txp);
+        }
+    } else if (RDB_expr_is_op(exp, "where")) {
+        return expr_is_subset(exp->def.op.args.firstp,
+                ex2p, resultp, ecp, txp);
+    }
+    return RDB_OK;
+}
+
+/*
+ * If *exp or a subexpression of *exp is a subset of *empty_exp,
+ * it must be empty, so replace it with an empty relation.
  * *empty_exp must not be NULL.
  */
 static int
 replace_empty(RDB_expression *exp, RDB_expression *empty_exp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_bool eqempty;
-    /* Check if there is a constraint that says the table is empty */
-    if (RDB_expr_equals(exp, empty_exp, ecp, txp, &eqempty) != RDB_OK)
+    RDB_bool issubset;
+    /* If *exp is a subset of *empty_exp it must be empty too */
+    if (expr_is_subset(exp, empty_exp, &issubset, ecp, txp) != RDB_OK)
         return RDB_ERROR;
 
-    if (eqempty) {
+    if (issubset) {
         return RDB_expr_to_empty_table(exp, ecp, txp);
     }
     if (exp->kind == RDB_EX_RO_OP) {
