@@ -112,7 +112,7 @@ replace_targets_real_ins(RDB_object *tbp, const RDB_ma_insert *insp,
     if (exp == NULL) {
         return NULL;
     }
-    argp =  RDB_table_ref(tbp, ecp);
+    argp = RDB_table_ref(tbp, ecp);
     if (argp == NULL) {
         RDB_del_expr(exp, ecp);
         return NULL;
@@ -135,7 +135,12 @@ replace_targets_real_ins(RDB_object *tbp, const RDB_ma_insert *insp,
         RDB_del_expr(exp, ecp);
         return NULL;
     }
+    /* Temporarily attach default values */
+    if (tbp->val.tb.default_tplp != NULL) {
+        RDB_expr_obj(argp)->val.tb.default_tplp = tbp->val.tb.default_tplp;
+    }
     ret = RDB_insert(RDB_expr_obj(argp), insp->objp, ecp, NULL);
+    RDB_expr_obj(argp)->val.tb.default_tplp = NULL;
     if (ret != RDB_OK) {
         RDB_del_expr(exp, ecp);
         return NULL;

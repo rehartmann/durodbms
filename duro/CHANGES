@@ -4,6 +4,9 @@ Summary of Changes for DuroDBMS
 
 Changes for DuroDBMS 0.17
 
+- Changed operator precedence to allow for expressions like
+  T1 { A } SUBSET_OF T2 { A } 
+
 - getenv() returns an empty string if the environment variable does not exist.
 
 - Added read() operators for reading binary data.

@@ -1370,9 +1370,9 @@ mutate_select(RDB_expression *exp, int seqitc, const RDB_seq_item seqitv[],
 
     bestcost = sorted_table_cost(exp, seqitc, seqitv);
 
-    trace_plan_cost(exp, bestcost, "plan after transformation", ecp, txp);
+    trace_plan_cost(exp, bestcost, "transformed plan", ecp, txp);
 
-    /* Perform rounds of optimization until there is no improvemen */
+    /* Perform rounds of optimization until there is no improvement */
     do {
         obestcost = bestcost;
 

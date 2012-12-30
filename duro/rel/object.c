@@ -545,6 +545,9 @@ table_to_irep(void *dstp, RDB_object *tbp, size_t len)
     RDB_destroy_exec_context(&ec);
 }
 
+/*
+ * Copy the internal representation of *objp to *dstp
+ */
 void
 RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
 {

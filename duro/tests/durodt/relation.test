@@ -610,8 +610,9 @@ test refconstraint {referential constraint} -setup $SETUP -body {
     puts -nonewline [exec $testdir/../../dli/durodt -e dbenv -d D << {
         begin tx;
         var customers real rel {cust_id int, name string} key {cust_id};
-        var orders real rel {order_id int, cust_id int} key {order_id};
-        constraint o_c is_empty(orders {cust_id} minus customers {cust_id});
+        var orders real rel {order_id int, cust_id int, info string}
+                key {order_id} default {info ''};
+        constraint o_c orders {cust_id} subset_of customers {cust_id};
 
         insert customers tup{cust_id 1, name 'James'};
         
@@ -659,6 +660,15 @@ test refconstraint {referential constraint} -setup $SETUP -body {
     if {[string match {*orders*} $checks]
             || [string match {*customers*} $checks]} {
         puts "check #3 refers to orders or customers: $checks"
+    }    
+    set checks [exec $testdir/../../dli/durodt -e dbenv -d D << {
+        begin tx;
+        explain update orders where order_id=1 {info := 'yo'};
+        commit;
+    }]
+    if {[string match {*orders*} $checks]
+            || [string match {*customers*} $checks]} {
+        puts "check #4 refers to orders or customers: $checks"
     }    
 } -output {insert into orders caught
 delete from customers caught

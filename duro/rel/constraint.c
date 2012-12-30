@@ -16,6 +16,56 @@
 #include <gen/strfns.h>
 #include <string.h>
 
+static int
+optimize_constr_expr(RDB_expression *exp, RDB_exec_context *ecp)
+{
+    if (RDB_expr_is_op(exp, "subset_of") && exp->def.op.args.firstp != NULL
+            && exp->def.op.args.firstp->nextp != NULL
+            && exp->def.op.args.firstp->nextp->nextp == NULL) {
+        /* Convert T1 subset_of T2 to is_empty(T1 minus T2) */
+        RDB_expression *minusexp;
+        char *isenamp = RDB_dup_str("is_empty");
+        if (isenamp == NULL) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
+        minusexp = RDB_ro_op("minus", ecp);
+        if (minusexp == NULL) {
+            RDB_free(isenamp);
+            return RDB_ERROR;
+        }
+
+        minusexp->def.op.args.firstp = exp->def.op.args.firstp;
+        minusexp->def.op.args.lastp = exp->def.op.args.lastp;
+        minusexp->nextp = NULL;
+        RDB_free(exp->def.op.name);
+        exp->def.op.name = isenamp;
+        exp->def.op.args.firstp = exp->def.op.args.lastp = minusexp;
+    }
+    return RDB_OK;
+}
+
+/*
+ * Add constraint to the linked list of constraints managed by dbroot
+ */
+static int
+add_constraint(RDB_constraint *constrp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_dbroot *dbrootp = RDB_tx_db(txp)->dbrootp;
+
+    if (optimize_constr_expr(constrp->exp, ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    if (RDB_expr_resolve_tbnames(constrp->exp, ecp, txp) != RDB_OK)
+        return RDB_ERROR;
+
+    constrp->nextp = dbrootp->first_constrp;
+    dbrootp->first_constrp = constrp;
+
+    return RDB_OK;
+}
+
 /*
  * Read constraints from catalog
  */
@@ -59,12 +109,9 @@ RDB_read_constraints(RDB_exec_context *ecp, RDB_transaction *txp)
             goto cleanup;
         }
 
-        /* Resolve table names */
-        if (RDB_expr_resolve_tbnames(constrp->exp, ecp, txp) != RDB_OK)
+        /* Add to list */
+        if (add_constraint(constrp, ecp, txp) != RDB_OK)
             return RDB_ERROR;
-
-        constrp->nextp = dbrootp->first_constrp;
-        dbrootp->first_constrp = constrp;
     }
     if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
         RDB_clear_err(ecp);
@@ -110,7 +157,6 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    RDB_dbroot *dbrootp;
     RDB_bool res;
     RDB_constraint *constrp;
 
@@ -133,10 +179,6 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
         return RDB_ERROR;
     }
 
-    /* Resolve table names */
-    if (RDB_expr_resolve_tbnames(exp, ecp, txp) != RDB_OK)
-        return RDB_ERROR;
-
     constrp->exp = exp;
 
     constrp->name = RDB_dup_str(name);
@@ -151,9 +193,8 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
         goto error;
 
     /* Insert constraint into list */
-    dbrootp = RDB_tx_db(txp)->dbrootp;
-    constrp->nextp = dbrootp->first_constrp;
-    dbrootp->first_constrp = constrp;
+    if (add_constraint(constrp, ecp, txp) != RDB_OK)
+        return RDB_ERROR;
     
     return RDB_OK;
 
