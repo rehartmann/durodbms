@@ -55,6 +55,8 @@ test casts {cast operators} -body {
 	    put_line(cast_as_char(-13));
 	    put_line(cast_as_string(-34.5551));
 	    put_line(cast_as_char(0.0));
+	    
+	    put_line(cast_as_string(X'446f'));
     }
 } -result {11
 -7
@@ -70,6 +72,7 @@ test casts {cast operators} -body {
 -13
 -34.5551
 0.0
+Do
 }
 
 test deftype {user-defined types} -setup $SETUP -body {
@@ -357,7 +360,7 @@ test defupdop {user-defined update operators} -setup $SETUP -body {
         begin transaction;
 
         operator op(s string, i integer) updates {s};
-            i := i + 1;
+            /* i := i + 1; !! must raise an error */
 
             type length_t possrep { m FLOAT } constraint (m >= 0.0);
 
@@ -479,6 +482,28 @@ true
 true
 true
 false
+}
+
+test www {Web operators} -body {
+    exec $testdir/../../dli/durodt << {
+	    var tp init tup {aa 'x', b 'x', n 1, f 2.0}; 
+
+	    www_form_to_tuple(tp, 'aa=Y%2Bx+z&f=1.2&n=2'); 
+
+	    put_line(tp.aa);
+	    put_line(tp.b);
+	    put(tp.n); put_line('');
+        put(tp.f); put_line('');
+
+	-- Check that invalid input does not crash the decoder 
+
+	    www_form_to_tuple(tp, 'aa=%fg&b=%5');
+	    www_form_to_tuple(tp, 'n=$&aa=%5');
+	}
+} -result {Y+x z
+x
+2
+1.2
 }
 
 cleanupTests

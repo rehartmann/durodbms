@@ -552,18 +552,14 @@ void
 RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
 {
     RDB_exec_context ec;
+    const void *srcp;
     RDB_byte *bp = dstp;
 
     switch (objp->kind) {
-        case RDB_OB_BOOL:
-            *bp = objp->val.bool_val;
-            break;
-        case RDB_OB_INT:
-            memcpy(bp, &objp->val.int_val, sizeof (RDB_int));
-            break;
-        case RDB_OB_FLOAT:
-            memcpy(bp, &objp->val.float_val, sizeof (RDB_float));
-            break;
+        /*
+         * Tuples, tables, and arrays need special treatment
+         * because the binary internal rep is not immediately available
+         */
         case RDB_OB_TUPLE:
         {
             RDB_type *tpltyp = objp->store_typ;
@@ -615,7 +611,8 @@ RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
             break;
         }
         default:
-            memcpy(bp, objp->val.bin.datap, objp->val.bin.len);
+            srcp = RDB_obj_irep((RDB_object *)objp, NULL);
+            memcpy(bp, srcp, len);
     }
 }
 

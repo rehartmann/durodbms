@@ -18,7 +18,7 @@ test tuple {tuples} -body {
 B -> 4711}
 
 test lstables {list all tables} -setup $SETUP -body {
-    exec [configure -testdir]/../util/lstables -e dbenv -d TEST | sort
+    exec [configure -testdir]/lstables -e dbenv -d TEST | sort
 } -result {DEPTS
 EMPS1
 EMPS2}

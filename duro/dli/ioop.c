@@ -12,12 +12,13 @@
 #include <rel/opmap.h>
 #include <rel/tostr.h>
 #include <rel/typeimpl.h>
+#include <util/www.h>
 
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
 
-#if defined(_WIN32)
+#ifdef _WIN32
 #define STDIN_FILENO 0
 #define STDOUT_FILENO 1
 #define STDERR_FILENO 2
@@ -554,6 +555,34 @@ op_eof_iostream(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 int
+op_www_form_to_tuple(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    /*
+     * Check argument types, because the operator is generic and stored without
+     * a signature
+     */
+    RDB_type *tpltyp;
+    RDB_type *strtyp;
+
+    if (argc != 2) {
+        RDB_raise_invalid_argument("2 args required", ecp);
+        return RDB_ERROR;
+    }
+    tpltyp = RDB_obj_type(argv[0]);
+    if (tpltyp == NULL || !RDB_type_is_tuple(tpltyp)) {
+        RDB_raise_type_mismatch("tuple required", ecp);
+        return RDB_ERROR;
+    }
+    strtyp = RDB_obj_type(argv[1]);
+    if (strtyp == NULL || strtyp != &RDB_STRING) {
+        RDB_raise_type_mismatch("string required", ecp);
+        return RDB_ERROR;
+    }
+    return RDB_www_form_to_tuple(argv[0], RDB_obj_string(argv[1]), ecp);
+}
+
+int
 RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
 {
     static RDB_parameter put_string_params[1];
@@ -572,8 +601,8 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     static RDB_parameter read_params[2];
     static RDB_parameter read_iostream_params[3];
     static RDB_parameter get_line_iostream_params[2];
-    static RDB_parameter open_params[3];
-    static RDB_parameter close_params[1];
+    static RDB_parameter open_paramv[3];
+    static RDB_parameter close_paramv[1];
 
     static RDB_type *eof_iostream_param_typ;
 
@@ -627,15 +656,15 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     read_iostream_params[2].typ = &RDB_INTEGER;
     read_iostream_params[2].update = RDB_FALSE;
 
-    close_params[0].typ = &RDB_IO_STREAM;
-    close_params[0].update = RDB_FALSE;
+    open_paramv[0].typ = &RDB_IO_STREAM;
+    open_paramv[0].update = RDB_TRUE;
+    open_paramv[1].typ = &RDB_STRING;
+    open_paramv[1].update = RDB_FALSE;
+    open_paramv[2].typ = &RDB_STRING;
+    open_paramv[2].update = RDB_FALSE;
 
-    open_params[0].typ = &RDB_IO_STREAM;
-    open_params[0].update = RDB_TRUE;
-    open_params[1].typ = &RDB_STRING;
-    open_params[1].update = RDB_FALSE;
-    open_params[2].typ = &RDB_STRING;
-    open_params[2].update = RDB_FALSE;
+    close_paramv[0].typ = &RDB_IO_STREAM;
+    close_paramv[0].update = RDB_FALSE;
 
     if (RDB_put_upd_op(opmapp, "put_line", 1, put_string_params, &op_put_line_string,
             ecp) != RDB_OK)
@@ -694,11 +723,11 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
             &op_read_iostream, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (RDB_put_upd_op(opmapp, "close", 1, close_params, &op_close, ecp)
+    if (RDB_put_upd_op(opmapp, "open", 3, open_paramv, &op_open, ecp)
             != RDB_OK)
         return RDB_ERROR;
 
-    if (RDB_put_upd_op(opmapp, "open", 3, open_params, &op_open, ecp)
+    if (RDB_put_upd_op(opmapp, "close", 1, close_paramv, &op_close, ecp)
             != RDB_OK)
         return RDB_ERROR;
 
@@ -713,6 +742,10 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
             &RDB_BOOLEAN, &op_eof_iostream, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
+
+    if (RDB_put_upd_op(opmapp, "www_form_to_tuple", -1, NULL,
+            &op_www_form_to_tuple, ecp) != RDB_OK)
+       return RDB_ERROR;
 
     RDB_init_obj(&DURO_STDIN_OBJ);
     if (init_iostream(&DURO_STDIN_OBJ, STDIN_FILENO, ecp) != RDB_OK)

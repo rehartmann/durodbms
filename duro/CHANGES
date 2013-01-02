@@ -4,6 +4,8 @@ Summary of Changes for DuroDBMS
 
 Changes for DuroDBMS 0.17
 
+- Operator www_form_to_tuple converts urlencoded form data to a tuple value
+
 - Changed operator precedence to allow for expressions like
   T1 { A } SUBSET_OF T2 { A } 
 

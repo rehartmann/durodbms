@@ -412,19 +412,27 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp,
         /*
          * paramp may be NULL for n-ary operators
          */
-        if (paramp != NULL && paramp->update) {
-            const char *varname = RDB_expr_var_name(exp);
-            if (varname != NULL) {
-                argpv[i] = Duro_lookup_var(varname, ecp);
-            } else if (exp->kind == RDB_EX_TBP) {
-                argpv[i] = exp->def.tbref.tbp;
-            }
-
+        const char *varname = RDB_expr_var_name(exp);
+        if (varname != NULL) {
             /*
-             * If it's an update argument and the argument is not a variable,
-             * raise an error
+             * If the expression is a variable, look it up
+             * (If the parameter is not an update parameter,
+             * the callee must not modify the variable)
              */
-            if (argpv[i] == NULL /* && op->updv != NULL && op->updv[i] */) {
+            argpv[i] = Duro_lookup_var(varname, ecp);
+            if (argpv[i] == NULL) {
+                ret = RDB_ERROR;
+                goto cleanup;
+            }
+        } else {
+            if (exp->kind == RDB_EX_TBP) {
+                /* Special handling of table refs */
+                argpv[i] = exp->def.tbref.tbp;
+            } else if (paramp != NULL && paramp->update) {
+                /*
+                 * If it's an update argument and the argument is not a variable,
+                 * raise an error
+                 */
                 RDB_raise_invalid_argument(
                         "update argument must be a variable", ecp);
                 ret = RDB_ERROR;
@@ -460,10 +468,7 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp,
 
 cleanup:
     for (i = 0; i < argc; i++) {
-        RDB_parameter *paramp = RDB_get_parameter(op, i);
-        if ((argpv[i] != NULL) && (paramp == NULL || !paramp->update)
-                && (argpv[i]->kind != RDB_OB_TABLE
-                    || !RDB_table_is_persistent(argpv[i])))
+        if (argpv[i] == &argv[i])
             RDB_destroy_obj(&argv[i], ecp);
     }
     return ret;

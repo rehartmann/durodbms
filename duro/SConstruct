@@ -69,7 +69,8 @@ relsrc = ['rel/array.c', 'rel/database.c', 'rel/operator.c', 'rel/builtinops.c',
         'rel/object.c', 'rel/catalog.c', 'rel/cat_type.c', 'rel/cat_op.c',
         'rel/optimize.c', 'rel/transform.c',
         'rel/constraint.c', 'rel/assign.c', 'rel/excontext.c',
-        'rel/match.c', 'rel/opmap.c', 'rel/io.c', 'rel/tostr.c']
+        'rel/match.c', 'rel/opmap.c', 'rel/io.c', 'rel/tostr.c',
+        'util/www.c']
 
 dlisrc = ['dli/exparse.c', 'dli/exlex.c', 'dli/parse.c', 'dli/parsenode.c',
         'dli/iinterp.c', 'dli/interp_core.c', 'dli/interp_assign.c',
@@ -169,10 +170,10 @@ for s in testsrc:
         testbins.append(testenv.Program(s, LIBS = env['LIBS'] + libduro))
 
 if env['PLATFORM'] == 'win32':
-    testbins.append(testenv.Program('util/lstables.c',
+    testbins.append(testenv.Program('tests/lstables.c',
             LIBS = env['LIBS'] + ['duro']))
 else:
-    testbins.append(testenv.Program('util/lstables.c',
+    testbins.append(testenv.Program('tests/lstables.c',
             LIBS = env['LIBS'] + libduro))
 
 if env['PLATFORM'] == 'win32':
@@ -216,7 +217,7 @@ env.Alias('testbins', testbins)
 gen_hdrs = Split('gen/hashmap.h gen/hashmapit.h gen/hashtable.h '
         'gen/hashtabit.h gen/strfns.h gen/types.h gen/releaseno.h')
 rec_hdrs = Split('rec/cursor.h rec/env.h rec/dbdefs.h rec/index.h rec/recmap.h')
-rel_hdrs = Split('rel/rdb.h rel/typeimpl.h')
+rel_hdrs = Split('rel/rdb.h rel/typeimpl.h util/www.h')
 rel_ihdrs = Split('rel/catalog.h rel/cat_type.h rel/cat_op.h '
 		'rel/delete.h rel/serialize.h '
         'rel/insert.h rel/transform.h rel/internal.h rel/stable.h '
@@ -311,7 +312,7 @@ if env.has_key('TAR'):
     env.Tar(disttar, durotcl_hdrs)
     env.Tar(disttar, testsrc)
     env.Tar(disttar, testlibsrc)
-    env.Tar(disttar, 'util/lstables.c')
+    env.Tar(disttar, 'tests/lstables.c')
     env.Tar(disttar, gen_hdrs)
     env.Tar(disttar, rec_hdrs)
     env.Tar(disttar, rel_hdrs)

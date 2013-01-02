@@ -367,9 +367,25 @@ OPERATOR cast_as_string (integer) RETURNS string;
 
 OPERATOR cast_as_string (float) RETURNS string;
 
+OPERATOR cast_as_string (binary) RETURNS string;
+
 <h4>Description</h4>
 
 Converts the operand to a string.
+
+<h4>Return value</h4>
+
+The operand, converted to string.
+
+<hr>
+
+<h3 id="cast_as_binary">OPERATOR cast_as_binary</h3>
+
+OPERATOR cast_as_string (string) RETURNS binary;
+
+<h4>Description</h4>
+
+Converts the operand to a binary, without a terminating nullbyte.
 
 <h4>Return value</h4>
 
@@ -1281,6 +1297,14 @@ cast_as_string(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
+cast_as_binary(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    return RDB_binary_set(retvalp, 0, argv[0]->val.bin.datap,
+            argv[0]->val.bin.len - 1, ecp);
+}
+
+static int
 length_string(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
@@ -1770,395 +1794,410 @@ RDB_put_global_ro_op(const char *name, int argc, RDB_type **argtv,
 int
 RDB_init_builtin_ops(RDB_exec_context *ecp)
 {
-    RDB_type *argtv[3];
+    RDB_type *paramtv[3];
     int ret;
 
     RDB_init_op_map(&RDB_builtin_ro_op_map);
 
-    argtv[0] = &RDB_FLOAT;
+    paramtv[0] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op("cast_as_integer", 1, argtv, &RDB_INTEGER, &cast_as_integer_float,
+    ret = RDB_put_global_ro_op("cast_as_integer", 1, paramtv, &RDB_INTEGER, &cast_as_integer_float,
             ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
-    ret = RDB_put_global_ro_op("cast_as_int", 1, argtv, &RDB_INTEGER, &cast_as_integer_float,
-            ecp);
-    if (ret != RDB_OK)
-        return RDB_ERROR;
-
-    argtv[0] = &RDB_STRING;
-
-    ret = RDB_put_global_ro_op("cast_as_integer", 1, argtv, &RDB_INTEGER, &cast_as_integer_string,
-            ecp);
-    if (ret != RDB_OK)
-        return RDB_ERROR;
-    ret = RDB_put_global_ro_op("cast_as_int", 1, argtv, &RDB_INTEGER, &cast_as_integer_string,
+    ret = RDB_put_global_ro_op("cast_as_int", 1, paramtv, &RDB_INTEGER, &cast_as_integer_float,
             ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
-    argtv[0] = &RDB_INTEGER;
+    paramtv[0] = &RDB_STRING;
 
-    ret = RDB_put_global_ro_op("cast_as_float", 1, argtv, &RDB_FLOAT, &cast_as_float_int, ecp);
+    ret = RDB_put_global_ro_op("cast_as_integer", 1, paramtv, &RDB_INTEGER, &cast_as_integer_string,
+            ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
-    ret = RDB_put_global_ro_op("cast_as_rat", 1, argtv, &RDB_FLOAT, &cast_as_float_int, ecp);
-    if (ret != RDB_OK)
-        return RDB_ERROR;
-    ret = RDB_put_global_ro_op("cast_as_rational", 1, argtv, &RDB_FLOAT, &cast_as_float_int, ecp);
-    if (ret != RDB_OK)
-        return RDB_ERROR;
-
-    argtv[0] = &RDB_STRING;
-    ret = RDB_put_global_ro_op("cast_as_float", 1, argtv, &RDB_FLOAT, &cast_as_float_string, ecp);
-    if (ret != RDB_OK)
-        return RDB_ERROR;
-    ret = RDB_put_global_ro_op("cast_as_rational", 1, argtv, &RDB_FLOAT, &cast_as_float_string, ecp);
-    if (ret != RDB_OK)
-        return RDB_ERROR;
-    ret = RDB_put_global_ro_op("cast_as_rat", 1, argtv, &RDB_FLOAT, &cast_as_float_string, ecp);
+    ret = RDB_put_global_ro_op("cast_as_int", 1, paramtv, &RDB_INTEGER, &cast_as_integer_string,
+            ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
-    argtv[0] = &RDB_INTEGER;
+    paramtv[0] = &RDB_INTEGER;
 
-    ret = RDB_put_global_ro_op("cast_as_string", 1, argtv, &RDB_STRING, &cast_as_string, ecp);
+    ret = RDB_put_global_ro_op("cast_as_float", 1, paramtv, &RDB_FLOAT, &cast_as_float_int, ecp);
+    if (ret != RDB_OK)
+        return RDB_ERROR;
+    ret = RDB_put_global_ro_op("cast_as_rat", 1, paramtv, &RDB_FLOAT, &cast_as_float_int, ecp);
+    if (ret != RDB_OK)
+        return RDB_ERROR;
+    ret = RDB_put_global_ro_op("cast_as_rational", 1, paramtv, &RDB_FLOAT, &cast_as_float_int, ecp);
+    if (ret != RDB_OK)
+        return RDB_ERROR;
+
+    paramtv[0] = &RDB_STRING;
+    ret = RDB_put_global_ro_op("cast_as_float", 1, paramtv, &RDB_FLOAT, &cast_as_float_string, ecp);
+    if (ret != RDB_OK)
+        return RDB_ERROR;
+    ret = RDB_put_global_ro_op("cast_as_rational", 1, paramtv, &RDB_FLOAT, &cast_as_float_string, ecp);
+    if (ret != RDB_OK)
+        return RDB_ERROR;
+    ret = RDB_put_global_ro_op("cast_as_rat", 1, paramtv, &RDB_FLOAT, &cast_as_float_string, ecp);
+    if (ret != RDB_OK)
+        return RDB_ERROR;
+
+    paramtv[0] = &RDB_INTEGER;
+
+    ret = RDB_put_global_ro_op("cast_as_string", 1, paramtv, &RDB_STRING, &cast_as_string, ecp);
     if (ret != RDB_OK)
         return ret;
-    ret = RDB_put_global_ro_op("cast_as_char", 1, argtv, &RDB_STRING, &cast_as_string, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    argtv[0] = &RDB_FLOAT;
-
-    ret = RDB_put_global_ro_op("cast_as_string", 1, argtv, &RDB_STRING, &cast_as_string, ecp);
-    if (ret != RDB_OK)
-        return ret;
-    ret = RDB_put_global_ro_op("cast_as_char", 1, argtv, &RDB_STRING, &cast_as_string, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    argtv[0] = &RDB_STRING;
-
-    ret = RDB_put_global_ro_op("length", 1, argtv, &RDB_INTEGER, &length_string, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    argtv[0] = &RDB_STRING;
-    argtv[1] = &RDB_INTEGER;
-    argtv[2] = &RDB_INTEGER;
-
-    ret = RDB_put_global_ro_op("substr", 3, argtv, &RDB_STRING, &op_substr, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    argtv[0] = &RDB_STRING;
-    argtv[1] = &RDB_STRING;
-
-    ret = RDB_put_global_ro_op("||", 2, argtv, &RDB_STRING, &op_concat, ecp);
+    ret = RDB_put_global_ro_op("cast_as_char", 1, paramtv, &RDB_STRING, &cast_as_string, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_STRING;
-    argtv[1] = &RDB_STRING;
+    paramtv[0] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op("like", 2, argtv, &RDB_BOOLEAN, &op_like, ecp);
+    ret = RDB_put_global_ro_op("cast_as_string", 1, paramtv, &RDB_STRING, &cast_as_string, ecp);
+    if (ret != RDB_OK)
+        return ret;
+    ret = RDB_put_global_ro_op("cast_as_char", 1, paramtv, &RDB_STRING, &cast_as_string, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = RDB_put_global_ro_op("regex_like", 2, argtv, &RDB_BOOLEAN,
+    paramtv[0] = &RDB_BINARY;
+
+    ret = RDB_put_global_ro_op("cast_as_string", 1, paramtv, &RDB_STRING, &cast_as_string, ecp);
+    if (ret != RDB_OK)
+        return ret;
+    ret = RDB_put_global_ro_op("cast_as_char", 1, paramtv, &RDB_STRING, &cast_as_string, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    paramtv[0] = &RDB_STRING;
+
+    ret = RDB_put_global_ro_op("cast_as_binary", 1, paramtv, &RDB_BINARY, &cast_as_binary, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    paramtv[0] = &RDB_STRING;
+
+    ret = RDB_put_global_ro_op("length", 1, paramtv, &RDB_INTEGER, &length_string, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    paramtv[0] = &RDB_STRING;
+    paramtv[1] = &RDB_INTEGER;
+    paramtv[2] = &RDB_INTEGER;
+
+    ret = RDB_put_global_ro_op("substr", 3, paramtv, &RDB_STRING, &op_substr, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    paramtv[0] = &RDB_STRING;
+    paramtv[1] = &RDB_STRING;
+
+    ret = RDB_put_global_ro_op("||", 2, paramtv, &RDB_STRING, &op_concat, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    paramtv[0] = &RDB_STRING;
+    paramtv[1] = &RDB_STRING;
+
+    ret = RDB_put_global_ro_op("like", 2, paramtv, &RDB_BOOLEAN, &op_like, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = RDB_put_global_ro_op("regex_like", 2, paramtv, &RDB_BOOLEAN,
             &op_regex_like, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_BOOLEAN;
-    argtv[1] = &RDB_BOOLEAN;
+    paramtv[0] = &RDB_BOOLEAN;
+    paramtv[1] = &RDB_BOOLEAN;
 
-    ret = RDB_put_global_ro_op("and", 2, argtv, &RDB_BOOLEAN, &and, ecp);
+    ret = RDB_put_global_ro_op("and", 2, paramtv, &RDB_BOOLEAN, &and, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = RDB_put_global_ro_op("or", 2, argtv, &RDB_BOOLEAN, &or, ecp);
+    ret = RDB_put_global_ro_op("or", 2, paramtv, &RDB_BOOLEAN, &or, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = RDB_put_global_ro_op("xor", 2, argtv, &RDB_BOOLEAN, &xor, ecp);
+    ret = RDB_put_global_ro_op("xor", 2, paramtv, &RDB_BOOLEAN, &xor, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_BOOLEAN;
+    paramtv[0] = &RDB_BOOLEAN;
 
-    ret = RDB_put_global_ro_op("not", 1, argtv, &RDB_BOOLEAN, &not, ecp);
+    ret = RDB_put_global_ro_op("not", 1, paramtv, &RDB_BOOLEAN, &not, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_INTEGER;
-    argtv[1] = &RDB_INTEGER;
+    paramtv[0] = &RDB_INTEGER;
+    paramtv[1] = &RDB_INTEGER;
 
-    ret = RDB_put_global_ro_op("<", 2, argtv, &RDB_BOOLEAN, &lt, ecp);
+    ret = RDB_put_global_ro_op("<", 2, paramtv, &RDB_BOOLEAN, &lt, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_FLOAT;
-    argtv[1] = &RDB_FLOAT;
+    paramtv[0] = &RDB_FLOAT;
+    paramtv[1] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op("<", 2, argtv, &RDB_BOOLEAN, &lt, ecp);
+    ret = RDB_put_global_ro_op("<", 2, paramtv, &RDB_BOOLEAN, &lt, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_FLOAT;
-    argtv[1] = &RDB_FLOAT;
+    paramtv[0] = &RDB_FLOAT;
+    paramtv[1] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op("<", 2, argtv, &RDB_BOOLEAN, &lt, ecp);
+    ret = RDB_put_global_ro_op("<", 2, paramtv, &RDB_BOOLEAN, &lt, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_STRING;
-    argtv[1] = &RDB_STRING;
+    paramtv[0] = &RDB_STRING;
+    paramtv[1] = &RDB_STRING;
 
-    ret = RDB_put_global_ro_op("<", 2, argtv, &RDB_BOOLEAN, &lt, ecp);
+    ret = RDB_put_global_ro_op("<", 2, paramtv, &RDB_BOOLEAN, &lt, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_INTEGER;
-    argtv[1] = &RDB_INTEGER;
+    paramtv[0] = &RDB_INTEGER;
+    paramtv[1] = &RDB_INTEGER;
 
-    ret = RDB_put_global_ro_op("<=", 2, argtv, &RDB_BOOLEAN, &let, ecp);
+    ret = RDB_put_global_ro_op("<=", 2, paramtv, &RDB_BOOLEAN, &let, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_FLOAT;
-    argtv[1] = &RDB_FLOAT;
+    paramtv[0] = &RDB_FLOAT;
+    paramtv[1] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op("<=", 2, argtv, &RDB_BOOLEAN, &let, ecp);
+    ret = RDB_put_global_ro_op("<=", 2, paramtv, &RDB_BOOLEAN, &let, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_FLOAT;
-    argtv[1] = &RDB_FLOAT;
+    paramtv[0] = &RDB_FLOAT;
+    paramtv[1] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op("<=", 2, argtv, &RDB_BOOLEAN, &let, ecp);
+    ret = RDB_put_global_ro_op("<=", 2, paramtv, &RDB_BOOLEAN, &let, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_STRING;
-    argtv[1] = &RDB_STRING;
+    paramtv[0] = &RDB_STRING;
+    paramtv[1] = &RDB_STRING;
 
-    ret = RDB_put_global_ro_op("<=", 2, argtv, &RDB_BOOLEAN, &let, ecp);
+    ret = RDB_put_global_ro_op("<=", 2, paramtv, &RDB_BOOLEAN, &let, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_INTEGER;
-    argtv[1] = &RDB_INTEGER;
+    paramtv[0] = &RDB_INTEGER;
+    paramtv[1] = &RDB_INTEGER;
 
-    ret = RDB_put_global_ro_op(">", 2, argtv, &RDB_BOOLEAN, &gt, ecp);
+    ret = RDB_put_global_ro_op(">", 2, paramtv, &RDB_BOOLEAN, &gt, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_FLOAT;
-    argtv[1] = &RDB_FLOAT;
+    paramtv[0] = &RDB_FLOAT;
+    paramtv[1] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op(">", 2, argtv, &RDB_BOOLEAN, &gt, ecp);
+    ret = RDB_put_global_ro_op(">", 2, paramtv, &RDB_BOOLEAN, &gt, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_FLOAT;
-    argtv[1] = &RDB_FLOAT;
+    paramtv[0] = &RDB_FLOAT;
+    paramtv[1] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op(">", 2, argtv, &RDB_BOOLEAN, &gt, ecp);
+    ret = RDB_put_global_ro_op(">", 2, paramtv, &RDB_BOOLEAN, &gt, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_STRING;
-    argtv[1] = &RDB_STRING;
+    paramtv[0] = &RDB_STRING;
+    paramtv[1] = &RDB_STRING;
 
-    ret = RDB_put_global_ro_op(">", 2, argtv, &RDB_BOOLEAN, &gt, ecp);
+    ret = RDB_put_global_ro_op(">", 2, paramtv, &RDB_BOOLEAN, &gt, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_INTEGER;
-    argtv[1] = &RDB_INTEGER;
+    paramtv[0] = &RDB_INTEGER;
+    paramtv[1] = &RDB_INTEGER;
 
-    ret = RDB_put_global_ro_op(">=", 2, argtv, &RDB_BOOLEAN, &get, ecp);
+    ret = RDB_put_global_ro_op(">=", 2, paramtv, &RDB_BOOLEAN, &get, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_FLOAT;
-    argtv[1] = &RDB_FLOAT;
+    paramtv[0] = &RDB_FLOAT;
+    paramtv[1] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op(">=", 2, argtv, &RDB_BOOLEAN, &get, ecp);
+    ret = RDB_put_global_ro_op(">=", 2, paramtv, &RDB_BOOLEAN, &get, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_FLOAT;
-    argtv[1] = &RDB_FLOAT;
+    paramtv[0] = &RDB_FLOAT;
+    paramtv[1] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op(">=", 2, argtv, &RDB_BOOLEAN, &get, ecp);
+    ret = RDB_put_global_ro_op(">=", 2, paramtv, &RDB_BOOLEAN, &get, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_STRING;
-    argtv[1] = &RDB_STRING;
+    paramtv[0] = &RDB_STRING;
+    paramtv[1] = &RDB_STRING;
 
-    ret = RDB_put_global_ro_op(">=", 2, argtv, &RDB_BOOLEAN, &get, ecp);
+    ret = RDB_put_global_ro_op(">=", 2, paramtv, &RDB_BOOLEAN, &get, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_BOOLEAN;
-    argtv[1] = &RDB_BOOLEAN;
+    paramtv[0] = &RDB_BOOLEAN;
+    paramtv[1] = &RDB_BOOLEAN;
 
-    ret = RDB_put_global_ro_op("=", 2, argtv, &RDB_BOOLEAN, &RDB_eq_bool, ecp);
+    ret = RDB_put_global_ro_op("=", 2, paramtv, &RDB_BOOLEAN, &RDB_eq_bool, ecp);
     if (ret != RDB_OK) {
         return RDB_ERROR;
     }
 
-    argtv[0] = &RDB_INTEGER;
-    argtv[1] = &RDB_INTEGER;
+    paramtv[0] = &RDB_INTEGER;
+    paramtv[1] = &RDB_INTEGER;
 
-    ret = RDB_put_global_ro_op("=", 2, argtv, &RDB_BOOLEAN, RDB_dfl_obj_equals, ecp);
+    ret = RDB_put_global_ro_op("=", 2, paramtv, &RDB_BOOLEAN, RDB_dfl_obj_equals, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_FLOAT;
-    argtv[1] = &RDB_FLOAT;
+    paramtv[0] = &RDB_FLOAT;
+    paramtv[1] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op("=", 2, argtv, &RDB_BOOLEAN, RDB_dfl_obj_equals, ecp);
+    ret = RDB_put_global_ro_op("=", 2, paramtv, &RDB_BOOLEAN, RDB_dfl_obj_equals, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_FLOAT;
-    argtv[1] = &RDB_FLOAT;
+    paramtv[0] = &RDB_FLOAT;
+    paramtv[1] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op("=", 2, argtv, &RDB_BOOLEAN, RDB_dfl_obj_equals, ecp);
+    ret = RDB_put_global_ro_op("=", 2, paramtv, &RDB_BOOLEAN, RDB_dfl_obj_equals, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_STRING;
-    argtv[1] = &RDB_STRING;
+    paramtv[0] = &RDB_STRING;
+    paramtv[1] = &RDB_STRING;
 
-    ret = RDB_put_global_ro_op("=", 2, argtv, &RDB_BOOLEAN, RDB_dfl_obj_equals, ecp);
+    ret = RDB_put_global_ro_op("=", 2, paramtv, &RDB_BOOLEAN, RDB_dfl_obj_equals, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_BINARY;
-    argtv[1] = &RDB_BINARY;
+    paramtv[0] = &RDB_BINARY;
+    paramtv[1] = &RDB_BINARY;
 
-    ret = RDB_put_global_ro_op("=", 2, argtv, &RDB_BOOLEAN, &RDB_eq_binary, ecp);
+    ret = RDB_put_global_ro_op("=", 2, paramtv, &RDB_BOOLEAN, &RDB_eq_binary, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_BOOLEAN;
-    argtv[1] = &RDB_BOOLEAN;
+    paramtv[0] = &RDB_BOOLEAN;
+    paramtv[1] = &RDB_BOOLEAN;
 
-    ret = RDB_put_global_ro_op("<>", 2, argtv, &RDB_BOOLEAN, &neq_bool, ecp);
+    ret = RDB_put_global_ro_op("<>", 2, paramtv, &RDB_BOOLEAN, &neq_bool, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_INTEGER;
-    argtv[1] = &RDB_INTEGER;
+    paramtv[0] = &RDB_INTEGER;
+    paramtv[1] = &RDB_INTEGER;
 
-    ret = RDB_put_global_ro_op("<>", 2, argtv, &RDB_BOOLEAN,
+    ret = RDB_put_global_ro_op("<>", 2, paramtv, &RDB_BOOLEAN,
             &RDB_obj_not_equals, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_FLOAT;
-    argtv[1] = &RDB_FLOAT;
+    paramtv[0] = &RDB_FLOAT;
+    paramtv[1] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op("<>", 2, argtv, &RDB_BOOLEAN,
+    ret = RDB_put_global_ro_op("<>", 2, paramtv, &RDB_BOOLEAN,
             &RDB_obj_not_equals, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_FLOAT;
-    argtv[1] = &RDB_FLOAT;
+    paramtv[0] = &RDB_FLOAT;
+    paramtv[1] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op("<>", 2, argtv, &RDB_BOOLEAN,
+    ret = RDB_put_global_ro_op("<>", 2, paramtv, &RDB_BOOLEAN,
             &RDB_obj_not_equals, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_STRING;
-    argtv[1] = &RDB_STRING;
+    paramtv[0] = &RDB_STRING;
+    paramtv[1] = &RDB_STRING;
 
-    ret = RDB_put_global_ro_op("<>", 2, argtv, &RDB_BOOLEAN,
+    ret = RDB_put_global_ro_op("<>", 2, paramtv, &RDB_BOOLEAN,
             &RDB_obj_not_equals, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_BINARY;
-    argtv[1] = &RDB_BINARY;
+    paramtv[0] = &RDB_BINARY;
+    paramtv[1] = &RDB_BINARY;
 
-    ret = RDB_put_global_ro_op("<>", 2, argtv, &RDB_BOOLEAN, &neq_binary, ecp);
+    ret = RDB_put_global_ro_op("<>", 2, paramtv, &RDB_BOOLEAN, &neq_binary, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_INTEGER;
+    paramtv[0] = &RDB_INTEGER;
 
-    ret = RDB_put_global_ro_op("-", 1, argtv, &RDB_INTEGER, &negate_int, ecp);
+    ret = RDB_put_global_ro_op("-", 1, paramtv, &RDB_INTEGER, &negate_int, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_FLOAT;
+    paramtv[0] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op("-", 1, argtv, &RDB_FLOAT, &negate_float, ecp);
+    ret = RDB_put_global_ro_op("-", 1, paramtv, &RDB_FLOAT, &negate_float, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_INTEGER;
-    argtv[1] = &RDB_INTEGER;
+    paramtv[0] = &RDB_INTEGER;
+    paramtv[1] = &RDB_INTEGER;
 
-    ret = RDB_put_global_ro_op("+", 2, argtv, &RDB_INTEGER, &add_int, ecp);
+    ret = RDB_put_global_ro_op("+", 2, paramtv, &RDB_INTEGER, &add_int, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_FLOAT;
-    argtv[1] = &RDB_FLOAT;
+    paramtv[0] = &RDB_FLOAT;
+    paramtv[1] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op("+", 2, argtv, &RDB_FLOAT, &add_float, ecp);
+    ret = RDB_put_global_ro_op("+", 2, paramtv, &RDB_FLOAT, &add_float, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_INTEGER;
-    argtv[1] = &RDB_INTEGER;
+    paramtv[0] = &RDB_INTEGER;
+    paramtv[1] = &RDB_INTEGER;
 
-    ret = RDB_put_global_ro_op("-", 2, argtv, &RDB_INTEGER, &subtract_int, ecp);
+    ret = RDB_put_global_ro_op("-", 2, paramtv, &RDB_INTEGER, &subtract_int, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_FLOAT;
-    argtv[1] = &RDB_FLOAT;
+    paramtv[0] = &RDB_FLOAT;
+    paramtv[1] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op("-", 2, argtv, &RDB_FLOAT, &subtract_float, ecp);
+    ret = RDB_put_global_ro_op("-", 2, paramtv, &RDB_FLOAT, &subtract_float, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_INTEGER;
-    argtv[1] = &RDB_INTEGER;
+    paramtv[0] = &RDB_INTEGER;
+    paramtv[1] = &RDB_INTEGER;
 
-    ret = RDB_put_global_ro_op("*", 2, argtv, &RDB_INTEGER, &multiply_int, ecp);
+    ret = RDB_put_global_ro_op("*", 2, paramtv, &RDB_INTEGER, &multiply_int, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_FLOAT;
-    argtv[1] = &RDB_FLOAT;
+    paramtv[0] = &RDB_FLOAT;
+    paramtv[1] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op("*", 2, argtv, &RDB_FLOAT, &multiply_float, ecp);
+    ret = RDB_put_global_ro_op("*", 2, paramtv, &RDB_FLOAT, &multiply_float, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_INTEGER;
-    argtv[1] = &RDB_INTEGER;
+    paramtv[0] = &RDB_INTEGER;
+    paramtv[1] = &RDB_INTEGER;
 
-    ret = RDB_put_global_ro_op("/", 2, argtv, &RDB_INTEGER, &divide_int, ecp);
+    ret = RDB_put_global_ro_op("/", 2, paramtv, &RDB_INTEGER, &divide_int, ecp);
     if (ret != RDB_OK) {
         return RDB_ERROR;
     }
 
-    argtv[0] = &RDB_FLOAT;
-    argtv[1] = &RDB_FLOAT;
+    paramtv[0] = &RDB_FLOAT;
+    paramtv[1] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op("/", 2, argtv, &RDB_FLOAT, &divide_float, ecp);
+    ret = RDB_put_global_ro_op("/", 2, paramtv, &RDB_FLOAT, &divide_float, ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -2265,33 +2304,33 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    argtv[0] = &RDB_FLOAT;
+    paramtv[0] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op("sqrt", 1, argtv, &RDB_FLOAT, &math_sqrt, ecp);
+    ret = RDB_put_global_ro_op("sqrt", 1, paramtv, &RDB_FLOAT, &math_sqrt, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = RDB_put_global_ro_op("sin", 1, argtv, &RDB_FLOAT, &math_sin, ecp);
+    ret = RDB_put_global_ro_op("sin", 1, paramtv, &RDB_FLOAT, &math_sin, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = RDB_put_global_ro_op("cos", 1, argtv, &RDB_FLOAT, &math_cos, ecp);
+    ret = RDB_put_global_ro_op("cos", 1, paramtv, &RDB_FLOAT, &math_cos, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = RDB_put_global_ro_op("atan", 1, argtv, &RDB_FLOAT, &math_atan, ecp);
+    ret = RDB_put_global_ro_op("atan", 1, paramtv, &RDB_FLOAT, &math_atan, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[1] = &RDB_FLOAT;
+    paramtv[1] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op("atan2", 2, argtv, &RDB_FLOAT, &math_atan2, ecp);
+    ret = RDB_put_global_ro_op("atan2", 2, paramtv, &RDB_FLOAT, &math_atan2, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_STRING;
+    paramtv[0] = &RDB_STRING;
 
-    ret = RDB_put_global_ro_op("getenv", 1, argtv, &RDB_STRING, &op_getenv, ecp);
+    ret = RDB_put_global_ro_op("getenv", 1, paramtv, &RDB_STRING, &op_getenv, ecp);
     if (ret != RDB_OK)
         return ret;
 
