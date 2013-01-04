@@ -2494,13 +2494,13 @@ Duro_print_error(const RDB_object *errobjp)
     RDB_init_exec_context(&ec);
     RDB_init_obj(&msgobj);
 
-    fputs(RDB_type_name(errtyp), stdout);
+    fputs (RDB_type_name(errtyp), stderr);
 
     if (RDB_obj_comp(errobjp, "msg", &msgobj, NULL, &ec, NULL) == RDB_OK) {
-        printf(": %s", RDB_obj_string(&msgobj));
+        fprintf(stderr, ": %s", RDB_obj_string(&msgobj));
     }
 
-    fputs("\n", stdout);
+    fputs ("\n", stderr);
 
     RDB_destroy_obj(&msgobj, &ec);
     RDB_destroy_exec_context(&ec);
@@ -2562,7 +2562,7 @@ Duro_dt_execute(RDB_environment *dbenvp, char *dbname, char *infilename,
                     Duro_print_error(errobjp);
                     RDB_parse_init_buf(NULL);
                 } else {
-                    printf("error in statement at or near line %d: ", err_line);
+                    fprintf(stderr, "error in statement at or near line %d: ", err_line);
                     Duro_exit_interp();
                     goto error;
                 }
