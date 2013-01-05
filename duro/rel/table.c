@@ -75,6 +75,11 @@ RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
         return RDB_ERROR;
     }
 
+    if (!RDB_type_is_valid(reltyp)) {
+        RDB_raise_invalid_argument("type not implemented", ecp);
+        return RDB_ERROR;
+    }
+
     attrc = reltyp->def.basetyp->def.tuple.attrc;
 
     if (keyv != NULL) {

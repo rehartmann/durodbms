@@ -114,15 +114,44 @@ RDB_load_type_ops(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
  */
 
 /**
- * RDB_type_is_numeric checks if a type is numeric.
-
-@returns
-
-RDB_TRUE if the type is INTEGER or FLOAT, RDB_FALSE otherwise.
+ * Check if a type is numeric.
+ *
+ * @returns
+ * RDB_TRUE if the type is INTEGER or FLOAT, RDB_FALSE otherwise.
  */
 RDB_bool
 RDB_type_is_numeric(const RDB_type *typ) {
-    return (RDB_bool)(typ == &RDB_INTEGER || typ == &RDB_FLOAT);
+    return (RDB_bool) (typ == &RDB_INTEGER || typ == &RDB_FLOAT);
+}
+
+/**
+ * Check if a type is valid, that is, if it can be used for declaring variables.
+ * A scalar type is valid if it is implemented (either a built-in type
+ * or a user-defined type on which RDB_implement_type() has been called
+ * successfully).
+ * A non-scalar type is valid if its base/attribute types are valid.
+ *
+ * @returns
+ * RDB_TRUE if the type is valid, RDB_FALSE otherwise.
+ */
+RDB_bool
+RDB_type_is_valid(const RDB_type *typ) {
+    int i;
+
+    switch (typ->kind) {
+        case RDB_TP_TUPLE:
+            for (i = 0; i < typ->def.tuple.attrc; i++) {
+                if (!RDB_type_is_valid(typ->def.tuple.attrv[i].typ))
+                    return RDB_FALSE;
+            }
+            return RDB_TRUE;
+        case RDB_TP_RELATION:
+        case RDB_TP_ARRAY:
+            return RDB_type_is_valid(typ->def.basetyp);
+        case RDB_TP_SCALAR:
+            return (RDB_bool) (typ->ireplen != RDB_NOT_IMPLEMENTED);
+    }
+    abort();
 }
 
 /**

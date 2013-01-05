@@ -485,6 +485,7 @@ exec_call_retry(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     int ret;
     RDB_transaction tx;
     RDB_database *dbp;
+    RDB_exec_context ec;
 
     ret = exec_call(nodep, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
     /*
@@ -504,8 +505,11 @@ exec_call_retry(const RDB_parse_node *nodep, RDB_exec_context *ecp)
      * Start transaction and retry.
      * If this succeeds, the operator will be in memory next time
      * so no transaction will be needed.
+     * Use own exec context so the original error is preserved.
      */
-    dbp = Duro_get_db(ecp);
+    RDB_init_exec_context(&ec);
+    dbp = Duro_get_db(&ec);
+    RDB_destroy_exec_context(&ec);
     if (dbp == NULL) {
         return RDB_ERROR;
     }

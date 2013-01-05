@@ -1077,12 +1077,12 @@ If an error occurs, an error value is left in *<var>ecp</var>.
 The table will have <var>attrc</var> attributes. The individual
 attributes are specified by the elements of <var>attrv</var>.
 <var>options</var> is currently ignored, but should be set to zero
-for compatibility with future versions
+for compatibility with future versions.
 
 The candidate keys for the table are specified by <var>keyc</var>
 and <var>keyv</var>.
 
-A candidate key may not be a subset of another.
+A candidate key must not be a subset of another.
 If a single candidate key is specified, that key
 may be empty (not contain any attributes).
 

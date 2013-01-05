@@ -195,6 +195,7 @@ Duro_evaluate_retry(RDB_expression *exp, RDB_exec_context *ecp, RDB_object *resu
 {
     RDB_transaction tx;
     RDB_database *dbp;
+    RDB_exec_context ec;
     int ret;
 
     ret = RDB_evaluate(exp, &get_var, current_varmapp, Duro_envp, ecp,
@@ -217,7 +218,9 @@ Duro_evaluate_retry(RDB_expression *exp, RDB_exec_context *ecp, RDB_object *resu
      * If this succeeds, the operator will be in memory next time
      * so no transaction will be needed.
      */
-    dbp = Duro_get_db(ecp);
+    RDB_init_exec_context(&ec);
+    dbp = Duro_get_db(&ec);
+    RDB_destroy_exec_context(&ec);
     if (dbp == NULL) {
         return RDB_ERROR;
     }
@@ -237,6 +240,7 @@ Duro_expr_type_retry(RDB_expression *exp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
     RDB_database *dbp;
+    RDB_exec_context ec;
     RDB_type *typ = RDB_expr_type(exp, &Duro_get_var_type, NULL,
             Duro_envp, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
     /*
@@ -255,7 +259,9 @@ Duro_expr_type_retry(RDB_expression *exp, RDB_exec_context *ecp)
     /*
      * Start transaction and retry.
      */
-    dbp = Duro_get_db(ecp);
+    RDB_init_exec_context(&ec);
+    dbp = Duro_get_db(&ec);
+    RDB_destroy_exec_context(&ec);
     if (dbp == NULL) {
         return NULL;
     }
@@ -291,6 +297,10 @@ Duro_exec_vardef(RDB_parse_node *nodep, RDB_exec_context *ecp)
             return RDB_ERROR;
         if (RDB_type_is_relation(typ)) {
             RDB_raise_syntax("relation type not permitted", ecp);
+            return RDB_ERROR;
+        }
+        if (!RDB_type_is_valid(typ)) {
+            RDB_raise_invalid_argument("type is not implemented", ecp);
             return RDB_ERROR;
         }
         if (nodep->nextp->nextp->kind == RDB_NODE_TOK
@@ -986,6 +996,7 @@ Duro_parse_node_to_type_retry(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
     RDB_database *dbp;
     RDB_transaction tx;
+    RDB_exec_context ec;
     RDB_type *typ = RDB_parse_node_to_type(nodep, &Duro_get_var_type,
             NULL, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
     /*
@@ -1006,7 +1017,9 @@ Duro_parse_node_to_type_retry(RDB_parse_node *nodep, RDB_exec_context *ecp)
     /*
      * Start transaction and retry.
      */
-    dbp = Duro_get_db(ecp);
+    RDB_init_exec_context(&ec);
+    dbp = Duro_get_db(&ec);
+    RDB_destroy_exec_context(&ec);
     if (dbp == NULL) {
         return NULL;
     }

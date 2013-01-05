@@ -542,6 +542,9 @@ RDB_dup_nonscalar_type(RDB_type *typ, RDB_exec_context *);
 RDB_bool
 RDB_type_is_numeric(const RDB_type *);
 
+RDB_bool
+RDB_type_is_valid(const RDB_type *);
+
 RDB_type *
 RDB_new_tuple_type(int attrc, const RDB_attr attrv[],
         RDB_exec_context *);

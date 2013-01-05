@@ -81,11 +81,18 @@ test deftype {user-defined types} -setup $SETUP -body {
         current_db := 'D';
         type t
             possrep { a integer, b integer };
+    }
+    exec $testdir/../../dli/durodt -e dbenv -d D << {
+        -- Test declaration w/ incomplete types
+        try
+            var vt t;
+        catch err;
+            put_line('error #1 caused by incomplete type caught');
+        end try;
 
         implement type t;
         end implement;
-    }
-    exec $testdir/../../dli/durodt -e dbenv -d D << {
+
         -- Check selector access w/o tx
         var v init t(0, 0);
         
@@ -139,6 +146,14 @@ test deftype {user-defined types} -setup $SETUP -body {
 		end try;        
 
         type string5 possrep {value string} constraint length(value) <= 5;
+
+        -- Test table declaration w/ incomplete type
+        try
+            var pr private rel {id int, s5 string5} key {id};
+        catch err;
+            put_line('error #2 caused by incomplete type caught');
+        end try;
+
         implement type string5;
         end implement;
 
@@ -155,7 +170,8 @@ test deftype {user-defined types} -setup $SETUP -body {
         end try;
         commit;
     }
-} -result {0
+} -result {error #1 caused by incomplete type caught
+0
 0
 1
 2
@@ -168,6 +184,7 @@ test deftype {user-defined types} -setup $SETUP -body {
 invalid assignment caught
 caught in_use_error
 caught name_error
+error #2 caused by incomplete type caught
 type constraint violation caught
 }
 
