@@ -104,8 +104,7 @@ Internal error.
 TYPE fatal_error POSSREP { };
 </pre>
 
-Fatal error. This means that future calls to DuroDBMS functions
-will most likely fail.
+Fatal error. This usually indicates data corruption.
 
 */
 

@@ -92,11 +92,23 @@ static int
 connect_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int ret = RDB_open_env(RDB_obj_string(argv[0]), &Duro_envp, RDB_CREATE);
+    /*
+     * Try opening the environment without RDB_CREATE first
+     * to attach to existing memory pool
+     */
+    int ret = RDB_open_env(RDB_obj_string(argv[0]), &Duro_envp, 0);
     if (ret != RDB_OK) {
-        RDB_errcode_to_error(ret, ecp, txp);
-        Duro_envp = NULL;
-        return RDB_ERROR;
+        /*
+         * Retry with RDB_CREATE option, re-creating necessary files
+         * and running recovery
+         */
+        int ret = RDB_open_env(RDB_obj_string(argv[0]), &Duro_envp,
+                RDB_CREATE);
+        if (ret != RDB_OK) {
+            RDB_errcode_to_error(ret, ecp, txp);
+            Duro_envp = NULL;
+            return RDB_ERROR;
+        }
     }
     return RDB_OK;
 }
