@@ -189,6 +189,28 @@ test virtual_assign {assignment to virtual tables} -setup $SETUP -body {
         insert empd1 tup {emp_id 1, dept_id 1, name 'Smith'};
         commit;
     }
+    exec $testdir/../../dli/durodt -e dbenv -d D << {
+        begin tx;
+
+        insert empd1 tup {emp_id 2, dept_id 1, name 'Jones'};
+
+        try
+            -- Must fail because of dept_id=2
+            insert empd1 tup {emp_id 3, dept_id 2, name 'Miller'};
+        catch err predicate_violation_error;
+            put_line('predicate violation caught');
+        end try;
+
+        var emptp tup same_heading_as(empd1);
+        foreach emptp in empd1 order (emp_id asc);
+            put_line(emptp.name);
+        end foreach;
+
+        commit;
+    }
+} -result {predicate violation caught
+Smith
+Jones
 }
 
 test tupleattr {tuple-valued attributes} -setup $SETUP -body {
