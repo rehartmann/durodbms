@@ -29,7 +29,7 @@ test std_output {Standard output} -match regexp -body {
 
 test file_output {File Output} -match regexp -body {
     exec $testdir/../../dli/durodt << {
-        VAR is io_stream;
+        VAR is iostream_id;
 
         open(is, 'out.txt', 'w');
 
@@ -90,7 +90,7 @@ test file_input {File input} -body {
     close $f    
 
     set res [exec $testdir/../../dli/durodt << {
-        VAR is io_stream;
+        VAR is iostream_id;
 
         open(is, 'in.txt', 'r');
         VAR line string;

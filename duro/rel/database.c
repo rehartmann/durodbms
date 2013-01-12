@@ -1239,6 +1239,7 @@ RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         dbp = dbp->nextdbp;
     }
 
+    /* If not found, read from catalog, search in real tables first */
     tbp = RDB_cat_get_rtable(name, ecp, txp);
     if (tbp != NULL)
         return tbp;
@@ -1554,8 +1555,6 @@ in which case the transaction may be implicitly rolled back.
 int
 RDB_add_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int ret;
-
     if (tbp->val.tb.name == NULL) {
         RDB_raise_invalid_argument("missing table name", ecp);
         return RDB_ERROR;
@@ -1573,12 +1572,10 @@ RDB_add_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
 
-    ret = RDB_cat_insert(tbp, ecp, txp);
-    if (ret != RDB_OK)
+    if (RDB_cat_insert(tbp, ecp, txp) != RDB_OK)
         return RDB_ERROR;
 
-    ret = RDB_assoc_table_db(tbp, txp->dbp, ecp);
-    if (ret != RDB_OK)
+    if (RDB_assoc_table_db(tbp, txp->dbp, ecp) != RDB_OK)
         return RDB_ERROR;
 
     tbp->val.tb.is_persistent = RDB_TRUE;

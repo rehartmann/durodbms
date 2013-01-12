@@ -1879,7 +1879,7 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     paramtv[0] = &RDB_STRING;
 
-    ret = RDB_put_global_ro_op("length", 1, paramtv, &RDB_INTEGER, &length_string, ecp);
+    ret = RDB_put_global_ro_op("strlen", 1, paramtv, &RDB_INTEGER, &length_string, ecp);
     if (ret != RDB_OK)
         return ret;
 

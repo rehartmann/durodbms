@@ -68,42 +68,42 @@ OPERATOR read(data binary, count integer) UPDATES {data};
 
 Read up to count bytes from standard input and store it in <var>data</var>.
 
-OPERATOR put_line(ios io_stream, line string) UPDATES {};
+OPERATOR put_line(ios iostream_id, line string) UPDATES {};
 
 Write <var>line</var> to the I/O stream <var>ios</var>, followed by a newline.
 
-OPERATOR put(io_stream ios, data string) UPDATES {};
+OPERATOR put(iostream_id ios, data string) UPDATES {};
 
-OPERATOR put(io_stream ios, data binary) UPDATES {};
+OPERATOR put(iostream_id ios, data binary) UPDATES {};
 
-OPERATOR put(io_stream ios, data integer) UPDATES {};
+OPERATOR put(iostream_id ios, data integer) UPDATES {};
 
-OPERATOR put(io_stream ios, data float) UPDATES {};
+OPERATOR put(iostream_id ios, data float) UPDATES {};
 
-OPERATOR put(io_stream ios, data boolean) UPDATES {};
+OPERATOR put(iostream_id ios, data boolean) UPDATES {};
 
-OPERATOR put(io_stream ios, data <em>TUPLE</em>) UPDATES {};
+OPERATOR put(iostream_id ios, data <em>TUPLE</em>) UPDATES {};
 
-OPERATOR put(io_stream ios, data <em>RELATION</em>) UPDATES {};
+OPERATOR put(iostream_id ios, data <em>RELATION</em>) UPDATES {};
 
-OPERATOR put(io_stream ios, data <em>ARRAY</em>) UPDATES {};
+OPERATOR put(iostream_id ios, data <em>ARRAY</em>) UPDATES {};
 
 Write <var>data</var> to the I/O stream <var>ios</var>.
 
-OPERATOR get_line(io_stream ios, line string) UPDATES {line};
+OPERATOR get_line(iostream_id ios, line string) UPDATES {line};
 
 Read a line from I/O stream <var>ios</var> and store it in line, without the trailing newline.
 
-OPERATOR read(io_stream ios, data binary, count integer) UPDATES {data};
+OPERATOR read(iostream_id ios, data binary, count integer) UPDATES {data};
 
 Read up to count bytes from <var>ios</var> and store it in <var>data</var>.
 
-OPERATOR open(ios io_stream, string path, string mode) UPDATES {ios};
+OPERATOR open(ios iostream_id, string path, string mode) UPDATES {ios};
 
 Open file <var>path</var> in mode <var>mode</var> and store the resulting I/O stream
 in <var>ios</var>.
 
-OPERATOR close(ios io_stream) UPDATES {};
+OPERATOR close(ios iostream_id) UPDATES {};
 
 Close I/O stream <var>ios</var>.
 
@@ -112,7 +112,7 @@ OPERATOR eof() RETURNS boolean;
 Return TRUE if the end-of-file indicator was set while reading
 from standard input.
 
-OPERATOR eof(ios io_stream) RETURNS boolean;
+OPERATOR eof(ios iostream_id) RETURNS boolean;
 
 Return TRUE if the end-of-file indicator was set while reading
 from <var>ios</var>.
@@ -120,7 +120,7 @@ from <var>ios</var>.
 */
 
 /*
- * Get file number from io_stream
+ * Get file number from iostream_id
  */
 static int
 get_fileno(const RDB_object *objp, RDB_exec_context *ecp)
@@ -503,7 +503,7 @@ init_iostream(RDB_object *iosp, int fno, RDB_exec_context *ecp)
     RDB_init_obj(&fobj);
     RDB_int_to_obj(&fobj, (RDB_int) fno);
     fobjp = &fobj;
-    ret = RDB_call_ro_op_by_name("io_stream", 1, &fobjp, ecp, NULL, iosp);
+    ret = RDB_call_ro_op_by_name("iostream_id", 1, &fobjp, ecp, NULL, iosp);
     RDB_destroy_obj(&fobj, ecp);
     return ret;
 }    
@@ -617,30 +617,30 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     put_bool_params[0].typ = &RDB_BOOLEAN;
     put_bool_params[0].update = RDB_FALSE;
 
-    put_iostream_string_params[0].typ = &RDB_IO_STREAM;
+    put_iostream_string_params[0].typ = &RDB_IOSTREAM_ID;
     put_iostream_string_params[0].update = RDB_FALSE;
     put_iostream_string_params[1].typ = &RDB_STRING;
     put_iostream_string_params[1].update = RDB_FALSE;
-    put_iostream_binary_params[0].typ = &RDB_IO_STREAM;
+    put_iostream_binary_params[0].typ = &RDB_IOSTREAM_ID;
     put_iostream_binary_params[0].update = RDB_FALSE;
     put_iostream_binary_params[1].typ = &RDB_BINARY;
     put_iostream_binary_params[1].update = RDB_FALSE;
-    put_iostream_int_params[0].typ = &RDB_IO_STREAM;
+    put_iostream_int_params[0].typ = &RDB_IOSTREAM_ID;
     put_iostream_int_params[0].update = RDB_FALSE;
     put_iostream_int_params[1].typ = &RDB_INTEGER;
     put_iostream_int_params[1].update = RDB_FALSE;
-    put_iostream_float_params[0].typ = &RDB_IO_STREAM;
+    put_iostream_float_params[0].typ = &RDB_IOSTREAM_ID;
     put_iostream_float_params[0].update = RDB_FALSE;
     put_iostream_float_params[1].typ = &RDB_FLOAT;
     put_iostream_float_params[1].update = RDB_FALSE;
-    put_iostream_bool_params[0].typ = &RDB_IO_STREAM;
+    put_iostream_bool_params[0].typ = &RDB_IOSTREAM_ID;
     put_iostream_bool_params[0].update = RDB_FALSE;
     put_iostream_bool_params[1].typ = &RDB_BOOLEAN;
     put_iostream_bool_params[1].update = RDB_FALSE;
 
     get_line_params[0].typ = &RDB_STRING;
     get_line_params[0].update = RDB_TRUE;
-    get_line_iostream_params[0].typ = &RDB_IO_STREAM;
+    get_line_iostream_params[0].typ = &RDB_IOSTREAM_ID;
     get_line_iostream_params[0].update = RDB_FALSE;
     get_line_iostream_params[1].typ = &RDB_STRING;
     get_line_iostream_params[1].update = RDB_TRUE;
@@ -649,21 +649,21 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     read_params[0].update = RDB_TRUE;
     read_params[1].typ = &RDB_INTEGER;
     read_params[1].update = RDB_FALSE;
-    read_iostream_params[0].typ = &RDB_IO_STREAM;
+    read_iostream_params[0].typ = &RDB_IOSTREAM_ID;
     read_iostream_params[0].update = RDB_FALSE;
     read_iostream_params[1].typ = &RDB_BINARY;
     read_iostream_params[1].update = RDB_TRUE;
     read_iostream_params[2].typ = &RDB_INTEGER;
     read_iostream_params[2].update = RDB_FALSE;
 
-    open_paramv[0].typ = &RDB_IO_STREAM;
+    open_paramv[0].typ = &RDB_IOSTREAM_ID;
     open_paramv[0].update = RDB_TRUE;
     open_paramv[1].typ = &RDB_STRING;
     open_paramv[1].update = RDB_FALSE;
     open_paramv[2].typ = &RDB_STRING;
     open_paramv[2].update = RDB_FALSE;
 
-    close_paramv[0].typ = &RDB_IO_STREAM;
+    close_paramv[0].typ = &RDB_IOSTREAM_ID;
     close_paramv[0].update = RDB_FALSE;
 
     if (RDB_put_upd_op(opmapp, "put_line", 1, put_string_params, &op_put_line_string,
@@ -731,7 +731,7 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
             != RDB_OK)
         return RDB_ERROR;
 
-    eof_iostream_param_typ = &RDB_IO_STREAM;
+    eof_iostream_param_typ = &RDB_IOSTREAM_ID;
 
     if (RDB_put_global_ro_op("eof", 0, NULL, &RDB_BOOLEAN, &op_eof, ecp)
             != RDB_OK) {

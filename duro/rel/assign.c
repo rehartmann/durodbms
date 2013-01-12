@@ -544,6 +544,7 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *tplp,
 {
     int ret;
     RDB_bool b;
+    RDB_object *tbp;
 
     switch (exp->kind) {
         case RDB_EX_TBP:
@@ -552,6 +553,12 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *tplp,
             return resolve_insert(&exp->def.obj, tplp, insnpp, ecp, txp);
         case RDB_EX_RO_OP:
             break;
+        case RDB_EX_VAR:
+            /* Resolve variable */
+            tbp = RDB_get_table(exp->def.varname, ecp, txp);
+            if (tbp == NULL)
+                return RDB_ERROR;
+            return resolve_insert(tbp, tplp, insnpp, ecp, txp);
         default:
             RDB_raise_invalid_argument("invalid target table", ecp);
             return RDB_ERROR;
@@ -634,7 +641,7 @@ resolve_insert(RDB_object *tbp, const RDB_object *tplp, insert_node **insnpp,
             return RDB_ERROR;
         return RDB_OK;
     }
-    
+
     return resolve_insert_expr(tbp->val.tb.exp, tplp, insnpp, ecp, txp);
 }
 
@@ -1189,8 +1196,10 @@ resolve_deletes(int delc, const RDB_ma_delete *delv, RDB_ma_delete **ndelvp,
 
     if (llen > 0) {
         (*ndelvp) = RDB_alloc(sizeof (RDB_ma_delete) * (delc + llen), ecp);
-        if (*ndelvp == NULL)
+        if (*ndelvp == NULL) {
+            ret = RDB_ERROR;
             goto cleanup;
+        }
 
         for (i = 0; i < delc; i++) {
             (*ndelvp)[i].tbp = delv[i].tbp;
@@ -1247,13 +1256,8 @@ get_empty(RDB_expression *exp)
     return NULL;
 }
 
-/**
- * Get optimized constraints and invoke *applyfn
- * with the optimized expression as argument.
- * Stop if *applyfn returns a value different from RDB_OK
- */
-int
-RDB_apply_constraints(int ninsc, const RDB_ma_insert ninsv[],
+static int
+apply_constraints_i(int ninsc, const RDB_ma_insert ninsv[],
         int nupdc, const RDB_ma_update nupdv[],
         int ndelc, const RDB_ma_delete ndelv[],
         int copyc, const RDB_ma_copy copyv[],
@@ -1351,7 +1355,7 @@ check_constraints(int insc, const RDB_ma_insert insv[],
         int copyc, const RDB_ma_copy copyv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    return RDB_apply_constraints(insc, insv, updc, updv, delc, delv,
+    return apply_constraints_i(insc, insv, updc, updv, delc, delv,
             copyc, copyv, &eval_constraint, ecp, txp);
 }
 
@@ -1858,7 +1862,7 @@ cleanup:
     /*
      * Free generated inserts, updates, deletes
      */
-    if (ninsv != insv) {
+    if (ninsv != NULL && ninsv != insv) {
         for (i = insc; i < ninsc; i++) {
             RDB_destroy_obj(ninsv[i].objp, ecp);
             RDB_free(ninsv[i].objp);
@@ -1866,7 +1870,7 @@ cleanup:
         RDB_free(ninsv);
     }
 
-    if (nupdv != updv) {
+    if (nupdv != NULL && nupdv != updv) {
         for (i = updc; i < nupdc; i++) {
             if (nupdv[i].condp != NULL) {
                 RDB_del_expr(nupdv[i].condp, ecp);
@@ -1875,7 +1879,7 @@ cleanup:
         RDB_free(nupdv);
     }
 
-    if (ndelv != delv) {
+    if (ndelv != NULL && ndelv != delv) {
         for (i = delc; i < ndelc; i++) {
             if (ndelv[i].condp != NULL) {
                 RDB_del_expr(ndelv[i].condp, ecp);
@@ -2122,6 +2126,105 @@ RDB_delete(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
     del.tbp = tbp;
     del.condp = condp;
     return RDB_multi_assign(0, NULL, 0, NULL, 1, &del, 0, NULL, ecp, txp);
+}
+
+/**
+ * Get expressions that would have been evaluated
+ * by an invocation of RDB_multi_assign() and invoke *applyfn
+ * with the optimized expression as argument.
+ * Stop if the invocation returns a value different from RDB_OK.
+ */
+int
+RDB_apply_constraints(int insc, const RDB_ma_insert insv[],
+        int updc, const RDB_ma_update updv[],
+        int delc, const RDB_ma_delete delv[],
+        int copyc, const RDB_ma_copy copyv[],
+        RDB_apply_constraint_fn *applyfnp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int i;
+    int ret;
+    int ninsc;
+    int nupdc;
+    int ndelc;
+    RDB_ma_insert *ninsv = NULL;
+    RDB_ma_update *nupdv = NULL;
+    RDB_ma_delete *ndelv = NULL;
+
+    if (check_assign_types(insc, insv, updc, updv, delc, delv,
+            copyc, copyv, ecp, txp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    /*
+     * Resolve virtual table assignments
+     */
+
+    ninsc = resolve_inserts(insc, insv, &ninsv, ecp, txp);
+    if (ninsc == RDB_ERROR) {
+        ret = RDB_ERROR;
+        ninsv = NULL;
+        goto cleanup;
+    }
+
+    nupdc = resolve_updates(updc, updv, &nupdv, ecp, txp);
+    if (nupdc == RDB_ERROR) {
+        ret = RDB_ERROR;
+        nupdv = NULL;
+        goto cleanup;
+    }
+
+    ndelc = resolve_deletes(delc, delv, &ndelv, ecp, txp);
+    if (ndelc == RDB_ERROR) {
+        ret = RDB_ERROR;
+        ndelv = NULL;
+        goto cleanup;
+    }
+
+    ret = check_conflicts_deps(ninsc, ninsv, nupdc, nupdv,
+            ndelc, ndelv, copyc, copyv, ecp, txp);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    /*
+     * Check constraints
+     */
+
+    ret = apply_constraints_i(ninsc, ninsv,
+            nupdc, nupdv, ndelc, ndelv,
+            copyc, copyv, applyfnp, ecp, txp);
+
+cleanup:
+    /*
+     * Free generated inserts, updates, deletes
+     */
+    if (ninsv != NULL && ninsv != insv) {
+        for (i = insc; i < ninsc; i++) {
+            RDB_destroy_obj(ninsv[i].objp, ecp);
+            RDB_free(ninsv[i].objp);
+        }
+        RDB_free(ninsv);
+    }
+
+    if (nupdv != NULL && nupdv != updv) {
+        for (i = updc; i < nupdc; i++) {
+            if (nupdv[i].condp != NULL) {
+                RDB_del_expr(nupdv[i].condp, ecp);
+            }
+        }
+        RDB_free(nupdv);
+    }
+
+    if (ndelv != NULL && ndelv != delv) {
+        for (i = delc; i < ndelc; i++) {
+            if (ndelv[i].condp != NULL) {
+                RDB_del_expr(ndelv[i].condp, ecp);
+            }
+        }
+        RDB_free(ndelv);
+    }
+
+    return ret;
 }
 
 /*@}*/

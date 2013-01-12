@@ -684,10 +684,11 @@ RDB_remove_to_project(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         goto error;
     }
 
-    /* Old attributes 1 .. n */
+    /* Old arguments 1 .. n */
     oargs.firstp = exp->def.op.args.firstp->nextp;
     oargs.lastp = exp->def.op.args.lastp;
 
+    /* Initialize new argument list with arg #1 */
     nargp = lastnargp = exp->def.op.args.firstp;
     nargp->nextp = NULL;
 
@@ -698,9 +699,16 @@ RDB_remove_to_project(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
                         tpltyp->def.tuple.attrv[i].name) != 0)
             argp = argp->nextp;
         if (argp == NULL) {
-            /* Not found - take attribute */
-
+            /*
+             * Attribute not in list of removed attributes,
+             * so it becomes a PROJECT argument
+             */
             if (ai >= attrc + 1) {
+                /*
+                 * Number of PROJECT arguments would become greater than
+                 * the number of attributes - this indicates that something
+                 * must be wrong with the arguments
+                 */
                 RDB_raise_invalid_argument("invalid REMOVE arguments", ecp);
                 goto error;
             }

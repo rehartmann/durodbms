@@ -160,7 +160,7 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
     }
     RDB_add_arg(exp, argp);
 
-    texp = RDB_ro_op("length", ecp);
+    texp = RDB_ro_op("strlen", ecp);
     if (texp == NULL) {
         RDB_del_expr(exp, ecp);
         goto error;

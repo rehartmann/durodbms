@@ -271,7 +271,7 @@ RDB_EXTERN_VAR RDB_type RDB_SYNTAX_ERROR;
 
 /* I/O type */
 
-RDB_EXTERN_VAR RDB_type RDB_IO_STREAM;
+RDB_EXTERN_VAR RDB_type RDB_IOSTREAM_ID;
 
 typedef struct {
     char *name;

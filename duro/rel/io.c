@@ -9,7 +9,7 @@
 
 #include "internal.h"
 
-RDB_type RDB_IO_STREAM;
+RDB_type RDB_IOSTREAM_ID;
 
 /*
  * Add type IO_STREAM for basic I/O support from the duro library.
@@ -20,21 +20,21 @@ RDB_add_io(RDB_exec_context *ecp)
     static RDB_attr io_stream_comp = { "fileno", &RDB_INTEGER };
 
     static RDB_possrep io_stream_rep = {
-        "io_stream",
+        "iostream_id",
         1,
         &io_stream_comp
     };
 
-    RDB_IO_STREAM.kind = RDB_TP_SCALAR;
-    RDB_IO_STREAM.ireplen = sizeof(RDB_int);
-    RDB_IO_STREAM.name = "io_stream";
-    RDB_IO_STREAM.def.scalar.builtin = RDB_TRUE;
-    RDB_IO_STREAM.def.scalar.repc = 1;
-    RDB_IO_STREAM.def.scalar.repv = &io_stream_rep;
-    RDB_IO_STREAM.def.scalar.arep = &RDB_INTEGER;
-    RDB_IO_STREAM.def.scalar.constraintp = NULL;
-    RDB_IO_STREAM.def.scalar.sysimpl = RDB_TRUE;
-    RDB_IO_STREAM.compare_op = NULL;
+    RDB_IOSTREAM_ID.kind = RDB_TP_SCALAR;
+    RDB_IOSTREAM_ID.ireplen = sizeof(RDB_int);
+    RDB_IOSTREAM_ID.name = "iostream_id";
+    RDB_IOSTREAM_ID.def.scalar.builtin = RDB_TRUE;
+    RDB_IOSTREAM_ID.def.scalar.repc = 1;
+    RDB_IOSTREAM_ID.def.scalar.repv = &io_stream_rep;
+    RDB_IOSTREAM_ID.def.scalar.arep = &RDB_INTEGER;
+    RDB_IOSTREAM_ID.def.scalar.constraintp = NULL;
+    RDB_IOSTREAM_ID.def.scalar.sysimpl = RDB_TRUE;
+    RDB_IOSTREAM_ID.compare_op = NULL;
 
-    return RDB_add_type(&RDB_IO_STREAM, ecp);
+    return RDB_add_type(&RDB_IOSTREAM_ID, ecp);
 }

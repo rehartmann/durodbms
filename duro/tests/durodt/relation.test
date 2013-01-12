@@ -177,7 +177,21 @@ x
 y
 }
 
-test tupleattr {tuple-valued attributes}  -setup $SETUP -body {
+test virtual_assign {assignment to virtual tables} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt -e dbenv -d D << {
+        begin tx;
+        var emp real rel{emp_id int, dept_id int, name string} key {emp_id};
+        commit;
+    }
+    exec $testdir/../../dli/durodt -e dbenv -d D << {
+        begin tx;
+        var empd1 virtual emp where dept_id = 1;
+        insert empd1 tup {emp_id 1, dept_id 1, name 'Smith'};
+        commit;
+    }
+}
+
+test tupleattr {tuple-valued attributes} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';

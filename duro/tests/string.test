@@ -21,7 +21,7 @@ test string {string functions} -setup $SETUP -body {
     
     set tx [duro::begin $dbenv TEST]
     
-    set len [duro::expr {length("Ab-")} $tx]
+    set len [duro::expr {strlen("Ab-")} $tx]
     if {$len != 3} {
         error "wrong string length: $len"
     }

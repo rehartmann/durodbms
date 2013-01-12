@@ -140,12 +140,12 @@ test deftype {user-defined types} -setup $SETUP -body {
         drop type t;
 
         try
-            type string5 possrep {value string} constraint length(val) <= 5;
+            type string5 possrep {value string} constraint strlen(val) <= 5;
 		catch ex name_error;
 		    put_line('caught name_error');
 		end try;        
 
-        type string5 possrep {value string} constraint length(value) <= 5;
+        type string5 possrep {value string} constraint strlen(value) <= 5;
 
         -- Test table declaration w/ incomplete type
         try
@@ -326,7 +326,7 @@ test defroop {read-only user-defined operators} -setup $SETUP -body {
         operator reverse(s string) returns string;
             var res string;	-- automatically initialized to ''
 
-            var i integer init length(s) - 1;
+            var i integer init strlen(s) - 1;
             while i >= 0;
                 res := res || substr(s, i, 1);
                 i := i - 1;
@@ -377,8 +377,6 @@ test defupdop {user-defined update operators} -setup $SETUP -body {
         begin transaction;
 
         operator op(s string, i integer) updates {s};
-            /* i := i + 1; !! must raise an error */
-
             type length_t possrep { m FLOAT } constraint (m >= 0.0);
 
             operator op1(s string) returns string;
@@ -389,7 +387,7 @@ test defupdop {user-defined update operators} -setup $SETUP -body {
                 s := s || 'z';
             end operator;
 
-            s := op1(s);
+            s := op1(cast_as_string(i));
             op2(s);
 
             return;
@@ -398,7 +396,7 @@ test defupdop {user-defined update operators} -setup $SETUP -body {
         var a string init 'x';
         var b integer init 1;
         op(a, b);
-        put_line("a = " || a || ", b = " || cast_as_string(b));
+        put_line("a = " || a);
 
         drop operator op1;
         drop operator op2;
@@ -416,7 +414,7 @@ test defupdop {user-defined update operators} -setup $SETUP -body {
 
         commit;
     }
-} -result {a = xyz, b = 1
+} -result {a = 1yz
 }
 
 test typeinf {type inference} -setup $SETUP -body {
