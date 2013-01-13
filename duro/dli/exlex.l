@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2011 Rene Hartmann.
+ * Copyright (C) 2003-2013 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -17,10 +17,7 @@
 #include <rel/typeimpl.h>
 #include "parsenode.h"
 #include "exparse.h"
-#include <string.h>
-#include <math.h>
 #include <ctype.h>
-#include <stdio.h>
 
 #define COMMENT_BUF_SIZE 10
 

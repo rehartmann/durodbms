@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <assert.h>
 
 extern int yylineno;
@@ -179,10 +180,14 @@ create_env_op(int argc, RDB_object *argv[], RDB_operator *op,
     int ret;
 
     /* Create directory if does not exist */
-    if (mkdir(RDB_obj_string(argv[0]),
+#ifdef _WIN32
+    ret = _mkdir(RDB_obj_string(argv[0]));
+#else
+    ret = mkdir(RDB_obj_string(argv[0]),
             S_IRUSR | S_IWUSR | S_IXUSR
-            | S_IRGRP | S_IWGRP | S_IXGRP) == -1
-            && errno != EEXIST) {
+            | S_IRGRP | S_IWGRP | S_IXGRP);
+#endif
+    if (ret == -1 && errno != EEXIST) {
         RDB_raise_system(strerror(errno), ecp);
         return RDB_ERROR;
     }
@@ -415,6 +420,7 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp,
     i = 0;
     while (argp != NULL) {
         RDB_parameter *paramp;
+        const char *varname;
 
         if (i > 0)
             argp = argp->nextp;
@@ -425,7 +431,7 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp,
         /*
          * paramp may be NULL for n-ary operators
          */
-        const char *varname = RDB_expr_var_name(exp);
+        varname = RDB_expr_var_name(exp);
         if (varname != NULL) {
             /*
              * If the expression is a variable, look it up
