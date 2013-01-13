@@ -257,7 +257,7 @@ project_type(const RDB_expression *exp, RDB_type *argtv[],
     argp = exp->def.op.args.firstp->nextp;
     while (argp != NULL) {
         if (!RDB_expr_is_string(argp)) {
-            RDB_raise_type_mismatch("PROJECT requires STRING arguments",
+            RDB_raise_type_mismatch("PROJECT requires string arguments",
                     ecp);
             return NULL;
         }
@@ -313,7 +313,7 @@ unwrap_type(const RDB_expression *exp, RDB_type *argtv[],
     while (argp != NULL) {
         if (!RDB_expr_is_string(argp)) {
             RDB_raise_type_mismatch(
-                    "UNWRAP argument must be STRING", ecp);
+                    "UNWRAP argument must be of type string", ecp);
             return NULL;
         }
         argp = argp->nextp;

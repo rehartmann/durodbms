@@ -167,7 +167,7 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
         if (constrtyp == NULL)
             return RDB_ERROR;
         if (constrtyp != &RDB_BOOLEAN) {
-            RDB_raise_type_mismatch("type constraint must be of type BOOLEAN",
+            RDB_raise_type_mismatch("type constraint must be of type boolean",
                     ecp);
             return RDB_ERROR;
         }

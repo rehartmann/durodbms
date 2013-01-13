@@ -655,7 +655,7 @@ RDB_evaluate_bool(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     }
     if (RDB_obj_type(&val) != &RDB_BOOLEAN) {
         RDB_destroy_obj(&val, ecp);
-        RDB_raise_type_mismatch("expression type must be BOOLEAN", ecp);
+        RDB_raise_type_mismatch("expression type must be boolean", ecp);
         return RDB_ERROR;
     }
 

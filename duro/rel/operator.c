@@ -481,7 +481,7 @@ RDB_call_ro_op_by_name_e(const char *name, int argc, RDB_object *argv[],
      */
     if (strcmp(name, "if") == 0 && argc == 3) {
         if (argv[0]->typ != &RDB_BOOLEAN) {
-            RDB_raise_type_mismatch("IF argument must be BOOLEAN", ecp);
+            RDB_raise_type_mismatch("IF argument must be boolean", ecp);
             return RDB_ERROR;
         }
         if (argv[0]->val.bool_val) {

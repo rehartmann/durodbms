@@ -933,7 +933,7 @@ RDB_string_to_obj(RDB_object *valp, const char *str, RDB_exec_context *ecp)
     int len = strlen(str) + 1;
 
     if (valp->kind != RDB_OB_INITIAL && valp->typ != &RDB_STRING) {
-        RDB_raise_type_mismatch("not a STRING", ecp);
+        RDB_raise_type_mismatch("not a string", ecp);
         return RDB_ERROR;
     }
 
@@ -970,7 +970,7 @@ bin_to_string(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *ecp)
     void *datap;
 
     if (dstp->kind != RDB_OB_INITIAL && dstp->typ != &RDB_STRING) {
-        RDB_raise_type_mismatch("not a STRING", ecp);
+        RDB_raise_type_mismatch("not a string", ecp);
         return RDB_ERROR;
     }
 
@@ -1002,7 +1002,7 @@ bin_to_string(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *ecp)
 /**
  * Appends the string <var>str</var> to *<var>objp</var>.
 
-*<var>objp</var> must be of type STRING.
+*<var>objp</var> must be of type string.
 
 @returns
 
@@ -1246,7 +1246,7 @@ RDB_obj_float(const RDB_object *valp)
 
 /**
  * RDB_obj_string returns a pointer to the value of the RDB_object pointed to by
-<var>valp</var> as a char *. The RDB_object must be of type STRING.
+<var>valp</var> as a char *. The RDB_object must be of type string.
 
 @returns
 
@@ -1492,7 +1492,7 @@ RDB_obj_to_string(RDB_object *dstp, const RDB_object *srcp,
         if (ret != RDB_OK)
             return RDB_ERROR;
     } else {
-        RDB_raise_invalid_argument("type cannot be converted to STRING", ecp);
+        RDB_raise_invalid_argument("type cannot be converted to string", ecp);
         return RDB_ERROR;
     }
     return RDB_OK;

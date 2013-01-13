@@ -123,11 +123,11 @@ from <var>ios</var>.
  * Get file number from iostream_id
  */
 static int
-get_fileno(const RDB_object *objp, RDB_exec_context *ecp)
+get_iostream_id(const RDB_object *objp, RDB_exec_context *ecp)
 {
     int fno = (int) RDB_obj_int(objp);
     if (fno < 0 || fno > IOSTREAMS_MAX || iostreams[fno] == NULL) {
-        RDB_raise_invalid_argument("invalid file number", ecp);
+        RDB_raise_invalid_argument("invalid iostream id", ecp);
         return RDB_ERROR;
     }
     return fno;
@@ -138,7 +138,7 @@ op_put_line_iostream_string(int argc, RDB_object *argv[],
         RDB_operator *op, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
-    int fno = get_fileno(argv[0], ecp);
+    int fno = get_iostream_id(argv[0], ecp);
     if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }
@@ -261,7 +261,7 @@ op_put_nonscalar(int argc, RDB_object *argv[], RDB_operator *op,
 
     if (argc == 2) {
         /* Get file number from arg #1 */
-        fno = get_fileno(argv[0], ecp);
+        fno = get_iostream_id(argv[0], ecp);
         if (fno == RDB_ERROR)
             return RDB_ERROR;
     }        
@@ -275,7 +275,7 @@ op_put_iostream_string(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
-    int fno = get_fileno(argv[0], ecp);
+    int fno = get_iostream_id(argv[0], ecp);
     if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }
@@ -292,7 +292,7 @@ op_put_iostream_binary(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
-    int fno = get_fileno(argv[0], ecp);
+    int fno = get_iostream_id(argv[0], ecp);
     if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }
@@ -310,7 +310,7 @@ op_put_iostream_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
-    int fno = get_fileno(argv[0], ecp);
+    int fno = get_iostream_id(argv[0], ecp);
     if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }
@@ -327,7 +327,7 @@ op_put_iostream_float(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
-    int fno = get_fileno(argv[0], ecp);
+    int fno = get_iostream_id(argv[0], ecp);
     if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }
@@ -344,7 +344,7 @@ op_put_iostream_bool(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
-    int fno = get_fileno(argv[0], ecp);
+    int fno = get_iostream_id(argv[0], ecp);
     if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }
@@ -416,7 +416,7 @@ op_get_line_iostream(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from first arg */
-    int fno = get_fileno(argv[0], ecp);
+    int fno = get_iostream_id(argv[0], ecp);
     if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }
@@ -458,7 +458,7 @@ static int
 op_read_iostream(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int fno = get_fileno(argv[0], ecp);
+    int fno = get_iostream_id(argv[0], ecp);
     if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }
@@ -472,7 +472,7 @@ op_close(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg */
-    int fno = get_fileno(argv[0], ecp);
+    int fno = get_iostream_id(argv[0], ecp);
     if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }
@@ -545,7 +545,7 @@ op_eof_iostream(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, struct RDB_transaction *txp,
         RDB_object *resultp)
 {
-    int fno = get_fileno(argv[0], ecp);
+    int fno = get_iostream_id(argv[0], ecp);
     if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }

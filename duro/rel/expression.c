@@ -281,7 +281,7 @@ RDB_int_to_expr(RDB_int v, RDB_exec_context *ecp)
 }
 
 /**
- * RDB_float_to_expr creates a constant expression of type FLOAT.
+ * RDB_float_to_expr creates a constant expression of type float.
 
 @returns
 
@@ -305,7 +305,7 @@ RDB_float_to_expr(RDB_float v, RDB_exec_context *ecp)
 }
 
 /**
- * RDB_string_to_expr creates a constant expression of type STRING.
+ * RDB_string_to_expr creates a constant expression of type string.
 
 @returns
 

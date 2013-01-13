@@ -6,7 +6,6 @@
  */
 
 #include "io.h"
-
 #include "internal.h"
 
 RDB_type RDB_IOSTREAM_ID;
@@ -17,17 +16,17 @@ RDB_type RDB_IOSTREAM_ID;
 int
 RDB_add_io(RDB_exec_context *ecp)
 {
-    static RDB_attr io_stream_comp = { "fileno", &RDB_INTEGER };
+    static RDB_attr io_stream_comp = { "id", &RDB_INTEGER };
 
     static RDB_possrep io_stream_rep = {
-        "iostream_id",
+            "iostream_id",
         1,
         &io_stream_comp
     };
 
     RDB_IOSTREAM_ID.kind = RDB_TP_SCALAR;
     RDB_IOSTREAM_ID.ireplen = sizeof(RDB_int);
-    RDB_IOSTREAM_ID.name = "iostream_id";
+    RDB_IOSTREAM_ID.name = io_stream_rep.name;
     RDB_IOSTREAM_ID.def.scalar.builtin = RDB_TRUE;
     RDB_IOSTREAM_ID.def.scalar.repc = 1;
     RDB_IOSTREAM_ID.def.scalar.repv = &io_stream_rep;

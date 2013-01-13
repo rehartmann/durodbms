@@ -299,7 +299,7 @@ RDB_tuple_get_int(const RDB_object *tplp, const char *attrname)
 /**
  * Return the value of attribute <var>name</var>
 as a RDB_float. The attribute must exist and it must be of
-type FLOAT.
+type float.
 
 @returns
 

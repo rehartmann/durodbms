@@ -180,7 +180,8 @@ create_env_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     /* Create directory if does not exist */
     if (mkdir(RDB_obj_string(argv[0]),
-            S_IREAD | S_IWRITE | S_IEXEC) == -1
+            S_IRUSR | S_IWUSR | S_IXUSR
+            | S_IRGRP | S_IWGRP | S_IXGRP) == -1
             && errno != EEXIST) {
         RDB_raise_system(strerror(errno), ecp);
         return RDB_ERROR;
@@ -697,7 +698,7 @@ exec_explain(RDB_parse_node *nodep, RDB_exec_context *ecp)
         goto cleanup;
     }
 
-    /* Convert tree to STRING */
+    /* Convert tree to string */
     ret = RDB_expr_to_str(&strobj, optexp, ecp, &Duro_txnp->tx, RDB_SHOW_INDEX);
     if (ret != RDB_OK) {
         goto cleanup;
@@ -881,7 +882,7 @@ exec_for(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
     }
 
     if (RDB_obj_type(varp) != &RDB_INTEGER) {
-        RDB_raise_type_mismatch("loop variable must be INTEGER", ecp);
+        RDB_raise_type_mismatch("loop variable must be of type integer", ecp);
         return RDB_ERROR;
     }
 
@@ -901,7 +902,7 @@ exec_for(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
         goto error;
     }
     if (RDB_obj_type(&endval) != &RDB_INTEGER) {
-        RDB_raise_type_mismatch("expression must be INTEGER", ecp);
+        RDB_raise_type_mismatch("expression must be of type integer", ecp);
         goto error;
     }
 

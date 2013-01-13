@@ -809,7 +809,7 @@ RDB_convert_update(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         nargp = argp->nextp->nextp;
 
         if (argp->kind != RDB_EX_OBJ) {
-            RDB_raise_invalid_argument("UPDATE argument must be STRING",
+            RDB_raise_invalid_argument("UPDATE argument must be of type string",
                     ecp);
             goto error;
         }

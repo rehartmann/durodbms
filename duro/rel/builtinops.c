@@ -1038,7 +1038,7 @@ op_rename(int argc, RDB_object *argv[], RDB_operator *op,
         if (argv[1 + i]->typ != &RDB_STRING
                 || argv[2 + i]->typ != &RDB_STRING) {
             RDB_free(renv);
-            RDB_raise_type_mismatch("RENAME argument must be STRING", ecp);
+            RDB_raise_type_mismatch("RENAME argument must be of type string", ecp);
             return RDB_ERROR;
         }
         renv[i].from = RDB_obj_string(argv[1 + i * 2]);
@@ -1283,7 +1283,7 @@ cast_as_float_string(int argc, RDB_object *argv[], RDB_operator *op,
     RDB_float_to_obj(retvalp, (RDB_float)
             strtod(argv[0]->val.bin.datap, &endp));
     if (*endp != '\0') {
-        RDB_raise_invalid_argument("conversion to FLOAT failed", ecp);
+        RDB_raise_invalid_argument("conversion to float failed", ecp);
         return RDB_ERROR;
     }
     return RDB_OK;

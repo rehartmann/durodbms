@@ -117,7 +117,7 @@ RDB_load_type_ops(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
  * Check if a type is numeric.
  *
  * @returns
- * RDB_TRUE if the type is INTEGER or FLOAT, RDB_FALSE otherwise.
+ * RDB_TRUE if the type is integer or float, RDB_FALSE otherwise.
  */
 RDB_bool
 RDB_type_is_numeric(const RDB_type *typ) {
