@@ -54,7 +54,7 @@ if env.has_key('YACC'):
 env.Textfile(target = 'gen/releaseno.c', source = ['char *RDB_release_number = "' + release + '";', ''])
 
 gensrc = ['gen/hashmap.c', 'gen/hashmapit.c',
-        'gen/strfns.c', 'gen/hashtable.c', 'gen/hashtabit.c',
+        'gen/strfns.c', 'gen/strdump.c', 'gen/hashtable.c', 'gen/hashtabit.c',
         'gen/releaseno.c']
 
 recsrc = ['rec/cursor.c', 'rec/env.c', 'rec/index.c', 'rec/recmap.c']
@@ -215,7 +215,8 @@ env.Alias('testbins', testbins)
 #
 
 gen_hdrs = Split('gen/hashmap.h gen/hashmapit.h gen/hashtable.h '
-        'gen/hashtabit.h gen/strfns.h gen/types.h gen/releaseno.h')
+        'gen/hashtabit.h gen/strfns.h gen/strfns.h gen/types.h '
+        'gen/releaseno.h')
 rec_hdrs = Split('rec/cursor.h rec/env.h rec/dbdefs.h rec/index.h rec/recmap.h')
 rel_hdrs = Split('rel/rdb.h rel/typeimpl.h util/www.h')
 rel_ihdrs = Split('rel/catalog.h rel/cat_type.h rel/cat_op.h '

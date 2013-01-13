@@ -3,9 +3,6 @@
 
 /*$Id$*/
 
-#include <stdlib.h>
-#include <stdio.h>
-
 /*
  * Create a copy of string str on the heap, including the
  * terminating null byte.
@@ -13,7 +10,7 @@
  * copy failed.
  */
 char *
-RDB_dup_str(const char *strp);
+RDB_dup_str(const char *);
 
 /*
  * Duplicate a vector of strings.
@@ -38,9 +35,6 @@ RDB_find_str(int strc, char *strv[], const char *str);
  * Hash function for strings
  */
 unsigned
-RDB_hash_str(const char *str);
-
-void
-RDB_dump(void *datap, size_t size, FILE *fp);
+RDB_hash_str(const char *);
 
 #endif

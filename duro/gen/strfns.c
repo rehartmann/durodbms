@@ -64,17 +64,6 @@ RDB_find_str(int strc, char *strv[], const char *str)
     return -1;
 }
 
-void
-RDB_dump(void *datap, size_t size, FILE *fp)
-{
-    int i;
-    char *cp = (char*)datap;
-
-    for (i = 0; i < size; i++)
-        fprintf(fp, "%d ", (int)cp[i]);
-    fputs("\n", fp);
-}
-
 unsigned
 RDB_hash_str(const char *str)
 {

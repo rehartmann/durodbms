@@ -13,6 +13,7 @@
 #include "serialize.h"
 
 #include <gen/strfns.h>
+#include <gen/strdump.h>
 #include <string.h>
 
 enum {
