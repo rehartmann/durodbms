@@ -2,7 +2,7 @@
  * strdump.c
  *
  *  Created on: 13.01.2013
- *      Author: rene
+ *      Author: Rene Hartmann
  */
 
 #include "strdump.h"

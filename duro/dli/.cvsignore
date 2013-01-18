@@ -3,3 +3,4 @@ exlex.c
 exparse.c
 exparse.h
 durodt
+fcgi_durodt

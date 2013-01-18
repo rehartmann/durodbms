@@ -67,9 +67,9 @@ extern RDB_environment *Duro_envp;
 
 extern tx_node *Duro_txnp;
 
-extern Duro_module Duro_sys_module;
-
 extern RDB_operator *Duro_inner_op;
+
+RDB_EXTERN_VAR Duro_module Duro_sys_module;
 
 int
 Duro_add_varmap(RDB_exec_context *);

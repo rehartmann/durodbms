@@ -10,6 +10,8 @@
 #include <rel/rdb.h>
 #include "parse.h"
 #include "iinterp.h"
+#include "interp_core.h"
+#include "ioop.h"
 
 #include <string.h>
 #include <errno.h>
@@ -112,6 +114,28 @@ completion(const char *text, int start, int end)
 }
 #endif
 
+/* Add I/O operators and variables */
+static int
+add_io(RDB_exec_context *ecp) {
+    if (RDB_add_io_ops(&Duro_sys_module.upd_op_map, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    if (RDB_hashmap_put(&Duro_sys_module.varmap, "stdin", &DURO_STDIN_OBJ) != RDB_OK) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+    if (RDB_hashmap_put(&Duro_sys_module.varmap, "stdout", &DURO_STDOUT_OBJ) != RDB_OK) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+    if (RDB_hashmap_put(&Duro_sys_module.varmap, "stderr", &DURO_STDERR_OBJ) != RDB_OK) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -197,15 +221,28 @@ main(int argc, char *argv[])
         goto error;
     }
 
-    if (Duro_dt_execute(envp, dbname, infilename, &ec) != RDB_OK) {
+    if (Duro_init_interp(&ec, dbname) != RDB_OK) {
         Duro_print_error(RDB_get_err(&ec));
         goto error;
     }
+
+    if (add_io(&ec) != RDB_OK) {
+        Duro_print_error(RDB_get_err(&ec));
+        goto error;
+    }
+
+    if (Duro_dt_execute(envp, infilename, &ec) != RDB_OK) {
+        Duro_print_error(RDB_get_err(&ec));
+        Duro_exit_interp();
+        goto error;
+    }
+
+    Duro_exit_interp();
 
     RDB_destroy_exec_context(&ec);
     return 0;
 
 error:
     RDB_destroy_exec_context(&ec);
-    return 1;    
+    return 1;
 }

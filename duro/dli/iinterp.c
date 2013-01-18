@@ -11,7 +11,6 @@
 #include "interp_core.h"
 #include "interp_assign.h"
 #include "exparse.h"
-#include "ioop.h"
 #include "parse.h"
 #include <gen/hashmap.h>
 #include <gen/hashmapit.h>
@@ -243,7 +242,7 @@ new_obj(RDB_exec_context *ecp)
 }
 
 int
-Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
+Duro_init_interp(RDB_exec_context *ecp, const char *dbname)
 {
     static RDB_parameter exit_int_params[1];
     static RDB_parameter connect_params[1];
@@ -301,9 +300,6 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
             &trace_op, ecp) != RDB_OK)
         goto error;
 
-    if (RDB_add_io_ops(&Duro_sys_module.upd_op_map, ecp) != RDB_OK)
-        goto error;
-
     objp = new_obj(ecp);
     if (objp == NULL)
         goto error;
@@ -315,19 +311,6 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
     /* Create CURRENT_DB in system module */
     if (RDB_hashmap_put(&Duro_sys_module.varmap, "current_db", objp) != RDB_OK) {
         RDB_destroy_obj(objp, ecp);
-        RDB_raise_no_memory(ecp);
-        goto error;
-    }
-
-    if (RDB_hashmap_put(&Duro_sys_module.varmap, "stdin", &DURO_STDIN_OBJ) != RDB_OK) {
-        RDB_raise_no_memory(ecp);
-        goto error;
-    }
-    if (RDB_hashmap_put(&Duro_sys_module.varmap, "stdout", &DURO_STDOUT_OBJ) != RDB_OK) {
-        RDB_raise_no_memory(ecp);
-        goto error;
-    }
-    if (RDB_hashmap_put(&Duro_sys_module.varmap, "stderr", &DURO_STDERR_OBJ) != RDB_OK) {
         RDB_raise_no_memory(ecp);
         goto error;
     }
@@ -2542,7 +2525,7 @@ Duro_dt_interrupt(void)
  * provided using RDB_parse_set_readline_fn().
  */
 int
-Duro_dt_execute(RDB_environment *dbenvp, char *dbname, char *infilename,
+Duro_dt_execute(RDB_environment *dbenvp, const char *infilename,
         RDB_exec_context *ecp)
 {
     FILE *infile = NULL;
@@ -2555,10 +2538,6 @@ Duro_dt_execute(RDB_environment *dbenvp, char *dbname, char *infilename,
             RDB_raise_resource_not_found(infilename, ecp);
             return RDB_ERROR;
         }
-    }
-
-    if (Duro_init_exec(ecp, dbname) != RDB_OK) {
-        goto error;
     }
 
     /* Initialize error line */
@@ -2586,14 +2565,12 @@ Duro_dt_execute(RDB_environment *dbenvp, char *dbname, char *infilename,
                     RDB_parse_init_buf(NULL);
                 } else {
                     fprintf(stderr, "error in statement at or near line %d: ", err_line);
-                    Duro_exit_interp();
                     goto error;
                 }
                 RDB_clear_err(ecp);
             } else {
                 /* Exit on EOF  */
                 puts("");
-                Duro_exit_interp();
                 if (infile != NULL) {
                     fclose(infile);
                     infile = NULL;

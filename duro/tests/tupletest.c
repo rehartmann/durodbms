@@ -1,7 +1,6 @@
 /* $Id$ */
 
 #include <rel/rdb.h>
-#include <rel/internal.h>
 #include <stdio.h>
 
 int main(void)

@@ -16,7 +16,14 @@
 
 #include <errno.h>
 #include <string.h>
+
+#ifdef DURO_FCGI
+#include <fcgi_stdio.h>
+#include "interp_core.h"
+#include "fcgi.h"
+#else
 #include <stdio.h>
+#endif
 
 #ifdef _WIN32
 #define STDIN_FILENO 0
@@ -761,6 +768,12 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     if (init_iostream(&DURO_STDERR_OBJ, STDERR_FILENO, ecp) != RDB_OK)
         return RDB_ERROR;
     iostreams[STDERR_FILENO] = stderr;
+
+#ifdef DURO_FCGI
+    if (RDB_add_fcgi_ops(&Duro_sys_module.upd_op_map, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+#endif
 
     return RDB_OK;
 }

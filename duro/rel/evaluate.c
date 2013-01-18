@@ -10,6 +10,7 @@
 #include "optimize.h"
 #include "qresult.h"
 #include "tostr.h"
+#include "pexpr.h"
 #include "stable.h"
 #include <string.h>
 

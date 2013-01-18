@@ -10,7 +10,6 @@
 #include "stable.h"
 #include <gen/hashtabit.h>
 #include <string.h>
-#include <errno.h>
 
 static int
 append_obj(RDB_object *objp, const RDB_object *srcp, RDB_environment *,
@@ -583,24 +582,4 @@ RDB_expr_to_str(RDB_object *dstp, const RDB_expression *exp,
         return RDB_ERROR;
 
     return append_ex(dstp, exp, NULL, ecp, txp, options);
-}
-
-int
-RDB_print_expr(const RDB_expression *exp, FILE *fp, RDB_exec_context *ecp)
-{
-	RDB_object dst;
-	int ret;
-
-	RDB_init_obj(&dst);
-    if (RDB_expr_to_str(&dst, exp, ecp, NULL, 0) != RDB_OK) {
-        RDB_destroy_obj(&dst, ecp);
-        return RDB_ERROR;
-    }
-    ret = fputs(RDB_obj_string(&dst), fp);
-    RDB_destroy_obj(&dst, ecp);
-    if (ret == EOF) {
-        RDB_raise_system(strerror(errno), ecp);
-        return RDB_ERROR;
-    }
-    return RDB_OK;
 }

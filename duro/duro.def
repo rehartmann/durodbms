@@ -246,3 +246,13 @@ RDB_parse_set_case_insensitive
 RDB_token_name
 RDB_parse_tokens
 RDB_release_number
+Duro_init_interp
+Duro_exit_interp
+RDB_www_form_to_tuple
+RDB_put_global_ro_op
+RDB_errcode_to_error
+RDB_append_string
+RDB_binary_resize
+RDB_put_upd_op
+Duro_sys_module
+RDB_IOSTREAM_ID
