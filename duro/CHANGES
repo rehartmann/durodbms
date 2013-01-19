@@ -4,6 +4,8 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 0.17
 
+- Added FastCGI support.
+
 - Renamed length(string) to strlen().
 
 - Operator www_form_to_tuple converts urlencoded form data to a tuple value.

@@ -380,6 +380,9 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp,
      */
     op = RDB_get_op(&Duro_sys_module.upd_op_map, opname, argc, argtv, ecp);
     if (op == NULL) {
+        RDB_bool type_mismatch =
+                (RDB_obj_type(RDB_get_err(ecp)) == &RDB_TYPE_MISMATCH_ERROR);
+
         /*
          * If there is transaction and no environment, RDB_get_update_op_e()
          * will fail
@@ -391,6 +394,15 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp,
 
         op = RDB_get_update_op_e(opname, argc, argtv, Duro_envp, ecp, txp);
         if (op == NULL) {
+            /*
+             * If the error is operator_not_found_error but the
+             * previous lookup returned type_mismatch_error,
+             * raise type_mismatch_error
+             */
+            if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_OPERATOR_NOT_FOUND_ERROR
+                    && type_mismatch) {
+                RDB_raise_type_mismatch(opname, ecp);
+            }
             return RDB_ERROR;
         }
     }
