@@ -348,18 +348,20 @@ append_infix_binary_ex(RDB_object *objp, const RDB_expression *exp,
         return RDB_ERROR;
 
     /* Argument #2 */
-    if (exp->def.op.args.firstp->nextp->kind != RDB_EX_VAR
-            && exp->def.op.args.firstp->nextp->kind != RDB_EX_OBJ) {
-        if (RDB_append_string(objp, "(", ecp) != RDB_OK)
+    if (exp->def.op.args.firstp->nextp != NULL) {
+        if (exp->def.op.args.firstp->nextp->kind != RDB_EX_VAR
+                && exp->def.op.args.firstp->nextp->kind != RDB_EX_OBJ) {
+            if (RDB_append_string(objp, "(", ecp) != RDB_OK)
+                return RDB_ERROR;
+        }
+        if (append_ex(objp, exp->def.op.args.firstp->nextp, envp, ecp,
+                txp, options) != RDB_OK)
             return RDB_ERROR;
-    }
-    if (append_ex(objp, exp->def.op.args.firstp->nextp, envp, ecp,
-            txp, options) != RDB_OK)
-        return RDB_ERROR;
-    if (exp->def.op.args.firstp->nextp->kind != RDB_EX_VAR
-            && exp->def.op.args.firstp->nextp->kind != RDB_EX_OBJ) {
-        if (RDB_append_string(objp, ")", ecp) != RDB_OK)
-            return RDB_ERROR;
+        if (exp->def.op.args.firstp->nextp->kind != RDB_EX_VAR
+                && exp->def.op.args.firstp->nextp->kind != RDB_EX_OBJ) {
+            if (RDB_append_string(objp, ")", ecp) != RDB_OK)
+                return RDB_ERROR;
+        }
     }
     return RDB_OK;
 }

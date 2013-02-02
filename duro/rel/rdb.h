@@ -745,7 +745,11 @@ void
 RDB_float_to_obj(RDB_object *, RDB_float v);
 
 int
-RDB_string_to_obj(RDB_object *, const char *str, RDB_exec_context *);
+RDB_string_to_obj(RDB_object *, const char *, RDB_exec_context *);
+
+int
+RDB_string_n_to_obj(RDB_object *, const char *, size_t,
+        RDB_exec_context *);
 
 int
 RDB_obj_to_string(RDB_object *dstp, const RDB_object *srcp,

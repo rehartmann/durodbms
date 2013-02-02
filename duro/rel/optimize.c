@@ -321,6 +321,145 @@ move_node(RDB_expression *texp, RDB_expression **dstpp, RDB_expression *nodep,
     return RDB_OK;
 }
 
+static int
+index_attr_idx(RDB_tbindex *indexp, const char *attrname)
+{
+    int i;
+    for (i = 0;
+            i < indexp->attrc && strcmp(attrname, indexp->attrv[i].attrname) != 0;
+            i++);
+    return i < indexp->attrc ? i : -1;
+}
+
+static RDB_expression *
+index_like(RDB_expression *condexp, RDB_tbindex *indexp)
+{
+    if (condexp->kind != RDB_EX_RO_OP)
+        return NULL;
+    if (strcmp (condexp->def.op.name, "like") == 0) {
+        /*
+         * Check if expression is of the form attr = <string literal>
+         * where attr is the first index attribute
+         */
+        if (condexp->def.op.args.firstp != NULL
+                && condexp->def.op.args.firstp->kind == RDB_EX_VAR
+                && index_attr_idx(indexp,
+                        condexp->def.op.args.firstp->def.varname) >= 0
+                && condexp->def.op.args.firstp->nextp != NULL
+                && condexp->def.op.args.firstp->nextp->kind == RDB_EX_OBJ) {
+            const char *pattern = RDB_obj_string(
+                    &condexp->def.op.args.firstp->nextp->def.obj);
+            if (pattern[0] != '\0' && pattern[0] != '*'
+                    && pattern[0] != '?') {
+                return condexp;
+            }
+        }
+    } else if (strcmp (condexp->def.op.name, "and") == 0
+            && condexp->def.op.args.firstp != NULL
+            && condexp->def.op.args.firstp->nextp != NULL) {
+        RDB_expression *likexp = index_like(condexp->def.op.args.firstp,
+                indexp);
+        if (likexp != NULL)
+            return likexp;
+        return index_like(condexp->def.op.args.firstp->nextp,
+                indexp);
+    }
+    return NULL;
+}
+
+static int
+like_first_meta(const char *pattern, RDB_exec_context *ecp)
+{
+    wchar_t wch;
+    int nb;
+    int offs = 0;
+
+    for (;;) {
+        nb = mbtowc(&wch, pattern + offs, MB_CUR_MAX);
+        if (nb == -1) {
+            RDB_raise_invalid_argument("invalid pattern", ecp);
+            return RDB_ERROR;
+        }
+        if (wch == (wchar_t) 0 || wch == (wchar_t) '*'
+                || wch == (wchar_t) '?') {
+            return offs;
+        }
+        offs += nb;
+    }
+}
+
+static RDB_expression *
+var_str_op(const char *varname, const char *str, const char *opname,
+        RDB_exec_context *ecp)
+{
+    RDB_expression *varexp;
+    RDB_expression *strexp;
+    RDB_expression *opexp = RDB_ro_op(opname, ecp);
+    if (opexp == NULL)
+        return NULL;
+    varexp = RDB_var_ref(varname, ecp);
+    if (varexp == NULL)
+        goto error;
+    RDB_add_arg(opexp, varexp);
+
+    strexp = RDB_string_to_expr(str, ecp);
+    if (strexp == NULL)
+        goto error;
+    RDB_add_arg(opexp, strexp);
+
+    return opexp;
+
+error:
+    RDB_del_expr(opexp, ecp);
+    return NULL;
+}
+
+
+
+/* Convert a T WHERE C into T WHERE (attr > <start>) AND C */
+static int
+add_like_start_stop(RDB_expression *texp, RDB_expression *likexp,
+        RDB_exec_context *ecp)
+{
+    RDB_object startvalobj;
+    RDB_expression *andexp;
+    RDB_expression *cmpexp = NULL;
+    const char *pattern = RDB_obj_string(RDB_expr_obj(
+            likexp->def.op.args.firstp->nextp));
+    int n = like_first_meta(pattern, ecp);
+    if (n == RDB_ERROR)
+        return RDB_ERROR;
+
+    RDB_init_obj(&startvalobj);
+    if (RDB_string_n_to_obj(&startvalobj,
+            pattern, n, ecp) != RDB_OK)
+        goto error;
+
+    cmpexp = var_str_op(RDB_expr_var_name(likexp->def.op.args.firstp),
+            RDB_obj_string(&startvalobj), "starts_with", ecp);
+    if (cmpexp == NULL)
+        goto error;
+
+    andexp = RDB_ro_op("and", ecp);
+    if (andexp == NULL) {
+        goto error;
+    }
+    RDB_add_arg(andexp, cmpexp);
+
+    cmpexp->nextp = texp->def.op.args.firstp->nextp;
+    texp->def.op.args.firstp->nextp = andexp;
+    andexp->nextp = NULL;
+
+    RDB_destroy_obj(&startvalobj, ecp);
+    return RDB_OK;
+
+error:
+     if (cmpexp != NULL)
+         RDB_del_expr(cmpexp, ecp);
+     RDB_destroy_obj(&startvalobj, ecp);
+     return RDB_ERROR;
+}
+
 /**
  * Split a WHERE expression into two: one that uses the index specified
  * by indexp (the child) and one which does not (the parent).
@@ -339,11 +478,23 @@ split_by_index(RDB_expression *texp, RDB_tbindex *indexp,
     RDB_bool all_eq = RDB_TRUE;
     int objpc = 0;
     RDB_object **objpv;
+    RDB_expression *likexp;
+
+    /* If there is a LIKE xx* or LIKE xx?, add a >= 'xx' and < 'xy' */
+    likexp = index_like(texp->def.op.args.firstp->nextp, indexp);
+    if (likexp != NULL) {
+        if (add_like_start_stop(texp, likexp, ecp) != RDB_OK)
+            return RDB_ERROR;
+    }
 
     for (i = 0; i < indexp->attrc && all_eq; i++) {
         RDB_expression *attrexp;
 
         if (indexp->idxp != NULL && RDB_index_is_ordered(indexp->idxp)) {
+            /* Indexes with inverse order are not supported yet */
+            if (!indexp->attrv[i].asc)
+                break;
+
             nodep = RDB_attr_node(texp->def.op.args.firstp->nextp,
                     indexp->attrv[i].attrname, "=");
             if (nodep == NULL) {
@@ -403,6 +554,7 @@ split_by_index(RDB_expression *texp, RDB_tbindex *indexp,
         if (move_node(texp, &ixexp, nodep, ecp, txp) != RDB_OK)
             return RDB_ERROR;
     }
+
     if (objpc > 0) {
         if (texp->def.op.args.firstp->kind == RDB_EX_TBP) {
             objpv = RDB_index_objpv(indexp, ixexp, texp->def.op.args.firstp->def.tbref.tbp->typ,
@@ -460,6 +612,7 @@ split_by_index(RDB_expression *texp, RDB_tbindex *indexp,
         texp->def.op.optinfo.stopexp = stopexp;
     }
     texp->def.op.args.lastp = texp->def.op.args.firstp->nextp;
+
     return RDB_OK;
 }
 

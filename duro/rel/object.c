@@ -919,6 +919,34 @@ RDB_float_to_obj(RDB_object *valp, RDB_float v)
     valp->val.float_val = v;
 }
 
+static int
+set_str_obj_len(RDB_object *objp, size_t len, RDB_exec_context *ecp)
+{
+    void *datap;
+
+    if (objp->kind != RDB_OB_INITIAL && objp->typ != &RDB_STRING) {
+        RDB_raise_type_mismatch("not a string", ecp);
+        return RDB_ERROR;
+    }
+
+    if (objp->kind == RDB_OB_INITIAL) {
+        datap = RDB_alloc(len, ecp);
+        if (datap == NULL) {
+            return RDB_ERROR;
+        }
+        objp->typ = &RDB_STRING;
+        objp->kind = RDB_OB_BIN;
+    } else {
+        datap = RDB_realloc(objp->val.bin.datap, len, ecp);
+        if (datap == NULL) {
+            return RDB_ERROR;
+        }
+    }
+    objp->val.bin.len = len;
+    objp->val.bin.datap = datap;
+    return RDB_OK;
+}
+
 /**
  * RDB_string_to_obj sets the RDB_object pointed to by <var>valp</var>
 to the string value specified by <var>str</var>.
@@ -929,78 +957,33 @@ STRING.
 int
 RDB_string_to_obj(RDB_object *valp, const char *str, RDB_exec_context *ecp)
 {
-    void *datap;
-    int len = strlen(str) + 1;
-
-    if (valp->kind != RDB_OB_INITIAL && valp->typ != &RDB_STRING) {
-        RDB_raise_type_mismatch("not a string", ecp);
+    if (set_str_obj_len(valp, strlen(str) + 1, ecp) != RDB_OK)
         return RDB_ERROR;
-    }
-
-    if (valp->kind == RDB_OB_INITIAL) {
-        datap = RDB_alloc(len, ecp);
-        if (datap == NULL) {
-            return RDB_ERROR;
-        }
-        valp->typ = &RDB_STRING;
-        valp->kind = RDB_OB_BIN;
-    } else {
-        datap = RDB_realloc(valp->val.bin.datap, len, ecp);
-        if (datap == NULL) {
-            return RDB_ERROR;
-        }
-    }
-    valp->val.bin.len = len;
-    valp->val.bin.datap = datap;
 
     strcpy(valp->val.bin.datap, str);
     return RDB_OK;
 }
 
 /**
- * RDB_string_to_obj sets the RDB_object pointed to by <var>valp</var>
-to the string value specified by <var>str</var>.
-
-The RDB_object must either be newly initialized or of type
+ * Set *<var>valp</var> to the string that begins at <var>str</var>
+ * limited to a length of <var>n</var> bytes.
+<var>valp</var> must either be newly initialized or of type
 STRING.
  */
-static int
-bin_to_string(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *ecp)
+int
+RDB_string_n_to_obj(RDB_object *valp, const char *str, size_t n,
+        RDB_exec_context *ecp)
 {
-    void *datap;
-
-    if (dstp->kind != RDB_OB_INITIAL && dstp->typ != &RDB_STRING) {
-        RDB_raise_type_mismatch("not a string", ecp);
+    if (set_str_obj_len(valp, n + 1, ecp) != RDB_OK)
         return RDB_ERROR;
-    }
 
-    if (dstp->kind == RDB_OB_INITIAL) {
-        datap = RDB_alloc(srcp->val.bin.len + 1, ecp);
-        if (datap == NULL) {
-            return RDB_ERROR;
-        }
-        dstp->typ = &RDB_STRING;
-        dstp->kind = RDB_OB_BIN;
-    } else {
-        datap = RDB_realloc(dstp->val.bin.datap, srcp->val.bin.len + 1, ecp);
-        if (datap == NULL) {
-            return RDB_ERROR;
-        }
-    }
-    dstp->val.bin.len = srcp->val.bin.len + 1;
-    dstp->val.bin.datap = datap;
-
-    /* Copy data */
-    memcpy(dstp->val.bin.datap, srcp->val.bin.datap, srcp->val.bin.len);
-
-    /* Add terminating zero */
-    ((char *) dstp->val.bin.datap)[srcp->val.bin.len] = '\0';
-
+    strncpy(valp->val.bin.datap, str, n);
+    ((char*) valp->val.bin.datap)[n] = '\0';
     return RDB_OK;
 }
 
 /**
- * Appends the string <var>str</var> to *<var>objp</var>.
+ * Append the string <var>str</var> to *<var>objp</var>.
 
 *<var>objp</var> must be of type string.
 
@@ -1466,30 +1449,25 @@ RDB_obj_to_string(RDB_object *dstp, const RDB_object *srcp,
         RDB_exec_context *ecp)
 {
     char buf[64];
-    int ret;
 
     if (srcp->typ == &RDB_INTEGER) {
         sprintf(buf, "%d", RDB_obj_int(srcp));
-        ret = RDB_string_to_obj(dstp, buf, ecp);
-        if (ret != RDB_OK)
+        if (RDB_string_to_obj(dstp, buf, ecp) != RDB_OK)
             return RDB_ERROR;
     } else if (srcp->typ == &RDB_BOOLEAN) {
-        ret = RDB_string_to_obj(dstp, RDB_obj_bool(srcp) ? "TRUE" : "FALSE",
-                ecp);
-        if (ret != RDB_OK)
+        if (RDB_string_to_obj(dstp, RDB_obj_bool(srcp) ? "TRUE" : "FALSE",
+                ecp) != RDB_OK)
             return RDB_ERROR;
     } else if (srcp->typ == &RDB_FLOAT) {
         dfloat_to_str(RDB_obj_float(srcp), buf);
-        ret = RDB_string_to_obj(dstp, buf, ecp);
-        if (ret != RDB_OK)
+        if (RDB_string_to_obj(dstp, buf, ecp) != RDB_OK)
             return RDB_ERROR;
     } else if (srcp->typ == &RDB_STRING) {
-        ret = RDB_string_to_obj(dstp, RDB_obj_string(srcp), ecp);
-        if (ret != RDB_OK)
+        if (RDB_string_to_obj(dstp, RDB_obj_string(srcp), ecp) != RDB_OK)
             return RDB_ERROR;
     } else if (srcp->typ == &RDB_BINARY) {
-        ret = bin_to_string(dstp, srcp, ecp);
-        if (ret != RDB_OK)
+        if (RDB_string_n_to_obj(dstp, srcp->val.bin.datap, srcp->val.bin.len,
+                ecp) != RDB_OK)
             return RDB_ERROR;
     } else {
         RDB_raise_invalid_argument("type cannot be converted to string", ecp);

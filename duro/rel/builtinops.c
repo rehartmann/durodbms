@@ -263,9 +263,9 @@ The result of the concatenation of the operands.
 
 <hr>
 
-<h3 id="op_length">OPERATOR length</h3>
+<h3 id="op_strlen">OPERATOR strlen</h3>
 
-OPERATOR length (string) RETURNS integer;
+OPERATOR strlen (string) RETURNS integer;
 
 <h4>Description</h4>
 
@@ -1365,18 +1365,8 @@ op_substr(int argc, RDB_object *argv[], RDB_operator *op,
         return RDB_ERROR;
     }
 
-    RDB_destroy_obj(retvalp, ecp);
-    retvalp->typ = &RDB_STRING;
-    retvalp->kind = RDB_OB_BIN;
-    retvalp->val.bin.len = blen + 1;
-    retvalp->val.bin.datap = RDB_alloc(retvalp->val.bin.len, ecp);
-    if (retvalp->val.bin.datap == NULL) {
-        return RDB_ERROR;
-    }
-    strncpy(retvalp->val.bin.datap, (char *) argv[0]->val.bin.datap
-            + bstart, blen);
-    ((char *) retvalp->val.bin.datap)[blen] = '\0';
-    return RDB_OK;
+    return RDB_string_n_to_obj(retvalp,
+            (char *) argv[0]->val.bin.datap + bstart, blen, ecp);
 }
 
 static int
@@ -1409,6 +1399,22 @@ op_concat(int argc, RDB_object *argv[], RDB_operator *op,
     }
     strcpy(retvalp->val.bin.datap, argv[0]->val.bin.datap);
     strcpy(((char *)retvalp->val.bin.datap) + s1len, argv[1]->val.bin.datap);
+    return RDB_OK;
+}
+
+static int
+op_starts_with(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    char *str = RDB_obj_string(argv[0]);
+    char *pref = RDB_obj_string(argv[1]);
+    size_t preflen = strlen(pref);
+
+    if (preflen > strlen(str)) {
+        RDB_bool_to_obj(retvalp, RDB_FALSE);
+        return RDB_OK;
+    }
+    RDB_bool_to_obj(retvalp, (RDB_bool) (strncmp(str, pref, preflen) == 0));
     return RDB_OK;
 }
 
@@ -1900,6 +1906,10 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     paramtv[0] = &RDB_STRING;
     paramtv[1] = &RDB_STRING;
+
+    ret = RDB_put_global_ro_op("starts_with", 2, paramtv, &RDB_BOOLEAN, &op_starts_with, ecp);
+    if (ret != RDB_OK)
+        return ret;
 
     ret = RDB_put_global_ro_op("like", 2, paramtv, &RDB_BOOLEAN, &op_like, ecp);
     if (ret != RDB_OK)
