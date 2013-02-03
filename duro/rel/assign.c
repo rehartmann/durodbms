@@ -903,7 +903,8 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp,
     }
     if (nexp->kind == RDB_EX_RO_OP
             && strcmp (nexp->def.op.name, "where") == 0) {
-        if (nexp->def.op.optinfo.objc > 0) {
+        if (nexp->def.op.optinfo.objc > 0
+                || nexp->def.op.optinfo.stopexp != NULL) {
             ret = RDB_update_where_index(nexp, NULL, updp->updc, updp->updv,
                     ecp, txp);
             RDB_del_expr(nexp, ecp);
@@ -912,7 +913,8 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp,
 
         if (nexp->def.op.args.firstp->kind == RDB_EX_RO_OP
                 && strcmp(nexp->def.op.args.firstp->def.op.name, "where") == 0
-                && nexp->def.op.args.firstp->def.op.optinfo.objc > 0) {
+                && (nexp->def.op.args.firstp->def.op.optinfo.objc > 0
+                        || nexp->def.op.args.firstp->def.op.optinfo.stopexp != NULL)) {
             ret = RDB_update_where_index(nexp->def.op.args.firstp,
                     nexp->def.op.args.firstp->nextp, updp->updc, updp->updv,
                     ecp, txp);
@@ -929,7 +931,7 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp,
         }
     }
     RDB_del_expr(nexp, ecp);
-    RDB_raise_not_supported("Unsupported update", ecp);
+    RDB_raise_not_supported("unsupported update", ecp);
     return RDB_ERROR;
 }
 
@@ -971,7 +973,8 @@ do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
         return ret;
     }
     if (nexp->kind == RDB_EX_RO_OP && strcmp (nexp->def.op.name, "where") == 0) {
-        if (nexp->def.op.optinfo.objc > 0) {
+        if (nexp->def.op.optinfo.objc > 0
+                || nexp->def.op.optinfo.stopexp != NULL) {
             ret = RDB_delete_where_index(nexp, NULL, ecp, txp);
             RDB_del_expr(nexp, ecp);
             return ret;
@@ -979,7 +982,8 @@ do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
 
         if (nexp->def.op.args.firstp->kind == RDB_EX_RO_OP
                 && strcmp(nexp->def.op.args.firstp->def.op.name, "where") == 0
-                && nexp->def.op.args.firstp->def.op.optinfo.objc > 0) {
+                && (nexp->def.op.args.firstp->def.op.optinfo.objc > 0
+                   || nexp->def.op.optinfo.stopexp != NULL)) {
             ret = RDB_delete_where_index(nexp->def.op.args.firstp,
                     nexp->def.op.args.firstp->nextp, ecp, txp);
             RDB_del_expr(nexp, ecp);

@@ -624,25 +624,34 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
         goto cleanup;
     }
 
-    /* Convert to a field value */
-    for (i = 0; i < objc; i++) {
-        if (RDB_obj_to_field(&fv[i], texp->def.op.optinfo.objpv[i],
-                ecp) != RDB_OK) {
+    if (texp->def.op.optinfo.objc > 0) {
+        /* Convert to a field value */
+        for (i = 0; i < texp->def.op.optinfo.objc; i++) {
+            if (RDB_obj_to_field(&fv[i], texp->def.op.optinfo.objpv[i],
+                    ecp) != RDB_OK) {
+                rcount = RDB_ERROR;
+                goto cleanup;
+            }
+        }
+
+        if (texp->def.op.optinfo.objc != refexp->def.tbref.indexp->attrc
+                || !texp->def.op.optinfo.all_eq)
+            flags = RDB_REC_RANGE;
+        else
+            flags = 0;
+
+        ret = RDB_cursor_seek(curp, texp->def.op.optinfo.objc, fv, flags);
+        if (ret == DB_NOTFOUND) {
+            rcount = 0;
+            goto cleanup;
+        }
+    } else {
+        ret = RDB_cursor_first(curp);
+        if (ret != RDB_OK) {
+            RDB_errcode_to_error(ret, ecp, &tx);
             rcount = RDB_ERROR;
             goto cleanup;
         }
-    }
-
-    if (texp->def.op.optinfo.objc != refexp->def.tbref.indexp->attrc
-            || !texp->def.op.optinfo.all_eq)
-        flags = RDB_REC_RANGE;
-    else
-        flags = 0;
-
-    ret = RDB_cursor_seek(curp, texp->def.op.optinfo.objc, fv, flags);
-    if (ret == DB_NOTFOUND) {
-        rcount = 0;
-        goto cleanup;
     }
 
     rcount = 0;
@@ -853,31 +862,40 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
         goto cleanup;
     }
 
-    /* Convert to a field value */
-    for (i = 0; i < objc; i++) {
-        if (RDB_obj_to_field(&fv[i], texp->def.op.optinfo.objpv[i], ecp)
-                != RDB_OK) {
+    if (texp->def.op.optinfo.objc > 0) {
+        /* Convert to a field value */
+        for (i = 0; i < texp->def.op.optinfo.objc; i++) {
+            if (RDB_obj_to_field(&fv[i], texp->def.op.optinfo.objpv[i], ecp)
+                    != RDB_OK) {
+                rcount = RDB_ERROR;
+                goto cleanup;
+            }
+        }
+
+        if (texp->def.op.optinfo.objc != refexp->def.tbref.indexp->attrc
+                || !texp->def.op.optinfo.all_eq)
+            flags = RDB_REC_RANGE;
+        else
+            flags = 0;
+
+        /* Set cursor position */
+        ret = RDB_cursor_seek(curp, texp->def.op.optinfo.objc, fv, flags);
+        if (ret == DB_NOTFOUND) {
+            rcount = RDB_OK;
+            goto cleanup;
+        }
+        if (ret != RDB_OK) {
+            RDB_errcode_to_error(ret, ecp, &tx);
             rcount = RDB_ERROR;
             goto cleanup;
         }
-    }
-
-    if (texp->def.op.optinfo.objc != refexp->def.tbref.indexp->attrc
-            || !texp->def.op.optinfo.all_eq)
-        flags = RDB_REC_RANGE;
-    else
-        flags = 0;
-
-    /* Set cursor position */
-    ret = RDB_cursor_seek(curp, texp->def.op.optinfo.objc, fv, flags);
-    if (ret == DB_NOTFOUND) {
-        rcount = RDB_OK;
-        goto cleanup;
-    }
-    if (ret != RDB_OK) {
-        RDB_errcode_to_error(ret, ecp, &tx);
-        rcount = RDB_ERROR;
-        goto cleanup;
+    } else {
+        ret = RDB_cursor_first(curp);
+        if (ret != RDB_OK) {
+            RDB_errcode_to_error(ret, ecp, &tx);
+            rcount = RDB_ERROR;
+            goto cleanup;
+        }
     }
 
     rcount = 0;
@@ -969,7 +987,11 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
      */
 
     /* Reset cursor */
-    ret = RDB_cursor_seek(curp, texp->def.op.optinfo.objc, fv, flags);
+    if (texp->def.op.optinfo.objc > 0) {
+        ret = RDB_cursor_seek(curp, texp->def.op.optinfo.objc, fv, flags);
+    } else {
+        ret = RDB_cursor_first(curp);
+    }
     if (ret == DB_NOTFOUND) {
         ret = RDB_OK;
         goto cleanup;

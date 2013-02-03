@@ -450,7 +450,8 @@ RDB_ro_op(const char *opname, RDB_exec_context *ecp)
     RDB_init_expr_list(&exp->def.op.args);
 
     exp->def.op.optinfo.objc = 0;
-    exp->def.op.optinfo.objv = NULL;
+    /* exp->def.op.optinfo.objv = NULL; */
+    exp->def.op.optinfo.stopexp = NULL;
 
     return exp;
 }
@@ -1205,7 +1206,7 @@ RDB_attr_node(RDB_expression *exp, const char *attrname, char *opname)
     while (exp->kind == RDB_EX_RO_OP
             && strcmp (exp->def.op.name, "and") == 0) {
         if (expr_var(exp->def.op.args.firstp->nextp, attrname, opname))
-            return exp;
+            return exp->def.op.args.firstp->nextp;
         exp = exp->def.op.args.firstp;
     }
     if (expr_var(exp, attrname, opname))

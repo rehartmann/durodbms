@@ -248,75 +248,71 @@ table_covers_index(RDB_type *reltyp, RDB_tbindex *indexp)
 
 /**
  * Move node *nodep, which belongs to WHERE expression *texp, to **dstpp.
+ * As a result the second argument of *texp may be NULL.
  */
 static int
 move_node(RDB_expression *texp, RDB_expression **dstpp, RDB_expression *nodep,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_expression *prevp;
+    RDB_expression *parentp;
 
-    /* Get previous node */
+    /* Get parent node */
     if (nodep == texp->def.op.args.firstp->nextp) {
-        prevp = NULL;
+        parentp = NULL;
     } else {
-        prevp = texp->def.op.args.firstp->nextp;
-        while (prevp->def.op.args.firstp != nodep)
-            prevp = prevp->def.op.args.firstp;
+        parentp = texp->def.op.args.firstp->nextp;
+        while (parentp->def.op.args.firstp != nodep
+                && parentp->def.op.args.firstp->nextp != nodep) {
+            parentp = parentp->def.op.args.firstp;
+            if (parentp->kind != RDB_EX_RO_OP) {
+                RDB_raise_internal("subexpression not found", ecp);
+                return RDB_ERROR;
+            }
+        }
     }
 
-    if (!is_and(nodep)) {
-        /* Remove *nodep from source */
-        if (prevp == NULL) {
-            texp->def.op.args.firstp->nextp = NULL;
-        } else {
-            if (prevp == texp->def.op.args.firstp->nextp) {
-                texp->def.op.args.firstp->nextp = prevp->def.op.args.firstp->nextp;
-                texp->def.op.args.firstp->nextp->nextp = NULL;
-            } else {
-                RDB_expression *pprevp = texp->def.op.args.firstp->nextp;
-
-                while (pprevp->def.op.args.firstp != prevp)
-                    pprevp = pprevp->def.op.args.firstp;
-                prevp->def.op.args.firstp->nextp->nextp = pprevp->def.op.args.firstp->nextp;
-                pprevp->def.op.args.firstp = prevp->def.op.args.firstp->nextp;
-            }
-            RDB_free(prevp->def.op.name);
-            RDB_free(prevp);
-        }
-
-        if (*dstpp == NULL)
-            *dstpp = nodep;            
-        else {
-            RDB_expression *exp = RDB_ro_op("and", ecp);
-            if (exp == NULL)
-                return RDB_ERROR;
-            RDB_add_arg(exp, *dstpp);
-            RDB_add_arg(exp, nodep);
-            *dstpp = exp;
-        }
+    /* Remove *nodep from source */
+    if (parentp == NULL) {
+        texp->def.op.args.firstp->nextp = NULL;
     } else {
-        RDB_expression *arg2p = nodep->def.op.args.firstp->nextp;
-        
-        nodep->def.op.args.firstp->nextp = NULL;
-        if (prevp == NULL) {
-            texp->def.op.args.firstp->nextp = nodep->def.op.args.firstp;
+        if (parentp == texp->def.op.args.firstp->nextp) {
+            if (nodep == parentp->def.op.args.firstp) {
+                texp->def.op.args.firstp->nextp = parentp->def.op.args.firstp->nextp;
+            } else {
+                texp->def.op.args.firstp->nextp = parentp->def.op.args.firstp;
+            }
+            texp->def.op.args.firstp->nextp->nextp = NULL;
         } else {
-            prevp->def.op.args.firstp = nodep->def.op.args.firstp;
-        }
+            RDB_expression *pparentp = texp->def.op.args.firstp->nextp;
 
-        if (*dstpp == NULL)
-            *dstpp = arg2p;
-        else {
-            RDB_expression *exp = RDB_ro_op("and", ecp);
-            if (exp == NULL)
-                return RDB_ERROR;
-            RDB_add_arg(exp, *dstpp);
-            RDB_add_arg(exp, arg2p);
-            *dstpp = exp;
+            while (pparentp->def.op.args.firstp != parentp) {
+                pparentp = pparentp->def.op.args.firstp;
+                if (parentp->kind != RDB_EX_RO_OP) {
+                    RDB_raise_internal("subexpression not found", ecp);
+                    return RDB_ERROR;
+                }
+            }
+            if (nodep == parentp->def.op.args.firstp) {
+                parentp->def.op.args.firstp->nextp->nextp = parentp->nextp;
+                pparentp->def.op.args.firstp = parentp->def.op.args.firstp->nextp;
+            } else {
+                parentp->def.op.args.firstp->nextp = parentp->nextp;
+                pparentp->def.op.args.firstp = parentp->def.op.args.firstp;
+            }
         }
+        RDB_free(parentp->def.op.name);
+        RDB_free(parentp);
+    }
 
-        RDB_free(nodep->def.op.name);
-        RDB_free(nodep);
+    if (*dstpp == NULL)
+        *dstpp = nodep;
+    else {
+        RDB_expression *exp = RDB_ro_op("and", ecp);
+        if (exp == NULL)
+            return RDB_ERROR;
+        RDB_add_arg(exp, *dstpp);
+        RDB_add_arg(exp, nodep);
+        *dstpp = exp;
     }
     return RDB_OK;
 }
@@ -471,10 +467,8 @@ split_by_index(RDB_expression *texp, RDB_tbindex *indexp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
-    RDB_expression *nodep;
     RDB_expression *ixexp = NULL;
     RDB_expression *stopexp = NULL;
-    RDB_bool asc = RDB_TRUE;
     RDB_bool all_eq = RDB_TRUE;
     int objpc = 0;
     RDB_object **objpv;
@@ -487,82 +481,92 @@ split_by_index(RDB_expression *texp, RDB_tbindex *indexp,
             return RDB_ERROR;
     }
 
+    /*
+     * Move index-related subexpressions to ixexp.
+     * Move subexpressions that are part of the stop expression to stopexp first.
+     */
     for (i = 0; i < indexp->attrc && all_eq; i++) {
-        RDB_expression *attrexp;
+        RDB_expression *startexp;
 
         if (indexp->idxp != NULL && RDB_index_is_ordered(indexp->idxp)) {
+            RDB_expression *stpexp = NULL;
+
             /* Indexes with inverse order are not supported yet */
             if (!indexp->attrv[i].asc)
                 break;
 
-            nodep = RDB_attr_node(texp->def.op.args.firstp->nextp,
+            startexp = RDB_attr_node(texp->def.op.args.firstp->nextp,
                     indexp->attrv[i].attrname, "=");
-            if (nodep == NULL) {
-                nodep = RDB_attr_node(texp->def.op.args.firstp->nextp,
+            if (startexp == NULL) {
+                startexp = RDB_attr_node(texp->def.op.args.firstp->nextp,
                         indexp->attrv[i].attrname, ">=");
-                if (nodep == NULL) {
-                    nodep = RDB_attr_node(texp->def.op.args.firstp->nextp,
+                if (startexp == NULL) {
+                    startexp = RDB_attr_node(texp->def.op.args.firstp->nextp,
                             indexp->attrv[i].attrname, ">");
-                    if (nodep == NULL) {
-                        nodep = RDB_attr_node(texp->def.op.args.firstp->nextp,
-                                indexp->attrv[i].attrname, "<=");
-                        if (nodep == NULL) {
-                            nodep = RDB_attr_node(texp->def.op.args.firstp->nextp,
-                                    indexp->attrv[i].attrname, "<");
-                            if (nodep == NULL)
-                                break;
-                        }
-                    }
-                }
-                if (strcmp(nodep->def.op.name, ">=") == 0
-                        || strcmp(nodep->def.op.name, ">") == 0) {
-                    stopexp = RDB_attr_node(texp->def.op.args.firstp->nextp,
-                            indexp->attrv[i].attrname, "<=");
-                    if (stopexp == NULL) {
-                        stopexp = RDB_attr_node(texp->def.op.args.firstp->nextp,
-                                indexp->attrv[i].attrname, "<");
-                    }
-                    if (stopexp != NULL) {
-                        attrexp = stopexp;
-                        if (is_and(attrexp))
-                            attrexp = attrexp->def.op.args.firstp->nextp;
-                        if (move_node(texp, &ixexp, stopexp, ecp, txp) != RDB_OK)
-                            return RDB_ERROR;
-                        stopexp = attrexp;
-                    }
                 }
                 all_eq = RDB_FALSE;
+
+                /* Get stop expression */
+                stpexp = RDB_attr_node(texp->def.op.args.firstp->nextp,
+                        indexp->attrv[i].attrname, "<=");
+                if (stpexp == NULL) {
+                    stpexp = RDB_attr_node(texp->def.op.args.firstp->nextp,
+                            indexp->attrv[i].attrname, "<");
+                }
+
+                if (startexp != NULL) {
+                    if (move_node(texp, &ixexp, startexp, ecp, txp) != RDB_OK)
+                        return RDB_ERROR;
+                    objpc++;
+                }
+                if (stpexp != NULL) {
+                    if (move_node(texp, &stopexp, stpexp, ecp, txp) != RDB_OK)
+                        return RDB_ERROR;
+                }
+                break;
+            }
+            stpexp = startexp;
+            if (stpexp != NULL) {
+                if (move_node(texp, &stopexp, stpexp, ecp, txp) != RDB_OK)
+                    return RDB_ERROR;
             }
         } else {
-            nodep = RDB_attr_node(texp->def.op.args.firstp->nextp,
+            startexp = RDB_attr_node(texp->def.op.args.firstp->nextp,
                     indexp->attrv[i].attrname, "=");
+            if (startexp != NULL) {
+                if (move_node(texp, &ixexp, startexp, ecp, txp) != RDB_OK)
+                    return RDB_ERROR;
+            }
         }
-        attrexp = nodep;
-        if (is_and(attrexp))
-            attrexp = attrexp->def.op.args.firstp->nextp;
 
         objpc++;
+    }
 
-        if (indexp->idxp != NULL && RDB_index_is_ordered(indexp->idxp)) {
-            if (strcmp(attrexp->def.op.name, "=") == 0
-                    || strcmp(attrexp->def.op.name, ">=") == 0
-                    || strcmp(attrexp->def.op.name, ">") == 0)
-                asc = indexp->attrv[i].asc;
-            else
-                asc = (RDB_bool) !indexp->attrv[i].asc;
+    /*
+     * Add stopexp to ixexp
+     * (Note that stopexp is not managed)
+     */
+    if (stopexp != NULL) {
+        if (ixexp == NULL) {
+            ixexp = stopexp;
+        } else {
+            RDB_expression *nixexp = RDB_ro_op("and", ecp);
+            if (nixexp == NULL)
+                return RDB_ERROR;
+            RDB_add_arg(nixexp, ixexp);
+            RDB_add_arg(nixexp, stopexp);
+            ixexp = nixexp;
         }
-        if (move_node(texp, &ixexp, nodep, ecp, txp) != RDB_OK)
-            return RDB_ERROR;
     }
 
     if (objpc > 0) {
         if (texp->def.op.args.firstp->kind == RDB_EX_TBP) {
             objpv = RDB_index_objpv(indexp, ixexp, texp->def.op.args.firstp->def.tbref.tbp->typ,
-                    objpc, all_eq, asc, ecp);
+                    objpc, all_eq, RDB_TRUE, ecp);
         } else {
             objpv = RDB_index_objpv(indexp, ixexp,
                     texp->def.op.args.firstp->def.op.args.firstp->def.tbref.tbp->typ,
-                    objpc, all_eq, asc, ecp);
+                    objpc, all_eq, RDB_TRUE, ecp);
         }
         if (objpv == NULL) {
             RDB_raise_no_memory(ecp);
@@ -592,7 +596,8 @@ split_by_index(RDB_expression *texp, RDB_tbindex *indexp,
         assert(sitexp->def.op.optinfo.objc == 0);
         sitexp->def.op.optinfo.objc = objpc;
         sitexp->def.op.optinfo.objpv = objpv;
-        sitexp->def.op.optinfo.asc = asc;
+        sitexp->def.op.optinfo.objv = NULL;
+        sitexp->def.op.optinfo.asc = RDB_TRUE;
         sitexp->def.op.optinfo.all_eq = all_eq;
         sitexp->def.op.optinfo.stopexp = stopexp;
 
@@ -607,7 +612,8 @@ split_by_index(RDB_expression *texp, RDB_tbindex *indexp,
         assert(texp->def.op.optinfo.objc == 0);
         texp->def.op.optinfo.objc = objpc;
         texp->def.op.optinfo.objpv = objpv;
-        texp->def.op.optinfo.asc = asc;
+        texp->def.op.optinfo.objv = NULL;
+        texp->def.op.optinfo.asc = RDB_TRUE;
         texp->def.op.optinfo.all_eq = all_eq;
         texp->def.op.optinfo.stopexp = stopexp;
     }
@@ -655,7 +661,7 @@ table_cost(RDB_expression *exp)
         return table_cost(exp->def.op.args.firstp); /* !! */
 
     if (strcmp(exp->def.op.name, "where") == 0) {
-        if (exp->def.op.optinfo.objc == 0)
+        if (exp->def.op.optinfo.objc == 0 && exp->def.op.optinfo.stopexp == NULL)
             return table_cost(exp->def.op.args.firstp);
         if (exp->def.op.args.firstp->kind == RDB_EX_TBP) {
             indexp = exp->def.op.args.firstp->def.tbref.indexp;
@@ -1548,8 +1554,9 @@ mutate_select(RDB_expression *exp, int seqitc, const RDB_seq_item seqitv[],
             }
         }
         if (bestn == -1) {
-            for (i = 0; i < tbc; i++)
+            for (i = 0; i < tbc; i++) {
                 RDB_del_expr(texpv[i], ecp);
+            }
         } else {
             exp = texpv[bestn];
             for (i = 0; i < tbc; i++) {

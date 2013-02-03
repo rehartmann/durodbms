@@ -77,6 +77,7 @@ test update_oindex {update real tables using ordered index} -setup $SETUP -body 
     set stpl {S1 Blb S2 Bly S3 y S4 b}
     set tpl [duro::expr {TUPLE FROM (T WHERE S1="Blb")} $tx]
     if {![tequal $tpl $stpl]} {
+        duro::commit $tx
         error "Tuple should be $stpl, but is $tpl"
     }
 

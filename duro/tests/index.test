@@ -27,7 +27,7 @@ test index {indexes} -setup $SETUP -body {
        {C string}
        {D string x}
     } {{A}} $tx
-    
+
     duro::table create T2 {
        {B string}
        {C string}

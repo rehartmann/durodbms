@@ -27,7 +27,7 @@ test oindex {ordered indexes} -setup $SETUP -body {
        {C string}
        {D string x}
     } {{A}} $tx
-    
+
     duro::index create IX1 T1 {B asc} $tx
 
     duro::insert T1 {A 1 B Blb C Y} $tx
@@ -37,38 +37,59 @@ test oindex {ordered indexes} -setup $SETUP -body {
     duro::insert T1 {A 5 B Blubb C Y} $tx
 
     duro::table expr t {T1 WHERE B = "Blb"} $tx
-    
+
     set a [duro::array create t {A asc} $tx]
     
     checkarray $a {{A 1 B Blb C Y D x} {A 2 B Blb C Y D x}} $tx
-    
+
     duro::array drop $a
     
     duro::table drop t $tx
+
+    # Test selective comparison on varying positions
+    set id [duro::expr {(TUPLE FROM T1 WHERE B = "Bli" AND 1 = 1 AND 1 = 1).A} $tx]
+    if {$id != "4"} {
+        duro::commit $tx
+        error "invalid result with selective comparison at position 1"
+    } 
+
+    set id [duro::expr {(TUPLE FROM T1 WHERE 1 = 1 AND B = "Bli" AND 1 = 1).A} $tx]
+    if {$id != "4"} {
+        duro::commit $tx
+        error "invalid result with selective comparison at position 2"
+    } 
+
+    set id [duro::expr {(TUPLE FROM T1 WHERE 1 = 1 AND 1 = 1 AND B = "Bli").A} $tx]
+    if {$id != "4"} {
+        duro::commit $tx
+        error "invalid result with selective comparison at position 3"
+    } 
     
     duro::table expr t {T1 WHERE B >= "Blab" AND B < "Blubb" } $tx
     
     set plan [duro::table getplan t $tx]
     if {![string match "*IX1*" $plan]} {
+        duro::commit $tx
         error "IX1 should be used, but is not"
     }
-    
+
     set a [duro::array create t {A asc} $tx]
-    
+
     checkarray $a {{A 1 B Blb C Y D x} {A 2 B Blb C Y D x}
             {A 4 B Bli C X D x}} $tx
-    
+
     duro::array drop $a
-    
+
     duro::table drop t $tx
-    
+
     duro::table expr t {T1 WHERE B > "Blb" } $tx
-    
+
     set plan [duro::table getplan t $tx]
     if {![string match "*IX1*" $plan]} {
+        duro::commit $tx
         error "IX1 should be used, but is not"
     }
-    
+
     set a [duro::array create t {A asc} $tx]
     
     checkarray $a {{A 4 B Bli C X D x} {A 5 B Blubb C Y D x}} $tx
@@ -78,7 +99,7 @@ test oindex {ordered indexes} -setup $SETUP -body {
     duro::table drop t $tx
     
     duro::table expr t {T1 WHERE B < "Blo" } $tx
-    
+
     set a [duro::array create t {A asc} $tx]
     
     checkarray $a {{A 1 B Blb C Y D x} {A 2 B Blb C Y D x}
@@ -89,7 +110,7 @@ test oindex {ordered indexes} -setup $SETUP -body {
     duro::table drop t $tx
     
     duro::update T1 {B >= "Blb" AND B <= "Blo"} D {"u"} $tx
-    
+
     duro::update T1 {B > "Blb" AND B <= "Blo"} D {"v"} $tx
 
     set a [duro::array create T1 {A asc} $tx]

@@ -47,8 +47,12 @@ struct RDB_expression {
             char *name;
             struct {
                 int objc;
+                RDB_expression *stopexp;
 
-                /* The following fields are only valid if objc > 0 */
+                /*
+                 * The following fields are only valid if objc > 0
+                 * or stopexp != NULL
+                 */
 
                 /* Optionally stores the values in objpv */
                 RDB_object *objv;
@@ -56,7 +60,6 @@ struct RDB_expression {
                 RDB_object **objpv;
                 RDB_bool asc;
                 RDB_bool all_eq;
-                RDB_expression *stopexp;
             } optinfo;
         } op;
     } def;
