@@ -493,7 +493,7 @@ RDB_sys_select(int argc, RDB_object *argv[], RDB_operator *,
 
 RDB_object **
 RDB_index_objpv(struct RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
-        int objpc, RDB_bool all_eq, RDB_bool asc, RDB_exec_context *);
+        int objpc, RDB_bool asc, RDB_exec_context *);
 
 struct RDB_tbindex *
 RDB_expr_sortindex (RDB_expression *);

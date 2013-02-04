@@ -528,34 +528,33 @@ RDB_infer_keys(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
 
 RDB_object **
 RDB_index_objpv(RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
-        int objpc, RDB_bool all_eq, RDB_bool asc, RDB_exec_context *ecp)
+        int objpc, RDB_bool asc, RDB_exec_context *ecp)
 {
     int i;
-    RDB_expression *nodep;
     RDB_expression *attrexp;
 
     RDB_object **objpv = RDB_alloc(sizeof (RDB_object *) * objpc, ecp);
     if (objpv == NULL)
         return NULL;
     for (i = 0; i < objpc; i++) {
-        nodep = RDB_attr_node(exp, indexp->attrv[i].attrname, "=");
-        if (nodep == NULL && !all_eq) {
+        attrexp = RDB_attr_node(exp, indexp->attrv[i].attrname, "=");
+        if (attrexp == NULL) {
             if (asc) {
-                nodep = RDB_attr_node(exp,
+                attrexp = RDB_attr_node(exp,
                         indexp->attrv[i].attrname, ">=");
-                if (nodep == NULL)
-                    nodep = RDB_attr_node(exp, indexp->attrv[i].attrname, ">");
+                if (attrexp == NULL) {
+                    attrexp = RDB_attr_node(exp, indexp->attrv[i].attrname, ">");
+                    if (attrexp == NULL) {
+                        attrexp = RDB_attr_node(exp, indexp->attrv[i].attrname, "starts_with");
+                    }
+                }
             } else {
-                nodep = RDB_attr_node(exp,
+                attrexp = RDB_attr_node(exp,
                         indexp->attrv[i].attrname, "<=");
-                if (nodep == NULL)
-                    nodep = RDB_attr_node(exp, indexp->attrv[i].attrname, "<");
+                if (attrexp == NULL)
+                    attrexp = RDB_attr_node(exp, indexp->attrv[i].attrname, "<");
             }
         }
-        attrexp = nodep;
-        if (attrexp->kind == RDB_EX_RO_OP
-                && strcmp (attrexp->def.op.name, "and") == 0)
-            attrexp = attrexp->def.op.args.firstp->nextp;
         attrexp->def.op.args.firstp->nextp->def.obj.store_typ =
                     RDB_type_attr_type(tbtyp, indexp->attrv[i].attrname);
         objpv[i] = &attrexp->def.op.args.firstp->nextp->def.obj;

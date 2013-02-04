@@ -817,8 +817,12 @@ init_where_index_qresult(RDB_qresult *qrp, RDB_expression *texp,
         }
     }
 
-    ret = RDB_cursor_seek(qrp->val.stored.curp, texp->def.op.optinfo.objc,
-            fv, flags);
+    if (texp->def.op.optinfo.objc > 0) {
+        ret = RDB_cursor_seek(qrp->val.stored.curp, texp->def.op.optinfo.objc,
+                fv, flags);
+    } else {
+        ret = RDB_cursor_first(qrp->val.stored.curp);
+    }
     if (ret == DB_NOTFOUND) {
         qrp->endreached = RDB_TRUE;
         ret = RDB_OK;
@@ -897,7 +901,8 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     qrp->matp = NULL;
 
     if (strcmp(exp->def.op.name, "where") == 0
-            && exp->def.op.optinfo.objc > 0) {
+            && (exp->def.op.optinfo.objc > 0
+                || exp->def.op.optinfo.stopexp != NULL)) {
         /* Check for index */
         RDB_tbindex *indexp;
         if (exp->def.op.args.firstp->kind == RDB_EX_TBP) {

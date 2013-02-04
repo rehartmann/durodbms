@@ -18,7 +18,7 @@ test oindex {ordered indexes} -setup $SETUP -body {
 
     # Create Database
     duro::db create $dbenv TEST
-    
+
     set tx [duro::begin $dbenv TEST]
     
     duro::table create T1 {
@@ -64,9 +64,9 @@ test oindex {ordered indexes} -setup $SETUP -body {
         duro::commit $tx
         error "invalid result with selective comparison at position 3"
     } 
-    
+
     duro::table expr t {T1 WHERE B >= "Blab" AND B < "Blubb" } $tx
-    
+
     set plan [duro::table getplan t $tx]
     if {![string match "*IX1*" $plan]} {
         duro::commit $tx
@@ -108,7 +108,24 @@ test oindex {ordered indexes} -setup $SETUP -body {
     duro::array drop $a
     
     duro::table drop t $tx
+
+    duro::table expr t {T1 WHERE B LIKE "Bl*b" } $tx
+
+    set plan [duro::table getplan t $tx]
+    if {![string match "*IX1*" $plan]} {
+        duro::commit $tx
+        error "IX1 should be used, but is not"
+    }
+
+    set a [duro::array create t {A asc} $tx]
+
+    checkarray $a {{A 1 B Blb C Y D x} {A 2 B Blb C Y D x}
+            {A 5 B Blubb C Y D x}} $tx
+
+    duro::array drop $a
     
+    duro::table drop t $tx
+
     duro::update T1 {B >= "Blb" AND B <= "Blo"} D {"u"} $tx
 
     duro::update T1 {B > "Blb" AND B <= "Blo"} D {"v"} $tx
