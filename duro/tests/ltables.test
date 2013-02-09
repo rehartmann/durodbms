@@ -18,7 +18,7 @@ test ltables {transient tables} -setup $SETUP -body {
 
     # Create Database
     duro::db create $dbenv TEST
-    
+
     #
     # Perform test with table with integer key
     #

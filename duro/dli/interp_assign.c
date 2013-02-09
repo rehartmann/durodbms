@@ -644,11 +644,12 @@ node_to_multi_assign(const RDB_parse_node *listnodep,
                             return RDB_ERROR;
                         }
                         updv[(*updcp)].updv = &attrupdv[(*attrupdcp)];
-                        if (node_to_update(&updv[(*updcp)++], dstp, firstp->nextp, ecp)
+                        if (node_to_update(&updv[(*updcp)], dstp, firstp->nextp, ecp)
                                 != RDB_OK) {
                             goto error;
                         }
                         (*attrupdcp) += updv[(*updcp)].updc;
+                        (*updcp)++;
                     }
                     break;
                 case TOK_DELETE:

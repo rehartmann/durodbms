@@ -697,7 +697,7 @@ RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
                 /* Delete all tuples */
                 ret = RDB_delete_real(dstvalp, NULL, ecp,
                         dstvalp->val.tb.is_persistent ? txp : NULL);
-                if (ret != RDB_OK)
+                if (ret == (RDB_int) RDB_ERROR)
                     return RDB_ERROR;
             }
             rc = RDB_move_tuples(dstvalp, (RDB_object *) srcvalp, ecp,

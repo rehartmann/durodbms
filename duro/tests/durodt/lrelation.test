@@ -53,7 +53,12 @@ test private {creating private table and inserting tuples} -body {
             put_line('name_error');
         end try;
 
+        -- multiple update
+        update pr1 where i=2 {i:=20}, update pr2 where i=1 {i:=10};
+
+        put((tuple from pr1).i); put_line('');
         put(sum(pr2, i)); put_line('');
+
         drop var pr1;
 
         -- Private table without KEY
@@ -78,17 +83,32 @@ test private {creating private table and inserting tuples} -body {
         catch err operator_not_found_error;
             put_line('operator_not_found_error');
         end try;
+
+        -- Table assignment
+        var pr6 private rel {n int, m int} init rel{tup{n 5, m 5}};
+        pr6 := pr3;
+        var t tuple same_heading_as(pr6);
+        foreach t in pr6 order(n asc, m asc);
+            put(cast_as_string(t.n));
+            put(' ');
+            put(cast_as_string(t.m));
+            put_line('');
+        end foreach;
     }
 } -result {double creation caught
 key_violation_error
 1
 Y
 name_error
-3
+20
+12
 8
 type_mismatch_error
 7
 operator_not_found_error
+1 1
+1 2
+2 1
 }
 
 test deedum {TABLE_DEE and TABLE_DUM} -body {

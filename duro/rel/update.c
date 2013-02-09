@@ -71,9 +71,11 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
         return RDB_ERROR;
     }
 
-    /* Start subtransaction */
-    if (RDB_begin_tx(ecp, &tx, RDB_tx_db(txp), txp) != RDB_OK) {
-        return RDB_ERROR;
+    if (tbp->val.tb.is_persistent) {
+        /* Start subtransaction */
+        if (RDB_begin_tx(ecp, &tx, RDB_tx_db(txp), txp) != RDB_OK) {
+            return RDB_ERROR;
+        }
     }
 
     for (i = 0; i < updc; i++)
@@ -114,7 +116,8 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
                     *RDB_field_no(tbp->val.tb.stp, tpltyp->def.tuple.attrv[i].name),
                     &datap, &len);
             if (ret != RDB_OK) {
-                RDB_errcode_to_error(ret, ecp, &tx);
+                RDB_errcode_to_error(ret, ecp,
+                        tbp->val.tb.is_persistent ? &tx : NULL);
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
@@ -148,14 +151,16 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
         if (condp == NULL)
             b = RDB_TRUE;
         else {
-            ret = RDB_evaluate_bool(condp, &RDB_tpl_get, &tpl, NULL, ecp, &tx, &b);
+            ret = RDB_evaluate_bool(condp, &RDB_tpl_get, &tpl, NULL, ecp,
+                    tbp->val.tb.is_persistent ? &tx : NULL, &b);
             if (ret != RDB_OK) {
                 rcount = RDB_ERROR;
                 return ret;
             }
         }
         if (b) {
-            ret = upd_to_vals(updc, updv, &tpl, valv, ecp, &tx);
+            ret = upd_to_vals(updc, updv, &tpl, valv, ecp,
+                    tbp->val.tb.is_persistent ? &tx : NULL);
             if (ret != RDB_OK) {
                 goto cleanup;
             }
@@ -167,7 +172,8 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
             }
             
             /* Insert tuple into temporary table */
-            ret = RDB_insert_real(&tmptb, &tpl, ecp, &tx);
+            ret = RDB_insert_real(&tmptb, &tpl, ecp,
+                    tbp->val.tb.is_persistent ? &tx : NULL);
             if (ret != RDB_OK) {
                 goto cleanup;
             }
@@ -177,7 +183,8 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
     };
 
     if (ret != DB_NOTFOUND) {
-        RDB_errcode_to_error(ret, ecp, &tx);
+        RDB_errcode_to_error(ret, ecp,
+                tbp->val.tb.is_persistent ? &tx : NULL);
         rcount = RDB_ERROR;
         goto cleanup;
     }
@@ -198,7 +205,8 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
                     *RDB_field_no(tbp->val.tb.stp, tpltyp->def.tuple.attrv[i].name),
                     &datap, &len);
             if (ret != RDB_OK) {
-                RDB_errcode_to_error(ret, ecp, &tx);
+                RDB_errcode_to_error(ret, ecp,
+                        tbp->val.tb.is_persistent ? &tx : NULL);
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
@@ -221,7 +229,8 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
         if (condp == NULL) {
             b = RDB_TRUE;
         } else {
-            ret = RDB_evaluate_bool(condp, &RDB_tpl_get, &tpl, NULL, ecp, &tx, &b);
+            ret = RDB_evaluate_bool(condp, &RDB_tpl_get, &tpl, NULL, ecp,
+                    tbp->val.tb.is_persistent ? &tx : NULL, &b);
             if (ret != RDB_OK) {
                 rcount = RDB_ERROR;
                 goto cleanup;
@@ -231,7 +240,8 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
             /* Delete tuple */
             ret = RDB_cursor_delete(curp);
             if (ret != RDB_OK) {
-                RDB_errcode_to_error(ret, ecp, &tx);
+                RDB_errcode_to_error(ret, ecp,
+                        tbp->val.tb.is_persistent ? &tx : NULL);
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
@@ -240,7 +250,8 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
     };
 
     if (ret != DB_NOTFOUND) {
-        RDB_errcode_to_error(ret, ecp, &tx);
+        RDB_errcode_to_error(ret, ecp,
+                tbp->val.tb.is_persistent ? &tx : NULL);
         rcount = RDB_ERROR;
         goto cleanup;
     }
@@ -248,7 +259,8 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
     ret = RDB_destroy_cursor(curp);
     curp = NULL;
     if (ret != RDB_OK) {
-        RDB_errcode_to_error(ret, ecp, &tx);
+        RDB_errcode_to_error(ret, ecp,
+                tbp->val.tb.is_persistent ? &tx : NULL);
         rcount = RDB_ERROR;
         goto cleanup;
     }
@@ -256,7 +268,8 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
     /*
      * Insert the records from the temporary table into the original table.
      */
-    if (RDB_move_tuples(tbp, &tmptb, ecp, &tx) == (RDB_int) RDB_ERROR) {
+    if (RDB_move_tuples(tbp, &tmptb, ecp,
+            tbp->val.tb.is_persistent ? &tx : NULL) == (RDB_int) RDB_ERROR) {
         rcount = RDB_ERROR;
     }
 
@@ -265,7 +278,8 @@ cleanup:
     if (curp != NULL) {
         ret = RDB_destroy_cursor(curp);
         if (ret != RDB_OK) {
-            RDB_errcode_to_error(ret, ecp, &tx);
+            RDB_errcode_to_error(ret, ecp,
+                    tbp->val.tb.is_persistent ? &tx : NULL);
             rcount = RDB_ERROR;
         }
     }
@@ -277,12 +291,14 @@ cleanup:
         rcount = RDB_ERROR;
     }
 
-    if (rcount == RDB_ERROR) {
+    if (rcount == RDB_ERROR && tbp->val.tb.is_persistent) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
-    if (RDB_commit(ecp, &tx) != RDB_OK) {
-        return RDB_ERROR;
+    if (tbp->val.tb.is_persistent) {
+        if (RDB_commit(ecp, &tx) != RDB_OK) {
+            return RDB_ERROR;
+        }
     }
     return rcount;
 }
@@ -311,7 +327,7 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
         return RDB_ERROR;
     }
 
-    if (txp != NULL) {
+    if (tbp->val.tb.is_persistent) {
         /* Start subtransaction */
         if (RDB_begin_tx(ecp, &tx, RDB_tx_db(txp), txp) != RDB_OK)
             return RDB_ERROR;
@@ -328,7 +344,7 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
     ret = RDB_recmap_cursor(&curp, tbp->val.tb.stp->recmapp, RDB_TRUE,
             tbp->val.tb.is_persistent ? tx.txid : NULL);
     if (ret != RDB_OK) {
-        RDB_errcode_to_error(ret, ecp, &tx);
+        RDB_errcode_to_error(ret, ecp, tbp->val.tb.is_persistent ? &tx: NULL);
         rcount = RDB_ERROR;
         goto cleanup;
     }
@@ -344,7 +360,7 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
                     *RDB_field_no(tbp->val.tb.stp, tpltyp->def.tuple.attrv[i].name),
                     &datap, &len);
             if (ret != RDB_OK) {
-                RDB_errcode_to_error(ret, ecp, txp != NULL ? &tx: NULL);
+                RDB_errcode_to_error(ret, ecp, tbp->val.tb.is_persistent ? &tx: NULL);
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
@@ -367,7 +383,7 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
         /* Evaluate condition */
         if (condp != NULL) {
             ret = RDB_evaluate_bool(condp, &RDB_tpl_get, &tpl, NULL, ecp,
-                    txp != NULL ? &tx: NULL, &b);
+                    tbp->val.tb.is_persistent ? &tx: NULL, &b);
             if (ret != RDB_OK) {
                 rcount = RDB_ERROR;
                 goto cleanup;
@@ -378,7 +394,8 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
 
         if (b) {
             /* Perform update */
-            if (upd_to_vals(updc, updv, &tpl, valv, ecp, txp != NULL ? &tx: NULL) != RDB_OK) {
+            if (upd_to_vals(updc, updv, &tpl, valv, ecp,
+                    tbp->val.tb.is_persistent ? &tx: NULL) != RDB_OK) {
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
@@ -398,7 +415,7 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
             }
             ret = RDB_cursor_set(curp, updc, fieldv);
             if (ret != RDB_OK) {
-                RDB_errcode_to_error(ret, ecp, txp != NULL ? &tx: NULL);
+                RDB_errcode_to_error(ret, ecp, tbp->val.tb.is_persistent ? &tx: NULL);
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
@@ -408,7 +425,7 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
     };
 
     if (ret != DB_NOTFOUND) {
-        RDB_errcode_to_error(ret, ecp, txp != NULL ? &tx: NULL);
+        RDB_errcode_to_error(ret, ecp, tbp->val.tb.is_persistent ? &tx: NULL);
         rcount = RDB_ERROR;
      }
 
@@ -418,7 +435,7 @@ cleanup:
     if (curp != NULL) {
         ret = RDB_destroy_cursor(curp);
         if (ret != RDB_OK) {
-            RDB_errcode_to_error(ret, ecp, txp);
+            RDB_errcode_to_error(ret, ecp, tbp->val.tb.is_persistent ? &tx: NULL);
             rcount = RDB_ERROR;
         }
     }
@@ -428,14 +445,14 @@ cleanup:
 
     ret = RDB_destroy_obj(&tpl, ecp);
     if (ret != RDB_OK) {
-        RDB_errcode_to_error(ret, ecp, txp);
+        RDB_errcode_to_error(ret, ecp, tbp->val.tb.is_persistent ? &tx: NULL);
         rcount = RDB_ERROR;
     }
     if (rcount == RDB_ERROR) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
-    if (txp != NULL) {
+    if (tbp->val.tb.is_persistent) {
         if (RDB_commit(ecp, &tx) != RDB_OK) {
             return RDB_ERROR;
         }
