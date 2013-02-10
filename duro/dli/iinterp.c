@@ -343,8 +343,7 @@ evaluate_retry_bool(RDB_expression *exp, RDB_exec_context *ecp, RDB_bool *result
  * Call update operator. nodep points to the operator name token.
  */
 static int
-exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
     int ret;
     int i;
@@ -364,7 +363,7 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp,
     while (argp != NULL) {
         if (argc > 0)
             argp = argp->nextp;
-        exp = RDB_parse_node_expr(argp, ecp, txp);
+        exp = RDB_parse_node_expr(argp, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
         if (exp == NULL)
             return RDB_ERROR;
         argtv[argc] = Duro_expr_type_retry(exp, ecp);
@@ -387,12 +386,29 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp,
          * If there is transaction and no environment, RDB_get_update_op_e()
          * will fail
          */
-        if (txp == NULL && Duro_envp == NULL) {
+        if (Duro_txnp == NULL && Duro_envp == NULL) {
             return RDB_ERROR;
         }
         RDB_clear_err(ecp);
 
-        op = RDB_get_update_op_e(opname, argc, argtv, Duro_envp, ecp, txp);
+        op = RDB_get_update_op_e(opname, argc, argtv, Duro_envp, ecp,
+                Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
+        /*
+         * If the operator was not found and no transaction is running start a transaction
+         * for reading the operator from the catalog only
+         */
+        if (op == NULL && RDB_obj_type(RDB_get_err(ecp)) == &RDB_OPERATOR_NOT_FOUND_ERROR
+                && Duro_txnp == NULL) {
+            RDB_transaction tx;
+            RDB_database *dbp = Duro_get_db(ecp);
+            if (dbp == NULL)
+                return RDB_ERROR;
+            if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
+                return RDB_ERROR;
+            op = RDB_get_update_op(opname, argc, argtv, ecp, &tx);
+            if (RDB_commit(ecp, &tx) != RDB_OK)
+                return RDB_ERROR;
+        }
         if (op == NULL) {
             /*
              * If the error is operator_not_found_error but the
@@ -419,7 +435,7 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp,
 
         if (i > 0)
             argp = argp->nextp;
-        exp = RDB_parse_node_expr(argp, ecp, txp);
+        exp = RDB_parse_node_expr(argp, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
         if (exp == NULL)
             return RDB_ERROR;
         paramp = RDB_get_parameter(op, i);
@@ -464,7 +480,7 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp,
             /* Set type if missing */
             if (RDB_obj_type(&argv[i]) == NULL) {
                 RDB_type *typ = RDB_expr_type(exp, &Duro_get_var_type,
-                        NULL, Duro_envp, ecp, txp);
+                        NULL, Duro_envp, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
                 if (typ == NULL) {
                     ret = RDB_ERROR;
                     goto cleanup;
@@ -478,7 +494,7 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp,
     }
 
     /* Invoke function */
-    ret = RDB_call_update_op(op, argc, argpv, ecp, txp);
+    ret = RDB_call_update_op(op, argc, argpv, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
 
 cleanup:
     for (i = 0; i < argc; i++) {
@@ -486,56 +502,6 @@ cleanup:
             RDB_destroy_obj(&argv[i], ecp);
     }
     return ret;
-}
-
-/*
- * Call update operator. nodep points to the operator name token.
- * If there is no transaction but an db environment is available,
- * start a transaction and try again.
- */
-static int
-exec_call_retry(const RDB_parse_node *nodep, RDB_exec_context *ecp)
-{
-    int ret;
-    RDB_transaction tx;
-    RDB_database *dbp;
-    RDB_exec_context ec;
-
-    ret = exec_call(nodep, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
-    /*
-     * Success or error different from OPERATOR_NOT_FOUND_ERROR
-     * -> return
-     */
-    if (ret == RDB_OK
-            || RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR)
-        return ret;
-    /*
-     * If a transaction is already active or no environment is
-     * available, give up
-     */
-    if (Duro_txnp != NULL || Duro_envp == NULL)
-        return ret;
-    /*
-     * Start transaction and retry.
-     * If this succeeds, the operator will be in memory next time
-     * so no transaction will be needed.
-     * Use own exec context so the original error is preserved.
-     */
-    RDB_init_exec_context(&ec);
-    dbp = Duro_get_db(&ec);
-    RDB_destroy_exec_context(&ec);
-    if (dbp == NULL) {
-        return RDB_ERROR;
-    }
-
-    if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
-        return RDB_ERROR;
-    ret = exec_call(nodep, ecp, &tx);
-    if (ret != RDB_OK) {
-        RDB_commit(ecp, &tx);
-        return ret;
-    }
-    return RDB_commit(ecp, &tx);
 }
 
 static int
@@ -2316,7 +2282,7 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
                 ret = RDB_OK;
                 break;
             case TOK_CALL:
-                ret = exec_call_retry(firstchildp->nextp, ecp);
+                ret = exec_call(firstchildp->nextp, ecp);
                 break;
             case TOK_VAR:
                 if (firstchildp->nextp->nextp->kind == RDB_NODE_TOK) {
@@ -2414,7 +2380,7 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
     if (firstchildp->kind == RDB_NODE_EXPR) {
         if (firstchildp->nextp->val.token == '(') {
             /* Operator invocation */
-            ret = exec_call_retry(firstchildp, ecp);
+            ret = exec_call(firstchildp, ecp);
         } else {
             /* Loop with label */
             switch (firstchildp->nextp->nextp->val.token) {
