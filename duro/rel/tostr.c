@@ -28,7 +28,7 @@ append_tuple(RDB_object *objp, const RDB_object *tplp, RDB_environment *envp,
     tuple_entry *entryp;
     RDB_bool start = RDB_TRUE;
 
-    if (RDB_append_string(objp, "TUPLE { ", ecp) != RDB_OK) {
+    if (RDB_append_string(objp, "TUPLE {", ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -200,7 +200,7 @@ append_table_val(RDB_object *objp, const RDB_object *tbp, RDB_environment *envp,
     RDB_object arr;
     RDB_object *tplp;
 
-    if (RDB_append_string(objp, "RELATION { ", ecp) != RDB_OK)
+    if (RDB_append_string(objp, "RELATION {", ecp) != RDB_OK)
         return RDB_ERROR;
 
     RDB_init_obj(&arr);
@@ -306,7 +306,7 @@ append_obj(RDB_object *objp, const RDB_object *srcp, RDB_environment *envp,
             return append_array(objp, srcp, envp, ecp, txp);
         case RDB_OB_INITIAL:
             /* Treat as empty tuple */
-            return RDB_append_string(objp, "TUPLE { }", ecp);
+            return RDB_append_string(objp, "TUPLE {}", ecp);
         default: ;
     }
     RDB_raise_invalid_argument("unable to convert RDB_object to string", ecp);

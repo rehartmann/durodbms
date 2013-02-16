@@ -1239,6 +1239,12 @@ RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         dbp = dbp->nextdbp;
     }
 
+    if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
+        fprintf(stderr,
+                "Trying to read table %s from the catalog\n",
+                name);
+    }
+
     /* If not found, read from catalog, search in real tables first */
     tbp = RDB_cat_get_rtable(name, ecp, txp);
     if (tbp != NULL)

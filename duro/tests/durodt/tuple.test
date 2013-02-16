@@ -34,7 +34,7 @@ test tuplevar {tuple variables} -body {
 foo
 555
 2 bar
-TUPLE { s 'bar'}
+TUPLE {s 'bar'}
 }
 
 test tupleupdexpr {tuple update expression} -body {

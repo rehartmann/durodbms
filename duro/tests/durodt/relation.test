@@ -315,7 +315,7 @@ test zero_attrs {Tables with zero attributes} -setup $SETUP -body {
         put(ev); put_line('');
         commit;
     }
-} -result {RELATION { }
+} -result {RELATION {}
 }
 
 test logic {Logic operators} -setup $SETUP -body {

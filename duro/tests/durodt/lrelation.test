@@ -123,11 +123,11 @@ test deedum {TABLE_DEE and TABLE_DUM} -body {
         
         put((tuple from relation{tuple{i 7}} join table_dee).i); put_line('');       
     }
-} -result {TUPLE { }
-TUPLE { }
-RELATION { }
-RELATION { }
-TUPLE { }
+} -result {TUPLE {}
+TUPLE {}
+RELATION {}
+RELATION {}
+TUPLE {}
 7
 }
 
