@@ -4,6 +4,8 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 0.17
 
+- Added RDB_table_matching_tuple() to the public interface.
+
 - Added FastCGI support.
 
 - Renamed length(string) to strlen().

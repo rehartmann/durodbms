@@ -11,6 +11,10 @@
 #include "rdb.h"
 
 int
+RDB_exprs_compl(const RDB_expression *, const RDB_expression *,
+        RDB_exec_context *, RDB_transaction *, RDB_bool *);
+
+int
 RDB_transform(RDB_expression *, RDB_gettypefn *, void *,
         RDB_exec_context *, RDB_transaction *);
 

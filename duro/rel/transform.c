@@ -14,8 +14,11 @@
 #include <string.h>
 #include <assert.h>
 
-static int
-exprs_compl(const RDB_expression *ex1p, const RDB_expression *ex2p,
+/*
+ * Check if *exp1 == NOT(*exp2) or *exp2 == NOT(*exp1)
+ */
+int
+RDB_exprs_compl(const RDB_expression *ex1p, const RDB_expression *ex2p,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp)
 {
     *resp = RDB_FALSE;
@@ -56,7 +59,7 @@ transform_union(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
                     wex2p->def.op.args.firstp,
                     ecp, txp, &teq) != RDB_OK)
                 return RDB_ERROR;
-            if (exprs_compl(wex1p->def.op.args.firstp->nextp,
+            if (RDB_exprs_compl(wex1p->def.op.args.firstp->nextp,
                     wex2p->def.op.args.firstp->nextp,
                     ecp, txp, &compl) != RDB_OK)
                 return RDB_ERROR;

@@ -357,6 +357,7 @@ append_infix_binary_ex(RDB_object *objp, const RDB_expression *exp,
         if (append_ex(objp, exp->def.op.args.firstp->nextp, envp, ecp,
                 txp, options) != RDB_OK)
             return RDB_ERROR;
+
         if (exp->def.op.args.firstp->nextp->kind != RDB_EX_VAR
                 && exp->def.op.args.firstp->nextp->kind != RDB_EX_OBJ) {
             if (RDB_append_string(objp, ")", ecp) != RDB_OK)

@@ -484,12 +484,16 @@ RDB_avg(RDB_object *tbp, const char *attrname, RDB_exec_context *,
         RDB_transaction *, RDB_float *resultp);
 
 int
-RDB_table_contains(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *,
-        RDB_transaction *, RDB_bool *resultp);
+RDB_table_contains(RDB_object *tbp, const RDB_object *, RDB_exec_context *,
+        RDB_transaction *, RDB_bool *);
 
 int
 RDB_subset(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *,
-        RDB_transaction *, RDB_bool *resultp);
+        RDB_transaction *, RDB_bool *);
+
+int
+RDB_table_matching_tuple(RDB_object *, const RDB_object *, RDB_exec_context *,
+        RDB_transaction *, RDB_bool *);
 
 int
 RDB_extract_tuple(RDB_object *, RDB_exec_context *, RDB_transaction *,

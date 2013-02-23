@@ -15,9 +15,9 @@
  */
 
 /**
- * RDB_table_contains checks if the tuple specified by <var>tplp</var>
-is an element of the table specified by <var>tbp</var>
-and stores the result at the location pointed to by <var>resultp</var>.
+ * Check if the tuple *<var>tplp</var>
+is an element of the table *<var>tbp</var>
+and store the result at the location pointed to by <var>resultp</var>.
 
 If an error occurs, an error value is left in *<var>ecp</var>.
 
@@ -49,6 +49,7 @@ RDB_table_contains(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ec
         RDB_transaction *txp, RDB_bool *resultp)
 {
     int i;
+    RDB_type *typ;
 
     if (txp != NULL && !RDB_tx_is_running(txp)) {
         RDB_raise_no_running_tx(ecp);
@@ -68,10 +69,17 @@ RDB_table_contains(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ec
         }
     }
 
-    if (RDB_obj_type(tplp) == NULL)
+    typ = RDB_obj_type(tplp);
+    if (typ == NULL) {
         RDB_obj_set_typeinfo((RDB_object *) tplp, RDB_base_type(RDB_obj_type(tbp)));
+    } else {
+        if (!RDB_type_equals(typ, RDB_base_type(RDB_obj_type(tbp)))) {
+            RDB_raise_type_mismatch("table type does not match tuple type", ecp);
+            return RDB_ERROR;
+        }
+    }
 
-    return RDB_matching_tuple(tbp, tplp, ecp, txp, resultp);
+    return RDB_table_matching_tuple(tbp, tplp, ecp, txp, resultp);
 }
 
 /*@}*/

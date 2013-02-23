@@ -650,12 +650,12 @@ test refconstraint {referential constraint} -setup $SETUP -body {
                 key {order_id} default {info ''};
         constraint o_c orders {cust_id} subset_of customers {cust_id};
 
-        insert customers tup{cust_id 1, name 'James'};
-        
+        insert customers rel{tup{cust_id 1, name 'James'}, tup{cust_id 2, name 'Joan'}};
+
         insert orders tup{order_id 1, cust_id 1};
 
         try
-            insert orders tup{order_id 2, cust_id 2};
+            insert orders tup{order_id 2, cust_id 3};
         catch err predicate_violation_error;
             put_line('insert into orders caught');
         end try;
@@ -666,8 +666,12 @@ test refconstraint {referential constraint} -setup $SETUP -body {
             put_line('delete from customers caught');
         end try;
 
+        -- Must succeed
+        delete customers where cust_id=2;
+
         commit;
     }]
+
     #
     # Check optimization
     #
@@ -677,8 +681,9 @@ test refconstraint {referential constraint} -setup $SETUP -body {
         commit;
     }]
     if {[string match {*orders*} $checks]} {
-        puts "check #1 refers to orders: $checks"
+        puts "insert check #1 refers to orders: $checks"
     }
+
     set checks [exec $testdir/../../dli/durodt -e dbenv -d D << {
         begin tx;
         explain insert customers tup{cust_id 2, name 'John'};
@@ -686,8 +691,9 @@ test refconstraint {referential constraint} -setup $SETUP -body {
     }]
     if {[string match {*orders*} $checks]
             || [string match {*customers*} $checks]} {
-        puts "check #2 refers to orders or customers: $checks"
+        puts "insert check #2 refers to orders or customers: $checks"
     }    
+
     set checks [exec $testdir/../../dli/durodt -e dbenv -d D << {
         begin tx;
         explain delete orders where order_id=1;
@@ -695,8 +701,18 @@ test refconstraint {referential constraint} -setup $SETUP -body {
     }]
     if {[string match {*orders*} $checks]
             || [string match {*customers*} $checks]} {
-        puts "check #3 refers to orders or customers: $checks"
+        puts "delete check #1 refers to orders or customers: $checks"
     }    
+
+    set checks [exec $testdir/../../dli/durodt -e dbenv -d D << {
+        begin tx;
+        explain delete customers where cust_id=1;
+        commit;
+    }]
+    if {![string match {*INDEX customers$0*} $checks]} {
+        puts "delete check #2 does not use primary index of customers"
+    }
+
     set checks [exec $testdir/../../dli/durodt -e dbenv -d D << {
         begin tx;
         explain update orders where order_id=1 {info := 'yo'};
@@ -704,8 +720,19 @@ test refconstraint {referential constraint} -setup $SETUP -body {
     }]
     if {[string match {*orders*} $checks]
             || [string match {*customers*} $checks]} {
-        puts "check #4 refers to orders or customers: $checks"
+        puts "update check #1 refers to orders or customers: $checks"
     }    
+
+    set checks [exec $testdir/../../dli/durodt -e dbenv -d D << {
+        begin tx;
+        explain update customers where cust_id=1 {name := 'Karlheiz'};
+        commit;
+    }]
+    if {[string match {*orders*} $checks]
+            || [string match {*customers*} $checks]} {
+        puts "update check #2 refers to orders or customers: $checks"
+    }    
+
 } -output {insert into orders caught
 delete from customers caught
 }

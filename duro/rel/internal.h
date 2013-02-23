@@ -171,10 +171,6 @@ RDB_begin_tx_env(RDB_exec_context *, RDB_transaction *, RDB_environment *,
         RDB_transaction *);
 
 int
-RDB_matching_tuple(RDB_object *, const RDB_object *tplp, RDB_exec_context *,
-        RDB_transaction *, RDB_bool *resultp);
-
-int
 RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resultp);
 
