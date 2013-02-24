@@ -42,18 +42,9 @@ enum {
 };
 
 static RDB_bool
-expr_is_binop(const RDB_expression *exp, const char *name)
-{
-    return RDB_expr_is_op(exp, name)
-            && exp->def.op.args.firstp != NULL
-            && exp->def.op.args.firstp->nextp != NULL
-            && exp->def.op.args.firstp->nextp->nextp == NULL;
-}
-
-static RDB_bool
 is_and(const RDB_expression *exp)
 {
-    return expr_is_binop(exp, "and");
+    return RDB_expr_is_binop(exp, "and");
 }
 
 static int
@@ -671,7 +662,7 @@ table_est_cardinality(const RDB_expression *exp)
             break;
     }
 
-    if (expr_is_binop(exp, "where")) {
+    if (RDB_expr_is_binop(exp, "where")) {
         /*
          * Keeping track of the selectivity is not supported yet,
          * so simply divide the estimated cost by half
@@ -690,11 +681,10 @@ table_cost(const RDB_expression *exp)
     if (exp->kind != RDB_EX_RO_OP)
         return table_est_cardinality(exp);
 
-    if ((strcmp(exp->def.op.name, "semiminus") == 0
-            || strcmp(exp->def.op.name, "minus") == 0
-            || strcmp(exp->def.op.name, "semijoin") == 0
-            || strcmp(exp->def.op.name, "intersect") == 0)
-            && exp->def.op.args.firstp->nextp != NULL) {
+    if (RDB_expr_is_binop(exp, "semiminus")
+            || RDB_expr_is_binop(exp, "minus")
+            || RDB_expr_is_binop(exp, "semijoin")
+            || RDB_expr_is_binop(exp, "intersect")) {
         if (is_table_or_project_table(exp->def.op.args.firstp->nextp, &is_proj)) {
             if (is_proj) {
                 if (exp->def.op.args.firstp->nextp->def.op.args.firstp->def.tbref.indexp
@@ -710,11 +700,11 @@ table_cost(const RDB_expression *exp)
                 + table_est_cardinality(exp->def.op.args.firstp) * table_cost(exp->def.op.args.firstp->nextp);
     }
 
-    if (strcmp(exp->def.op.name, "union") == 0)
+    if (RDB_expr_is_binop(exp, "union"))
         return table_cost(exp->def.op.args.firstp)
                 + table_cost(exp->def.op.args.firstp->nextp);
 
-    if (strcmp(exp->def.op.name, "where") == 0) {
+    if (RDB_expr_is_binop(exp, "where")) {
         if (exp->def.op.optinfo.objc == 0 && exp->def.op.optinfo.stopexp == NULL)
             return table_cost(exp->def.op.args.firstp);
         if (exp->def.op.args.firstp->kind == RDB_EX_TBP) {
@@ -733,7 +723,7 @@ table_cost(const RDB_expression *exp)
             return 3;
         return 4;
     }
-    if (strcmp(exp->def.op.name, "join") == 0) {
+    if (RDB_expr_is_binop(exp, "join")) {
         if (exp->def.op.args.firstp->nextp->kind == RDB_EX_TBP
                 && exp->def.op.args.firstp->nextp->def.tbref.indexp != NULL) {
             indexp = exp->def.op.args.firstp->nextp->def.tbref.indexp;
@@ -1040,7 +1030,7 @@ expr_is_subset(RDB_expression *exp, RDB_expression *ex2p,
     if (*resultp)
         return RDB_OK;
 
-    if (expr_is_binop(exp, "minus") && expr_is_binop(ex2p, "minus")) {
+    if (RDB_expr_is_binop(exp, "minus") && RDB_expr_is_binop(ex2p, "minus")) {
         /*
          * Handle that case that both expressions are a MINUS operator invocation
          * If exp #1 is of form T1 MINUS T2
@@ -1470,19 +1460,19 @@ mutate_semi_minus(RDB_expression *texp, RDB_expression **tbpv, int cap,
     if (empty_exp == NULL)
         return tbc;
 
-    if (tbc < cap && expr_is_binop(texp->def.op.args.firstp, "union")) {
+    if (tbc < cap && RDB_expr_is_binop(texp->def.op.args.firstp, "union")) {
         tbpv[tbc] = transform_semi_minus_union1(texp, empty_exp, ecp, txp);
         if (tbpv[tbc] == NULL)
             return RDB_ERROR;
         tbc++;
         if (tbc < cap
-                && expr_is_binop(tbpv[tbc - 1], "union")
-                && expr_is_binop(tbpv[tbc - 1]->def.op.args.firstp, "minus")
-                && expr_is_binop(tbpv[tbc - 1]->def.op.args.firstp
+                && RDB_expr_is_binop(tbpv[tbc - 1], "union")
+                && RDB_expr_is_binop(tbpv[tbc - 1]->def.op.args.firstp, "minus")
+                && RDB_expr_is_binop(tbpv[tbc - 1]->def.op.args.firstp
                         ->def.op.args.firstp->nextp,
                         "union")
-                && expr_is_binop(tbpv[tbc - 1]->def.op.args.firstp->nextp, "minus")
-                && expr_is_binop(tbpv[tbc - 1]->def.op.args.firstp->nextp
+                && RDB_expr_is_binop(tbpv[tbc - 1]->def.op.args.firstp->nextp, "minus")
+                && RDB_expr_is_binop(tbpv[tbc - 1]->def.op.args.firstp->nextp
                         ->def.op.args.firstp->nextp,
                         "union"))
         {
@@ -1501,14 +1491,14 @@ mutate_semi_minus(RDB_expression *texp, RDB_expression **tbpv, int cap,
             tbc++;
         }
     }
-    if (tbc < cap && expr_is_binop(texp->def.op.args.firstp->nextp, "union")) {
+    if (tbc < cap && RDB_expr_is_binop(texp->def.op.args.firstp->nextp, "union")) {
         tbpv[tbc] = transform_semi_minus_union2(texp, empty_exp, ecp, txp);
         if (tbpv[tbc] == NULL)
             return RDB_ERROR;
         tbc++;
     }
     if (tbc < cap && strcmp(texp->def.op.name, "minus") == 0
-            && expr_is_binop(texp->def.op.args.firstp->nextp, "where")) {
+            && RDB_expr_is_binop(texp->def.op.args.firstp->nextp, "where")) {
         tbpv[tbc] = transform_minus_where(texp, empty_exp, ecp, txp);
         if (tbpv[tbc] == NULL)
             return RDB_ERROR;
@@ -1620,38 +1610,6 @@ mutate_tbref(RDB_expression *texp, RDB_expression **tbpv, int cap,
     }
 }
 
-static int
-mutate_union(RDB_expression *exp, RDB_expression **tbpv, int cap,
-        RDB_expression *empty_exp, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    /* Check for T1 WHERE B UNION T1 WHERE NOT B */
-    if (expr_is_binop(exp->def.op.args.firstp, "where")
-            && expr_is_binop(exp->def.op.args.firstp->nextp, "where")) {
-        RDB_bool res;
-        if (RDB_expr_equals(exp->def.op.args.firstp->def.op.args.firstp,
-                exp->def.op.args.firstp->nextp->def.op.args.firstp, ecp, txp, &res)
-                != RDB_OK) {
-            return RDB_ERROR;
-        }
-        if (res) {
-            if (RDB_exprs_compl(exp->def.op.args.firstp->def.op.args.firstp->nextp,
-                    exp->def.op.args.firstp->nextp->def.op.args.firstp->nextp,
-                    ecp, txp, &res) != RDB_OK) {
-                return RDB_ERROR;
-            }
-            if (res) {
-                /* Check says yes, so copy T1 */
-                tbpv[0] = RDB_dup_expr(exp->def.op.args.firstp->def.op.args.firstp, ecp);
-                if (tbpv[0] == NULL)
-                    return RDB_ERROR;
-                return 1;
-            }
-        }
-    }
-
-    return mutate_full_vt(exp, tbpv, cap, empty_exp, ecp, txp);
-}
-
 /*
  * Create equivalents of *exp and store them in *tbpv.
  */
@@ -1666,37 +1624,44 @@ mutate(RDB_expression *exp, RDB_expression **tbpv, int cap,
     if (exp->kind != RDB_EX_RO_OP)
         return 0;
 
-    if (expr_is_binop(exp, "where")) {
+    if (RDB_expr_is_binop(exp, "where")) {
         return mutate_where(exp, tbpv, cap, empty_exp, ecp, txp);
     }
 
-    if (expr_is_binop(exp, "join")) {
+    if (RDB_expr_is_binop(exp, "join")) {
         return mutate_join(exp, tbpv, cap, empty_exp, ecp, txp);
     }
 
-    if (expr_is_binop(exp, "minus")
-            || expr_is_binop(exp, "semiminus")) {
+    if (RDB_expr_is_binop(exp, "minus")
+            || RDB_expr_is_binop(exp, "semiminus")) {
         return mutate_semi_minus(exp, tbpv, cap, empty_exp, ecp, txp);
     }
 
-    if (expr_is_binop(exp, "intersect")
-            || expr_is_binop(exp, "semijoin")) {
+    if (RDB_expr_is_binop(exp, "intersect")
+            || RDB_expr_is_binop(exp, "semijoin")) {
         return mutate_matching_index(exp, tbpv, cap, empty_exp, ecp, txp);
     }
 
-    if (expr_is_binop(exp, "union")) {
-        return mutate_union(exp, tbpv, cap, empty_exp, ecp, txp);
+    if (RDB_expr_is_binop(exp, "union")) {
+        return mutate_full_vt(exp, tbpv, cap, empty_exp, ecp, txp);
     }
 
     if (strcmp(exp->def.op.name, "extend") == 0
             || strcmp(exp->def.op.name, "project") == 0
             || strcmp(exp->def.op.name, "remove") == 0
-            || strcmp(exp->def.op.name, "rename") == 0
             || strcmp(exp->def.op.name, "summarize") == 0
             || strcmp(exp->def.op.name, "wrap") == 0
             || strcmp(exp->def.op.name, "unwrap") == 0
             || strcmp(exp->def.op.name, "group") == 0
             || strcmp(exp->def.op.name, "ungroup") == 0) {
+        return mutate_vt(exp, 1, tbpv, cap, empty_exp, ecp, txp);
+    }
+    if (strcmp(exp->def.op.name, "rename") == 0
+            && exp->def.op.args.firstp != NULL) {
+        if (exp->def.op.args.firstp->nextp == NULL) {
+            /* If the rename is a no-op, take the argument */
+            return mutate(exp->def.op.args.firstp, tbpv, cap, empty_exp, ecp, txp);
+        }
         return mutate_vt(exp, 1, tbpv, cap, empty_exp, ecp, txp);
     }
     if (strcmp(exp->def.op.name, "divide") == 0) {
