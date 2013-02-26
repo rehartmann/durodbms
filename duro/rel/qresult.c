@@ -1003,6 +1003,21 @@ RDB_expr_qresult(RDB_expression *exp, RDB_exec_context *ecp,
     return qrp;
 }
 
+RDB_qresult *
+RDB_index_qresult(RDB_object *tbp, struct RDB_tbindex *indexp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_qresult *qrp = RDB_alloc(sizeof (RDB_qresult), ecp);
+    if (qrp == NULL) {
+        return NULL;
+    }
+    if (init_index_qresult(qrp, tbp, indexp, ecp, txp) != RDB_OK) {
+        RDB_free(qrp);
+        return NULL;
+    }
+    return qrp;
+}
+
 static int
 init_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_exec_context *ecp,
         RDB_transaction *txp)
@@ -1605,15 +1620,14 @@ next_unwrap_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
-static int
-seek_index_qresult(RDB_qresult *qrp, RDB_tbindex *indexp,
-        const RDB_object *tplp, RDB_exec_context *ecp)
+int
+RDB_seek_index_qresult(RDB_qresult *qrp, struct RDB_tbindex *indexp,
+        const RDB_object *tplp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     int ret;
     RDB_field *fv = RDB_alloc(sizeof (RDB_field) * indexp->attrc, ecp);
     if (fv == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -1625,11 +1639,16 @@ seek_index_qresult(RDB_qresult *qrp, RDB_tbindex *indexp,
             goto cleanup;
     }
 
-    ret = RDB_cursor_seek(qrp->val.stored.curp, indexp->attrc, fv, 0);
+    ret = RDB_cursor_seek(qrp->val.stored.curp, indexp->attrc, fv, RDB_REC_RANGE);
     if (ret == RDB_OK) {
         qrp->endreached = RDB_FALSE;
     } else {
-        qrp->endreached = RDB_TRUE;
+        if (ret == DB_NOTFOUND) {
+            qrp->endreached = RDB_TRUE;
+            ret = RDB_OK;
+        } else {
+            RDB_errcode_to_error(ret, ecp, txp);
+        }
     }
 
 cleanup:
@@ -1655,8 +1674,8 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp,
         qrp->val.children.tpl_valid = RDB_TRUE;
 
         /* Set cursor position */
-        ret = seek_index_qresult(qrp->val.children.qr2p, indexp,
-                &qrp->val.children.tpl, ecp);
+        ret = RDB_seek_index_qresult(qrp->val.children.qr2p, indexp,
+                &qrp->val.children.tpl, ecp, txp);
         if (ret != RDB_OK)
             return RDB_ERROR;
     }
@@ -1700,19 +1719,19 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp,
         }
 
         /* reset cursor */
-        ret = seek_index_qresult(qrp->val.children.qr2p, indexp,
-                &qrp->val.children.tpl, ecp);
+        ret = RDB_seek_index_qresult(qrp->val.children.qr2p, indexp,
+                &qrp->val.children.tpl, ecp, txp);
         if (ret != RDB_OK)
             return RDB_ERROR;
     }
-    
+
     /* join the two tuples into tplp */
     return RDB_add_tuple(tplp, &qrp->val.children.tpl, ecp, txp);
 }
 
 static int
 next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
-    RDB_transaction *txp)
+        RDB_transaction *txp)
 {
     int ret;
     int i;

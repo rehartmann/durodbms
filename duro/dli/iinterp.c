@@ -2124,7 +2124,7 @@ exec_indexdef(RDB_parse_node *nodep, RDB_exec_context *ecp)
     int i;
     const char *indexname = RDB_expr_var_name(nodep->exp);
     RDB_object *tbp;
-    int idxcompc = RDB_parse_nodelist_length(nodep->nextp->nextp->nextp);
+    int idxcompc = (RDB_parse_nodelist_length(nodep->nextp->nextp->nextp) + 1) / 2;
     RDB_seq_item *idxcompv;
     RDB_parse_node *attrnodep;
 

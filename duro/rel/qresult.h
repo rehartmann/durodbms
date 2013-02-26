@@ -62,9 +62,13 @@ RDB_table_qresult(RDB_object *, RDB_exec_context *, RDB_transaction *);
 RDB_qresult *
 RDB_expr_qresult(RDB_expression *, RDB_exec_context *, RDB_transaction *);
 
+RDB_qresult *
+RDB_index_qresult(RDB_object *, struct RDB_tbindex *,
+        RDB_exec_context *, RDB_transaction *);
+
 int
-RDB_index_qresult(RDB_object *, struct RDB_tbindex *, RDB_transaction *,
-        RDB_qresult **);
+RDB_seek_index_qresult(RDB_qresult *, struct RDB_tbindex *,
+        const RDB_object *, RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_sorter(RDB_expression *, RDB_qresult **qrespp, RDB_exec_context *,

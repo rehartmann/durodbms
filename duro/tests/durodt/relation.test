@@ -737,6 +737,64 @@ test refconstraint {referential constraint} -setup $SETUP -body {
 delete from customers caught
 }
 
+test matching_index {MINUS, INTERSECT, SEMIJOIN, SEMIMINUS with index on table #2} -match glob -body {
+    exec $testdir/../../dli/durodt -e dbenv << {
+        current_db := 'D';
+        begin transaction;
+
+        var t1 real rel{b int, c string}
+                init RELATION {TUPLE {c 'B', b 1}, TUPLE {c 'C', b 1}};
+
+        var t2 real rel{a int, b int, c string}
+                init RELATION {TUPLE {a 1, c 'A', b 1}, TUPLE {a 2, c 'B', b 1},
+                               TUPLE {a 3, c 'B', b 1}, TUPLE {a 4, c 'B', b 2},
+                               TUPLE {a 5, c 'B', b 3}}
+                 key {a};
+
+        index t2_bc t2 (b, c);
+        
+        commit;
+
+        begin tx;
+
+        var tp tuple {b int, c string};
+
+        tp := tuple from (t1 semijoin t2);
+        put(tp.b); put(' ');
+        put(tp.c); put_line('');
+
+        explain t1 semijoin t2 order();
+        
+        tp := tuple from (t1 semiminus t2);
+        put(tp.b); put(' ');
+        put(tp.c); put_line('');
+
+        explain t1 semiminus t2 order();
+        
+        tp := tuple from (t1 intersect t2 {b, c});
+        put(tp.b); put(' ');
+        put(tp.c); put_line('');
+
+        explain t1 intersect t2 {b, c} order();
+
+        tp := tuple from (t1 minus t2 {b, c});
+        put(tp.b); put(' ');
+        put(tp.c); put_line('');
+
+        explain t1 minus t2 {b, c} order();
+        
+        commit;
+    }
+} -result {1 B
+*INDEX t2_bc*
+1 C
+*INDEX t2_bc*
+1 B
+*INDEX t2_bc*
+1 C
+*INDEX t2_bc*
+}
+
 test utypetable {table with attribute of user-defined type} -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';

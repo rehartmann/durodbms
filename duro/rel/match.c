@@ -15,6 +15,9 @@
 #include <string.h>
 #include <assert.h>
 
+/*
+ * Check if the *tplp matches one of the tuples in *qrp.
+ */
 static int
 qr_matching_tuple(RDB_qresult *qrp, const RDB_object *tplp,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resultp)
@@ -170,6 +173,47 @@ cleanup:
     return ret;
 }
 
+static int
+stored_matching_nuindex(RDB_object *tbp, const RDB_object *tplp, RDB_tbindex *indexp,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resultp)
+{
+    RDB_object tpl;
+    RDB_qresult *qrp = RDB_index_qresult(tbp, indexp, ecp, txp);
+    if (qrp == NULL)
+        return RDB_ERROR;
+
+    RDB_init_obj(&tpl);
+    if (RDB_seek_index_qresult(qrp, indexp, tplp, ecp, txp) != RDB_OK)
+        goto error;
+
+    if (RDB_next_tuple(qrp, &tpl, ecp, txp) != RDB_OK) {
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+            goto error;
+        }
+
+        /* End of qresult reached */
+        *resultp = RDB_FALSE;
+        RDB_clear_err(ecp);
+        return RDB_OK;
+    }
+
+    /*
+     * If the tuple matches, the result is TRUE.
+     * If the tuple does not match, the following tuples from *qrp
+     * will not match either, so the result is FALSE.
+     */
+    if (RDB_tuple_matches(&tpl, tplp, ecp, txp, resultp) != RDB_OK)
+        goto error;
+
+    RDB_destroy_obj(&tpl, ecp);
+    return RDB_del_qresult(qrp, ecp, txp);
+
+error:
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_del_qresult(qrp, ecp, txp);
+    return RDB_ERROR;
+}
+
 /*
  * Check if one of the tuples in *exp matches *tplp
  * (The expression must be relation-valued)
@@ -187,9 +231,13 @@ RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
         case RDB_EX_TBP:
             if (exp->def.tbref.tbp->val.tb.stp != NULL
                     && exp->def.tbref.indexp != NULL) {
-                /* Use unique index */
-                return stored_matching_uindex(exp->def.tbref.tbp, tplp,
-                        exp->def.tbref.indexp, ecp, txp, resultp);
+                if (exp->def.tbref.indexp->unique) {
+                    /* Use unique index */
+                    return stored_matching_uindex(exp->def.tbref.tbp, tplp,
+                            exp->def.tbref.indexp, ecp, txp, resultp);
+                }
+                return stored_matching_nuindex(exp->def.tbref.tbp, tplp,
+                            exp->def.tbref.indexp, ecp, txp, resultp);
             }
             if (exp->def.tbref.tbp->val.tb.exp != NULL) {
                 RDB_expr_matching_tuple(exp->def.tbref.tbp->val.tb.exp, tplp,
@@ -204,12 +252,17 @@ RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
         case RDB_EX_RO_OP:
             if (strcmp (exp->def.op.name, "project") == 0
                     && exp->def.op.args.firstp != NULL) {
-                if (exp->def.op.args.firstp->kind == RDB_EX_TBP
-                        && exp->def.op.args.firstp->def.tbref.tbp->val.tb.stp != NULL
-                        && exp->def.op.args.firstp->def.tbref.indexp != NULL) {
-                    return stored_matching_uindex(exp->def.op.args.firstp->def.tbref.tbp,
-                            tplp, exp->def.op.args.firstp->def.tbref.indexp,
-                            ecp, txp, resultp);
+                RDB_expression *chexp = exp->def.op.args.firstp;
+                if (chexp->kind == RDB_EX_TBP
+                        && chexp->def.tbref.tbp->val.tb.stp != NULL
+                        && chexp->def.tbref.indexp != NULL) {
+                    if (chexp->def.tbref.indexp->unique) {
+                        return stored_matching_uindex(chexp->def.tbref.tbp,
+                                tplp, chexp->def.tbref.indexp,
+                                ecp, txp, resultp);
+                    }
+                    return stored_matching_nuindex(chexp->def.tbref.tbp,
+                            tplp, chexp->def.tbref.indexp, ecp, txp, resultp);
                 }
                 return project_matching(exp, tplp, ecp, txp, resultp);
             }

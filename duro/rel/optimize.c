@@ -222,10 +222,10 @@ expr_covers_index(RDB_expression *exp, RDB_tbindex *indexp)
 }
 
 /*
- * Check if *reltyp covers all index attributes.
+ * Return the number of attributes covered by the index
  */
-static RDB_bool
-table_covers_index(RDB_type *reltyp, RDB_tbindex *indexp)
+static int
+table_index_attrs(RDB_type *reltyp, RDB_tbindex *indexp)
 {
     int i;
 
@@ -233,9 +233,18 @@ table_covers_index(RDB_type *reltyp, RDB_tbindex *indexp)
     for (i = 0; i < indexp->attrc; i++) {
         if (RDB_tuple_type_attr(reltyp->def.basetyp,
                 indexp->attrv[i].attrname) == NULL)
-            return RDB_FALSE;
+            break;
     }
-    return RDB_TRUE;
+    return i;
+}
+
+/*
+ * Check if *reltyp covers all index attributes.
+ */
+static RDB_bool
+table_covers_index(RDB_type *reltyp, RDB_tbindex *indexp)
+{
+    return (RDB_bool) table_index_attrs(reltyp, indexp) == indexp->attrc;
 }
 
 /**
@@ -623,9 +632,13 @@ split_by_index(RDB_expression *texp, RDB_tbindex *indexp,
  * Check if the expression is a table or a projection over a table
  */
 static RDB_bool
-is_table_or_project_table(const RDB_expression *exp, RDB_bool *is_projp)
+is_stored_or_project_table(const RDB_expression *exp, RDB_bool *is_projp)
 {
     if (exp->kind == RDB_EX_TBP) {
+        /*
+         * Assume that virtual tables have been resolved, so this must be
+         * a real (stored) table
+         */
         if (is_projp != NULL)
             *is_projp = RDB_FALSE;
         return RDB_TRUE;
@@ -685,19 +698,29 @@ table_cost(const RDB_expression *exp)
             || RDB_expr_is_binop(exp, "minus")
             || RDB_expr_is_binop(exp, "semijoin")
             || RDB_expr_is_binop(exp, "intersect")) {
-        if (is_table_or_project_table(exp->def.op.args.firstp->nextp, &is_proj)) {
+        if (is_stored_or_project_table(exp->def.op.args.firstp->nextp, &is_proj)) {
             if (is_proj) {
-                if (exp->def.op.args.firstp->nextp->def.op.args.firstp->def.tbref.indexp
-                        != NULL)
-                    return table_cost(exp->def.op.args.firstp);
+                indexp = exp->def.op.args.firstp->nextp->def.op.args.firstp->def.tbref.indexp;
+                if (indexp != NULL) {
+                    if (indexp->unique)
+                        return table_cost(exp->def.op.args.firstp);
+                    else
+                        return table_cost(exp->def.op.args.firstp) * 2;
+                }
             } else {
-                if (exp->def.op.args.firstp->def.tbref.indexp != NULL)
-                    return table_cost(exp->def.op.args.firstp);
+                indexp = exp->def.op.args.firstp->nextp->def.tbref.indexp;
+                if (indexp != NULL) {
+                    if (indexp->unique)
+                        return table_cost(exp->def.op.args.firstp);
+                    else
+                        return table_cost(exp->def.op.args.firstp) * 2;
+                }
             }
         }
         /* No index used, so the 2nd table has to be searched sequentially */
         return table_cost(exp->def.op.args.firstp)
-                + table_est_cardinality(exp->def.op.args.firstp) * table_cost(exp->def.op.args.firstp->nextp);
+                + table_est_cardinality(exp->def.op.args.firstp)
+                        * table_cost(exp->def.op.args.firstp->nextp);
     }
 
     if (RDB_expr_is_binop(exp, "union"))
@@ -1390,23 +1413,24 @@ mutate_matching_index(RDB_expression *texp, RDB_expression **tbpv, int cap,
      * If the second table is a stored table or a projection over a stored table
      * (assuming virtual tables have been resolved), try to use an index
      */
-    if (is_table_or_project_table(texp->def.op.args.firstp->nextp, &is_proj)) {
+    if (is_stored_or_project_table(texp->def.op.args.firstp->nextp, &is_proj)) {
+        RDB_type *tb1typ;
         RDB_object *tbp = is_proj ?
                 texp->def.op.args.firstp->nextp->def.op.args.firstp->def.tbref.tbp
                 : texp->def.op.args.firstp->nextp->def.tbref.tbp;
 
         /* Use unique indexes which cover the attributes of the first argument */
-        RDB_type *tb1typ;
         RDB_stored_table *stbp = tbp->val.tb.stp;
         if (stbp == NULL)
             return RDB_OK;
+
         tb1typ = RDB_expr_type(texp->def.op.args.firstp, NULL, NULL, NULL, ecp, txp);
         if (tb1typ == NULL)
             return RDB_ERROR;
         tbc = 0;
         /* Add a copy to tbpv for each index */
         for (i = 0; i < stbp->indexc && tbc < cap; i++) {
-            if (stbp->indexv[i].unique && table_covers_index(tb1typ, &stbp->indexv[i])) {
+            if (table_covers_index(tb1typ, &stbp->indexv[i])) {
                 tbpv[tbc] = op_from_copy(texp->def.op.name, texp->def.op.args.firstp,
                         texp->def.op.args.firstp->nextp, ecp);
                 if (tbpv[tbc] == NULL)
