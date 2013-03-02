@@ -1422,14 +1422,10 @@ check_assign_types(int insc, const RDB_ma_insert insv[],
      * Check types of copied values
      */
     for (i = 0; i < copyc; i++) {
-        RDB_type *srctyp = RDB_obj_type(copyv[i].srcp);
-
-        if (srctyp != NULL) {
-            /* If destination carries a value, types must match */
-            if (copyv[i].dstp->kind != RDB_OB_INITIAL
-                    && (copyv[i].dstp->typ == NULL
-                     || !RDB_type_equals(copyv[i].srcp->typ,
-                                    copyv[i].dstp->typ))) {
+        /* If destination carries a value, types must match */
+        if (copyv[i].dstp->kind != RDB_OB_INITIAL
+                && copyv[i].dstp->typ != NULL) {
+            if (!RDB_obj_matches_type(copyv[i].srcp, copyv[i].dstp->typ)) {
                 RDB_raise_type_mismatch("source does not match destination",
                         ecp);
                 return RDB_ERROR;

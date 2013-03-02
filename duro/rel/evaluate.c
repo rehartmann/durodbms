@@ -122,7 +122,6 @@ evaluate_count(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp,
         RDB_object *resultp)
 {
-    int ret;
     RDB_int count;
     RDB_object tpl;
     RDB_qresult *qrp = NULL;
@@ -139,8 +138,7 @@ evaluate_count(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     }
 
     /* Duplicates must be removed */
-    ret = RDB_duprem(qrp, ecp, txp);
-    if (ret != RDB_OK) {
+    if (RDB_duprem(qrp, ecp, txp) != RDB_OK) {
         RDB_del_qresult(qrp, ecp, txp);
         return RDB_ERROR;
     }
@@ -148,7 +146,7 @@ evaluate_count(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     RDB_init_obj(&tpl);
 
     count = 0;
-    while ((ret = RDB_next_tuple(qrp, &tpl, ecp, txp)) == RDB_OK) {
+    while (RDB_next_tuple(qrp, &tpl, ecp, txp) == RDB_OK) {
         count++;
     }
     RDB_destroy_obj(&tpl, ecp);
@@ -158,8 +156,7 @@ evaluate_count(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     }
     RDB_clear_err(ecp);
 
-    ret = RDB_del_qresult(qrp, ecp, txp);
-    if (ret != RDB_OK)
+    if (RDB_del_qresult(qrp, ecp, txp) != RDB_OK)
         return RDB_ERROR;
 
     if (exp->kind == RDB_EX_TBP
@@ -262,6 +259,11 @@ evaluate_tuple_extend(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     return ret;
 }
 
+typedef struct arg_data {
+    RDB_object val; /* Stores the value of an evaluated argument */
+    RDB_bool type_was_null; /* RDB_TRUE if the argument did not carry type information */
+} arg_info;
+
 static int
 evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp,
@@ -272,7 +274,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     RDB_expression *argp;
     RDB_object tb;
     RDB_object **valpv;
-    RDB_object *valv = NULL;
+    arg_info *arginfov = NULL;
     int argc;
     struct get_type_info gtinfo;
 
@@ -410,13 +412,15 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         ret = RDB_ERROR;
         goto cleanup;
     }
-    valv = RDB_alloc(argc * sizeof (RDB_object), ecp);
-    if (valv == NULL) {
+    arginfov = RDB_alloc(argc * sizeof (arg_info), ecp);
+    if (arginfov == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
     }
-    for (i = 0; i < argc; i++)
+    for (i = 0; i < argc; i++) {
         valpv[i] = NULL;
+        arginfov[i].type_was_null = RDB_FALSE;
+    }
 
     /*
      * Get pointers to argument values, trying to avoid copying of values.
@@ -451,9 +455,9 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
                 }
                 break;
             default:
-                valpv[i] = &valv[i];
-                RDB_init_obj(&valv[i]);
-                ret = RDB_evaluate(argp, getfnp, getdata, envp, ecp, txp, &valv[i]);
+                valpv[i] = &arginfov[i].val;
+                RDB_init_obj(&arginfov[i].val);
+                ret = RDB_evaluate(argp, getfnp, getdata, envp, ecp, txp, &arginfov[i].val);
                 if (ret != RDB_OK)
                     goto cleanup;
                 break;
@@ -469,6 +473,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
                 ret = RDB_ERROR;
                 goto cleanup;
             }
+            arginfov[i].type_was_null = RDB_TRUE;
         }
 
         argp = argp->nextp;
@@ -524,20 +529,26 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             txp, valp);
 
 cleanup:
-    if (valv != NULL) {
+    if (arginfov != NULL) {
         argp = exp->def.op.args.firstp;
         for (i = 0; i < argc; i++) {
             if (valpv[i] != NULL && argp->kind != RDB_EX_OBJ
                     && argp->kind != RDB_EX_TBP && argp->kind != RDB_EX_VAR) {
-                RDB_destroy_obj(&valv[i], ecp);
+                RDB_destroy_obj(&arginfov[i].val, ecp);
                 /*
                  * Don't have to drop valpv[i]->typ
                  * because it's managed by the argument expression
                  */
             }
+            /*
+             * If the argument type was set by the function, set it to NULL
+             * because the type could be destroyed
+             */
+            if (arginfov[i].type_was_null)
+                valpv[i]->typ = NULL;
             argp = argp->nextp;
         }
-        RDB_free(valv);
+        RDB_free(arginfov);
     }
     RDB_free(valpv);
     return ret;

@@ -28,6 +28,27 @@ test tuplevar {tuple variables} -body {
         t4 := tup {i 2, s 'bar'};
         put_line(CAST_AS_STRING(t4.i) || ' ' || t4.s);
         put(t4 {s}); put_line('');
+
+        -- Test type checks
+        var t5 tup{id int, s string};
+        t5 := tup{id 1, s 'Ylalali'};
+        try
+            t5 := tup{id 1};
+        catch err type_mismatch_error;
+            put_line('missing attribute caught');
+        end try;
+
+        try
+            t5 := tup{id 1, s 'Foo', t 'Bar'};
+        catch err type_mismatch_error;
+            put_line('surplus attribute caught');
+        end try;
+
+        try
+            t5 := tup{id 1, s 2};
+        catch err type_mismatch_error;
+            put_line('differing attribute type caught');
+        end try;
     }
 } -result {5 foo
 5
@@ -35,6 +56,9 @@ foo
 555
 2 bar
 TUPLE {s 'bar'}
+missing attribute caught
+surplus attribute caught
+differing attribute type caught
 }
 
 test tupleupdexpr {tuple update expression} -body {

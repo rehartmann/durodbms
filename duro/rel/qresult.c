@@ -1818,7 +1818,7 @@ RDB_get_by_uindex(RDB_object *tbp, RDB_object *objpv[], RDB_tbindex *indexp,
 
     /*
      * Convert data to fields
-     */    
+     */
     for (i = 0; i < keylen; i++) {
         ret = RDB_obj_to_field(&fv[i], objpv[i], ecp);
         if (ret != RDB_OK)

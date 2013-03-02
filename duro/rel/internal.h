@@ -444,7 +444,10 @@ RDB_expr_type_tpltyp(RDB_expression *, const RDB_type *, RDB_environment *,
         RDB_exec_context *, RDB_transaction *);
 
 RDB_type *
-RDB_tuple_type(const RDB_object *tplp, RDB_exec_context *);
+RDB_tuple_type(const RDB_object *, RDB_exec_context *);
+
+RDB_bool
+RDB_obj_matches_type(RDB_object *, RDB_type *);
 
 int
 RDB_check_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
