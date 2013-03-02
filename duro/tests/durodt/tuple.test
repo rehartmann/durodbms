@@ -49,6 +49,12 @@ test tuplevar {tuple variables} -body {
         catch err type_mismatch_error;
             put_line('differing attribute type caught');
         end try;
+
+        try
+            t5 := tup{id 1, s 'Foo', s 'Bar'};
+        catch err invalid_argument_error;
+            put_line('double attribute caught');
+        end try;
     }
 } -result {5 foo
 5
@@ -59,6 +65,7 @@ TUPLE {s 'bar'}
 missing attribute caught
 surplus attribute caught
 differing attribute type caught
+double attribute caught
 }
 
 test tupleupdexpr {tuple update expression} -body {
