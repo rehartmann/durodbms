@@ -138,12 +138,61 @@ transform_union(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     return RDB_OK;
 }
 
+/*
+ * Convert comparisons of the form <constant> <comp op> <var>
+ * are converted to <var> <comp op> <constant>
+ */
+static void
+normalize_comparisons(RDB_expression *exp)
+{
+    if (exp->kind != RDB_EX_RO_OP)
+        return;
+
+    if (exp->def.op.args.firstp != NULL
+            && exp->def.op.args.firstp->nextp != NULL
+            && exp->def.op.args.firstp->nextp->nextp == NULL
+            && (strcmp(exp->def.op.name, "=") == 0
+                || strcmp(exp->def.op.name, "<=") == 0
+                || strcmp(exp->def.op.name, "<") == 0
+                || strcmp(exp->def.op.name, ">=") == 0
+                || strcmp(exp->def.op.name, ">") == 0)) {
+        if (exp->def.op.args.firstp->kind == RDB_EX_OBJ
+                && exp->def.op.args.firstp->nextp->kind == RDB_EX_VAR) {
+            RDB_expression *hexp;
+
+            /* Modify operator */
+            if (strcmp(exp->def.op.name, "<=") == 0)
+                strcpy(exp->def.op.name, ">=");
+            else if (strcmp(exp->def.op.name, "<") == 0)
+                strcpy(exp->def.op.name, ">");
+            else if (strcmp(exp->def.op.name, ">=") == 0)
+                strcpy(exp->def.op.name, "<=");
+            else if (strcmp(exp->def.op.name, ">") == 0)
+                strcpy(exp->def.op.name, "<");
+
+            /* Swap arguments */
+            hexp = exp->def.op.args.firstp;
+            exp->def.op.args.firstp = hexp->nextp;
+            exp->def.op.args.firstp->nextp = hexp;
+            hexp->nextp = NULL;
+        }
+    } else {
+        RDB_expression *childp = exp->def.op.args.firstp;
+        while (childp != NULL) {
+            normalize_comparisons(childp);
+            childp = childp->nextp;
+        }
+    }
+}
+
 static int
 transform_where(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     char *hname;
     RDB_expression *hexp;
+
+    normalize_comparisons(exp->def.op.args.firstp->nextp);
 
     if (RDB_transform(exp->def.op.args.firstp, getfnp, arg, ecp, txp) != RDB_OK)
         return RDB_ERROR;

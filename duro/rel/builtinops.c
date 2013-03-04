@@ -862,14 +862,14 @@ op_tuple(int argc, RDB_object *argv[], RDB_operator *op,
 {
     int i;
 
-    /* Delete all attributes */
-    RDB_destroy_obj(retvalp, ecp);
-    RDB_init_obj(retvalp);
-
     if (argc % 2 == 1) {
         RDB_raise_invalid_argument("Even number of arguments required by TUPLE", ecp);
         return RDB_OK;
     }
+
+    /* Delete all attributes by destroying and initializing *retvalp */
+    RDB_destroy_obj(retvalp, ecp);
+    RDB_init_obj(retvalp);
 
     for (i = 0; i < argc; i += 2) {
         if (RDB_obj_type(argv[i]) != &RDB_STRING) {

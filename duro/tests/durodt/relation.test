@@ -513,24 +513,48 @@ test relrel {table with relation attribute} -setup $SETUP -body {
 yo
 }
 
-test index {creating index} -setup $SETUP -body {
+test index {creating index} -setup $SETUP -match glob -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
 
         begin tx;
-        var r real relation {i int, d float, c string} key {i};
+        var r real relation {ai int, ad float, ac string} key {ai};
         commit;
 
         begin tx;
-        index r_c r (c);
+        index r_ac r (ac);
+        index r_ad_ai r (ad, ai);
         commit;
 
         begin tx;
-        drop index r_c;
+        var i int;
+        for i:= 1 to 40;
+            insert r tup{ai i, ad cast_as_float(i / 10), ac cast_as_string(i)};
+        end for;
+        explain r where ai > 35 and ad = 3.0 order();
+        explain r where 35 < ai and 3.0 = ad order();
+
+        var t tuple same_heading_as(r);
+        foreach t in r where ai > 35 and ad = 3.0 order(ai asc);
+            put(t.ai); put_line('');
+        end foreach;
+
+        commit;
+
+        begin tx;
+        drop index r_ac;
+        drop index r_ad_ai;
         commit;
     }
+} -result {*INDEX r_ad_ai*
+*INDEX r_ad_ai*
+36
+37
+38
+39
 }
+
 
 test real_default {public real table with default values} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
