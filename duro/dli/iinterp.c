@@ -677,6 +677,7 @@ exec_explain(RDB_parse_node *nodep, RDB_exec_context *ecp)
     } else {
         ret = RDB_OK;
     }
+    fflush(stdout);
 
 cleanup:
     if (seqitv != NULL)

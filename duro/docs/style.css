@@ -1,7 +1,12 @@
 body {
   margin: 1em 2em;
-  font-family: "DejaVu Sans", Verdana, sans-serif
+  color: black; background-color: white;
+  font-family: "DejaVu Sans", Verdana, sans-serif;
 }
-pre, samp, tt, code {
-  font-family: "DejaVu Sans Mono", Consolas, monospace
+samp, tt, code {
+  font-family: "DejaVu Sans Mono", Consolas, monospace;
+}
+pre {
+  font-family: "DejaVu Sans Mono", Consolas, monospace;
+  background-color: #eeeeee;
 }

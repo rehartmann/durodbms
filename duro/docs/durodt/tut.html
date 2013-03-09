@@ -189,7 +189,7 @@ no db> put_line('Please enter a number:'); get_line(s);
 Please enter a number:
 2
 no db> var n init cast_as_integer(s);
-no db> if n < 0 then
+no db> if n &lt; 0 then
 no db>     put_line('Negative');
 no db> else
 no db>     put_line('Positive');
@@ -207,7 +207,7 @@ no db> put_line('Please enter a number:'); get_line(s);
 Please enter a number:
 -2
 no db> var n init cast_as_integer(s);
-no db> if n < 0 then
+no db> if n &lt; 0 then
 no db>     begin;
 no db>         put_line('Negative');
 no db>     end;
@@ -543,7 +543,7 @@ D>
 be achieved using a database constraint as follows:
 
 <pre>
-D> constraint orders_customers is_empty (orders {customer_id} minus customers {customer_id});
+D> constraint orders_customers orders {customer_id} subset_of customers {customer_id};
 Constraint orders_customers created.
 D> commit;
 Transaction committed.
@@ -564,6 +564,25 @@ D> insert orders tup{order_id 1, customer_id 1};
 1 element affected.
 D> 
 </pre>
+
+<p>DuroDBMS performs constraint checking before a statement is executed.
+To achieve this, DuroDBMS generates an expression which will return TRUE
+if the statement will not violate the expression and FALSE if it will.
+Duro tries to optimize this expression before evaluating.
+
+<p>An EXPLAIN statement can be used to obtain the expression which is evaluated
+in order to check a constraint. Example:
+
+<pre>
+D> explain insert orders tup{order_id 1, customer_id 1};
+check orders_customers: is_empty((RELATION {} union ((RELATION {TUPLE {customer_id 1, order_id 1}}
+{ customer_id }) minus (customers INDEX customers$0 { customer_id }))) {  })
+D> 
+</pre>
+
+<p>The expression is a little complicated, but one can see that the reference to table <var>orders</var>
+has been eliminated. The expression simply checks if the customer_id of the tuple to be inserted
+already appears in <var>customers</var>.
 
 <p>A constraint can be deleted using DROP CONSTRAINT:
 
@@ -844,7 +863,7 @@ end try;
 
 <h2 id="performance">Performance</h2>
 
-<p>Duro D/T features an EXPLAIN statement which shows how a relational expression is executed.
+<p>Duro D/T features an EXPLAIN statement which displays how a relational expression is executed.
 
 <p>Example:
 
@@ -870,6 +889,8 @@ D> explain r where n=1 order();
 D> commit;
 Transaction committed.
 </pre>
+
+<p>(This EXPLAIN statement is not to be confused with the EXPLAIN which displays the constraint checking performed for a statement)
 
 <p>The output of EXPLAIN shows that Duro D/T uses the index r$0 to evaluate the expression.
 This is the index which was created to ensure that n is a key attribute of r.

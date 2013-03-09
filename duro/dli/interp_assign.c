@@ -820,6 +820,7 @@ Duro_exec_explain_assign(const RDB_parse_node *listnodep, RDB_exec_context *ecp)
     if (RDB_apply_constraints(insc, insv, updc, updv, delc, delv,
             copyc, copyv, put_constraint_expr, ecp, &Duro_txnp->tx) != RDB_OK)
         goto error;
+    fflush(stdout);
 
     for (i = 0; i < srcobjc; i++)
         RDB_destroy_obj(&srcobjv[i], ecp);
