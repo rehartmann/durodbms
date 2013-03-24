@@ -124,6 +124,12 @@ OPERATOR eof(ios iostream_id) RETURNS boolean;
 Return TRUE if the end-of-file indicator was set while reading
 from <var>ios</var>.
 
+OPERATOR www_form_to_tuple(tp <em>TUPLE</em>, form_data string) UPDATES {tp};
+
+Convert WWW form data to a tuple.
+For each name/value pair set the value of the corresponding tuple attribute
+to the value of the pair.
+
 */
 
 /*

@@ -25,14 +25,14 @@ The location of Berkeley DB may also be specified using
 the environment. With Visual C++, the variables LIB and INCLUDE
 can be used.
 
-By default, Duro is installed in C:\duro.0.16 on Windows, and
-/usr/local/duro.0.16 on all other systems.
+By default, Duro is installed in C:\duro.0.17 on Windows, and
+/usr/local/duro.0.17 on all other systems.
 You can specify a different directory by passing an installdir
 variable to scons, e. g.:
 
 scons installdir=/usr install
 
-This will install Duro in /usr/duro.0.16.
+This will install Duro in /usr/duro.0.17.
 
 To build Duro without Tcl support, use:
 
