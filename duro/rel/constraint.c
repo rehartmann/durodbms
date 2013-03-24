@@ -144,9 +144,9 @@ on the database the transaction specified by <var>txp</var> interacts with.
 <dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
 <dt>type_mismatch_error
-<dd>The expression specified by <var>constrp</var> is not of type BOOLEAN.
+<dd>The *<var>constrp</var> is not of type BOOLEAN.
 <dt>predicate_violation_error
-<dd>The expression specified by <var>constrp</var> is not satisfied.
+<dd>The *<var>constrp</var> does not evaluate to TRUE.
 </dl>
 
 The call may also fail for a @ref system-errors "system error",
