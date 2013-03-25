@@ -4,21 +4,21 @@
 /*
 $Id$
 
-This file is part of Duro, a relational database management system.
+This file is part of DuroDBMS, a relational database management system.
 Copyright (C) 2003-2012 Rene Hartmann.
 
-Duro is free software; you can redistribute it and/or modify
+DuroDBMS is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
 (at your option) any later version.
 
-Duro is distributed in the hope that it will be useful,
+DuroDBMS is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with Duro; if not, write to the Free Software Foundation, Inc.,
+along with DuroDBMS; if not, write to the Free Software Foundation, Inc.,
 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
@@ -348,7 +348,7 @@ typedef struct RDB_attr {
     /**
      * This field is currently ignored.
      * It should be set to zero for compatibility
-     * with future versions of Duro.
+     * with future versions of DuroDBMS.
      */
     int options;
 } RDB_attr;
