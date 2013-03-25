@@ -1,13 +1,13 @@
-	README for Duro
+	README for DuroDBMS
 
 $Id$
 
-This directory contains the binary Windows release of Duro, a relational
+This directory contains the binary Windows release of DuroDBMS, a relational
 database management system.
 
 Complete source code is available from http://sourceforge.net/projects/duro.
 
-The following software is required for running this version of Duro:
+The following software is required for running this version of DuroDBMS:
 
 - Berkeley DB Transactional Data Store (release 5.3 recommended)
 - POSIX.2 regular expressions (e.g., GNU Regex)
@@ -15,12 +15,12 @@ The following software is required for running this version of Duro:
 - Tcl 8.1 or later
 
 Add the directories where the respective DLLs are located to PATH,
-together with the 'bin' subdirectory of the Duro root directory.
+together with the 'bin' subdirectory of the DuroDBMS root directory.
 
-Duro 0.16 has been tested under Linux/x86 and Windows XP with Berkeley
+DuroDBMS 0.17 has been tested under Linux/x86 and Windows XP with Berkeley
 DB 5.3 and Tcl 8.5.
 
-To learn about how to use Duro, see the documentation in the 'docs'
+To learn about how to use DuroDBMS, see the documentation in the 'docs'
 subdirectory. Example code can be found in the 'tests' subdirectory
 of the source release.
 
@@ -28,12 +28,7 @@ The Tcl interface can be found in the 'lib' subdirectory.
 The easiest way to make it available to application
 scripts is to add this subdirectory to TCLLIBPATH, e.g.:
 
-    set TCLLIBPATH=C:/durodbms.0.16/lib
-
-To run Duroadmin, run duroadmin.tcl from the 'bin' subdirectory
-after setting TCLLIBPATH as described above. Duroadmin requires
-the TkTable extension, which is part of ActiveTcl, available
-from tcl.activestate.com.
+    set TCLLIBPATH=C:/durodbms.0.17/lib
 
 Duro is still under development. Report bugs to
 rhartmann@users.sourceforge.net or use a Sourceforge tracker
