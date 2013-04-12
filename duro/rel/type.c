@@ -533,6 +533,17 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         return NULL;
     }
 
+    /* Evaluate init expression */
+    if (typ->def.scalar.implemented) {
+        RDB_init_obj(&typ->def.scalar.init_val);
+        if (RDB_evaluate(typ->def.scalar.initexp, NULL, NULL, NULL,
+                ecp, txp, &typ->def.scalar.init_val) != RDB_OK) {
+            RDB_destroy_obj(&typ->def.scalar.init_val, ecp);
+            return NULL;
+        }
+        typ->def.scalar.init_val_is_valid = RDB_TRUE;
+    }
+
     if (RDB_load_type_ops(typ, ecp, txp) != RDB_OK)
         return NULL;
 

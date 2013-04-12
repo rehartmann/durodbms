@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2005 Ren� Hartmann.
+ * Copyright (C) 2004-2013 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -21,10 +21,11 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_transaction *txp;
     int repc;
     RDB_possrep *repv = NULL;
+    RDB_expression *initexp = NULL;
     RDB_expression *constraintp = NULL;
 
-    if ((objc < 5) || (objc > 6)) {
-        Tcl_WrongNumArgs(interp, 2, objv, "typename possreps ?constraint? tx");
+    if ((objc < 6) || (objc > 7)) {
+        Tcl_WrongNumArgs(interp, 2, objv, "typename possreps ?constraint? initexp tx");
         return TCL_ERROR;
     }
 
@@ -123,7 +124,7 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         }
     }
 
-    if (objc == 6) {
+    if (objc == 7) {
         /* Type constraint */
         constraintp = Duro_parse_expr_utf(interp, Tcl_GetString(objv[4]),
                 statep, statep->current_ecp, txp);
@@ -133,10 +134,20 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         }            
     }
 
+    /* Init expression */
+    initexp = Duro_parse_expr_utf(interp, Tcl_GetString(objv[objc - 2]),
+            statep, statep->current_ecp, txp);
+    if (initexp == NULL) {
+        ret = TCL_ERROR;
+        goto cleanup;
+    }
+
     ret = RDB_define_type(Tcl_GetString(objv[2]), repc, repv, constraintp,
-            statep->current_ecp, txp);
+            initexp, statep->current_ecp, txp);
     if (constraintp != NULL)
         RDB_del_expr(constraintp, statep->current_ecp);
+    if (initexp != NULL)
+        RDB_del_expr(initexp, statep->current_ecp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         ret = TCL_ERROR;

@@ -32,7 +32,7 @@ test utype {user-defined types} -setup $SETUP -body {
     duro::type define NAME { {NAME { {NAME string} } } } \
             {NOT ((NAME regex_like "^ .*") \
                     OR (NAME regex_like ".* $"))} \
-            $tx
+            {NAME('')} $tx
     
     duro::type implement NAME $tx
     
@@ -60,7 +60,7 @@ test utype {user-defined types} -setup $SETUP -body {
     
     duro::type define PNAME {
         {PNAME {{FIRSTNAME string} {LASTNAME string}}}
-    } $tx
+    } {PNAME('', '')} $tx
     
     duro::type implement PNAME $tx
     
@@ -84,11 +84,8 @@ test utype {user-defined types} -setup $SETUP -body {
     
     duro::type define INTSET {
         {INTLIST {{INTLIST string}}}
-    } $tx
-    
-    # Actual rep is relation
-    duro::type implement INTSET {relation {N integer}} $tx
-    
+    } {INTLIST('')} $tx
+
     # Selector
     duro::operator create INTLIST -returns INTSET {il string} {
         set r {}
@@ -97,7 +94,7 @@ test utype {user-defined types} -setup $SETUP -body {
         }
         return $r
     } $tx
-    
+
     # Getter
     duro::operator create INTSET_get_INTLIST -returns string {is INTSET} {
         set r {}
@@ -106,7 +103,7 @@ test utype {user-defined types} -setup $SETUP -body {
         }
         return [lsort -integer $r]
     } $tx
-    
+
     # Setter
     duro::operator create INTSET_set_INTLIST -updates {is} {is INTSET il string} {
         upvar $is lis
@@ -116,6 +113,9 @@ test utype {user-defined types} -setup $SETUP -body {
              lappend lis [list N $i]
         }
     } $tx
+
+    # Actual rep is relation
+    duro::type implement INTSET {relation {N integer}} $tx
     
     duro::table create T2 {
        {NO integer}

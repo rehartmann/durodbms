@@ -223,6 +223,8 @@ RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
     RDB_object *tplp;
     RDB_object possreps;
     RDB_object *cvalp;
+    RDB_object *ivalp;
+    RDB_object *implvalp;
     RDB_type *typ = NULL;
     RDB_object *typedatap;
     int ret, tret;
@@ -250,8 +252,9 @@ RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
     }
     typ->kind = RDB_TP_SCALAR;
     typ->compare_op = NULL;
+    typ->def.scalar.repc = 0;
 
-    typedatap = RDB_tuple_get(&tpl, "i_arep_type");
+    typedatap = RDB_tuple_get(&tpl, "arep_type");
     if (RDB_binary_length(typedatap) != 0) {
         typ->def.scalar.arep = RDB_binobj_to_type(typedatap, ecp, txp);
         if (typ->def.scalar.arep == NULL)
@@ -266,7 +269,10 @@ RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
         goto error;
     }
 
-    cvalp = RDB_tuple_get(&tpl, "i_constraint");
+    implvalp = RDB_tuple_get(&tpl, "implemented");
+    typ->def.scalar.implemented = RDB_obj_bool(implvalp);
+
+    cvalp = RDB_tuple_get(&tpl, "constraint");
     if (RDB_binary_length(cvalp) > 0) {
         typ->def.scalar.constraintp = RDB_binobj_to_expr(cvalp, ecp, txp);
         if (typ->def.scalar.constraintp == NULL)
@@ -275,8 +281,23 @@ RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
         typ->def.scalar.constraintp = NULL;
     }
 
-    typ->ireplen = RDB_tuple_get_int(&tpl, "i_arep_len");
-    typ->def.scalar.sysimpl = RDB_tuple_get_bool(&tpl, "i_sysimpl");
+    /*
+     * Read init expression but do not evaluate it
+     * as this may lead to an infinite recursion
+     * because evaluation may result in an attempt to read the type
+     */
+    ivalp = RDB_tuple_get(&tpl, "init");
+    if (RDB_binary_length(ivalp) > 0) {
+        typ->def.scalar.initexp = RDB_binobj_to_expr(ivalp, ecp, txp);
+        if (typ->def.scalar.initexp == NULL)
+            goto error;
+    } else {
+        typ->def.scalar.initexp = NULL;
+    }
+    typ->def.scalar.init_val_is_valid = RDB_FALSE;
+
+    typ->ireplen = RDB_tuple_get_int(&tpl, "arep_len");
+    typ->def.scalar.sysimpl = RDB_tuple_get_bool(&tpl, "sysimpl");
     typ->def.scalar.repc = 0;
     typ->def.scalar.builtin = RDB_FALSE;
 

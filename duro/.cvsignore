@@ -8,3 +8,4 @@ core
 *.directory
 libdurotcl.so.0.17
 libduro.so.0.17
+*.so.*.*

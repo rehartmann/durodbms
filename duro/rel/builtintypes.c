@@ -23,8 +23,6 @@
 <tr><td>binary<td>RDB_BINARY<td>&nbsp;-
 </table>
 
-(Support for <code>binary</code> is incomplete.)
-
 @section error-types Error types
 
 DuroDBMS errors are scalar types.
@@ -399,6 +397,12 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_BOOLEAN.def.scalar.repc = 0;
     RDB_BOOLEAN.def.scalar.arep = NULL;
     RDB_BOOLEAN.def.scalar.constraintp = NULL;
+    RDB_BOOLEAN.def.scalar.initexp = NULL;
+
+    RDB_init_obj(&RDB_BOOLEAN.def.scalar.init_val);
+    RDB_bool_to_obj(&RDB_BOOLEAN.def.scalar.init_val, RDB_FALSE);
+    RDB_BOOLEAN.def.scalar.init_val_is_valid = RDB_TRUE;
+
     RDB_BOOLEAN.compare_op = NULL;
 
     compare_string_op.opfn.ro_fp = &compare_string;
@@ -410,6 +414,15 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_STRING.def.scalar.repc = 0;
     RDB_STRING.def.scalar.arep = NULL;
     RDB_STRING.def.scalar.constraintp = NULL;
+    RDB_STRING.def.scalar.initexp = NULL;
+
+    RDB_init_obj(&RDB_STRING.def.scalar.init_val);
+    if (RDB_string_to_obj(&RDB_STRING.def.scalar.init_val, "", ecp)
+            != RDB_OK) {
+        return RDB_ERROR;
+    }
+    RDB_STRING.def.scalar.init_val_is_valid = RDB_TRUE;
+
     RDB_STRING.compare_op = &compare_string_op;
 
     compare_int_op.opfn.ro_fp = &compare_int;
@@ -421,6 +434,12 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_INTEGER.def.scalar.repc = 0;
     RDB_INTEGER.def.scalar.arep = NULL;
     RDB_INTEGER.def.scalar.constraintp = NULL;
+    RDB_INTEGER.def.scalar.initexp = NULL;
+
+    RDB_init_obj(&RDB_INTEGER.def.scalar.init_val);
+    RDB_int_to_obj(&RDB_INTEGER.def.scalar.init_val, (RDB_int) 0);
+    RDB_INTEGER.def.scalar.init_val_is_valid = RDB_TRUE;
+
     RDB_INTEGER.compare_op = &compare_int_op;
 
     compare_float_op.opfn.ro_fp = &compare_float;
@@ -432,6 +451,12 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_FLOAT.def.scalar.repc = 0;
     RDB_FLOAT.def.scalar.arep = NULL;
     RDB_FLOAT.def.scalar.constraintp = NULL;
+    RDB_FLOAT.def.scalar.initexp = NULL;
+
+    RDB_init_obj(&RDB_FLOAT.def.scalar.init_val);
+    RDB_float_to_obj(&RDB_FLOAT.def.scalar.init_val, (RDB_float) 0.0);
+    RDB_FLOAT.def.scalar.init_val_is_valid = RDB_TRUE;
+
     RDB_FLOAT.compare_op = &compare_float_op;
 
     RDB_BINARY.kind = RDB_TP_SCALAR;
@@ -441,7 +466,15 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_BINARY.def.scalar.arep = NULL;
     RDB_BINARY.def.scalar.builtin = RDB_TRUE;
     RDB_BINARY.def.scalar.constraintp = NULL;
+    RDB_BINARY.def.scalar.initexp = NULL;
     RDB_BINARY.compare_op = NULL;
+
+    RDB_init_obj(&RDB_BINARY.def.scalar.init_val);
+    if (RDB_binary_set(&RDB_BINARY.def.scalar.init_val, 0, NULL, (size_t) 0, ecp)
+            != RDB_OK) {
+        return RDB_ERROR;
+    }
+    RDB_BINARY.def.scalar.init_val_is_valid = RDB_TRUE;
 
     RDB_NO_MEMORY_ERROR.kind = RDB_TP_SCALAR;
     RDB_NO_MEMORY_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -455,7 +488,12 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     RDB_NO_MEMORY_ERROR.def.scalar.constraintp = NULL;
+    RDB_NO_MEMORY_ERROR.def.scalar.initexp = NULL;
     RDB_NO_MEMORY_ERROR.def.scalar.sysimpl = RDB_TRUE;
+
+    /* Selector is called for initialization */
+    RDB_NO_MEMORY_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
+
     RDB_NO_MEMORY_ERROR.compare_op = NULL;
 
     RDB_NO_RUNNING_TX_ERROR.kind = RDB_TP_SCALAR;
@@ -471,7 +509,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     }
     RDB_NO_RUNNING_TX_ERROR.def.scalar.arep = NULL;
     RDB_NO_RUNNING_TX_ERROR.def.scalar.constraintp = NULL;
+    RDB_NO_RUNNING_TX_ERROR.def.scalar.initexp = NULL;
     RDB_NO_RUNNING_TX_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_NO_RUNNING_TX_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_NO_RUNNING_TX_ERROR.compare_op = NULL;
 
     RDB_NOT_FOUND_ERROR.kind = RDB_TP_SCALAR;
@@ -482,7 +522,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_NOT_FOUND_ERROR.def.scalar.repv = &not_found_rep;
     RDB_NOT_FOUND_ERROR.def.scalar.arep = &RDB_STRING;
     RDB_NOT_FOUND_ERROR.def.scalar.constraintp = NULL;
+    RDB_NOT_FOUND_ERROR.def.scalar.initexp = NULL;
     RDB_NOT_FOUND_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_NOT_FOUND_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_NOT_FOUND_ERROR.compare_op = NULL;
 
     RDB_INVALID_ARGUMENT_ERROR.kind = RDB_TP_SCALAR;
@@ -493,7 +535,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_INVALID_ARGUMENT_ERROR.def.scalar.repv = &invalid_argument_rep;
     RDB_INVALID_ARGUMENT_ERROR.def.scalar.arep = &RDB_STRING;
     RDB_INVALID_ARGUMENT_ERROR.def.scalar.constraintp = NULL;
+    RDB_INVALID_ARGUMENT_ERROR.def.scalar.initexp = NULL;
     RDB_INVALID_ARGUMENT_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_INVALID_ARGUMENT_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_INVALID_ARGUMENT_ERROR.compare_op = NULL;
 
     RDB_TYPE_MISMATCH_ERROR.kind = RDB_TP_SCALAR;
@@ -504,7 +548,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_TYPE_MISMATCH_ERROR.def.scalar.repv = &type_mismatch_rep;
     RDB_TYPE_MISMATCH_ERROR.def.scalar.arep = &RDB_STRING;
     RDB_TYPE_MISMATCH_ERROR.def.scalar.constraintp = NULL;
+    RDB_TYPE_MISMATCH_ERROR.def.scalar.initexp = NULL;
     RDB_TYPE_MISMATCH_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_TYPE_MISMATCH_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_TYPE_MISMATCH_ERROR.compare_op = NULL;
 
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.kind = RDB_TP_SCALAR;
@@ -516,7 +562,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
                 &type_constraint_violation_rep;
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.def.scalar.arep = &RDB_STRING;
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.def.scalar.constraintp = NULL;
+    RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.def.scalar.initexp = NULL;
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.compare_op = NULL;
 
     RDB_OPERATOR_NOT_FOUND_ERROR.kind = RDB_TP_SCALAR;
@@ -527,7 +575,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_OPERATOR_NOT_FOUND_ERROR.def.scalar.repv = &operator_not_found_rep;
     RDB_OPERATOR_NOT_FOUND_ERROR.def.scalar.arep = &RDB_STRING;
     RDB_OPERATOR_NOT_FOUND_ERROR.def.scalar.constraintp = NULL;
+    RDB_OPERATOR_NOT_FOUND_ERROR.def.scalar.initexp = NULL;
     RDB_OPERATOR_NOT_FOUND_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_OPERATOR_NOT_FOUND_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_OPERATOR_NOT_FOUND_ERROR.compare_op = NULL;
 
     RDB_ELEMENT_EXISTS_ERROR.kind = RDB_TP_SCALAR;
@@ -538,7 +588,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_ELEMENT_EXISTS_ERROR.def.scalar.repv = &element_exists_rep;
     RDB_ELEMENT_EXISTS_ERROR.def.scalar.arep = &RDB_STRING;
     RDB_ELEMENT_EXISTS_ERROR.def.scalar.constraintp = NULL;
+    RDB_ELEMENT_EXISTS_ERROR.def.scalar.initexp = NULL;
     RDB_ELEMENT_EXISTS_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_ELEMENT_EXISTS_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_ELEMENT_EXISTS_ERROR.compare_op = NULL;
 
     RDB_KEY_VIOLATION_ERROR.kind = RDB_TP_SCALAR;
@@ -549,7 +601,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_KEY_VIOLATION_ERROR.def.scalar.repv = &key_violation_rep;
     RDB_KEY_VIOLATION_ERROR.def.scalar.arep = &RDB_STRING;
     RDB_KEY_VIOLATION_ERROR.def.scalar.constraintp = NULL;
+    RDB_KEY_VIOLATION_ERROR.def.scalar.initexp = NULL;
     RDB_KEY_VIOLATION_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_KEY_VIOLATION_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_KEY_VIOLATION_ERROR.compare_op = NULL;
 
     RDB_NOT_SUPPORTED_ERROR.kind = RDB_TP_SCALAR;
@@ -560,7 +614,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_NOT_SUPPORTED_ERROR.def.scalar.repv = &not_supported_rep;
     RDB_NOT_SUPPORTED_ERROR.def.scalar.arep = &RDB_STRING;
     RDB_NOT_SUPPORTED_ERROR.def.scalar.constraintp = NULL;
+    RDB_NOT_SUPPORTED_ERROR.def.scalar.initexp = NULL;
     RDB_NOT_SUPPORTED_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_NOT_SUPPORTED_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_NOT_SUPPORTED_ERROR.compare_op = NULL;
 
     RDB_NAME_ERROR.kind = RDB_TP_SCALAR;
@@ -571,7 +627,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_NAME_ERROR.def.scalar.repv = &name_rep;
     RDB_NAME_ERROR.def.scalar.arep = &RDB_STRING;
     RDB_NAME_ERROR.def.scalar.constraintp = NULL;
+    RDB_NAME_ERROR.def.scalar.initexp = NULL;
     RDB_NAME_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_NAME_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_NAME_ERROR.compare_op = NULL;
 
     RDB_PREDICATE_VIOLATION_ERROR.kind = RDB_TP_SCALAR;
@@ -583,6 +641,7 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_PREDICATE_VIOLATION_ERROR.def.scalar.arep = &RDB_STRING;
     RDB_PREDICATE_VIOLATION_ERROR.def.scalar.constraintp = NULL;
     RDB_PREDICATE_VIOLATION_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_PREDICATE_VIOLATION_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_PREDICATE_VIOLATION_ERROR.compare_op = NULL;
 
     RDB_IN_USE_ERROR.kind = RDB_TP_SCALAR;
@@ -593,7 +652,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_IN_USE_ERROR.def.scalar.repv = &in_use_rep;
     RDB_IN_USE_ERROR.def.scalar.arep = &RDB_STRING;
     RDB_IN_USE_ERROR.def.scalar.constraintp = NULL;
+    RDB_IN_USE_ERROR.def.scalar.initexp = NULL;
     RDB_IN_USE_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_IN_USE_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_IN_USE_ERROR.compare_op = NULL;
 
     RDB_SYSTEM_ERROR.kind = RDB_TP_SCALAR;
@@ -604,7 +665,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_SYSTEM_ERROR.def.scalar.repv = &system_rep;
     RDB_SYSTEM_ERROR.def.scalar.arep = &RDB_STRING;
     RDB_SYSTEM_ERROR.def.scalar.constraintp = NULL;
+    RDB_SYSTEM_ERROR.def.scalar.initexp = NULL;
     RDB_SYSTEM_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_SYSTEM_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_SYSTEM_ERROR.compare_op = NULL;
 
     RDB_RESOURCE_NOT_FOUND_ERROR.kind = RDB_TP_SCALAR;
@@ -615,7 +678,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_RESOURCE_NOT_FOUND_ERROR.def.scalar.repv = &resource_not_found_rep;
     RDB_RESOURCE_NOT_FOUND_ERROR.def.scalar.arep = &RDB_STRING;
     RDB_RESOURCE_NOT_FOUND_ERROR.def.scalar.constraintp = NULL;
+    RDB_RESOURCE_NOT_FOUND_ERROR.def.scalar.initexp = NULL;
     RDB_RESOURCE_NOT_FOUND_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_RESOURCE_NOT_FOUND_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_RESOURCE_NOT_FOUND_ERROR.compare_op = NULL;
 
     RDB_INTERNAL_ERROR.kind = RDB_TP_SCALAR;
@@ -626,7 +691,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_INTERNAL_ERROR.def.scalar.repv = &internal_rep;
     RDB_INTERNAL_ERROR.def.scalar.arep = &RDB_STRING;
     RDB_INTERNAL_ERROR.def.scalar.constraintp = NULL;
+    RDB_INTERNAL_ERROR.def.scalar.initexp = NULL;
     RDB_INTERNAL_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_INTERNAL_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_INTERNAL_ERROR.compare_op = NULL;
 
     RDB_LOCK_NOT_GRANTED_ERROR.kind = RDB_TP_SCALAR;
@@ -642,7 +709,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.constraintp = NULL;
+    RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.initexp = NULL;
     RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_LOCK_NOT_GRANTED_ERROR.compare_op = NULL;
 
     RDB_AGGREGATE_UNDEFINED_ERROR.kind = RDB_TP_SCALAR;
@@ -658,7 +727,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     RDB_AGGREGATE_UNDEFINED_ERROR.def.scalar.constraintp = NULL;
+    RDB_AGGREGATE_UNDEFINED_ERROR.def.scalar.initexp = NULL;
     RDB_AGGREGATE_UNDEFINED_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_AGGREGATE_UNDEFINED_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_AGGREGATE_UNDEFINED_ERROR.compare_op = NULL;
 
     RDB_VERSION_MISMATCH_ERROR.kind = RDB_TP_SCALAR;
@@ -674,7 +745,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     RDB_VERSION_MISMATCH_ERROR.def.scalar.constraintp = NULL;
+    RDB_VERSION_MISMATCH_ERROR.def.scalar.initexp = NULL;
     RDB_VERSION_MISMATCH_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_VERSION_MISMATCH_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_VERSION_MISMATCH_ERROR.compare_op = NULL;
 
     RDB_DEADLOCK_ERROR.kind = RDB_TP_SCALAR;
@@ -690,7 +763,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     RDB_DEADLOCK_ERROR.def.scalar.constraintp = NULL;
+    RDB_DEADLOCK_ERROR.def.scalar.initexp = NULL;
     RDB_DEADLOCK_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_DEADLOCK_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_DEADLOCK_ERROR.compare_op = NULL;
 
     RDB_FATAL_ERROR.kind = RDB_TP_SCALAR;
@@ -707,6 +782,8 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     }
     RDB_FATAL_ERROR.def.scalar.constraintp = NULL;
     RDB_FATAL_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_FATAL_ERROR.def.scalar.initexp = NULL;
+    RDB_FATAL_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_FATAL_ERROR.compare_op = NULL;
 
     RDB_SYNTAX_ERROR.kind = RDB_TP_SCALAR;
@@ -717,7 +794,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_SYNTAX_ERROR.def.scalar.repv = &syntax_rep;
     RDB_SYNTAX_ERROR.def.scalar.arep = &RDB_STRING;
     RDB_SYNTAX_ERROR.def.scalar.constraintp = NULL;
+    RDB_SYNTAX_ERROR.def.scalar.initexp = NULL;
     RDB_SYNTAX_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_SYNTAX_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_SYNTAX_ERROR.compare_op = NULL;
 
     if (RDB_init_builtin_ops(ecp) != RDB_OK)

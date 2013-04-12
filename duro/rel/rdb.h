@@ -192,6 +192,7 @@ struct RDB_type {
             int repc;
             RDB_possrep *repv;
             RDB_bool builtin;
+            RDB_bool implemented; /* Only used if !builtin */
 
             /* RDB_TRUE if selector/getters/setters are provided by the system */
             RDB_bool sysimpl; 
@@ -201,6 +202,9 @@ struct RDB_type {
             struct RDB_type *arep; 
 
             RDB_expression *constraintp;
+            RDB_expression *initexp;
+            RDB_object init_val;
+            RDB_bool init_val_is_valid;
         } scalar;
     } def;
 };
@@ -534,8 +538,8 @@ RDB_drop_table_index(const char *name, RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
-                RDB_expression *constraintp, RDB_exec_context *,
-                RDB_transaction *);
+                RDB_expression *, RDB_expression *,
+                RDB_exec_context *, RDB_transaction *);
 
 RDB_type *
 RDB_get_type(const char *name, RDB_exec_context *, RDB_transaction *);
@@ -648,6 +652,10 @@ RDB_tuple_set_float(RDB_object *, const char *name, RDB_float val,
 
 int
 RDB_tuple_set_string(RDB_object *, const char *name, const char *,
+        RDB_exec_context *);
+
+int
+RDB_set_init_value(RDB_object *, RDB_type *, RDB_environment *,
         RDB_exec_context *);
 
 RDB_object *

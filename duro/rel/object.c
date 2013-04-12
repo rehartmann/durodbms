@@ -1011,6 +1011,41 @@ RDB_append_string(RDB_object *objp, const char *str, RDB_exec_context *ecp)
 }
 
 /**
+ * Set *<var>objp</var> to the initial value of type *<var>typ</var>.
+ *
+ * If *<var>typ</var> is an array or tuple type, do nothing.
+ *
+ * A user-defined type may have no INIT value if it has only one possrep.
+ * In this case, the selector is called, and <var>txp</var> or,
+ * if <var>txp</var> is NULL, <var>envp</var> is used to look up the selector.
+ */
+int
+RDB_set_init_value(RDB_object *objp, RDB_type *typ, RDB_environment *envp,
+        RDB_exec_context *ecp)
+{
+    if (RDB_type_is_relation(typ)) {
+        return RDB_init_table_from_type(objp, NULL, typ, 0, NULL,
+                0, NULL, ecp);
+    }
+
+    if (RDB_type_is_scalar(typ)) {
+        objp->typ = typ;
+
+        if (!typ->def.scalar.builtin && !typ->def.scalar.implemented) {
+            RDB_raise_invalid_argument("type is not implemented", ecp);
+            return RDB_ERROR;
+        }
+
+        if (!typ->def.scalar.init_val_is_valid) {
+            RDB_raise_internal("missing init value", ecp);
+            return RDB_ERROR;
+        }
+        return RDB_copy_obj_data(objp, &typ->def.scalar.init_val, ecp, NULL);
+    }
+    return RDB_OK;
+}
+
+/**
 RDB_obj_comp copies the value of component <var>compname</var>
 of a possible representation of the variable pointed to by <var>valp</var>
 to the variable pointed to by <var>comp</var>.

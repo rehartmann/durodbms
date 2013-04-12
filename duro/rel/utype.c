@@ -111,6 +111,9 @@ If <var>constraintp</var> is not NULL, it specifies the type constraint.
 When the constraint is evaluated, the value to check is made available
 as an attribute with the same name as the type.
 
+<var>initexp</var> specifies the initializer.
+The expression must be of the type being defined.
+
 @returns
 
 RDB_OK on success, RDB_ERROR if an error occurred.
@@ -139,11 +142,12 @@ in which case the transaction may be implicitly rolled back.
  */
 int
 RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
-                RDB_expression *constraintp, RDB_exec_context *ecp,
-                RDB_transaction *txp)
+                RDB_expression *constraintp, RDB_expression *initexp,
+                RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object tpl;
     RDB_object conval;
+    RDB_object initval;
     RDB_object typedata;
     int i, j;
 
@@ -162,8 +166,7 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
         getcomptypedata.repv = repv;
 
         constrtyp = RDB_expr_type(constraintp,
-            getcomptype, &getcomptypedata,
-            NULL, ecp, txp);
+                getcomptype, &getcomptypedata, NULL, ecp, txp);
         if (constrtyp == NULL)
             return RDB_ERROR;
         if (constrtyp != &RDB_BOOLEAN) {
@@ -175,6 +178,7 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
 
     RDB_init_obj(&tpl);
     RDB_init_obj(&conval);
+    RDB_init_obj(&initval);
     RDB_init_obj(&typedata);
 
     if (RDB_binary_set(&typedata, 0, NULL, 0, ecp) != RDB_OK)
@@ -186,18 +190,26 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
 
     if (RDB_tuple_set_string(&tpl, "typename", name, ecp) != RDB_OK)
         goto error;
-    if (RDB_tuple_set(&tpl, "i_arep_type", &typedata, ecp) != RDB_OK)
+    if (RDB_tuple_set(&tpl, "arep_type", &typedata, ecp) != RDB_OK)
         goto error;
-    if (RDB_tuple_set_int(&tpl, "i_arep_len", RDB_NOT_IMPLEMENTED, ecp)
+    if (RDB_tuple_set_int(&tpl, "arep_len", RDB_NOT_IMPLEMENTED, ecp)
             != RDB_OK)
         goto error;
-    if (RDB_tuple_set_bool(&tpl, "i_sysimpl", RDB_FALSE, ecp) != RDB_OK)
+    if (RDB_tuple_set_bool(&tpl, "sysimpl", RDB_FALSE, ecp) != RDB_OK)
+        goto error;
+    if (RDB_tuple_set_bool(&tpl, "implemented", RDB_FALSE, ecp) != RDB_OK)
         goto error;
 
     /* Store constraint in tuple */
     if (RDB_expr_to_binobj(&conval, constraintp, ecp) != RDB_OK)
         goto error;
-    if (RDB_tuple_set(&tpl, "i_constraint", &conval, ecp) != RDB_OK)
+    if (RDB_tuple_set(&tpl, "constraint", &conval, ecp) != RDB_OK)
+        goto error;
+
+    /* Store init expression in tuple */
+    if (RDB_expr_to_binobj(&initval, initexp, ecp) != RDB_OK)
+        goto error;
+    if (RDB_tuple_set(&tpl, "init", &initval, ecp) != RDB_OK)
         goto error;
 
     if (RDB_insert(txp->dbp->dbrootp->types_tbp, &tpl, ecp, txp) != RDB_OK)
@@ -251,6 +263,7 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
 
     RDB_destroy_obj(&typedata, ecp);
     RDB_destroy_obj(&conval, ecp);
+    RDB_destroy_obj(&initval, ecp);
     RDB_destroy_obj(&tpl, ecp);
 
     return RDB_OK;
@@ -258,6 +271,7 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
 error:
     RDB_destroy_obj(&typedata, ecp);
     RDB_destroy_obj(&conval, ecp);
+    RDB_destroy_obj(&initval, ecp);
     RDB_destroy_obj(&tpl, ecp);
 
     return RDB_ERROR;
@@ -284,6 +298,9 @@ del_type(RDB_type *typ, RDB_exec_context *ecp)
         if (typ->def.scalar.arep != NULL
                 && !RDB_type_is_scalar(typ->def.scalar.arep)) {
             ret = RDB_del_nonscalar_type(typ->def.scalar.arep, ecp);
+        }
+        if (typ->def.scalar.init_val_is_valid) {
+            ret = RDB_destroy_obj(&typ->def.scalar.init_val, ecp);
         }
         RDB_free(typ);
     } else {
@@ -552,7 +569,7 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_expression *exp, *wherep, *argp;
-    RDB_attr_update upd[3];
+    RDB_attr_update upd[4];
     RDB_object typedata;
     int ret;
     int i;
@@ -595,8 +612,7 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
         typ->def.scalar.arep = arep;
         typ->ireplen = arep->ireplen;
 
-        ret = create_selector(typ, ecp, txp);
-        if (ret != RDB_OK)
+        if (create_selector(typ, ecp, txp) != RDB_OK)
             return RDB_ERROR;
     } else {
         typ->def.scalar.arep = arep;
@@ -624,17 +640,23 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
     }
     RDB_add_arg(wherep, argp);
 
-    upd[0].exp = upd[1].exp = upd[2].exp = NULL;
+    upd[0].exp = upd[1].exp = upd[2].exp = upd[3].exp = NULL;
 
-    upd[0].name = "i_arep_len";
+    upd[0].name = "arep_len";
     upd[0].exp = RDB_int_to_expr(arep == NULL ? areplen : arep->ireplen, ecp);
     if (upd[0].exp == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
     }
-    upd[1].name = "i_sysimpl";
+    upd[1].name = "sysimpl";
     upd[1].exp = RDB_bool_to_expr(typ->def.scalar.sysimpl, ecp);
     if (upd[1].exp == NULL) {
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+    upd[2].name = "implemented";
+    upd[2].exp = RDB_bool_to_expr(RDB_TRUE, ecp);
+    if (upd[2].exp == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
     }
@@ -646,10 +668,10 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
             goto cleanup;
         }
 
-        upd[2].name = "i_arep_type";
-        upd[2].exp = RDB_obj_to_expr(&typedata, ecp);
+        upd[3].name = "arep_type";
+        upd[3].exp = RDB_obj_to_expr(&typedata, ecp);
         RDB_destroy_obj(&typedata, ecp);
-        if (upd[2].exp == NULL) {
+        if (upd[3].exp == NULL) {
             RDB_raise_no_memory(ecp);
             ret = RDB_ERROR;
             goto cleanup;
@@ -657,18 +679,22 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
     }
 
     ret = RDB_update(txp->dbp->dbrootp->types_tbp, wherep,
-            arep != NULL ? 3 : 2, upd, ecp, txp);
+            arep != NULL ? 4 : 3, upd, ecp, txp);
     if (ret != RDB_ERROR)
         ret = RDB_OK;
 
-    if (typ == NULL) {
-        typ = RDB_get_type(name, ecp, txp);
-        if (typ == NULL)
-            return RDB_ERROR;
-    }
-
     /* Load selector etc. */
     ret = RDB_load_type_ops(typ, ecp, txp);
+
+    RDB_init_obj(&typ->def.scalar.init_val);
+    if (RDB_evaluate(typ->def.scalar.initexp, NULL, NULL, NULL, ecp, txp,
+            &typ->def.scalar.init_val) != RDB_OK) {
+        RDB_destroy_obj(&typ->def.scalar.init_val, ecp);
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+    typ->def.scalar.init_val_is_valid = RDB_TRUE;
+    typ->def.scalar.implemented = RDB_TRUE;
 
 cleanup:
     for (i = 0; i < 3; i++) {

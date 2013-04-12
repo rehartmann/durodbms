@@ -11,6 +11,7 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_transaction tx;
     RDB_possrep pr;
     RDB_expression *constraintp;
+    RDB_expression *initexp;
     RDB_attr comp;
     int ret;
 
@@ -30,7 +31,13 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_add_arg(constraintp, RDB_var_ref("TINYINT", ecp));
     RDB_add_arg(constraintp, RDB_int_to_expr(100, ecp));
 
-    ret = RDB_define_type("TINYINT", 1, &pr, constraintp, ecp, &tx);
+    initexp = RDB_ro_op("TINYINT", ecp);
+    if (initexp == NULL) {
+        return RDB_ERROR;
+    }
+    RDB_add_arg(initexp, RDB_int_to_expr(0, ecp));
+
+    ret = RDB_define_type("TINYINT", 1, &pr, constraintp, initexp, ecp, &tx);
     RDB_del_expr(constraintp, ecp);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);

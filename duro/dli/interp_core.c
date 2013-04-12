@@ -303,10 +303,9 @@ Duro_exec_vardef(RDB_parse_node *nodep, RDB_exec_context *ecp)
             RDB_raise_invalid_argument("type is not implemented", ecp);
             return RDB_ERROR;
         }
-        if (nodep->nextp->nextp->kind == RDB_NODE_TOK
-                && nodep->nextp->nextp->val.token == TOK_INIT) {
+        if (nodep->nextp->nextp->kind == RDB_NODE_INNER) {
             /* Get INIT value */
-            initexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp, ecp, txp);
+            initexp = RDB_parse_node_expr(nodep->nextp->nextp->val.children.firstp->nextp, ecp, txp);
             if (initexp == NULL)
                 return RDB_ERROR;
         }
@@ -532,14 +531,17 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
         tbtyp = Duro_parse_node_to_type_retry(nodep->nextp->nextp, ecp);
         if (tbtyp == NULL)
             return RDB_ERROR;
-        if (nodep->nextp->nextp->nextp->kind == RDB_NODE_TOK
-                && nodep->nextp->nextp->nextp->val.token == TOK_INIT) {
+        if (nodep->nextp->nextp->nextp->kind == RDB_NODE_INNER
+                && nodep->nextp->nextp->nextp->val.children.firstp != NULL
+                && nodep->nextp->nextp->nextp->val.children.firstp->kind == RDB_NODE_TOK
+                && nodep->nextp->nextp->nextp->val.children.firstp->val.token == TOK_INIT) {
             /* Get INIT value */
-            initexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp->nextp, ecp, txp);
+            initexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp->val.children.firstp->nextp,
+                    ecp, txp);
             if (initexp == NULL)
                 return RDB_ERROR;
 
-            keylistnodep = nodep->nextp->nextp->nextp->nextp->nextp;
+            keylistnodep = nodep->nextp->nextp->nextp->nextp;
         } else {
             keylistnodep = nodep->nextp->nextp->nextp;
         }
@@ -696,13 +698,16 @@ Duro_exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
                 NULL, ecp, &Duro_txnp->tx);
         if (tbtyp == NULL)
             return RDB_ERROR;
-        if (nodep->nextp->nextp->nextp->kind == RDB_NODE_TOK
-                && nodep->nextp->nextp->nextp->val.token == TOK_INIT) {
+        if (nodep->nextp->nextp->nextp->kind == RDB_NODE_INNER
+                && nodep->nextp->nextp->nextp->val.children.firstp != NULL
+                && nodep->nextp->nextp->nextp->val.children.firstp->kind == RDB_NODE_TOK
+                && nodep->nextp->nextp->nextp->val.children.firstp->val.token == TOK_INIT) {
             /* Get INIT value */
-            initexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp->nextp, ecp, &Duro_txnp->tx);
+            initexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp->val.children.firstp->nextp,
+                    ecp, &Duro_txnp->tx);
             if (initexp == NULL)
                 return RDB_ERROR;
-            keylistnodep = nodep->nextp->nextp->nextp->nextp->nextp;
+            keylistnodep = nodep->nextp->nextp->nextp->nextp;
         } else {
             keylistnodep = nodep->nextp->nextp->nextp;
         }
@@ -1041,65 +1046,13 @@ Duro_parse_node_to_type_retry(RDB_parse_node *nodep, RDB_exec_context *ecp)
     return typ;
 }
 
-static int
-init_obj_by_selector(RDB_object *objp, RDB_possrep *rep,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    int ret;
-    int i;
-    RDB_object *objv;
-    RDB_object **objpv;
-
-    objv = RDB_alloc(sizeof(RDB_object) * rep->compc, ecp);
-    if (objv == NULL) {
-        return RDB_ERROR;
-    }
-    for (i = 0; i < rep->compc; i++)
-        RDB_init_obj(&objv[i]);
-    objpv = RDB_alloc(sizeof(RDB_object *) * rep->compc, ecp);
-    if (objpv == NULL) {
-        ret = RDB_ERROR;
-        goto cleanup;
-    }
-
-    /* Get selector arguments */
-    for (i = 0; i < rep->compc; i++) {
-        ret = Duro_init_obj(&objv[i], rep->compv[i].typ, ecp, txp);
-        if (ret != RDB_OK)
-            goto cleanup;
-        objpv[i] = &objv[i];
-    }
-
-    /* Call selector */
-    ret = RDB_call_ro_op_by_name_e(rep->name, rep->compc, objpv, Duro_envp, ecp,
-            txp, objp);
-
-cleanup:
-    for (i = 0; i < rep->compc; i++)
-        RDB_destroy_obj(&objv[i], ecp);
-    RDB_free(objv);
-    RDB_free(objpv);
-
-    return ret;
-}
-
 int
 Duro_init_obj(RDB_object *objp, RDB_type *typ, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int i;
 
-    if (typ == &RDB_BOOLEAN) {
-        RDB_bool_to_obj(objp, RDB_FALSE);
-    } else if (typ == &RDB_INTEGER) {
-        RDB_int_to_obj(objp, 0);
-    } else if (typ == &RDB_FLOAT) {
-        RDB_float_to_obj(objp, 0.0);
-    } else if (typ == &RDB_STRING) {
-        return RDB_string_to_obj(objp, "", ecp);
-    } else if (typ == &RDB_BINARY) {
-        return RDB_binary_set(objp, 0, NULL, (size_t) 0, ecp);
-    } else if (RDB_type_is_tuple(typ)) {
+    if (RDB_type_is_tuple(typ)) {
         for (i = 0; i < typ->def.tuple.attrc; i++) {
             if (RDB_tuple_set(objp, typ->def.tuple.attrv[i].name,
                     NULL, ecp) != RDB_OK)
@@ -1117,16 +1070,8 @@ Duro_init_obj(RDB_object *objp, RDB_type *typ, RDB_exec_context *ecp,
         if (typ == NULL)
             return RDB_ERROR;
         RDB_obj_set_typeinfo(objp, typ);
-    } else if (RDB_type_is_relation(typ)) {
-        if (RDB_init_table_from_type(objp, NULL, typ, 0, NULL,
-                0, NULL, ecp) != RDB_OK)
-            return RDB_ERROR;
     } else {
-        /* Invoke selector */
-        if (typ->def.scalar.repc > 0) {
-            return init_obj_by_selector(objp, &typ->def.scalar.repv[0],
-                    ecp, txp);
-        }
+        return RDB_set_init_value(objp, typ, Duro_envp, ecp);
     }
     return RDB_OK;
 }

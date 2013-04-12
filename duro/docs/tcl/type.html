@@ -11,17 +11,19 @@
 
 <h2>Synopsis</h2>
 
-<p><b>duro::type</b> <var>typename arg ?arg ...?</var>
+<p><b>duro::type</b> <var>option typename arg ?arg ...?</var>
 
 <h2>Description</h2>
 
 <dl>
-<dt><b>duro::type define</b> <var>typename possreps ?constraint? txId</var>
+<dt><b>duro::type define</b> <var>typename possreps ?constraint? initexp txId</var>
 <dd>
 <p>This subcommand defines the user-defined type <var>typename</var>
 under the control of the transaction specified by <var>txId</var>.
 The type constraint is specified by the optional argument
 <var>constraint</var>.
+The initialization expression is specified by the argument
+<var>initexp</var>.  
 
 <p><var>possreps</var> is a list of possible representations.
 Each possible representation is itself a list of two elements.

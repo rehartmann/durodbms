@@ -35,5 +35,10 @@ RDB_add_io(RDB_exec_context *ecp)
     RDB_IOSTREAM_ID.def.scalar.sysimpl = RDB_TRUE;
     RDB_IOSTREAM_ID.compare_op = NULL;
 
+    RDB_IOSTREAM_ID.def.scalar.init_val_is_valid = RDB_TRUE;
+    RDB_init_obj(&RDB_IOSTREAM_ID.def.scalar.init_val);
+    RDB_int_to_obj(&RDB_IOSTREAM_ID.def.scalar.init_val,
+            (RDB_int) 0);
+
     return RDB_add_type(&RDB_IOSTREAM_ID, ecp);
 }

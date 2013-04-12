@@ -80,7 +80,8 @@ test deftype {user-defined types} -setup $SETUP -body {
         connect('dbenv');
         current_db := 'D';
         type t
-            possrep { a integer, b integer };
+            possrep { a integer, b integer }
+            init t(0, 0);
     }
     exec $testdir/../../dli/durodt -e dbenv -d D << {
         -- Test declaration w/ incomplete types
@@ -140,12 +141,14 @@ test deftype {user-defined types} -setup $SETUP -body {
         drop type t;
 
         try
-            type string5 possrep {value string} constraint strlen(val) <= 5;
+            type string5 possrep {value string} constraint strlen(val) <= 5
+                    init string5('');
 		catch ex name_error;
 		    put_line('caught name_error');
 		end try;        
 
-        type string5 possrep {value string} constraint strlen(value) <= 5;
+        type string5 possrep {value string} constraint strlen(value) <= 5
+                init string5('');
 
         -- Test table declaration w/ incomplete type
         try
@@ -194,7 +197,8 @@ test deftypemr {user-defined type with multiple possreps} -setup $SETUP -body {
         current_db := 'D';
 		type fixed2
 		    possrep fixed2r { r rational }
-		    possrep fixed2i { i integer };
+		    possrep fixed2i { i integer }
+		    init fixed2i(0);
 
 		implement type fixed2 as integer;
 		
@@ -377,7 +381,8 @@ test defupdop {user-defined update operators} -setup $SETUP -body {
         begin transaction;
 
         operator op(s string, i integer) updates {s};
-            type length_t possrep { m FLOAT } constraint (m >= 0.0);
+            type length_t possrep { m FLOAT } constraint (m >= 0.0)
+                    init length_t(0.0);
 
             operator op1(s string) returns string;
                 return s || 'y';

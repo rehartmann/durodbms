@@ -37,6 +37,7 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_parameter updparamv[2];
     RDB_parameter getparamv[1];
     RDB_parameter paramv[2];
+    RDB_expression *initexp;
 
     paramv[0].typ = &RDB_FLOAT;
     paramv[1].typ = &RDB_FLOAT;
@@ -50,24 +51,30 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     assert(ret == RDB_OK);
 
-    ret = RDB_define_type("POINT", 2, prv, NULL, ecp, &tx);
-    assert(ret == RDB_OK);
+    initexp = RDB_ro_op("POINT", ecp);
+    assert(initexp != NULL);
 
-    ret = RDB_implement_type("POINT", NULL, sizeof(i_point), ecp, &tx);
-    assert(ret == RDB_OK);
+    RDB_add_arg(initexp, RDB_float_to_expr((RDB_float) 0.0, ecp));
+    RDB_add_arg(initexp, RDB_float_to_expr((RDB_float) 0.0, ecp));
 
-    typ = RDB_get_type("POINT", ecp, &tx);
+    ret = RDB_define_type("POINT", 2, prv, NULL, initexp, ecp, &tx);
     assert(ret == RDB_OK);
 
     /*
      * Create selectors
      */
+    typ = RDB_get_type("POINT", ecp, &tx);
+    assert(typ != NULL);
+
     ret = RDB_create_ro_op("POINT", 2, paramv, typ, SHLIB, "POINT",
             NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
     ret = RDB_create_ro_op("POLAR", 2, paramv, typ, SHLIB, "POLAR",
             NULL, ecp, &tx);
+    assert(ret == RDB_OK);
+
+    ret = RDB_implement_type("POINT", NULL, sizeof(i_point), ecp, &tx);
     assert(ret == RDB_OK);
 
     /*

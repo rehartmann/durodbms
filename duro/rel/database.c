@@ -1381,6 +1381,10 @@ On success, RDB_OK is returned. On failure, RDB_ERROR is returned.
 <dt>no_running_tx_error
 <dd>The table is global (persistent) and <var>txp</var>
 does not point to a running transaction.
+<dt>in_use_error
+<dd>An existing virtual table depends on the table.
+<dt>
+<dd>A constraint depends on the table.
 </dl>
 
 The call may also fail for a @ref system-errors "system error",

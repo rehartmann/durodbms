@@ -200,7 +200,7 @@ test array_utype {type with array-valued component} -setup $DBSETUP -body {
 
         begin transaction;
         
-        type path possrep { components array STRING };
+        type path possrep { components array STRING } init path(array string());
         
         commit;
     }

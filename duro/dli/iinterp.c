@@ -1212,6 +1212,7 @@ exec_typedef(const RDB_parse_node *stmtp, RDB_exec_context *ecp)
     RDB_transaction tmp_tx;
     RDB_possrep *repv;
     RDB_parse_node *nodep;
+    RDB_expression *initexp;
     RDB_expression *constraintp = NULL;
 
     if (Duro_txnp == NULL) {
@@ -1247,10 +1248,20 @@ exec_typedef(const RDB_parse_node *stmtp, RDB_exec_context *ecp)
                 Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
         if (constraintp == NULL)
         	goto error;
+        initexp = RDB_parse_node_expr(stmtp->nextp->nextp->nextp->nextp->nextp, ecp,
+                Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
+        if (initexp == NULL)
+            goto error;
+    } else {
+        initexp = RDB_parse_node_expr(stmtp->nextp->nextp->nextp, ecp,
+                Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
+        if (initexp == NULL)
+            goto error;
     }
 
     if (RDB_define_type(RDB_expr_var_name(stmtp->exp),
-            repc, repv, constraintp, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : &tmp_tx) != RDB_OK)
+            repc, repv, constraintp, initexp, ecp,
+            Duro_txnp != NULL ? &Duro_txnp->tx : &tmp_tx) != RDB_OK)
         goto error;
 
     for (i = 0; i < repc; i++) {

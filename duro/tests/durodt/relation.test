@@ -822,7 +822,8 @@ test utypetable {table with attribute of user-defined type} -body {
         begin transaction;
 
         type utype
-            possrep { s string };
+            possrep { s string }
+            init utype('');
 
         implement type utype;
         end implement;

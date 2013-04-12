@@ -706,7 +706,7 @@ D>
 <p>Example for defining a type:</p>
 
 <pre>
-D> type len possrep {n float} constraint n >= 0.0;
+D> type len possrep {n float} constraint n >= 0.0 init len(0.0);
 Type len defined.
 </pre>
 
@@ -731,7 +731,8 @@ can be implemented using Duro D/T.
 <pre>
 type point
     possrep cartesian { x float, y float }
-    possrep polar { r float, theta float };
+    possrep polar { r float, theta float }
+    init cartesian(0.0, 0.0);
 
 implement type point as tuple { x float, y float };
 
@@ -828,7 +829,7 @@ name_error: test
 D>
 </pre>
 
-<p>If the error type has a MSG property, its value is printed together with the type.
+<p>If the error type has a <var>msg</var> property, its value is printed together with the type.
 See the <a href="../api/html/builtin-types.html">built-in types</a>
 for a list of system-provided error types.
 
@@ -907,8 +908,8 @@ D> explain r where s='one' order();
 </pre>
 
 <p>For neither of these an index can be used. Not for the first,
-because the system-generated index on n is a hash index which supports only equality,
-and not for the second because there is no index on attribute s.
+because the system-generated index on <var>n</var> is a hash index which supports only equality,
+and not for the second because there is no index on attribute <var>s</var>.
 This means that DuroDBMS will scan the entire table to evaluate the expression
 which is quite inefficient for large tables.
 
