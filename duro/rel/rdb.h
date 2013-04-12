@@ -192,7 +192,6 @@ struct RDB_type {
             int repc;
             RDB_possrep *repv;
             RDB_bool builtin;
-            RDB_bool implemented; /* Only used if !builtin */
 
             /* RDB_TRUE if selector/getters/setters are provided by the system */
             RDB_bool sysimpl; 

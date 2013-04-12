@@ -1031,7 +1031,7 @@ RDB_set_init_value(RDB_object *objp, RDB_type *typ, RDB_environment *envp,
     if (RDB_type_is_scalar(typ)) {
         objp->typ = typ;
 
-        if (!typ->def.scalar.builtin && !typ->def.scalar.implemented) {
+        if (typ->ireplen == RDB_NOT_IMPLEMENTED) {
             RDB_raise_invalid_argument("type is not implemented", ecp);
             return RDB_ERROR;
         }

@@ -534,7 +534,7 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     }
 
     /* Evaluate init expression */
-    if (typ->def.scalar.implemented) {
+    if (typ->ireplen != RDB_NOT_IMPLEMENTED) {
         RDB_init_obj(&typ->def.scalar.init_val);
         if (RDB_evaluate(typ->def.scalar.initexp, NULL, NULL, NULL,
                 ecp, txp, &typ->def.scalar.init_val) != RDB_OK) {

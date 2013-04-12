@@ -86,8 +86,7 @@ static RDB_attr types_attrv[] = {
     { "arep_type", &RDB_BINARY, NULL, 0 },
     { "sysimpl", &RDB_BOOLEAN, NULL, 0},
     { "constraint", &RDB_BINARY, NULL, 0 },
-    { "init", &RDB_BINARY, NULL, 0 },
-    { "implemented", &RDB_BOOLEAN, NULL, 0 }
+    { "init", &RDB_BINARY, NULL, 0 }
 };
 static char *types_keyattrv[] = { "typename" };
 static RDB_string_vec types_keyv[] = { { 1, types_keyattrv } };
@@ -1055,7 +1054,7 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         return ret;
     }
 
-    ret = provide_systable("sys_types", 7, types_attrv, 1, types_keyv,
+    ret = provide_systable("sys_types", 6, types_attrv, 1, types_keyv,
             create, ecp, txp, dbrootp->envp, &dbrootp->types_tbp);
     if (ret != RDB_OK) {
         return ret;

@@ -197,8 +197,6 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
         goto error;
     if (RDB_tuple_set_bool(&tpl, "sysimpl", RDB_FALSE, ecp) != RDB_OK)
         goto error;
-    if (RDB_tuple_set_bool(&tpl, "implemented", RDB_FALSE, ecp) != RDB_OK)
-        goto error;
 
     /* Store constraint in tuple */
     if (RDB_expr_to_binobj(&conval, constraintp, ecp) != RDB_OK)
@@ -569,7 +567,7 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_expression *exp, *wherep, *argp;
-    RDB_attr_update upd[4];
+    RDB_attr_update upd[3];
     RDB_object typedata;
     int ret;
     int i;
@@ -654,12 +652,6 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
         ret = RDB_ERROR;
         goto cleanup;
     }
-    upd[2].name = "implemented";
-    upd[2].exp = RDB_bool_to_expr(RDB_TRUE, ecp);
-    if (upd[2].exp == NULL) {
-        ret = RDB_ERROR;
-        goto cleanup;
-    }
     if (arep != NULL) {
         RDB_init_obj(&typedata);
         ret = RDB_type_to_binobj(&typedata, arep, ecp);
@@ -668,10 +660,10 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
             goto cleanup;
         }
 
-        upd[3].name = "arep_type";
-        upd[3].exp = RDB_obj_to_expr(&typedata, ecp);
+        upd[2].name = "arep_type";
+        upd[2].exp = RDB_obj_to_expr(&typedata, ecp);
         RDB_destroy_obj(&typedata, ecp);
-        if (upd[3].exp == NULL) {
+        if (upd[2].exp == NULL) {
             RDB_raise_no_memory(ecp);
             ret = RDB_ERROR;
             goto cleanup;
@@ -679,7 +671,7 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
     }
 
     ret = RDB_update(txp->dbp->dbrootp->types_tbp, wherep,
-            arep != NULL ? 4 : 3, upd, ecp, txp);
+            arep != NULL ? 3 : 2, upd, ecp, txp);
     if (ret != RDB_ERROR)
         ret = RDB_OK;
 
@@ -694,7 +686,6 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
         goto cleanup;
     }
     typ->def.scalar.init_val_is_valid = RDB_TRUE;
-    typ->def.scalar.implemented = RDB_TRUE;
 
 cleanup:
     for (i = 0; i < 3; i++) {

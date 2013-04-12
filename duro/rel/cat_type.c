@@ -224,7 +224,6 @@ RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
     RDB_object possreps;
     RDB_object *cvalp;
     RDB_object *ivalp;
-    RDB_object *implvalp;
     RDB_type *typ = NULL;
     RDB_object *typedatap;
     int ret, tret;
@@ -268,9 +267,6 @@ RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
         RDB_raise_no_memory(ecp);
         goto error;
     }
-
-    implvalp = RDB_tuple_get(&tpl, "implemented");
-    typ->def.scalar.implemented = RDB_obj_bool(implvalp);
 
     cvalp = RDB_tuple_get(&tpl, "constraint");
     if (RDB_binary_length(cvalp) > 0) {
