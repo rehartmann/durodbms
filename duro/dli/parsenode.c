@@ -125,6 +125,9 @@ RDB_parse_del_nodelist(RDB_parse_node *nodep, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
+/*
+ * Search var node in a comma-separated list
+ */
 int
 RDB_parse_node_var_name_idx(const RDB_parse_node *nodep, const char *namep)
 {

@@ -417,9 +417,18 @@ test defupdop {user-defined update operators} -setup $SETUP -body {
 
         drop var a;
 
+        try
+            operator op2(i int, j int) updates { k };
+            ;
+            end operator;
+        catch err invalid_argument_error;
+            put_line('invalid updates caught');
+        end try;
+
         commit;
     }
 } -result {a = 1yz
+invalid updates caught
 }
 
 test typeinf {type inference} -setup $SETUP -body {

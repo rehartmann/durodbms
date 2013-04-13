@@ -725,6 +725,9 @@ selector, getter, and setter operators which provide
 the mapping between the possible representations and the actual representation.
 These operators are accessing the actual representation.
 
+<p>Note that the type constraint is specified for the entire type and not
+for the individual possreps, as opposed to <em>TTM</em>.
+
 <p>The example code below shows how the type POINT from <em>TTM</em>, chapter 3,
 can be implemented using Duro D/T.
 
@@ -764,13 +767,13 @@ implement type point as tuple { x float, y float };
         return sqrt(p.x * p.x + p.y * p.y);
     end operator;
 
-    operator set_r(p point, r float) updates {p};
+    operator set_r(p point, r float) updates { p };
         var theta init atan2(p.y, p.x);
 
         update p { x := cos(theta) * r, y := sin(theta) * r };
     end operator;
 
-    operator set_theta(p point, theta float) updates {r};
+    operator set_theta(p point, theta float) updates { p };
         var r init sqrt(p.x * p.x + p.y * p.y);
 
         update p { x := cos(theta) * r, y := sin(theta) * r };
@@ -797,7 +800,15 @@ D>
 D> var p point;
 D> p := cartesian(1.0, 1.0);
 1 element affected.
-D>
+D> put(the_x(p)); put_line('');
+1.0
+D> put(the_y(p)); put_line('');
+1.0
+D> put(the_r(p)); put_line('');
+1.4142135624
+D> put(the_theta(p)); put_line('');
+0.7853981634
+D> 
 </pre>
 
 <h2 id="exception">Exception handling</h2>

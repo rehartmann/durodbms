@@ -1712,17 +1712,16 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
     RDB_object code;
     RDB_parse_node *attrnodep;
     RDB_transaction tmp_tx;
-    RDB_parameter *paramv = NULL;
     RDB_type *rtyp;
     int ret;
     int i;
-    int argc;
     const char *opname;
     RDB_object opnameobj; /* Only used when the name is modified */
     RDB_parse_node *stmtp = parentp->val.children.firstp->nextp;
+    RDB_parameter *paramv = NULL;
+    int paramc = (int) RDB_parse_nodelist_length(stmtp->nextp->nextp) / 2;
 
     RDB_init_obj(&opnameobj);
-    argc = (int) RDB_parse_nodelist_length(stmtp->nextp->nextp) / 2;
     opname = RDB_expr_var_name(stmtp->exp);
 
     /*
@@ -1752,13 +1751,13 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
         goto error;
     }
 
-    paramv = RDB_alloc(argc * sizeof(RDB_parameter), ecp);
+    paramv = RDB_alloc(paramc * sizeof(RDB_parameter), ecp);
     if (paramv == NULL) {
         goto error;
     }
 
     attrnodep = stmtp->nextp->nextp->val.children.firstp;
-    for (i = 0; i < argc; i++) {
+    for (i = 0; i < paramc; i++) {
         /* Skip comma */
         if (i > 0)
             attrnodep = attrnodep->nextp;
@@ -1782,7 +1781,10 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
             goto error;
 
         if (impl_typename != NULL) {
-            /* Only selector and getters allowed */
+            /*
+             * We're inside a IMPLEMENT TYPE; ... END IMPLEMENT block.
+             * Only selector and getters allowed
+             */
             if (strstr(opname, "get_") == opname) {
                 /* Prepend operator name with <typename>_ */
                 if (RDB_string_to_obj(&opnameobj, impl_typename, ecp) != RDB_OK)
@@ -1800,7 +1802,7 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
             }
         }
 
-        ret = RDB_create_ro_op(opname, argc, paramv, rtyp,
+        ret = RDB_create_ro_op(opname, paramc, paramv, rtyp,
 #ifdef _WIN32
                 "duro",
 #else
@@ -1829,20 +1831,37 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
             }
         }
 
-        attrnodep = stmtp->nextp->nextp->val.children.firstp;
-        for (i = 0; i < argc; i++) {
-            /* Skip comma */
-            if (i > 0)
-                attrnodep = attrnodep->nextp;
+        for (i = 0; i < paramc; i++)
+            paramv[i].update = RDB_FALSE;
 
-            paramv[i].update = (RDB_bool) (RDB_parse_node_var_name_idx(
-						stmtp->nextp->nextp->nextp->nextp->nextp->nextp->val.children.firstp,
-						RDB_expr_var_name(attrnodep->exp)) != -1);
-            attrnodep = attrnodep->nextp->nextp;
+        /*
+         * Set paramv[].update
+         */
+        attrnodep = stmtp->nextp->nextp->nextp->nextp->nextp->nextp->val.children.firstp;
+        while (attrnodep != NULL) {
+            const char *updname = RDB_expr_var_name(attrnodep->exp);
+            RDB_parse_node *paramnodep = stmtp->nextp->nextp->val.children.firstp;
+
+            for (i = 0; i < paramc; i++) {
+                if (strcmp(RDB_expr_var_name(paramnodep->exp), updname) == 0) {
+                    paramv[i].update = RDB_TRUE;
+                    break;
+                }
+                paramnodep = paramnodep->nextp->nextp;
+                if (paramnodep != NULL)
+                    paramnodep = paramnodep->nextp;
+            }
+            if (i == paramc) {
+                RDB_raise_invalid_argument("invalid update parameter", ecp);
+                goto error;
+            }
+            attrnodep = attrnodep->nextp;
+            if (attrnodep != NULL)
+                attrnodep = attrnodep->nextp;
         }
 
         ret = RDB_create_update_op(opname,
-                argc, paramv,
+                paramc, paramv,
 #ifdef _WIN32
                 "duro",
 #else
