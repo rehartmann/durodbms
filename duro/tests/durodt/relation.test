@@ -88,6 +88,55 @@ element_exists_error
 3 tuples
 }
 
+test update {creating table and updating tuples} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+        var r real relation {k int, v string}
+                init rel { tup { k 1, v 'One' },
+                           tup { k 2, v 'Two' }}
+                key {k};
+        
+        -- Updating value
+        update r where k = 1 { v := '1' };
+        put_line((tuple from r where k = 1).v);
+        put_line((tuple from r where k = 2).v);
+
+        -- Updating values
+        update r { v := v || v };
+        put_line((tuple from r where k = 1).v);
+        put_line((tuple from r where k = 2).v);
+
+        -- Updating keys
+        update r { k := k + 1 };
+        put_line((tuple from r where k = 2).v);
+        put_line((tuple from r where k = 3).v);
+
+        -- Update that would violate the key constraint
+        try
+            update r { k := 1 };
+        catch err key_violation_error;
+            put_line('key violation caught');
+        end try;
+
+        -- Update combining both tuples into one 
+        update r { k := 1, v := 'Uno' };
+        put_line((tuple from r).v);
+
+        commit;
+    }
+} -result {1
+Two
+11
+TwoTwo
+11
+TwoTwo
+key violation caught
+Uno
+}
+
 test foreach_drop {DROP in FOREACH} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');

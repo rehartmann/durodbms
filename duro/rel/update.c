@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2012 Rene Hartmann.
+ * Copyright (C) 2003-2013 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -88,7 +88,7 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
      */
     tmptbtyp = RDB_dup_nonscalar_type(tbp->typ, ecp);
     if (tmptbtyp == NULL) {
-        rcount = RDB_ERROR;
+        rcount = (RDB_int) RDB_ERROR;
         goto cleanup;
     }        
 
@@ -96,13 +96,13 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
             1, tbp->val.tb.keyv, 0, NULL, ecp);
     if (ret != RDB_OK) {
         RDB_del_nonscalar_type(tmptbtyp, ecp);
-        rcount = RDB_ERROR;
+        rcount = (RDB_int) RDB_ERROR;
         goto cleanup;
     }
 
     if (RDB_recmap_cursor(&curp, tbp->val.tb.stp->recmapp, RDB_TRUE,
             tbp->val.tb.is_persistent ? tx.txid : NULL) != RDB_OK) {
-        rcount = RDB_ERROR;
+        rcount = (RDB_int) RDB_ERROR;
         goto cleanup;
     }
     ret = RDB_cursor_first(curp);
@@ -118,7 +118,7 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
             if (ret != RDB_OK) {
                 RDB_errcode_to_error(ret, ecp,
                         tbp->val.tb.is_persistent ? &tx : NULL);
-                rcount = RDB_ERROR;
+                rcount = (RDB_int) RDB_ERROR;
                 goto cleanup;
             }
 
@@ -130,19 +130,19 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
             ret = RDB_tuple_set(&tpl, tpltyp->def.tuple.attrv[i].name, &val, ecp);
             RDB_destroy_obj(&val, ecp);
             if (ret != RDB_OK) {
-                rcount = RDB_ERROR;
+                rcount = (RDB_int) RDB_ERROR;
                 goto cleanup;
             }
             attrobjp = RDB_tuple_get(&tpl, tpltyp->def.tuple.attrv[i].name);
             if (attrobjp == NULL) {
                 RDB_raise_name(tpltyp->def.tuple.attrv[i].name, ecp);
-                rcount = RDB_ERROR;
+                rcount = (RDB_int) RDB_ERROR;
                 goto cleanup;
             }
             ret = RDB_irep_to_obj(attrobjp, tpltyp->def.tuple.attrv[i].typ,
                     datap, len, ecp);
             if (ret != RDB_OK) {
-                rcount = RDB_ERROR;
+                rcount = (RDB_int) RDB_ERROR;
                 goto cleanup;
             }
         }
@@ -154,7 +154,7 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
             ret = RDB_evaluate_bool(condp, &RDB_tpl_get, &tpl, NULL, ecp,
                     tbp->val.tb.is_persistent ? &tx : NULL, &b);
             if (ret != RDB_OK) {
-                rcount = RDB_ERROR;
+                rcount = (RDB_int) RDB_ERROR;
                 return ret;
             }
         }
@@ -162,19 +162,28 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
             ret = upd_to_vals(updc, updv, &tpl, valv, ecp,
                     tbp->val.tb.is_persistent ? &tx : NULL);
             if (ret != RDB_OK) {
+                rcount = (RDB_int) RDB_ERROR;
                 goto cleanup;
             }
             for (i = 0; i < updc; i++) {
                 /* Update tuple */
                 ret = RDB_tuple_set(&tpl, updv[i].name, &valv[i], ecp);
-                if (ret != RDB_OK)
+                if (ret != RDB_OK) {
+                    rcount = (RDB_int) RDB_ERROR;
                     goto cleanup;
+                }
             }
-            
+
             /* Insert tuple into temporary table */
             ret = RDB_insert_real(&tmptb, &tpl, ecp,
                     tbp->val.tb.is_persistent ? &tx : NULL);
-            if (ret != RDB_OK) {
+            /*
+             * If the elements already exists, more than one tuple are combined into one,
+             * and that's OK
+             */
+            if (ret != RDB_OK
+                    && RDB_obj_type(RDB_get_err(ecp)) != &RDB_ELEMENT_EXISTS_ERROR) {
+                rcount = (RDB_int) RDB_ERROR;
                 goto cleanup;
             }
             rcount++;
