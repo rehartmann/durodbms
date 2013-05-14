@@ -41,6 +41,9 @@ static const char *leave_targetname;
 
 static const char *impl_typename;
 
+static RDB_object current_db_obj;
+static RDB_object implicit_tx_obj;
+
 void
 Duro_exit_interp(void)
 {
@@ -230,17 +233,6 @@ trace_op(int argc, RDB_object *argv[], RDB_operator *op,
     return RDB_OK;
 }
 
-static RDB_object *
-new_obj(RDB_exec_context *ecp)
-{
-    RDB_object *objp = RDB_alloc(sizeof (RDB_object), ecp);
-    if (objp == NULL) {
-        return NULL;
-    }
-    RDB_init_obj(objp);
-    return objp;
-}
-
 int
 Duro_init_interp(RDB_exec_context *ecp, const char *dbname)
 {
@@ -250,8 +242,6 @@ Duro_init_interp(RDB_exec_context *ecp, const char *dbname)
     static RDB_parameter create_env_params[1];
     static RDB_parameter system_params[2];
     static RDB_parameter trace_params[2];
-
-    RDB_object *objp;
 
     exit_int_params[0].typ = &RDB_INTEGER;
     exit_int_params[0].update = RDB_FALSE;
@@ -275,6 +265,9 @@ Duro_init_interp(RDB_exec_context *ecp, const char *dbname)
     current_foreachp = NULL;
 
     RDB_init_op_map(&Duro_sys_module.upd_op_map);
+
+    RDB_init_obj(&current_db_obj);
+    RDB_init_obj(&implicit_tx_obj);
 
     if (RDB_put_upd_op(&Duro_sys_module.upd_op_map, "exit", 0, NULL, &exit_op, ecp) != RDB_OK)
         goto error;
@@ -300,17 +293,22 @@ Duro_init_interp(RDB_exec_context *ecp, const char *dbname)
             &trace_op, ecp) != RDB_OK)
         goto error;
 
-    objp = new_obj(ecp);
-    if (objp == NULL)
-        goto error;
+    /* Create current_db and implicit_tx in system module */
 
-    if (RDB_string_to_obj(objp, dbname, ecp) != RDB_OK) {
+    if (RDB_string_to_obj(&current_db_obj, dbname, ecp) != RDB_OK) {
         goto error;
     }
 
-    /* Create CURRENT_DB in system module */
-    if (RDB_hashmap_put(&Duro_sys_module.varmap, "current_db", objp) != RDB_OK) {
-        RDB_destroy_obj(objp, ecp);
+    RDB_bool_to_obj(&implicit_tx_obj, RDB_FALSE);
+
+    if (RDB_hashmap_put(&Duro_sys_module.varmap, "current_db", &current_db_obj)
+            != RDB_OK) {
+        RDB_raise_no_memory(ecp);
+        goto error;
+    }
+
+    if (RDB_hashmap_put(&Duro_sys_module.varmap, "implicit_tx", &implicit_tx_obj)
+            != RDB_OK) {
         RDB_raise_no_memory(ecp);
         goto error;
     }
@@ -318,6 +316,9 @@ Duro_init_interp(RDB_exec_context *ecp, const char *dbname)
     return RDB_OK;
 
 error:
+    RDB_destroy_obj(&current_db_obj, ecp);
+    RDB_destroy_obj(&implicit_tx_obj, ecp);
+
     RDB_destroy_op_map(&Duro_sys_module.upd_op_map);
     return RDB_ERROR;
 }
@@ -1077,13 +1078,14 @@ error:
 }
 
 static int
-exec_begin_tx(RDB_exec_context *ecp)
+do_begin_tx(RDB_exec_context *ecp)
 {
     RDB_database *dbp = Duro_get_db(ecp);
     if (dbp == NULL)
         return RDB_ERROR;
 
     if (Duro_txnp != NULL) {
+        /* Start subtransaction */
         tx_node *ntxnp = RDB_alloc(sizeof(tx_node), ecp);
         if (ntxnp == NULL) {
             return RDB_ERROR;
@@ -1096,8 +1098,6 @@ exec_begin_tx(RDB_exec_context *ecp)
         ntxnp->parentp = Duro_txnp;
         Duro_txnp = ntxnp;
 
-        if (RDB_parse_get_interactive())
-            printf("Subtransaction started.\n");
         return RDB_OK;
     }
 
@@ -1113,13 +1113,26 @@ exec_begin_tx(RDB_exec_context *ecp)
     }
     Duro_txnp->parentp = NULL;
 
-    if (RDB_parse_get_interactive())
-        printf("Transaction started.\n");
     return RDB_OK;
 }
 
 static int
-exec_commit(RDB_exec_context *ecp)
+exec_begin_tx(RDB_exec_context *ecp)
+{
+    int subtx = (Duro_txnp != NULL);
+
+    if (do_begin_tx(ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    if (RDB_parse_get_interactive())
+        printf(subtx ? "Subtransaction started.\n"
+                : "Transaction started.\n");
+
+    return RDB_OK;
+}
+
+static int
+do_commit(RDB_exec_context *ecp)
 {
     tx_node *ptxnp;
 
@@ -1140,13 +1153,23 @@ exec_commit(RDB_exec_context *ecp)
     RDB_free(Duro_txnp);
     Duro_txnp = ptxnp;
 
-    if (RDB_parse_get_interactive())
-        printf("Transaction committed.\n");
     return RDB_OK;
 }
 
 static int
-exec_rollback(RDB_exec_context *ecp)
+exec_commit(RDB_exec_context *ecp)
+{
+    if (do_commit(ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    if (RDB_parse_get_interactive())
+        printf("Transaction committed.\n");
+
+    return RDB_OK;
+}
+
+static int
+do_rollback(RDB_exec_context *ecp)
 {
     if (Duro_txnp == NULL) {
         RDB_raise_no_running_tx(ecp);
@@ -1164,8 +1187,18 @@ exec_rollback(RDB_exec_context *ecp)
     RDB_free(Duro_txnp);
     Duro_txnp = NULL;
 
+    return RDB_OK;
+}
+
+static int
+exec_rollback(RDB_exec_context *ecp)
+{
+    if (do_rollback(ecp) != RDB_OK)
+        return RDB_ERROR;
+
     if (RDB_parse_get_interactive())
-        printf("Transaction rolled back.\n");
+        printf("Transaction committed.\n");
+
     return RDB_OK;
 }
 
@@ -2449,6 +2482,56 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
     return ret;
 }
 
+/*
+ * Check if *stmt is a COMMIT, ROLLBACK, or BEGIN TX
+ */
+static RDB_bool
+is_tx_stmt(RDB_parse_node *stmtp) {
+    RDB_parse_node *firstchildp = stmtp->val.children.firstp;
+
+    return firstchildp->kind == RDB_NODE_TOK
+            && (firstchildp->val.token == TOK_COMMIT
+                || firstchildp->val.token == TOK_ROLLBACK
+                || (firstchildp->val.token == TOK_BEGIN
+                    && firstchildp->nextp->kind == RDB_NODE_TOK));
+}
+
+static int
+Duro_exec_stmt_impl_tx(RDB_parse_node *stmtp, RDB_exec_context *ecp)
+{
+    /*
+     * No implicit transaction if the statement is a BEGIN TX, COMMIT,
+     * or ROLLBACK.
+     */
+    RDB_bool implicit_tx = RDB_obj_bool(&implicit_tx_obj)
+                    && !is_tx_stmt(stmtp) && (Duro_txnp == NULL);
+
+    /* No implicit tx if no database is available. */
+    if (implicit_tx) {
+        if (Duro_get_db(ecp) == NULL) {
+            RDB_clear_err(ecp);
+            implicit_tx = RDB_FALSE;
+        }
+    }
+
+    if (implicit_tx) {
+        if (do_begin_tx(ecp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+    }
+    if (Duro_exec_stmt(stmtp, ecp, NULL) != RDB_OK) {
+        if (implicit_tx) {
+            do_rollback(ecp);
+        }
+        return RDB_ERROR;
+    }
+
+    if (implicit_tx) {
+        return do_commit(ecp);
+    }
+    return RDB_OK;
+}
+
 int
 Duro_process_stmt(RDB_exec_context *ecp)
 {
@@ -2475,8 +2558,7 @@ Duro_process_stmt(RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     RDB_clear_err(ecp);
-    assert(RDB_get_err(ecp) == NULL);
-    ret = Duro_exec_stmt(stmtp, ecp, NULL);
+    ret = Duro_exec_stmt_impl_tx(stmtp, ecp);
 
     if (ret != RDB_OK) {
         if (ret == DURO_RETURN) {
@@ -2559,6 +2641,9 @@ Duro_dt_execute(RDB_environment *dbenvp, const char *infilename,
         RDB_init_obj(&prompt);
 
         printf("Duro D/T library version %s\n", RDB_release_number);
+
+        puts("Implicit transactions enabled.");
+        RDB_bool_to_obj(&implicit_tx_obj, RDB_TRUE);
     } else {
         RDB_parse_set_interactive(RDB_FALSE);
     }

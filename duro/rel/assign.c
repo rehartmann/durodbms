@@ -1594,6 +1594,39 @@ check_conflicts_deps(int insc, const RDB_ma_insert insv[],
  * Represents a delete.
  */
 
+/*
+ * Check if a multiple assignment requires a running transaction.
+ */
+static RDB_bool
+assign_needs_tx(int insc, const RDB_ma_insert insv[],
+        int updc, const RDB_ma_update updv[],
+        int delc, const RDB_ma_delete delv[],
+        int copyc, const RDB_ma_copy copyv[])
+{
+    int i;
+    RDB_bool need_tx;
+
+    /* Check if a persistent table is involved */
+    for (i = 0; i < delc && !delv[i].tbp->val.tb.is_persistent; i++);
+    need_tx = (RDB_bool) (i < delc);
+    if (!need_tx) {
+        for (i = 0; i < updc && !updv[i].tbp->val.tb.is_persistent; i++);
+        need_tx = (RDB_bool) (i < updc);
+    }
+    if (!need_tx) {
+        for (i = 0; i < copyc && !copy_needs_tx(copyv[i].dstp, copyv[i].srcp); i++);
+        need_tx = (RDB_bool) (i < copyc);
+    }
+    if (!need_tx) {
+        for (i = 0;
+             i < insc && !insv[i].tbp->val.tb.is_persistent;
+             i++);
+        need_tx = (RDB_bool) (i < insc);
+    }
+
+    return need_tx;
+}
+
 /**
  * Perform a number of insert, update, delete,
 and copy operations in a single call.
@@ -1692,22 +1725,8 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     /*
      * A running transaction is required if a persistent table is involved.
      */
-    for (i = 0; i < delc && !delv[i].tbp->val.tb.is_persistent; i++);
-    need_tx = (RDB_bool) (i < delc);
-    if (!need_tx) {
-        for (i = 0; i < updc && !updv[i].tbp->val.tb.is_persistent; i++);
-        need_tx = (RDB_bool) (i < updc);
-    }
-    if (!need_tx) {
-        for (i = 0; i < copyc && !copy_needs_tx(copyv[i].dstp, copyv[i].srcp); i++);
-        need_tx = (RDB_bool) (i < copyc);
-    }
-    if (!need_tx) {
-        for (i = 0;
-             i < insc && !insv[i].tbp->val.tb.is_persistent;
-             i++);
-        need_tx = (RDB_bool) (i < insc);
-    }
+    need_tx = assign_needs_tx(insc, insv, updc, updv, delc,  delv,
+            copyc, copyv);
 
     if (need_tx && !RDB_tx_is_running(txp)) {
         RDB_raise_no_running_tx(ecp);

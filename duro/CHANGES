@@ -3,7 +3,12 @@ $Id$
 Summary of Changes to DuroDBMS
 
 DuroDBMS 0.18
- - Added initexp argument to RDB_define_type() and INIT specification
+
+- Duro D/T: Added implicit transaction support. 
+
+- Fixed issue with updating key attributes.
+
+- Added initexp argument to RDB_define_type() and INIT specification
    to type definition statement. Added initexp argument to duro::type define.
 
 DuroDBMS 0.17
