@@ -909,4 +909,27 @@ a
 caught in_use_error
 }
 
-cleanupTests
+test implicit_tx {implicit transactions} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt << {
+        implicit_tx := true;
+
+        connect('dbenv');
+        current_db := 'D';
+
+        var r real relation {c string, n int, d float, s string}
+            init relation { tuple { c 'xo', n 77, d 78.8, s 'Gr' } }
+            key {c, n};
+
+        insert r tuple { c 'Vanad', n 1234565, d 666.77, s 'Amethyst' };
+
+
+        put((tuple from r where c = 'xo' and n = 77).s);
+        put_line('');
+
+        delete r where s = 'Gr';
+        
+        put((tuple from r).c); put_line('');
+    }
+} -result {Gr
+Vanad
+}
