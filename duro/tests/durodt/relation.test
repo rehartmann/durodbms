@@ -188,6 +188,12 @@ test ra {relational algebra} -setup $SETUP -body {
 
         put((tuple from (v2 rename { a as na })).na); put_line('');
 
+        -- UPDATE expression
+        put((tuple from (update v2 : { a := a + 1 })).a); put_line('');
+
+        -- no-op UPDATE
+        put((tuple from (update v2 : { })).a); put_line('');
+
         var va init 1;
         put_line((tuple from (t1 where a = va)).b);
 
@@ -216,6 +222,8 @@ test ra {relational algebra} -setup $SETUP -body {
         commit;
     }
 } -result {2
+2
+3
 2
 x
 TRUE

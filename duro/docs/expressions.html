@@ -27,28 +27,28 @@ the second edition of TTM.
 
 <pre>
 expression = project | where | rename | dyadic_relation_op_inv 
-        | extend | update | summarize | divideby
-	| wrap | unwrap | group | ungroup
+    | extend | update | summarize | divideby
+    | wrap | unwrap | group | ungroup
 	| expression OR expression
-	| expression AND expression
-	| expression XOR expression
-	| NOT expression
-	| rel_expression
-	| '+' expression | '-' expression
-        | expression '+' expression
-        | expression '-' expression
-        | expression '||' expression
-        | expression '*' expression
-        | expression '/' expression
-	| var_expression
-	| literal
-	| count_inv
-	| aggregate_inv
-	| '(' expression ')'
-	| expression '.' id
-	| id FROM expression
-	| TUPLE FROM expression
-	| ifthenelse | with.
+    | expression AND expression
+    | expression XOR expression
+    | NOT expression
+    | rel_expression
+    | '+' expression | '-' expression
+    | expression '+' expression
+    | expression '-' expression
+    | expression '||' expression
+    | expression '*' expression
+    | expression '/' expression
+    | var_expression
+    | literal
+    | count_inv
+    | aggregate_inv
+    | '(' expression ')'
+    | expression '.' id
+    | id FROM expression
+    | TUPLE FROM expression
+    | ifthenelse | with.
 
 project = expression '{' [ALL BUT] [id {',' id}] '}'.
 
@@ -67,7 +67,7 @@ dyadic_relation_op_inv = expression UNION expression
 
 extend = EXTEND expression ':' '{' [id ':=' expression {',' id ':=' expression}] '}'.
 
-update = UPDATE expression ':' '{' id ':=' expression {',' id ':=' expression} '}'.
+update = UPDATE expression ':' '{' [id ':=' expression {',' id ':=' expression}] '}'.
 
 summarize = SUMMARIZE expression PER expression
            ':' '{' [summary AS id {',' summary AS id}] '}'.

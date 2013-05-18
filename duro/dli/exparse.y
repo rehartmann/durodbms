@@ -1692,7 +1692,7 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $5);
         RDB_parse_add_child($$, $6);
     }
-    | TOK_UPDATE expression ':' '{' ne_id_assign_commalist '}' {
+    | TOK_UPDATE expression ':' '{' id_assign_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
