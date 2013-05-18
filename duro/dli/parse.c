@@ -301,26 +301,18 @@ summarize_node_expr(RDB_parse_node *argnodep,
     nodep = argnodep->nextp->nextp->nextp->nextp->nextp->val.children.firstp;
     if (nodep != NULL) {
         for (;;) {
-            RDB_expression *aggrexp = aggr_node_expr(
-                    nodep->val.children.firstp->val.token, NULL, ecp, txp);
+            RDB_expression *aggrexp = RDB_parse_node_expr(
+                    nodep->val.children.firstp->nextp->nextp, ecp, txp);
+            if (aggrexp == NULL)
+                return NULL;
+            aggrexp = RDB_dup_expr(aggrexp, ecp);
             if (aggrexp == NULL)
                 return NULL;
 
-            if (nodep->val.children.firstp->val.token != TOK_COUNT) {
-                argp = RDB_dup_expr(RDB_parse_node_expr(
-                        RDB_parse_node_child(nodep, 2), ecp, txp), ecp);
-                if (argp == NULL)
-                    return NULL;
-                RDB_add_arg(aggrexp, argp);
-            }
             RDB_add_arg(rexp, aggrexp);
 
             argp = RDB_string_to_expr(
-                    RDB_expr_var_name(RDB_parse_node_expr(
-                            RDB_parse_node_child(nodep,
-                                    nodep->val.children.firstp->val.token == TOK_COUNT ? 4 : 5),
-                                    ecp, txp)),
-                    ecp);
+                    RDB_expr_var_name(RDB_parse_node_expr(nodep->val.children.firstp, ecp, txp)), ecp);
             if (argp == NULL)
                 return NULL;
             RDB_add_arg(rexp, argp);
@@ -1121,13 +1113,15 @@ inner_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *t
                 if (nodep->exp == NULL)
                     return NULL;
 
-                argp = RDB_parse_node_expr(firstp->nextp->nextp, ecp, txp);
-                if (argp == NULL)
-                    return NULL;
-                argp = RDB_dup_expr(argp, ecp);
-                if (argp == NULL)
-                    return NULL;
-                RDB_add_arg(nodep->exp, argp);
+                if (firstp->nextp->nextp->nextp != NULL) {
+                    argp = RDB_parse_node_expr(firstp->nextp->nextp, ecp, txp);
+                    if (argp == NULL)
+                        return NULL;
+                    argp = RDB_dup_expr(argp, ecp);
+                    if (argp == NULL)
+                        return NULL;
+                    RDB_add_arg(nodep->exp, argp);
+                }
                 return nodep->exp;
             case TOK_SUM:
             case TOK_AVG:

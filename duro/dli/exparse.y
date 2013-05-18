@@ -1560,7 +1560,7 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
     }
-    | expression TOK_RENAME '(' renaming_commalist ')' {
+    | expression TOK_RENAME '{' renaming_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -1711,7 +1711,7 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $6);
     }
     | TOK_SUMMARIZE expression TOK_PER expression
-           TOK_ADD '(' summarize_add_commalist ')' {
+           ':' '{' id_assign_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -2343,30 +2343,6 @@ id_assign_commalist: /* empty */ {
     | ne_id_assign_commalist
     ;
 
-summarize_add_commalist: /* empty */ {
-        $$ = new_parse_inner();
-        if ($$ == NULL) {
-            YYABORT;
-        }
-    }
-    | ne_summarize_add_commalist
-    ;
-
-ne_summarize_add_commalist: summarize_add {
-        $$ = new_parse_inner();
-        if ($$ == NULL) {
-            RDB_parse_del_node($1, RDB_parse_ecp);
-            YYABORT;
-        }
-        RDB_parse_add_child($$, $1);
-    }
-    | ne_summarize_add_commalist ',' summarize_add {
-        $$ = $1;
-        RDB_parse_add_child($$, $2);
-        RDB_parse_add_child($$, $3);
-    }
-    ;
-
 aggr: TOK_SUM
 	| TOK_AVG
 	| TOK_MAX
@@ -2376,42 +2352,6 @@ aggr: TOK_SUM
 	| TOK_ANY
 	| TOK_OR
 	;
-
-summarize_add: TOK_COUNT '(' ')' TOK_AS TOK_ID {
-        $$ = new_parse_inner();
-        if ($$ == NULL) {
-            RDB_parse_del_node($1, RDB_parse_ecp);
-            RDB_parse_del_node($2, RDB_parse_ecp);
-            RDB_parse_del_node($3, RDB_parse_ecp);
-            RDB_parse_del_node($4, RDB_parse_ecp);
-            RDB_parse_del_node($5, RDB_parse_ecp);
-            YYABORT;
-        }
-        RDB_parse_add_child($$, $1);
-        RDB_parse_add_child($$, $2);
-        RDB_parse_add_child($$, $3);
-        RDB_parse_add_child($$, $4);
-        RDB_parse_add_child($$, $5);
-    }
-    | aggr '(' expression ')' TOK_AS TOK_ID {
-        $$ = new_parse_inner();
-        if ($$ == NULL) {
-            RDB_parse_del_node($1, RDB_parse_ecp);
-            RDB_parse_del_node($2, RDB_parse_ecp);
-            RDB_parse_del_node($3, RDB_parse_ecp);
-            RDB_parse_del_node($4, RDB_parse_ecp);
-            RDB_parse_del_node($5, RDB_parse_ecp);
-            RDB_parse_del_node($6, RDB_parse_ecp);
-            YYABORT;
-        }
-        RDB_parse_add_child($$, $1);
-        RDB_parse_add_child($$, $2);
-        RDB_parse_add_child($$, $3);
-        RDB_parse_add_child($$, $4);
-        RDB_parse_add_child($$, $5);
-        RDB_parse_add_child($$, $6);
-    }
-    ;
 
 wrapping_commalist: /* empty */ {
         $$ = new_parse_inner();
@@ -2468,6 +2408,19 @@ count_invocation: TOK_COUNT '(' expression ')' {
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
+    }
+    /* For SUMMARIZE */
+    | TOK_COUNT '(' ')' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            YYABORT;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
     }
     ;
 

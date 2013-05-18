@@ -97,7 +97,7 @@ test opt {optimizer} -setup $SETUP -body {
         error "Invalid tuple value: $tpl"
     }
     
-    set tpl [duro::expr {TUPLE FROM (T2 RENAME (A AS AA)) WHERE B=2 AND AA=1} $tx]
+    set tpl [duro::expr {TUPLE FROM (T2 RENAME { A AS AA }) WHERE B=2 AND AA=1} $tx]
     if {![tequal $tpl {AA 1 B 2 C 3}]} {
         error "Invalid tuple value: $tpl"
     }

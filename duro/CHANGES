@@ -4,6 +4,8 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 0.18
 
+- Syntax of RENAME and SUMMARIZE are now close to Tutorial version from Oct 30, 2011. 
+
 - Duro D/T: Added implicit transaction support. 
 
 - Fixed issue with updating key attributes.

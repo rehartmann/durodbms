@@ -184,7 +184,9 @@ test ra {relational algebra} -setup $SETUP -body {
 
         insert t2 relation { tuple {a 2}, tuple {a 3} };
 
-        put(with (p := t1 {a}, is := p intersect t2): (tuple from is).a); put_line('');
+        put(with (p := t1 { a }, is := p intersect t2): (tuple from is).a); put_line('');
+
+        put((tuple from (v2 rename { a as na })).na); put_line('');
 
         var va init 1;
         put_line((tuple from (t1 where a = va)).b);
@@ -214,6 +216,7 @@ test ra {relational algebra} -setup $SETUP -body {
         commit;
     }
 } -result {2
+2
 x
 TRUE
 FALSE
@@ -511,12 +514,12 @@ test summarize {SUMMARIZE} -setup $SETUP -body {
 		insert t tup {a 2, b 1};
 		insert t tup {a 2, b 2};
 
-		var v virtual SUMMARIZE t PER t {a} ADD (
-				SUM(b) AS A_SUM,
-		        ALL(b > 0) AS A_ALL,
-		        AND(b > 0) AS A_AND,
-		        ANY(b > 0) AS A_ANY,
-		        OR(b > 0) AS A_OR);
+		var v virtual SUMMARIZE t PER t {a} : {
+				a_sum := SUM(b),
+		        a_all := ALL(b > 0),
+		        a_and := AND(b > 0),
+		        a_any := ANY(b > 0),
+		        a_or := OR(b > 0) };
 
         var arr array tuple same_heading_as (v);
 
@@ -524,15 +527,15 @@ test summarize {SUMMARIZE} -setup $SETUP -body {
 
         var i int;
         for i:= 0 to length(arr)-1;
-			put(arr[i].A_SUM);
+			put(arr[i].a_sum);
 			put(' ');
-			put(arr[i].A_ALL);
+			put(arr[i].a_all);
 			put(' ');
-			put(arr[i].A_AND);
+			put(arr[i].a_and);
 			put(' ');
-			put(arr[i].A_ANY);
+			put(arr[i].a_any);
 			put(' ');
-			put(arr[i].A_OR); put_line('');
+			put(arr[i].a_or); put_line('');
 		end for;
 
         commit;

@@ -18,7 +18,7 @@ test qqueries {quota queries} -setup $SETUP -body {
 
     # Create Database
     duro::db create $dbenv TEST
-    
+
     set tx [duro::begin $dbenv TEST]
     
     # Create table
@@ -30,7 +30,7 @@ test qqueries {quota queries} -setup $SETUP -body {
     # Create virtual table with WEIGHT_RANK attribute
 
     duro::table expr V1 {EXTEND T1 : {
-            WEIGHT_RANK := COUNT(T1 RENAME (WEIGHT AS W) WHERE W < WEIGHT)
+            WEIGHT_RANK := COUNT(T1 RENAME { WEIGHT AS W } WHERE W < WEIGHT)
             }} $tx
 
     duro::table expr V2 {V1 WHERE WEIGHT_RANK <= 1 { ID, WEIGHT } } $tx

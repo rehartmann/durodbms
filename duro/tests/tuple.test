@@ -15,7 +15,7 @@ source [file dirname [info script]]/setup.tcl
 
 test tuple {tuple-valued attributes} -setup $SETUP -body {
     set dbenv [duro::env open -create [configure -tmpdir]/dbenv]
-    
+
     # Create Database
     duro::db create $dbenv TEST
 
@@ -154,8 +154,8 @@ test tuple {tuple-valued attributes} -setup $SETUP -body {
     if {![tequal $tpl $stpl]} {
         error "Tuple is $tpl, should be $stpl"
     }
-    
-    set tpl [duro::expr {TUPLE {A 1} RENAME (A AS B)} $tx]
+
+    set tpl [duro::expr {TUPLE {A 1} RENAME { A AS B }} $tx]
     set stpl {B 1}
     if {![tequal $tpl $stpl]} {
         error "Tuple is $tpl, should be $stpl"
