@@ -201,9 +201,14 @@ test join_extend {Natural JOIN/EXTEND}  -setup $SETUP -body {
             put(tp2.b); put_line('');
         end foreach;
 
-        -- EXTEND adding 2 attributes,
+        -- EXTEND adding 2 attributes, using user-def operator
+
+        operator dup_string(s string) returns string;
+            return s || s;
+        end operator;
+
         var tp3 tup {a int, b string, c int, d string};
-        foreach tp3 in t1 join extend t3: { c := if b = 'x' then 0 else 1, d := b || b}
+        foreach tp3 in t1 join extend t3: { c := if b = 'x' then 0 else 1, d := dup_string(b) }
                 order (a asc, b asc, c asc);
             put(tp3.a); put(' ');
             put(tp3.b); put(' ');
