@@ -43,6 +43,10 @@ load_getter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
     cnt = RDB_cat_load_ro_op(RDB_obj_string(&opnameobj), ecp, txp);
     if (cnt == (RDB_int) RDB_ERROR)
         goto error;
+    if (cnt == 0) {
+        RDB_raise_operator_not_found(RDB_obj_string(&opnameobj), ecp);
+        goto error;
+    }
     return RDB_destroy_obj(&opnameobj, ecp);
 
 error:
@@ -75,6 +79,10 @@ load_setter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
     cnt = RDB_cat_load_upd_op(RDB_obj_string(&opnameobj), ecp, txp);
     if (cnt == (RDB_int) RDB_ERROR)
         goto error;
+    if (cnt == 0) {
+        RDB_raise_operator_not_found(RDB_obj_string(&opnameobj), ecp);
+        goto error;
+    }
     return RDB_destroy_obj(&opnameobj, ecp);
 
 error:
@@ -97,14 +105,16 @@ RDB_load_type_ops(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
                 == (RDB_int) RDB_ERROR)
             return RDB_ERROR;
 
-        /* Load getters and setters */
-        for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
-            if (load_getter(typ, typ->def.scalar.repv[i].compv[j].name, ecp, txp)
-                    != RDB_OK)
-                return RDB_ERROR;
-            if (load_setter(typ, typ->def.scalar.repv[i].compv[j].name, ecp, txp)
-                    != RDB_OK)
-                return RDB_ERROR;
+        if (!typ->def.scalar.sysimpl) {
+            /* Load getters and setters */
+            for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
+                if (load_getter(typ, typ->def.scalar.repv[i].compv[j].name, ecp, txp)
+                        != RDB_OK)
+                    return RDB_ERROR;
+                if (load_setter(typ, typ->def.scalar.repv[i].compv[j].name, ecp, txp)
+                        != RDB_OK)
+                    return RDB_ERROR;
+            }
         }
     }
     return RDB_OK;
@@ -533,8 +543,8 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         return NULL;
     }
 
-    /* Evaluate init expression */
     if (typ->ireplen != RDB_NOT_IMPLEMENTED) {
+        /* Evaluate init expression */
         RDB_init_obj(&typ->def.scalar.init_val);
         if (RDB_evaluate(typ->def.scalar.initexp, NULL, NULL, NULL,
                 ecp, txp, &typ->def.scalar.init_val) != RDB_OK) {
@@ -542,10 +552,11 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
             return NULL;
         }
         typ->def.scalar.init_val_is_valid = RDB_TRUE;
-    }
 
-    if (RDB_load_type_ops(typ, ecp, txp) != RDB_OK)
-        return NULL;
+        /* Load selector, getters, and setters */
+        if (RDB_load_type_ops(typ, ecp, txp) != RDB_OK)
+            return NULL;
+    }
 
     /*
      * Search for comparison function (after type was put into type map

@@ -186,6 +186,15 @@ test ra {relational algebra} -setup $SETUP -body {
 
         put(with (p := t1 { a }, is := p intersect t2): (tuple from is).a); put_line('');
 
+        -- remove
+        put((tuple from (t1 where a = 1 { ALL BUT a })).b); put_line('');
+        try
+            put((tuple from (t1 where a = 1 { ALL BUT a })).a); put_line('');
+        catch err name_error;
+            put_line('name_error caught');
+        end try;
+
+        -- RENAME
         put((tuple from (v2 rename { a as na })).na); put_line('');
 
         -- UPDATE expression
@@ -222,6 +231,8 @@ test ra {relational algebra} -setup $SETUP -body {
         commit;
     }
 } -result {2
+x
+name_error caught
 2
 3
 2

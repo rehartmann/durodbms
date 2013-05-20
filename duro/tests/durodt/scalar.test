@@ -202,29 +202,29 @@ test deftypemr {user-defined type with multiple possreps} -setup $SETUP -body {
 
 		implement type fixed2 as integer;
 		
-		operator fixed2r(r rational) returns fixed2;
-		return cast_as_integer(r*100.0);
-		end operator;
-
-		operator fixed2i(i integer) returns fixed2;
-		return i;
-		end operator;
-
-		operator get_r(f2 fixed2) returns rational;
-		return cast_as_rational(f2) / 100.0;
-		end operator;
-
-		operator set_r(f2 fixed2, r rational) updates {f2};
-		f2 := cast_as_integer(r*100.0);
-		end operator;
-
-		operator get_i(f2 fixed2) returns integer;
-		return f2;
-		end operator;
-
-		operator set_i(f2 fixed2, i integer) updates {f2};
-		f2 := i;
-		end operator;
+			operator fixed2r(r rational) returns fixed2;
+				return cast_as_integer(r*100.0);
+			end operator;
+	
+			operator fixed2i(i integer) returns fixed2;
+				return i;
+			end operator;
+	
+			operator get_r(f2 fixed2) returns rational;
+				return cast_as_rational(f2) / 100.0;
+			end operator;
+	
+			operator set_r(f2 fixed2, r rational) updates {f2};
+				f2 := cast_as_integer(r*100.0);
+			end operator;
+	
+			operator get_i(f2 fixed2) returns integer;
+				return f2;
+			end operator;
+	
+			operator set_i(f2 fixed2, i integer) updates {f2};
+				f2 := i;
+			end operator;
 
 		end implement;
 
@@ -285,6 +285,53 @@ test deftypemr {user-defined type with multiple possreps} -setup $SETUP -body {
 500.11
 20012
 200.12
+}
+
+test deftypemri {user-defined type with multiple possreps and incomplete implementation} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+		type fixed2
+		    possrep fixed2r { r rational }
+		    possrep fixed2i { i integer }
+		    init fixed2i(0);
+
+        try
+			implement type fixed2 as integer;
+			
+				operator fixed2r(r rational) returns fixed2;
+					return cast_as_integer(r*100.0);
+				end operator;
+		
+				operator fixed2i(i integer) returns fixed2;
+					return i;
+				end operator;
+		
+				operator get_r(f2 fixed2) returns rational;
+					return cast_as_rational(f2) / 100.0;
+				end operator;
+		
+				operator set_r(f2 fixed2, r rational) updates {f2};
+					f2 := cast_as_integer(r*100.0);
+				end operator;
+		
+				operator get_i(f2 fixed2) returns integer;
+					return f2;
+				end operator;
+	
+			end implement;
+        catch err operator_not_found_error;
+            put_line('operator_not_found_error');
+        end try;
+
+        try
+            var f1 fixed2;
+        catch err;
+            put_line('declaration with unimplemented type caught');
+        end try;
+    }
+} -result {operator_not_found_error
+declaration with unimplemented type caught
 }
 
 test defroop {read-only user-defined operators} -setup $SETUP -body {

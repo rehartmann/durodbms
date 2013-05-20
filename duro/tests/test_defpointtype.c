@@ -74,9 +74,6 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
             NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
-    ret = RDB_implement_type("POINT", NULL, sizeof(i_point), ecp, &tx);
-    assert(ret == RDB_OK);
-
     /*
      * Create setters
      */
@@ -120,6 +117,12 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
 
     ret = RDB_create_ro_op("POINT_get_LENGTH", 1, getparamv, &RDB_FLOAT, SHLIB,
             "POINT_get_LENGTH", NULL, ecp, &tx);
+    assert(ret == RDB_OK);
+
+    /*
+     * Implement type
+     */
+    ret = RDB_implement_type("POINT", NULL, sizeof(i_point), ecp, &tx);
     assert(ret == RDB_OK);
 
     assert(RDB_commit(ecp, &tx) == RDB_OK);

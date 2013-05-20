@@ -566,12 +566,15 @@ int
 RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_expression *exp, *wherep, *argp;
     RDB_attr_update upd[3];
     RDB_object typedata;
     int ret;
     int i;
+    RDB_expression *exp, *argp;
+    RDB_expression *wherep = NULL;
     RDB_type *typ = NULL;
+
+    upd[0].exp = upd[1].exp = upd[2].exp = upd[3].exp = NULL;
 
     if (!RDB_tx_is_running(txp)) {
         RDB_raise_no_running_tx(ecp);
@@ -581,7 +584,13 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
     typ = RDB_get_type(name, ecp, txp);
     if (typ == NULL)
         return RDB_ERROR;
+
     typ->def.scalar.sysimpl = (arep == NULL) && (areplen == -1);
+
+    /* Load selector etc. to check if they have been provided */
+    ret = RDB_load_type_ops(typ, ecp, txp);
+    if (ret != RDB_OK)
+       goto cleanup;
 
     if (typ->def.scalar.sysimpl) {
         /*
@@ -638,8 +647,6 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
     }
     RDB_add_arg(wherep, argp);
 
-    upd[0].exp = upd[1].exp = upd[2].exp = upd[3].exp = NULL;
-
     upd[0].name = "arep_len";
     upd[0].exp = RDB_int_to_expr(arep == NULL ? areplen : arep->ireplen, ecp);
     if (upd[0].exp == NULL) {
@@ -675,9 +682,6 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
     if (ret != RDB_ERROR)
         ret = RDB_OK;
 
-    /* Load selector etc. */
-    ret = RDB_load_type_ops(typ, ecp, txp);
-
     RDB_init_obj(&typ->def.scalar.init_val);
     if (RDB_evaluate(typ->def.scalar.initexp, NULL, NULL, NULL, ecp, txp,
             &typ->def.scalar.init_val) != RDB_OK) {
@@ -692,7 +696,8 @@ cleanup:
         if (upd[i].exp != NULL)
             RDB_del_expr(upd[i].exp, ecp);
     }
-    RDB_del_expr(wherep, ecp);
+    if (wherep != NULL)
+        RDB_del_expr(wherep, ecp);
 
     return ret;
 }
