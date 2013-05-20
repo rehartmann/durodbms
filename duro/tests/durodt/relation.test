@@ -169,6 +169,61 @@ test invalid_type {invalid (scalar) type for table} -setup $SETUP -match glob -b
     }
 }  -returnCodes {1} -result {*type_mismatch_error*}
 
+test join_extend {Natural JOIN/EXTEND}  -setup $SETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+
+        var t1 real relation {a int, b string}
+        		init relation { tuple {a 1, b 'x'}, tuple {a 2, b 'y'} } key {a};
+        var t2 real init rel { tup {b 'x', c 1}, tup {b 'x', c 2}, tup {b 'y', c 3} };
+        var t3 real init rel { tup {b 'x'}, tup {b 'y'} };
+
+        var tp tup {a int, b string, c int};
+        foreach tp in t1 join t2 order (a asc, b asc, c asc);
+            put(tp.a); put(' ');
+            put(tp.b); put(' ');
+            put(tp.c); put_line('');
+        end foreach;
+
+        foreach tp in t1 join extend t3: { c := if b = 'x' then 0 else 1 } order (a asc, b asc, c asc);
+            put(tp.a); put(' ');
+            put(tp.b); put(' ');
+            put(tp.c); put_line('');
+        end foreach;
+
+        -- Empty EXTEND
+        var tp2 tuple same_heading_as(t1);
+        foreach tp2 in t1 join extend t3: { } order (a asc, b asc);
+            put(tp2.a); put(' ');
+            put(tp2.b); put_line('');
+        end foreach;
+
+        -- EXTEND adding 2 attributes,
+        var tp3 tup {a int, b string, c int, d string};
+        foreach tp3 in t1 join extend t3: { c := if b = 'x' then 0 else 1, d := b || b}
+                order (a asc, b asc, c asc);
+            put(tp3.a); put(' ');
+            put(tp3.b); put(' ');
+            put(tp3.c); put(' ');
+            put(tp3.d); put_line('');
+        end foreach;
+
+        commit;
+    }
+} -result {1 x 1
+1 x 2
+2 y 3
+1 x 0
+2 y 1
+1 x
+2 y
+1 x 0 xx
+2 y 1 yy
+}
+
 test ra {relational algebra} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
@@ -184,6 +239,7 @@ test ra {relational algebra} -setup $SETUP -body {
 
         insert t2 relation { tuple {a 2}, tuple {a 3} };
 
+        -- project / INTERSECT
         put(with (p := t1 { a }, is := p intersect t2): (tuple from is).a); put_line('');
 
         -- remove
