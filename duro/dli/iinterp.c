@@ -1197,7 +1197,7 @@ exec_rollback(RDB_exec_context *ecp)
         return RDB_ERROR;
 
     if (RDB_parse_get_interactive())
-        printf("Transaction committed.\n");
+        printf("Transaction rolled back.\n");
 
     return RDB_OK;
 }
