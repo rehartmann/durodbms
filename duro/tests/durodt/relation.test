@@ -240,12 +240,18 @@ test ra {relational algebra} -setup $SETUP -body {
         		init relation { tuple {a 1, b 'x'}, tuple {a 2, b 'y'} } key {a};
         var t2 real relation {a int} key {a};
 
-        var v2 virtual t2 where a<=2;  
+        var v2 virtual t2 where a <= 2;  
 
         insert t2 relation { tuple {a 2}, tuple {a 3} };
 
         -- project / INTERSECT
         put(with (p := t1 { a }, is := p intersect t2): (tuple from is).a); put_line('');
+
+        -- SEMIMINUS / NOT MATCHING
+        var tp init tuple from (t1 SEMIMINUS t2);
+        put(tp.a); put(' ');
+        put_line(tp.b);
+        put((tuple from (t2 NOT MATCHING t1)).a); put_line('');
 
         -- remove
         put((tuple from (t1 where a = 1 { ALL BUT a })).b); put_line('');
@@ -284,7 +290,6 @@ test ra {relational algebra} -setup $SETUP -body {
             put_line(tpb.b);
         end foreach;
 
-        var tp tup same_heading_as(t1);
         foreach tp in t1 order (b asc);
             put_line(tp.b);
         end foreach;
@@ -292,6 +297,8 @@ test ra {relational algebra} -setup $SETUP -body {
         commit;
     }
 } -result {2
+1 x
+3
 x
 name_error caught
 2
