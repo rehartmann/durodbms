@@ -412,11 +412,15 @@ RDB_copy_table(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *ecp,
 }
 
 /**
- * RDB_extract_tuple extracts a single tuple from a table which contains
-only one tuple and stores its value in the variable pointed to by <var>tplp</var>.
+ * RDB_extract_tuple extracts a single tuple from table *tbp
+ * and stores its value in *<var>tplp</var>.
+ * *tbp must contain exactly one tuple.
 
 If an error occurs, the tuple value of the variable pointed to by <var>tplp</var>
 is undefined and an error value is left in *<var>ecp</var>.
+
+If *tbp is persistent or its definition refers to a persistent table
+*txp must be a running transaction.
 
 @returns
 
@@ -426,7 +430,8 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 
 <dl>
 <dt>no_running_tx_error
-<dd><var>txp</var> does not point to a running transaction.
+<dd>*tbp is persistent or refers to a persistent table and
+*<var>txp</var> does not point to a running transaction.
 <dt>not_found_error
 <dd>The table is empty.
 <dt>invalid_argument_error

@@ -15,6 +15,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object *tplp;
     RDB_expression *exp, *argp;
     RDB_int i;
+    RDB_object tpl;
 
     assert(RDB_begin_tx(ecp, &tx, dbp, NULL) == RDB_OK);
 
@@ -69,6 +70,13 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
     vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     assert(vtbp != NULL);
 
+    RDB_init_obj(&tpl);
+    assert(RDB_extract_tuple(vtbp, ecp, &tx, &tpl) == RDB_OK);
+    printf("EMPNO: %d\n", (int)RDB_tuple_get_int(&tpl, "EMPNO"));
+    printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
+    printf("SALARY: %f\n", (double)RDB_tuple_get_float(&tpl, "SALARY"));
+    RDB_destroy_obj(&tpl, ecp);
+
     assert(RDB_table_to_array(&array, vtbp, 0, NULL, 0, ecp, &tx) == RDB_OK);
 
     /*
@@ -82,6 +90,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
         printf("SALARY: %f\n", (double)RDB_tuple_get_float(tplp, "SALARY"));
     }
+
     assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR);
 
     assert(RDB_destroy_obj(&array, ecp) == RDB_OK);

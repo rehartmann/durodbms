@@ -1025,6 +1025,11 @@ init_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_exec_context *ecp,
     qrp->endreached = RDB_FALSE;
     qrp->matp = NULL;
 
+    if (RDB_table_is_persistent(tbp) && !RDB_tx_is_running(txp)) {
+        RDB_raise_no_running_tx(ecp);
+        return RDB_ERROR;
+    }
+
     if (tbp->val.tb.exp == NULL) {
         return init_stored_qresult(qrp, tbp, NULL, ecp, txp);
     }

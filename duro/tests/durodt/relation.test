@@ -266,7 +266,7 @@ test ra {relational algebra} -setup $SETUP -body {
 
         put((tuple from (v2 rename { })).a); put_line('');
 
-        var tpr init tuple from t1 rename { a as na, b as nb } where na = 2 ;
+        var tpr init tuple from t1 rename { a as na, b as nb } where na = 2;
         put(tpr.na); put(' ');
         put_line(tpr.nb);
 

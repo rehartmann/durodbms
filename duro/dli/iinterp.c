@@ -201,7 +201,7 @@ create_env_op(int argc, RDB_object *argv[], RDB_operator *op,
         return RDB_ERROR;
     }
     return RDB_OK;
-}   
+}
 
 static int
 system_op(int argc, RDB_object *argv[], RDB_operator *op,

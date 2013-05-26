@@ -8,6 +8,7 @@
 <h2>Table of contents</h2>
 
 <ul>
+<li><a href="#intro">Introduction</a>
 <li><a href="#invoke">Invoking the interpreter</a>
 <li><a href="#declare">Declaring variables</a>
 <li><a href="#assign">Assignment</a>
@@ -26,6 +27,16 @@
 <li><a href="#exception">Exception handling</a>
 <li><a href="#performance">Performance</a>
 </ul>
+
+<h2 id="intro">Introduction</h2>
+
+<p>Duro D/T is an interpreter which supports accessing and updating DuroDBMS databases.
+Being computationally complete, it can be used to write database applications.
+The language is very close to the Tutorial D language proposed by C. J. Date an Hugh Darwen
+in their book <em>The Third Manifesto</em> (TTM).
+
+<p>Consult <a href="http://www.thethirdmanifesto.com/">The Third Manifesto website</a>
+for more information on TTM and Tutorial D.
 
 <h2 id="invoke">Invoking the interpreter</h2>
 
@@ -266,11 +277,11 @@ end while;
 <pre>
 no db> var s string;
 no db> while true;
-no db> put('type "exit" to exit: ');
-no db> get_line(s);
-no db> if s = 'exit' then
-no db> leave;
-no db> end if;
+no db>     put('type "exit" to exit: ');
+no db>     get_line(s);
+no db>     if s = 'exit' then
+no db>         leave;
+no db>     end if;
 no db> end while;
 type "exit" to exit: x
 type "exit" to exit: exit
@@ -308,7 +319,7 @@ no db>
 <p>Tuple variables can be declared as follows:</p>
 
 <pre>
-no db> var t tuple {i integer, s string};
+no db> var t tuple { i integer, s string };
 no db>
 </pre>
 
@@ -317,14 +328,14 @@ Like scalar variables, tuple variables can be explicitly initialized
 when they are declared:</p>
 
 <pre>
-no db> var t tup {i integer, s string} init tup {i 1, s 'One'};
+no db> var t tup { i integer, s string } init tup { i 1, s 'One' };
 no db>
 </pre>
 
 Or shorter:
 
 <pre>
-no db> var t init tup {i 1, s 'One'};
+no db> var t init tup { i 1, s 'One' };
 no db>
 </pre>
 
@@ -333,18 +344,18 @@ ordering in Duro D/T, so the statement above is perfectly equivalent
 to the following:
 
 <pre>
-no db> var t init tup {s 'One', i 1};
+no db> var t init tup { s 'One', i 1 };
 no db>
 </pre>
 
 <p>Tuples variables can be assigned and updated:</p>
 
 <pre>
-no db> t := tup {i 2, s 'Two'};
+no db> t := tup { i 2, s 'Two' };
 1 element affected.
-no db> update t {i := 3};
+no db> update t { i := 3 };
 1 element affected.
-no db> update t {i := 4, s := 'Four'};
+no db> update t { i := 4, s := 'Four' };
 1 element affected.
 </pre>
 
@@ -447,7 +458,7 @@ to TRUE or FALSE, respectively.
 <h2 id="tables">Tables</h2>
 
 <p>As required by <em>TTM</em>, tables are variables in DuroDBMS,
-thus a table is created by declarating a variable. 
+thus a table is created by declaring a variable. 
 
 <p>A table is persistent if and only if it belongs to a database.
 A running transaction is required to create or access database tables.
@@ -455,7 +466,7 @@ A running transaction is required to create or access database tables.
 <p>Creating a real database table:
 
 <pre>
-D> var r real relation {no int, name string} key {no};
+D> var r real relation { no int, name string } key {no};
 Table r created.
 D>
 </pre>
@@ -465,7 +476,7 @@ D>
 <p>It is possible to specify default values when creating a table. Example:
 
 <pre>
-D> var r2 real rel {no int, name string} key {no} default {name 'unknown'};
+D> var r2 real rel { no int, name string } key { no } default { name 'unknown' };
 Table r2 created.
 D> insert r2 tup{no 1};
 1 element affected.
@@ -477,7 +488,7 @@ and do not require a transaction to create or access them.
 <p>Creating a private table:
 
 <pre>
-D> var p private rel{no int, name string} key {no};
+D> var p private rel { no int, name string } key { no };
 Local table p created.
 D>
 </pre>
@@ -485,7 +496,7 @@ D>
 <p>Creating a virtual table:
 
 <pre>
-D> var v virtual r {no};
+D> var v virtual r { no };
 Table v created.
 D>
 </pre>
@@ -495,7 +506,7 @@ D>
 <p>Inserting a single tuple:</p>
 
 <pre>
-D> insert r tup {no 1, name 'one'};
+D> insert r tup { no 1, name 'one' };
 1 element affected.
 D>
 </pre>
@@ -503,7 +514,7 @@ D>
 <p>Inserting several tuples:</p>
 
 <pre>
-D> insert r rel {tup {no 2, name 'two'}, tup {no 3, name 'three'}};
+D> insert r rel { tup { no 2, name 'two' }, tup { no 3, name 'three' } };
 2 elements affected.
 D>
 </pre>
@@ -536,12 +547,18 @@ D>
 
 <h2 id="dbconstraints">Database constraints</h2>
 
+<p>Duro D/T supports database constraints.
+
+<h3>A simple example</h3>
+
+<h3>A more complex example</h3>
+
 <p>Imagine there is one table for customers and one for orders:</p>
 
 <pre>
-D> var customers real rel{customer_id int, name string} key {customer_id};
+D> var customers real rel { customer_id int, name string } key { customer_id };
 Table customers created.
-D> var orders real rel{order_id int, customer_id int} key {order_id};
+D> var orders real rel { order_id int, customer_id int } key { order_id };
 Table orders created.
 D> 
 </pre>
@@ -550,7 +567,7 @@ D>
 be achieved using a database constraint as follows:
 
 <pre>
-D> constraint orders_customers orders {customer_id} subset_of customers {customer_id};
+D> constraint orders_customers orders { customer_id } subset_of customers { customer_id };
 Constraint orders_customers created.
 D> 
 </pre>
@@ -559,11 +576,11 @@ D>
 is a corresponding entry in the customer table: 
 
 <pre>
-D> insert orders tup{order_id 1, customer_id 1};
+D> insert orders tup { order_id 1, customer_id 1 };
 predicate_violation_error: orders_customers
-D> insert customers tup{customer_id 1, name 'John Smith'};
+D> insert customers tup { customer_id 1, name 'John Smith' };
 1 element affected.
-D> insert orders tup{order_id 1, customer_id 1};
+D> insert orders tup { order_id 1, customer_id 1 };
 1 element affected.
 D> 
 </pre>
@@ -577,7 +594,7 @@ Duro tries to optimize this expression before evaluating.
 in order to check a constraint. Example:
 
 <pre>
-D> explain insert orders tup{order_id 1, customer_id 1};
+D> explain insert orders tup { order_id 1, customer_id 1 };
 check orders_customers: is_empty((RELATION {} union ((RELATION {TUPLE {customer_id 1, order_id 1}}
 { customer_id }) minus (customers INDEX customers$0 { customer_id }))) {  })
 D> 

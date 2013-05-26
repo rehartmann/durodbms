@@ -30,6 +30,9 @@ NAME: Smith
 SALARY: 4000.000000
 EMPNO: 1
 NAME: Smith
+SALARY: 4000.000000
+EMPNO: 1
+NAME: Smith
 SALARY: 4000.000000}
 
 test union {UNION operator}  -setup $SETUP -body {
