@@ -202,4 +202,13 @@ test relation_op {operator RELATION} -setup $SETUP -body {
     exec [configure -testdir]/test_relation_op
 }
 
+test assign_where {insert into WHERE using RDB_multi_assign} -setup $SETUP -body {
+    exec [configure -testdir]/test_assign_where
+} -result {EMPNO: 1
+NAME: Smith
+SALARY: 4000.000000
+EMPNO: 4
+NAME: Miller
+SALARY: 5000.000000}
+
 cleanupTests

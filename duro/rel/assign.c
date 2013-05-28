@@ -1722,17 +1722,6 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     RDB_ma_update *nupdv = NULL;
     RDB_ma_delete *ndelv = NULL;
 
-    /*
-     * A running transaction is required if a persistent table is involved.
-     */
-    need_tx = assign_needs_tx(insc, insv, updc, updv, delc,  delv,
-            copyc, copyv);
-
-    if (need_tx && !RDB_tx_is_running(txp)) {
-        RDB_raise_no_running_tx(ecp);
-        return RDB_ERROR;
-    }
-
     if (check_assign_types(insc, insv, updc, updv, delc, delv,
             copyc, copyv, ecp, txp) != RDB_OK) {
         return RDB_ERROR;
@@ -1761,6 +1750,16 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         rcount = RDB_ERROR;
         ndelv = NULL;
         goto cleanup;
+    }
+
+    /*
+     * A running transaction is required if a persistent table is involved.
+     */
+    need_tx = assign_needs_tx(ninsc, ninsv, nupdc, nupdv, ndelc, ndelv,
+            copyc, copyv);
+    if (need_tx && !RDB_tx_is_running(txp)) {
+        RDB_raise_no_running_tx(ecp);
+        return RDB_ERROR;
     }
 
     rcount = check_conflicts_deps(ninsc, ninsv, nupdc, nupdv,

@@ -167,7 +167,8 @@ testsrc = Split('tests/tupletest.c tests/maptest.c '
         'tests/test_summarize.c tests/test_update.c tests/test_utypetable.c '
         'tests/test_srupdate.c tests/test_insert.c tests/test_2db.c '
         'tests/test_defop.c tests/test_callop.c '
-        'tests/test_print_opview.c tests/test_dropop.c tests/test_lupdate.c')
+        'tests/test_print_opview.c tests/test_dropop.c tests/test_lupdate.c '
+        'tests/test_assign_where.c')
 
 testlibsrc = ['tests/point.c', 'tests/point.def', 'tests/plus.c',
         'tests/plus.def']

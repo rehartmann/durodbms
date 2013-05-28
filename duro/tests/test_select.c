@@ -52,7 +52,16 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
     /* Must destroy the array before the table because of RDB_UNBUFFERED. */
     assert(RDB_destroy_obj(&array, ecp) == RDB_OK);
 
-    assert(RDB_drop_table(vtbp, ecp, &tx) == RDB_OK);
+    assert(RDB_commit(ecp, &tx) == RDB_OK);
+
+    RDB_init_obj(&tpl);
+    assert(RDB_extract_tuple(vtbp, ecp, &tx, &tpl) == RDB_ERROR);
+    assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_NO_RUNNING_TX_ERROR);
+    RDB_destroy_obj(&tpl, ecp);
+
+    assert(RDB_drop_table(vtbp, ecp, NULL) == RDB_OK);
+
+    assert(RDB_begin_tx(ecp, &tx, dbp, NULL) == RDB_OK);
 
     RDB_init_obj(&array);
 

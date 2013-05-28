@@ -787,6 +787,11 @@ init_where_index_qresult(RDB_qresult *qrp, RDB_expression *texp,
                 ->def.tbref.tbp;
     }
 
+    if (RDB_table_is_persistent(qrp->val.stored.tbp) && !RDB_tx_is_running(txp)) {
+        RDB_raise_no_running_tx(ecp);
+        return RDB_ERROR;
+    }
+
     if (indexp->unique) {
         qrp->val.stored.curp = NULL;
         return RDB_OK;
