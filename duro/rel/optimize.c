@@ -1863,6 +1863,8 @@ RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
      * Make a deep copy of the table, so it can be transformed freely
      */
     nexp = dup_expr_deep(texp, ecp, txp);
+    if (nexp == NULL)
+        return NULL;
 
     /*
      * Algebraic optimization

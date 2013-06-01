@@ -1830,7 +1830,7 @@ RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_object *tbp;
-    RDB_expression *exp, *argp;
+    RDB_expression *exp, *argp, *arg2p;
     RDB_object *tmptbp = NULL;
     RDB_object tpl;
     RDB_object arr;
@@ -1859,8 +1859,17 @@ RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
     argp->transformed = RDB_TRUE;
     RDB_add_arg(exp, argp);
 
-    argp = RDB_eq(RDB_var_ref("tablename", ecp),
-            RDB_string_to_expr(name, ecp), ecp);
+    argp = RDB_var_ref("tablename", ecp);
+    if (argp == NULL) {
+        RDB_del_expr(exp, ecp);
+        goto error;
+    }
+    arg2p = RDB_string_to_expr(name, ecp);
+    if (arg2p == NULL) {
+        RDB_del_expr(argp, ecp);
+        goto error;
+    }
+    argp = RDB_eq(argp, arg2p, ecp);
     if (argp == NULL) {
         RDB_del_expr(exp, ecp);
         goto error;
