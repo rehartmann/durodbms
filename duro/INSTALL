@@ -1,7 +1,7 @@
-Installation procedure for Duro
-===============================
+Installation procedure for DuroDBMS
+===================================
 
-Duro uses SCons to build itself. Type:
+DuroDBMS uses SCons to build itself. Type:
 
 scons
 scons test    (optional)
@@ -9,7 +9,7 @@ scons install
 
 SCons is available from www.scons.org.
 
-To compile Duro, you need GNU Libtool, Berkeley DB (5.3 recommended) and Tcl (8.1 or later).
+To compile DuroDBMS, you need GNU Libtool, Berkeley DB (5.3 recommended) and Tcl (8.1 or later).
 
 'scons test' requires the tcltest package.
 
@@ -25,16 +25,16 @@ The location of Berkeley DB may also be specified using
 the environment. With Visual C++, the variables LIB and INCLUDE
 can be used.
 
-By default, Duro is installed in C:\duro.0.17 on Windows, and
-/usr/local/duro.0.17 on all other systems.
+By default, DuroDBMS is installed in C:\duro.0.18 on Windows, and
+/usr/local/duro.0.18 on all other systems.
 You can specify a different directory by passing an installdir
 variable to scons, e. g.:
 
 scons installdir=/usr install
 
-This will install Duro in /usr/duro.0.17.
+This will install DuroDBMS in /usr/duro.0.18.
 
-To build Duro without Tcl support, use:
+To build DuroDBMS without Tcl support, use:
 
 scons with_durotcl=0
 

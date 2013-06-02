@@ -17,7 +17,7 @@ The following software is required for running this version of DuroDBMS:
 Add the directories where the respective DLLs are located to PATH,
 together with the 'bin' subdirectory of the DuroDBMS root directory.
 
-DuroDBMS 0.17 has been tested under Linux/x86 and Windows XP with Berkeley
+DuroDBMS 0.18 has been tested under Linux/x86 and Windows XP with Berkeley
 DB 5.3 and Tcl 8.5.
 
 To learn about how to use DuroDBMS, see the documentation in the 'docs'
@@ -28,23 +28,23 @@ The Tcl interface can be found in the 'lib' subdirectory.
 The easiest way to make it available to application
 scripts is to add this subdirectory to TCLLIBPATH, e.g.:
 
-    set TCLLIBPATH=C:/durodbms.0.17/lib
+    set TCLLIBPATH=C:/durodbms.0.18/lib
 
-Duro is still under development. Report bugs to
+DuroDBMS is still under development. Report bugs to
 rhartmann@users.sourceforge.net or use a Sourceforge tracker
 at <http://sourceforge.net/tracker/?group_id=80719>. 
 
 -----
 
-This file is part of Duro, a relational database management system.
-Copyright (C) 2003-2012 Rene Hartmann.
+This file is part of DuroDBMS, a relational database management system.
+Copyright (C) 2003-2013 Rene Hartmann.
 
-Duro is free software; you can redistribute it and/or modify
+DuroDBMS is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
 (at your option) any later version.
 
-Duro is distributed in the hope that it will be useful,
+DuroDBMS is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.

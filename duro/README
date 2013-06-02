@@ -1,4 +1,4 @@
-	README for DuroDBMS 0.17
+	README for DuroDBMS 0.18
 
 $Id$
 
@@ -28,20 +28,20 @@ scripts is to add this subdirectory to TCLLIBPATH, e.g.:
     TCLLIBPATH=/usr/local/durodbms.0.18/lib
     export TCLLIBPATH
 
-Duro is still under development. Report bugs to
+DuroDBMS is still under development. Report bugs to
 rhartmann@users.sourceforge.net. 
 
 -----
 
-This file is part of Duro, a relational management system.
-Copyright (C) 2003-2012 Rene Hartmann.
+This file is part of DuroDBMS, a relational management system.
+Copyright (C) 2003-2013 Rene Hartmann.
 
-Duro is free software; you can redistribute it and/or modify
+DuroDBMS is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
 (at your option) any later version.
 
-Duro is distributed in the hope that it will be useful,
+DuroDBMS is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.

@@ -13,7 +13,7 @@ DuroDBMS 0.18
 - Fixed issue with updating key attributes.
 
 - Added initexp argument to RDB_define_type() and INIT specification
-   to type definition statement. Added initexp argument to duro::type define.
+  to type definition statement. Added initexp argument to duro::type define.
 
 DuroDBMS 0.17
 
