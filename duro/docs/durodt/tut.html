@@ -42,6 +42,8 @@ for more information on <cite>TTM</cite> and Tutorial D.
 
 <p>To invoke the interpreter, type <samp>durodt</samp>:
 
+<p>(Assuming the directory containing the durodt binary has been added the system path)
+
 <pre>
 durodt
 Duro D/T library version 0.18
@@ -396,7 +398,7 @@ no db> connect('dbenv');
 no db>
 </pre>
 
-<p>After a database environment was created or connected to, a
+<p>After a database environment was created and/or connected to, a
 database can be created using the built-in
 update operator create_db().</p>
 
@@ -550,6 +552,23 @@ D>
 <p>Duro D/T supports database constraints.
 
 <h3>A simple example</h3>
+
+<p>Let's say we have a table which we want to contain no more than 2 tuples.
+This can be realized as follows:
+
+<pre>
+D> var r real rel { n int, s string } key { n };
+Table r created.
+D> constraint cr count(r) <= 2;
+Constraint cr created.
+D> insert r tup { n 1, s 'one' };
+1 element affected.
+D> insert r tup { n 2, s 'two' };
+1 element affected.
+D> insert r tup { n 3, s 'three' };
+predicate_violation_error: cr
+D> 
+</pre>
 
 <h3>A more complex example</h3>
 
