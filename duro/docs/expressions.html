@@ -19,8 +19,6 @@ with a number of differences. The most important are:
 <li>DuroDBMS uses the keyword SUBSET_OF for the subset operator
 and IN for the element-of operator.
 <li>DuroDBMS supports both single ("'") and double quotes ('"') as delimiters in string literals.
-<li>GROUP and UNGROUP only support single grouping and ungrouping, as in
-the second edition of TTM.
 </ol>
 
 <h3>DuroDBMS expression syntax (EBNF notation)</h3>
@@ -29,7 +27,7 @@ the second edition of TTM.
 expression = project | where | rename | dyadic_relation_op_inv 
     | extend | update | summarize | divideby
     | wrap | unwrap | group | ungroup
-	| expression OR expression
+    | expression OR expression
     | expression AND expression
     | expression XOR expression
     | NOT expression
@@ -112,7 +110,7 @@ aggregate_inv = summary_type '(' ne_expression_list ')'.
 
 op_inv = id '(' expression_list ')'.
 
-literal = string | integer | decimal | float | TRUE | FALSE
+literal = string | integer | decimal | float | binary | TRUE | FALSE
         | RELATION '{' id_type_list '}' '{' expression_list '}'
         | RELATION '{' ne_expression_list '}'
         | TABLE_DEE | TABLE_DUM
@@ -142,6 +140,8 @@ integer = digit{digit}.
 decimal = digit{digit}'.'digit{digit}.
 
 float = digit{digit}'.'digit{digit}('E' | 'e')digit{digit}.
+
+binary = "X'"{hex_digit hex_digit}"'"
 
 id = letter{letter | digit | '_' | '#'}.
 

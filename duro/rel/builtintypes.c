@@ -153,11 +153,11 @@ compare_float(int argc, RDB_object *argv[], RDB_operator *op,
     RDB_int res;
 
     if (argv[0]->val.float_val < argv[1]->val.float_val) {
-        res = -1;
+        res = (RDB_int) -1;
     } else if (argv[0]->val.float_val > argv[1]->val.float_val) {
-        res = 1;
+        res = (RDB_int) 1;
     } else {
-        res = 0;
+        res = (RDB_int) 0;
     }
     RDB_int_to_obj(retvalp, res);
     return RDB_OK;
@@ -168,7 +168,7 @@ compare_string(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int_to_obj(retvalp,
-            strcoll(argv[0]->val.bin.datap, argv[1]->val.bin.datap));
+            (RDB_int) strcoll(argv[0]->val.bin.datap, argv[1]->val.bin.datap));
     return RDB_OK;
 }
 

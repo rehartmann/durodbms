@@ -16,7 +16,7 @@
 <li><a href="#comments">Comments</a>
 <li><a href="#control">Control statements</a>
 <li><a href="#tuples">Tuples</a>
-<li><a href="#dbs">Databases and database environments</a>
+<li><a href="#dbs">Databases, database environments, and transactions</a>
 <li><a href="#tables">Tables</a>
 <li><a href="#dbconstraints">Database constraints</a>
 <li><a href="#arrays">Arrays</a>
@@ -377,7 +377,7 @@ Four
 no db>
 </pre>
 
-<h2 id="dbs">Databases and database environments</h2>
+<h2 id="dbs">Databases, database environments, and transactions</h2>
 
 <p>Database environments are the places where databases and tables are physically stored.
 Therefore a database environment must exist before a database can be created.
@@ -709,6 +709,31 @@ no db>
 it in <code>line</code>, without the trailing newline.</p>
 
 <p>File I/O is also supported. See the <a href="../api/html/io-ops.html">list of I/O operators</a>.
+
+<p>The following example code reads lines from standard input and writes
+them to standard output in sorted order:
+
+<pre>
+var lines private relation { lineno int, line string } key { lineno };
+var l string;
+
+-- Read input lines
+var lno init 0;
+while true;
+    get_line(l);
+    if eof() then
+        leave;
+    end if;
+    insert lines tup { lineno lno, line l };
+    lno := lno + 1;
+end while;
+
+-- Write lines in sorted order
+var lt tup same_heading_as(lines);
+foreach lt in lines order(line asc);
+    put_line(lt.line);
+end foreach;
+</pre>
 
 <h2 id="user-ops">User-defined operators</h2>
 
