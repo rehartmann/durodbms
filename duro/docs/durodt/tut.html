@@ -205,10 +205,13 @@ Please enter a number:
 no db> var n init cast_as_integer(s);
 no db> if n &lt; 0 then
 no db>     put_line('Negative');
+no db>     put_line('Sign is -');
 no db> else
 no db>     put_line('Positive');
+no db>     put_line('Sign is +');
 no db> end if;
 Positive
+Sign is +
 no db>
 </pre>
 
@@ -224,13 +227,16 @@ no db> var n init cast_as_integer(s);
 no db> if n &lt; 0 then
 no db>     begin;
 no db>         put_line('Negative');
+no db>         put_line('Sign is -');
 no db>     end;
 no db> else
 no db>     begin;
 no db>         put_line('Positive');
+no db>         put_line('Sign is +');
 no db>     end;
 no db> end if;
 Negative
+Sign is -
 no db>
 </pre>
 
@@ -397,6 +403,11 @@ of type <code>string</code> which specifies the database environment:</p>
 no db> connect('dbenv');
 no db>
 </pre>
+
+<p>A DuroDBMS database environment is implemented using
+a Berkeley DB database environment.
+The Berkeley DB command line utilities can be used for
+tasks like backup, recovery etc.   
 
 <p>After a database environment was created and/or connected to, a
 database can be created using the built-in
@@ -773,6 +784,10 @@ D>
 D> type len possrep { n float } constraint n >= 0.0 init len(0.0);
 Type len defined.
 </pre>
+
+<p>This defines a type <code>len</code> with a single property
+<code>n</code> of type <code>float</code>.
+Only positive values of <code>n</code> are permitted.
 
 <p>Before the type can be used, it must first be implemented.
 This can be done using IMPLEMENT TYPE:</p>

@@ -165,7 +165,7 @@ main(int argc, char *argv[])
     }
 #endif
 
-    /* Set char/string locales according to the environmen */
+    /* Set char/string locales according to the environment */
     setlocale(LC_COLLATE, "");
     setlocale(LC_CTYPE, "");
 
