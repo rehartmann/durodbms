@@ -11,8 +11,11 @@
 #include "rdb.h"
 #include "typeimpl.h"
 #include "internal.h"
+#include "key.h"
 #include "stable.h"
+
 #include <gen/strfns.h>
+
 #include <string.h>
 #include <assert.h>
 

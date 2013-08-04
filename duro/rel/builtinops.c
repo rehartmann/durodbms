@@ -25,6 +25,8 @@ RDB_op_map RDB_builtin_ro_op_map;
 /** @page builtin-ops Built-in operators
 @section scalar-ops Built-in scalar operators
 
+<h3 id="op_eq">OPERATOR =</h3>
+
 OPERATOR = (<em>ANY</em>, <em>ANY</em>) RETURNS boolean;
 
 The equality operator. Defined for every type. The arguments must be of the same type.
@@ -32,6 +34,10 @@ The equality operator. Defined for every type. The arguments must be of the same
 @returns
 
 TRUE if the two arguments are equal, FALSE otherwise.  
+
+<hr>
+
+<h3 id="op_neq">OPERATOR <></h3>
 
 OPERATOR <> (<em>ANY</em>, <em>ANY</em>) RETURNS boolean;
 
@@ -778,9 +784,9 @@ The arc tangent operator.
 
 <hr>
 
-<h3 id="op_atan2">OPERATOR atan</h3>
+<h3 id="op_atan2">OPERATOR atan2</h3>
 
-OPERATOR atan(y float, x float) RETURNS float;
+OPERATOR atan2(y float, x float) RETURNS float;
 
 The atan2 operator.
 

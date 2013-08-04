@@ -2,6 +2,10 @@ $Id$
 
 Summary of Changes to DuroDBMS
 
+DuroDBMS 0.19
+
+- Added support for public tables.
+
 DuroDBMS 0.18
 
 - UPDATE expression now allows empty attribute assign list.

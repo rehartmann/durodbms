@@ -6,6 +6,7 @@
  */
 
 #include "catalog.h"
+#include "key.h"
 #include "typeimpl.h"
 #include "insert.h"
 #include "internal.h"
@@ -18,7 +19,7 @@
 
 enum {
     MAJOR_VERSION = 0,
-    MINOR_VERSION = 18
+    MINOR_VERSION = 19
 };
 
 /*
@@ -55,6 +56,15 @@ static RDB_attr vtables_attrv[] = {
 
 static char *vtables_keyattrv[] = { "tablename" };
 static RDB_string_vec vtables_keyv[] = { { 1, vtables_keyattrv } };
+
+static RDB_attr ptables_attrv[] = {
+    { "tablename", &RDB_STRING, NULL, 0 },
+    { "is_user", &RDB_BOOLEAN, NULL, 0 },
+    { "i_def", &RDB_BINARY, NULL, 0 }
+};
+
+static char *ptables_keyattrv[] = { "tablename" };
+static RDB_string_vec ptables_keyv[] = { { 1, ptables_keyattrv } };
 
 static RDB_attr table_recmap_attrv[] = {
     { "tablename", &RDB_STRING, NULL, 0 },
@@ -186,7 +196,7 @@ dbtables_insert(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 }
 
 static int
-insert_key(RDB_string_vec *keyp, int i, const char *tablename,
+insert_key(const RDB_string_vec *keyp, int i, const char *tablename,
         RDB_dbroot *dbrootp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
@@ -657,6 +667,171 @@ RDB_cat_insert(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     return dbtables_insert(tbp, ecp, txp);
 }
 
+/* Insert a public table into the catalog */
+int
+RDB_cat_insert_ptable(const char *name,
+        int attrc, const RDB_attr attrv[],
+        int keyc, const RDB_string_vec keyv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_object tpl;
+    int ret;
+    int i;
+    RDB_object defval;
+
+    RDB_init_obj(&tpl);
+    RDB_init_obj(&defval);
+
+    /*
+     * Insert entry into table sys_ptables
+     */
+
+    ret = RDB_tuple_set_string(&tpl, "tablename", name, ecp);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+    ret = RDB_tuple_set_bool(&tpl, "is_user", RDB_TRUE, ecp);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
+    /* i_def is initially empty */
+    if (RDB_binary_set(&defval, 0, NULL, 0, ecp) != RDB_OK) {
+        goto error;
+    }
+    ret = RDB_tuple_set(&tpl, "i_def", &defval, ecp);
+    if (ret != RDB_OK)
+        goto error;
+    ret = RDB_insert(txp->dbp->dbrootp->ptables_tbp, &tpl, ecp, txp);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
+    /* insert entries into table sys_tableattrs */
+    RDB_init_obj(&tpl);
+    ret = RDB_tuple_set_string(&tpl, "tablename", name, ecp);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
+    for (i = 0; i < attrc; i++) {
+        RDB_object typedata;
+        char *attrname = attrv[i].name;
+
+        RDB_init_obj(&typedata);
+        ret = RDB_type_to_binobj(&typedata, attrv[i].typ,
+                ecp);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&typedata, ecp);
+            goto error;
+        }
+        ret = RDB_tuple_set(&tpl, "type", &typedata, ecp);
+        RDB_destroy_obj(&typedata, ecp);
+        if (ret != RDB_OK) {
+            goto error;
+        }
+
+        ret = RDB_tuple_set_string(&tpl, "attrname", attrname, ecp);
+        if (ret != RDB_OK) {
+            goto error;
+        }
+        ret = RDB_tuple_set_int(&tpl, "i_fno", -1, ecp);
+        if (ret != RDB_OK) {
+            goto error;
+        }
+        ret = RDB_insert(txp->dbp->dbrootp->table_attr_tbp, &tpl, ecp, txp);
+        if (ret != RDB_OK) {
+            goto error;
+        }
+    }
+
+    /*
+     * Insert keys into sys_keys
+     */
+    for (i = 0; i < keyc; i++) {
+        if (insert_key(&keyv[i], i, name, txp->dbp->dbrootp, ecp, txp)
+                != RDB_OK)
+            goto error;
+    }
+
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&defval, ecp);
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&defval, ecp);
+    return RDB_ERROR;
+}
+
+static RDB_expression *
+tablename_eq_expr(const char *name, RDB_exec_context *ecp)
+{
+    RDB_expression *exp;
+    RDB_expression *arg2p;
+    RDB_expression *argp = RDB_var_ref("tablename", ecp);
+    if (argp == NULL) {
+        return NULL;
+    }
+    arg2p = RDB_string_to_expr(name, ecp);
+    if (arg2p == NULL) {
+        RDB_del_expr(argp, ecp);
+        return NULL;
+    }
+    exp = RDB_eq(argp, arg2p, ecp);
+    if (exp == NULL) {
+        RDB_del_expr(argp, ecp);
+        RDB_del_expr(arg2p, ecp);
+        return NULL;
+    }
+
+    /* Set transformed flag to avoid infinite recursion */
+    exp->transformed = RDB_TRUE;
+    return exp;
+}
+
+int
+RDB_cat_map_ptable(const char *name, RDB_expression *exp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_attr_update upd;
+    RDB_object defval;
+    int count;
+    RDB_expression *condp = tablename_eq_expr(name, ecp);
+    if (condp == NULL)
+        return RDB_ERROR;
+
+    RDB_init_obj(&defval);
+    upd.exp = NULL;
+
+    upd.name = "i_def";
+    if (RDB_expr_to_binobj(&defval, exp, ecp) != RDB_OK)
+        goto error;
+    upd.exp = RDB_obj_to_expr(&defval, ecp);
+    if (upd.exp == NULL)
+        goto error;
+
+    count = RDB_update(RDB_tx_db(txp)->dbrootp->ptables_tbp,
+            condp, 1, &upd, ecp, txp);
+    if (count == 0) {
+        RDB_raise_not_found(name, ecp);
+        goto error;
+    }
+
+    RDB_del_expr(upd.exp, ecp);
+    RDB_del_expr(condp, ecp);
+    RDB_destroy_obj(&defval, ecp);
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&defval, ecp);
+    if (upd.exp != NULL)
+        RDB_del_expr(upd.exp, ecp);
+    if (condp != NULL)
+        RDB_del_expr(condp, ecp);
+    return RDB_ERROR;
+}
+
 /* Delete a real table from the catalog */
 static int
 delete_rtable(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
@@ -1027,6 +1202,13 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         return ret;
     }
 
+    ret = provide_systable("sys_ptables", 3, ptables_attrv,
+            1, ptables_keyv, create, ecp, txp, dbrootp->envp,
+            &dbrootp->ptables_tbp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
     ret = provide_systable("sys_table_recmap", 2, table_recmap_attrv,
             2, table_recmap_keyv, create, ecp,
             txp, dbrootp->envp, &dbrootp->table_recmap_tbp);
@@ -1228,6 +1410,9 @@ RDB_cat_create_db(RDB_exec_context *ecp, RDB_transaction *txp)
             ret = dbtables_insert(txp->dbp->dbrootp->vtables_tbp, ecp, txp);
             if (ret != RDB_OK) 
                 return ret;
+            ret = dbtables_insert(txp->dbp->dbrootp->ptables_tbp, ecp, txp);
+            if (ret != RDB_OK)
+                return ret;
             ret = dbtables_insert(txp->dbp->dbrootp->table_recmap_tbp, ecp, txp);
             if (ret != RDB_OK) 
                 return ret;
@@ -1278,6 +1463,11 @@ RDB_cat_create_db(RDB_exec_context *ecp, RDB_transaction *txp)
     }
 
     ret = RDB_cat_insert(txp->dbp->dbrootp->vtables_tbp, ecp, txp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    ret = RDB_cat_insert(txp->dbp->dbrootp->ptables_tbp, ecp, txp);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -1390,8 +1580,8 @@ error:
     return RDB_ERROR;
 }
 
-static int
-get_keys(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
+int
+RDB_cat_get_keys(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
          int *keycp, RDB_string_vec **keyvp)
 {
     RDB_expression *exp, *argp;
@@ -1413,8 +1603,7 @@ get_keys(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
-    argp = RDB_eq(RDB_string_to_expr(name, ecp),
-            RDB_var_ref("tablename", ecp), ecp);
+    argp = tablename_eq_expr(name, ecp);
     if (argp == NULL) {
         RDB_del_expr(exp, ecp);
         return RDB_ERROR;
@@ -1480,6 +1669,124 @@ error:
     return RDB_ERROR;
 }
 
+/*
+ * Get type of real or public table with name name.
+ * If the table does not exist, RELATION { } is returned.
+ */
+RDB_type *
+RDB_cat_get_table_type(const char *name, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    int i;
+    int attrc;
+    RDB_expression *exp, *argp;
+    RDB_attr *attrv = NULL;
+    RDB_type *tbtyp;
+    RDB_object arr;
+    RDB_object *tplp;
+    RDB_object *tmptbp = NULL;
+
+    /*
+     * Read attribute names and types
+     */
+
+    RDB_init_obj(&arr);
+
+    exp = RDB_ro_op("where", ecp);
+    if (exp == NULL) {
+        goto error;
+    }
+    argp = RDB_table_ref(txp->dbp->dbrootp->table_attr_tbp, ecp);
+    if (argp == NULL) {
+        RDB_del_expr(exp, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_eq(RDB_var_ref("tablename", ecp),
+            RDB_string_to_expr(name, ecp), ecp);
+    if (argp == NULL) {
+        RDB_del_expr(exp, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+
+    tmptbp = RDB_expr_to_vtable(exp, ecp, txp);
+    if (tmptbp == NULL)
+        goto error;
+    if (RDB_table_to_array(&arr, tmptbp, 0, NULL, 0, ecp, txp)
+            != RDB_OK) {
+        goto error;
+    }
+
+    RDB_drop_table(tmptbp, ecp, txp);
+    tmptbp = NULL;
+
+    attrc = RDB_array_length(&arr, ecp);
+    if (attrc > 0) {
+        attrv = RDB_alloc(sizeof(RDB_attr) * attrc, ecp);
+        if (attrv == NULL) {
+            goto error;
+        }
+    }
+    for (i = 0; i < attrc; i++)
+        attrv[i].name = NULL;
+
+    for (i = 0; i < attrc; i++) {
+        RDB_object *typedatap;
+        RDB_int fno;
+
+        tplp = RDB_array_get(&arr, i, ecp);
+        if (tplp == NULL)
+            goto error;
+        fno = RDB_tuple_get_int(tplp, "i_fno");
+        if (fno == -1)
+            fno = i;
+        attrv[fno].name = RDB_dup_str(RDB_tuple_get_string(tplp, "attrname"));
+        if (attrv[fno].name == NULL) {
+            RDB_raise_no_memory(ecp);
+            goto error;
+        }
+        typedatap = RDB_tuple_get(tplp, "type");
+
+        attrv[fno].typ = RDB_binobj_to_type(typedatap, ecp, txp);
+        if (attrv[fno].typ == NULL)
+            goto error;
+
+        attrv[fno].defaultp = NULL;
+        attrv[fno].options = 0;
+    }
+
+    tbtyp = RDB_new_relation_type(attrc, attrv, ecp);
+    if (tbtyp == NULL) {
+        RDB_del_nonscalar_type(tbtyp, ecp);
+        goto error;
+    }
+
+    for (i = 0; i < attrc; i++) {
+        RDB_free(attrv[i].name);
+    }
+    if (attrc > 0)
+        RDB_free(attrv);
+
+    RDB_destroy_obj(&arr, ecp);
+
+    return tbtyp;
+
+error:
+    RDB_destroy_obj(&arr, ecp);
+
+    if (tmptbp != NULL)
+        RDB_drop_table(tmptbp, ecp, txp);
+
+    if (attrv != NULL) {
+        for (i = 0; i < attrc; i++)
+            RDB_free(attrv[i].name);
+        RDB_free(attrv);
+    }
+    return NULL;
+}
+
+/* Read a real table from the catalog */
 RDB_object *
 RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
         RDB_transaction *txp)
@@ -1487,7 +1794,6 @@ RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
     RDB_expression *exp, *argp;
     RDB_object *tbp = NULL;
     RDB_object *tmptb1p = NULL;
-    RDB_object *tmptb2p = NULL;
     RDB_object *tmptb3p = NULL;
     RDB_object *tmptb4p = NULL;
     RDB_object arr;
@@ -1496,17 +1802,14 @@ RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
     RDB_bool usr;
     int ret;
     RDB_int i;
-    int attrc;
-    RDB_attr *attrv = NULL;
     int defvalc;
     int keyc;
+    RDB_attr *defvalattrv = NULL;
     RDB_string_vec *keyv;
     RDB_type *tbtyp;
     int indexc;
     RDB_tbindex *indexv;
     const char *recmapname = NULL;
-
-    /* Read real table data from the catalog */
 
     RDB_init_obj(&arr);
     RDB_init_obj(&tpl);
@@ -1523,8 +1826,7 @@ RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
         goto error;
     }
     RDB_add_arg(exp, argp);
-    argp = RDB_eq(RDB_var_ref("tablename", ecp),
-            RDB_string_to_expr(name, ecp), ecp);
+    argp = tablename_eq_expr(name, ecp);
     if (argp == NULL) {
         RDB_del_expr(exp, ecp);
         goto error;
@@ -1550,68 +1852,9 @@ RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
 
     usr = RDB_tuple_get_bool(&tpl, "is_user");
 
-    /*
-     * Read attribute names and types
-     */
-
-    exp = RDB_ro_op("where", ecp);
-    if (exp == NULL) {
+    tbtyp = RDB_cat_get_table_type(name, ecp, txp);
+    if (tbtyp == NULL)
         goto error;
-    }
-    argp = RDB_table_ref(txp->dbp->dbrootp->table_attr_tbp, ecp);
-    if (argp == NULL) {
-        RDB_del_expr(exp, ecp);
-        goto error;
-    }
-    RDB_add_arg(exp, argp);
-    argp = RDB_eq(RDB_var_ref("tablename", ecp),
-            RDB_string_to_expr(name, ecp), ecp);
-    if (argp == NULL) {
-        RDB_del_expr(exp, ecp);
-        goto error;
-    }
-    RDB_add_arg(exp, argp);
-
-    tmptb2p = RDB_expr_to_vtable(exp, ecp, txp);
-    if (tmptb2p == NULL)
-        goto error;
-    ret = RDB_table_to_array(&arr, tmptb2p, 0, NULL, 0, ecp, txp);
-    if (ret != RDB_OK) {
-        goto error;
-    }
-
-    attrc = RDB_array_length(&arr, ecp);
-    if (attrc > 0) {
-        attrv = RDB_alloc(sizeof(RDB_attr) * attrc, ecp);
-        if (attrv == NULL) {
-            goto error;
-        }
-    }
-    for (i = 0; i < attrc; i++)
-        attrv[i].name = NULL;
-
-    for (i = 0; i < attrc; i++) {
-        RDB_object *typedatap;
-        RDB_int fno;
-
-        tplp = RDB_array_get(&arr, i, ecp);
-        if (tplp == NULL)
-            goto error;
-        fno = RDB_tuple_get_int(tplp, "i_fno");
-        attrv[fno].name = RDB_dup_str(RDB_tuple_get_string(tplp, "attrname"));
-        if (attrv[fno].name == NULL) {
-            RDB_raise_no_memory(ecp);
-            goto error;
-        }
-        typedatap = RDB_tuple_get(tplp, "type");
-
-        attrv[fno].typ = RDB_binobj_to_type(typedatap, ecp, txp);
-        if (attrv[fno].typ == NULL)
-            goto error;
-        
-        attrv[fno].defaultp = NULL;
-        attrv[fno].options = 0;
-    }
 
     /*
      * Read default values
@@ -1645,38 +1888,39 @@ RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
     }
 
     defvalc = RDB_array_length(&arr, ecp);
+    if (defvalc > 0) {
+        defvalattrv = RDB_alloc(sizeof (RDB_attr) * defvalc, ecp);
+        if (defvalattrv == NULL)
+            goto error;
+    }
+
+    for (i = 0; i < defvalc; i++)
+        defvalattrv[i].defaultp = NULL;
 
     for (i = 0; i < defvalc; i++) {
-        char *name;
         RDB_object *binvalp;
 
         tplp = RDB_array_get(&arr, i, ecp);
         if (tplp == NULL)
             goto error;
-        name = RDB_tuple_get_string(tplp, "attrname");
         binvalp = RDB_tuple_get(tplp, "default_value");
-        
-        /* Find attrv entry and set default value */
-        for (i = 0; i < attrc && (strcmp(attrv[i].name, name) != 0); i++);
-        if (i >= attrc) {
-            /* Not found */
-            RDB_raise_internal(
-                    "attribute not found while setting default value", ecp);
+
+        defvalattrv[i].name = RDB_tuple_get_string(tplp, "attrname");
+
+        /* Set default value */
+        defvalattrv[i].defaultp = RDB_alloc(sizeof (RDB_object), ecp);
+        if (defvalattrv[i].defaultp == NULL) {
             goto error;
         }
-        attrv[i].defaultp = RDB_alloc(sizeof (RDB_object), ecp);
-        if (attrv[i].defaultp == NULL) {
-            goto error;
-        }
-        RDB_init_obj(attrv[i].defaultp);
-        ret = RDB_irep_to_obj(attrv[i].defaultp, attrv[i].typ,
+        RDB_init_obj(defvalattrv[i].defaultp);
+        ret = RDB_irep_to_obj(defvalattrv[i].defaultp,
+                RDB_type_attr_type(tbtyp, defvalattrv[i].name),
                 binvalp->val.bin.datap, RDB_binary_length(binvalp), ecp);
         if (ret != RDB_OK)
             goto error;            
     }
 
-    ret = get_keys(name, ecp, txp, &keyc, &keyv);
-    if (ret != RDB_OK)
+    if (RDB_cat_get_keys(name, ecp, txp, &keyc, &keyv) != RDB_OK)
         goto error;
 
     if (usr) {
@@ -1719,12 +1963,6 @@ RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
         }
     }
 
-    tbtyp = RDB_new_relation_type(attrc, attrv, ecp);
-    if (tbtyp == NULL) {
-        RDB_del_nonscalar_type(tbtyp, ecp);
-        goto error;
-    }
-
     tbp = RDB_new_rtable(name, RDB_TRUE, tbtyp, keyc, keyv, 0, NULL, usr, ecp);
     RDB_free_keys(keyc, keyv);
     if (tbp == NULL) {
@@ -1732,7 +1970,7 @@ RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
         goto error;
     }
 
-    if (RDB_set_defvals(tbp, attrc, attrv, ecp) != RDB_OK) {
+    if (RDB_set_defvals(tbp, defvalc, defvalattrv, ecp) != RDB_OK) {
         goto error;
     }
 
@@ -1752,50 +1990,48 @@ RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
             goto error;
         }
     }
-    for (i = 0; i < attrc; i++) {
-        RDB_free(attrv[i].name);
-        if (attrv[i].defaultp != NULL) {
-            RDB_destroy_obj(attrv[i].defaultp, ecp);
-            RDB_free(attrv[i].defaultp);
-        }
-    }
-    if (attrc > 0)
-        RDB_free(attrv);
 
     if (RDB_assoc_table_db(tbp, txp->dbp, ecp) != RDB_OK)
         goto error;
 
-    ret = RDB_destroy_obj(&arr, ecp);
+    RDB_destroy_obj(&arr, ecp);
 
     RDB_drop_table(tmptb1p, ecp, txp);
-    RDB_drop_table(tmptb2p, ecp, txp);
     RDB_drop_table(tmptb3p, ecp, txp);
     if (tmptb4p != NULL)
         RDB_drop_table(tmptb4p, ecp, txp);
 
     RDB_destroy_obj(&tpl, ecp);
 
+    for (i = 0; i < defvalc; i++) {
+        RDB_destroy_obj(defvalattrv[i].defaultp, ecp);
+        RDB_free(defvalattrv[i].defaultp);
+    }
+    if (defvalc > 0)
+        RDB_free(defvalattrv);
+
     return tbp;
 
 error:
-    if (attrv != NULL) {
-        for (i = 0; i < attrc; i++)
-            RDB_free(attrv[i].name);
-        RDB_free(attrv);
-    }
-
     RDB_destroy_obj(&arr, ecp);
 
     if (tmptb1p != NULL)
         RDB_drop_table(tmptb1p, ecp, txp);
-    if (tmptb2p != NULL)
-        RDB_drop_table(tmptb2p, ecp, txp);
     if (tmptb3p != NULL)
         RDB_drop_table(tmptb3p, ecp, txp);
     if (tmptb4p != NULL)
         RDB_drop_table(tmptb4p, ecp, txp);
 
     RDB_destroy_obj(&tpl, ecp);
+
+    if (defvalattrv != NULL) {
+        for (i = 0; i < defvalc; i++)
+            if (defvalattrv[i].defaultp != NULL) {
+                RDB_destroy_obj(defvalattrv[i].defaultp, ecp);
+                RDB_free(defvalattrv[i].defaultp);
+            }
+        RDB_free(defvalattrv);
+    }
 
     if (tbp != NULL)
         RDB_free_obj(tbp, ecp);
@@ -1830,7 +2066,7 @@ RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_object *tbp;
-    RDB_expression *exp, *argp, *arg2p;
+    RDB_expression *exp, *argp;
     RDB_object *tmptbp = NULL;
     RDB_object tpl;
     RDB_object arr;
@@ -1854,26 +2090,18 @@ RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
         RDB_del_expr(exp, ecp);
         goto error;
     }
+
     /* Set transformed flags to avoid infinite recursion */
 
     argp->transformed = RDB_TRUE;
     RDB_add_arg(exp, argp);
 
-    argp = RDB_var_ref("tablename", ecp);
+    argp = tablename_eq_expr(name, ecp);
     if (argp == NULL) {
         RDB_del_expr(exp, ecp);
         goto error;
     }
-    arg2p = RDB_string_to_expr(name, ecp);
-    if (arg2p == NULL) {
-        RDB_del_expr(argp, ecp);
-        goto error;
-    }
-    argp = RDB_eq(argp, arg2p, ecp);
-    if (argp == NULL) {
-        RDB_del_expr(exp, ecp);
-        goto error;
-    }
+
     argp->transformed = RDB_TRUE;
     RDB_add_arg(exp, argp);
 
@@ -1928,6 +2156,123 @@ error:
     
     return NULL;
 } /* RDB_cat_get_vtable */
+
+RDB_object *
+RDB_cat_get_ptable_vt(const char *name, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_object *restbp;
+    RDB_expression *argp;
+    RDB_expression *exp = RDB_ro_op("where", ecp);
+    if (exp == NULL) {
+        return NULL;
+    }
+    argp = RDB_table_ref(txp->dbp->dbrootp->ptables_tbp, ecp);
+    if (argp == NULL) {
+        RDB_del_expr(exp, ecp);
+        return NULL;
+    }
+
+    /* Set transformed flags to avoid infinite recursion */
+
+    argp->transformed = RDB_TRUE;
+    RDB_add_arg(exp, argp);
+
+    argp = tablename_eq_expr(name, ecp);
+    if (argp == NULL) {
+        RDB_del_expr(exp, ecp);
+        return NULL;
+    }
+
+    argp->transformed = RDB_TRUE;
+    RDB_add_arg(exp, argp);
+
+    exp->transformed = RDB_TRUE;
+    restbp = RDB_expr_to_vtable(exp, ecp, txp);
+    if (restbp == NULL) {
+        RDB_del_expr(exp, ecp);
+        return NULL;
+    }
+    return restbp;
+}
+
+RDB_object *
+RDB_cat_get_ptable(const char *name, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_object *tbp;
+    RDB_object *tmptbp = NULL;
+    RDB_object tpl;
+    RDB_object arr;
+    RDB_object *valp;
+    RDB_bool usr;
+    int ret;
+
+    /*
+     * Read virtual table data from the catalog
+     */
+
+    RDB_init_obj(&arr);
+    RDB_init_obj(&tpl);
+
+    tmptbp = RDB_cat_get_ptable_vt(name, ecp, txp);
+    if (tmptbp == NULL)
+        return NULL;
+    ret = RDB_extract_tuple(tmptbp, ecp, txp, &tpl);
+    RDB_drop_table(tmptbp, ecp, txp);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
+    usr = RDB_tuple_get_bool(&tpl, "is_user");
+
+    valp = RDB_tuple_get(&tpl, "i_def");
+
+    if (RDB_binary_length(valp) == 0) {
+        /* No mapping defined */
+        RDB_raise_not_found(name, ecp);
+        goto error;
+    }
+
+    tbp = RDB_binobj_to_vtable(valp, ecp, txp);
+    if (tbp == NULL)
+        goto error;
+
+    RDB_destroy_obj(&tpl, ecp);
+    ret = RDB_destroy_obj(&arr, ecp);
+    if (ret != RDB_OK)
+        goto error;
+
+    tbp->val.tb.is_persistent = RDB_TRUE;
+    tbp->val.tb.is_user = usr;
+
+    tbp->val.tb.name = RDB_dup_str(name);
+    if (tbp->val.tb.name == NULL) {
+        RDB_raise_no_memory(ecp);
+        return NULL;
+    }
+
+    if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
+        fprintf(stderr,
+                "Definition of virtual public %s read from the catalog\n",
+                name);
+    }
+
+    ret = RDB_hashmap_put(&txp->dbp->dbrootp->ptbmap,
+            name, tbp);
+    if (ret != RDB_OK) {
+        RDB_errcode_to_error(ret, ecp, NULL);
+        return NULL;
+    }
+
+    return tbp;
+
+error:
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&arr, ecp);
+
+    return NULL;
+}
 
 int
 RDB_cat_rename_table(RDB_object *tbp, const char *name, RDB_exec_context *ecp,

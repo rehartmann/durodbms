@@ -4,7 +4,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005 René Hartmann.
+ * Copyright (C) 2005-2013 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -22,43 +22,22 @@ typedef struct {
     RDB_equalsfn *efnp;
 } RDB_hashtable;
 
-/*
- * Initialize the hashtable pointed to by hp.
- *
- * Returns:
- *     RDB_OK        success
- *     RDB_NO_MEMORY insufficient memory
- */
 void
 RDB_init_hashtable(RDB_hashtable *, int capacity, RDB_hashfn *, RDB_equalsfn *);
 
-/*
- * Free the resources associated with the hashtable pointed to by hp.
- * Calling RDB_destroy_hashtable() again has no effect.
- */
 void
 RDB_destroy_hashtable(RDB_hashtable *);
 
-/*
- * Insert the entry given by entryp into the hashtable pointed to by hp.
- *
- * Returns:
- *     RDB_OK        success
- *     RDB_NO_MEMORY insufficient memory
- */
 int
 RDB_hashtable_put(RDB_hashtable *, void *, void *);
 
-/*
- * Return the entry which is equal to the entry given by entryp.
- */
 void *
 RDB_hashtable_get(const RDB_hashtable *, void *, void *);
 
-/*
- * Return the number of entries the hashtable contains.
- */
 int
 RDB_hashtable_size(const RDB_hashtable *);
+
+void
+RDB_clear_hashtable(RDB_hashtable *);
 
 #endif

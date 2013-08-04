@@ -79,7 +79,7 @@ struct RDB_expression {
 struct RDB_database {
     char *name;
     RDB_hashmap tbmap;
-    
+
     /* pointer to next DB in environment */
     struct RDB_database *nextdbp;
 
@@ -99,18 +99,41 @@ typedef struct RDB_constraint {
 
 typedef struct RDB_dbroot {
     RDB_environment *envp;
+
+    /* Cached types */
     RDB_hashmap typemap;
+
+    /* Cached operators */
     RDB_op_map ro_opmap;
     RDB_op_map upd_opmap;
+
+    /* List of databases */
     RDB_database *first_dbp;
     RDB_constraint *first_constrp;
     RDB_bool constraints_read;
 
-    /* catalog tables */
+    /* Public tables */
+    RDB_hashmap ptbmap;
+
+    /*
+     * Catalog tables
+     */
+
+    /** Real tables */
     RDB_object *rtables_tbp;
+
+    /** Table attributes */
     RDB_object *table_attr_tbp;
+
+    /** Attribute default values */
     RDB_object *table_attr_defvals_tbp;
+
+    /** Virtual tables */
     RDB_object *vtables_tbp;
+
+    /** Public tables */
+    RDB_object *ptables_tbp;
+
     RDB_object *table_recmap_tbp;
     RDB_object *dbtables_tbp;
     RDB_object *keys_tbp;
@@ -191,6 +214,9 @@ RDB_init_table_i(RDB_object *, const char *, RDB_bool,
         RDB_bool, RDB_expression *, RDB_exec_context *);
 
 int
+RDB_table_ilen(const RDB_object *, size_t *, RDB_exec_context *);
+
+int
 RDB_free_obj(RDB_object *, RDB_exec_context *);
 
 int
@@ -199,6 +225,9 @@ RDB_assoc_table_db(RDB_object *, RDB_database *, RDB_exec_context *);
 int
 RDB_table_equals(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resp);
+
+int
+RDB_close_user_tables(RDB_database *, RDB_exec_context *);
 
 int
 RDB_expr_equals(const RDB_expression *, const RDB_expression *,
@@ -471,9 +500,6 @@ int
 RDB_infer_keys(RDB_expression *, RDB_getobjfn *, void *,
         RDB_environment *, RDB_exec_context *, RDB_transaction *,
         RDB_string_vec **, RDB_bool *);
-
-void
-RDB_free_keys(int keyc, RDB_string_vec *keyv);
 
 int
 RDB_check_project_keyloss(RDB_expression *exp,

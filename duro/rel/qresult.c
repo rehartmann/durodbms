@@ -9,14 +9,17 @@
 #include "qresult.h"
 #include "qr_tclose.h"
 #include "internal.h"
+#include "key.h"
 #include "insert.h"
 #include "delete.h"
 #include "optimize.h"
 #include "stable.h"
 #include "typeimpl.h"
 #include "transform.h"
+
 #include <gen/hashtabit.h>
 #include <gen/strfns.h>
+
 #include <string.h>
 #include <assert.h>
 

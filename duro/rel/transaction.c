@@ -96,30 +96,6 @@ del_storage(RDB_transaction *txp)
     return ret;
 }
 
-static int
-close_storage(RDB_transaction *txp)
-{
-    RDB_rmlink *rmlinkp;
-    RDB_ixlink *ixlinkp;
-    int ret = RDB_OK;
-
-    for (ixlinkp = txp->delixp;
-         (ixlinkp != NULL) && (ret == RDB_OK);
-         ixlinkp = ixlinkp->nextp) {
-        ret = RDB_close_index(ixlinkp->ixp);
-    }
-
-    for (rmlinkp = txp->delrmp;
-         (rmlinkp != NULL) && (ret == RDB_OK);
-         rmlinkp = rmlinkp->nextp) {
-        ret = RDB_close_recmap(rmlinkp->rmp);
-    }
-
-    cleanup_storage(txp);
-    
-    return ret;
-}
-
 /** @defgroup tx Transaction functions 
  * @{
  */
@@ -225,17 +201,17 @@ RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
 
-    /*
-     * Close recmaps and indexes scheduled for deletion
-     * in order to close DB handles
-     */
-    ret = close_storage(txp);
-    if (ret != RDB_OK) {
-        RDB_errcode_to_error(ret, ecp, txp);
-        ret = RDB_ERROR;
-    }
+    cleanup_storage(txp);
 
-    return ret;
+    /*
+     * Close all user tables because to enforce consistency
+     * because creation or deletion of a recmap or index may have
+     * been undone
+     */
+    if (txp->dbp != NULL)
+        return RDB_close_user_tables(txp->dbp, ecp);
+
+    return RDB_OK;
 }
 
 int

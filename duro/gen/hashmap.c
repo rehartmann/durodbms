@@ -106,3 +106,20 @@ RDB_hashmap_keys(const RDB_hashmap *hp, char *keyv[])
     }
     RDB_destroy_hashtable_iter(&hiter);
 }
+
+void
+RDB_clear_hashmap(RDB_hashmap *hp)
+{
+    RDB_kv_pair *entryp;
+    RDB_hashtable_iter hiter;
+
+    RDB_init_hashtable_iter(&hiter, (RDB_hashtable *) &hp->tab);
+    while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
+        free(entryp->key);
+        entryp->key = NULL;
+        entryp->valuep = NULL;
+    }
+    RDB_destroy_hashtable_iter(&hiter);
+
+    RDB_clear_hashtable(&hp->tab);
+}

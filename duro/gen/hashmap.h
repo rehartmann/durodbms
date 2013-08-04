@@ -76,4 +76,7 @@ RDB_hashmap_size(const RDB_hashmap *);
 void
 RDB_hashmap_keys(const RDB_hashmap *, char **keyv);
 
+void
+RDB_clear_hashmap(RDB_hashmap *);
+
 #endif

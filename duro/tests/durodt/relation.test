@@ -4,7 +4,7 @@ exec tclsh "$0" ${1+"$@"}
 
 # $Id$
 #
-# Test database relvars and relational operators
+# Test database tables and relational operators
 #
 
 package require tcltest 2.2
@@ -30,7 +30,16 @@ test insert {creating table and inserting tuples} -setup $SETUP -body {
 
         begin transaction;
         var r real relation {i int, d float, c string} key {i};
-        insert r relation {} {};
+        commit;
+
+        begin tx;
+        insert r tup {i 3, d 1.0, c 'Z'};
+        rollback;
+
+        begin tx;
+        insert r tup {i 3, d 1.0, c 'Z'};
+
+        insert r relation {} {}; -- ?
 
         var a init 1;
         insert r rel {tuple {i a, d 1.0, c 'X'}, tup {i 2, d 1.1, c 'Y'}};
@@ -79,8 +88,8 @@ test insert {creating table and inserting tuples} -setup $SETUP -body {
 
         commit;
     }
-} -result {3
-2
+} -result {4
+3
 Y
 key violation caught (1)
 key violation caught (2)

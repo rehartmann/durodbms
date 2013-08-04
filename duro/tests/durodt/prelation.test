@@ -1,0 +1,95 @@
+#!/bin/sh
+# Execute tclsh from the user's PATH \
+exec tclsh "$0" ${1+"$@"}
+
+# $Id$
+#
+# Test poblic tables
+#
+
+package require tcltest 2.2
+eval ::tcltest::configure $argv
+namespace import ::tcltest::*
+
+set testdir [::tcltest::configure -testdir]
+
+set ::SETUP {
+    removeDirectory dbenv
+    makeDirectory dbenv
+    cd $::tcltest::temporaryDirectory
+    exec $testdir/../../dli/durodt << {
+        CREATE_ENV('dbenv');
+        CREATE_DB('D');
+    }
+}
+
+test create {creating and populating public table} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+        var r1 real relation {no int, c string} key {no};
+        var r2 real relation {no int, c float} key {no};
+        var r3 real relation {no int, c string};
+        commit;
+
+        begin tx;
+        
+        var p public relation {no int, c string} key {no};
+
+        map p r1;
+
+        -- type mismatch
+        try
+            map p r2;
+        catch err type_mismatch_error;
+            put_line('type mismatch caught');
+        end try;
+
+        -- keys do not match
+        try
+            map p r3;
+        catch err invalid_argument_error;
+            put_line('invalid arguments caught');
+        end try;
+
+        insert p tup{no 1, c 'one'};
+        insert r1 tup{no 2, c 'two'};
+
+        var tp tuple same_heading_as(p);
+        foreach tp in p order(no asc);
+            put_line(cast_as_string(tp.no));
+            put_line(tp.c);
+        end foreach;
+
+        commit;
+    }
+} -result {type mismatch caught
+invalid arguments caught
+1
+one
+2
+two
+}
+
+test rollback {rollback after accessing public} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+        var r real relation {no int, name string, data string}
+                key {no} key {name};
+
+        var p public relation {no int, name string, data string}
+                key {no} key {name};
+
+        map p r;
+        commit;
+
+        begin tx;
+        var cnt init count(p);
+        rollback;
+    }
+}

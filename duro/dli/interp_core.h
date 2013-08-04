@@ -114,6 +114,9 @@ int
 Duro_exec_vardef_private(RDB_parse_node *, RDB_exec_context *);
 
 int
+Duro_exec_vardef_public(RDB_parse_node *, RDB_exec_context *);
+
+int
 Duro_exec_vardef_real(RDB_parse_node *, RDB_exec_context *);
 
 int

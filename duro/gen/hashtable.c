@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005 René Hartmann.
+ * Copyright (C) 2005 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -23,6 +23,9 @@ alloc_map(RDB_hashtable *hp) {
     }
 }
 
+/*
+ * Initialize the hashtable *hp.
+ */
 void
 RDB_init_hashtable(RDB_hashtable *hp, int capacity, RDB_hashfn *hfp,
         RDB_equalsfn *efp)
@@ -34,6 +37,10 @@ RDB_init_hashtable(RDB_hashtable *hp, int capacity, RDB_hashfn *hfp,
     hp->efnp = efp;
 }
 
+/*
+ * Free the resources associated with the hashtable pointed to by hp.
+ * Calling RDB_destroy_hashtable() again has no effect.
+ */
 void
 RDB_destroy_hashtable(RDB_hashtable *hp)
 {
@@ -131,4 +138,15 @@ RDB_hashtable_get(const RDB_hashtable *hp, void *entryp, void *arg)
 int
 RDB_hashtable_size(const RDB_hashtable *hp) {
     return hp->entry_count;
+}
+
+/*
+ * Delete all entries.
+ */
+void
+RDB_clear_hashtable(RDB_hashtable *hp)
+{
+    free(hp->entries);
+    hp->entries = NULL;
+    hp->entry_count = 0;
 }

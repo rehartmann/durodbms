@@ -97,7 +97,7 @@ yylval = RDB_new_parse_token(tok, whitecommp, RDB_parse_ecp); \
 whitecommp = NULL; \
 if (yylval == NULL) \
     yyterminate(); \
-return tok;
+return tok
 
 %}
 
@@ -387,6 +387,10 @@ PRIVATE {
     RETURN_TOKEN(TOK_PRIVATE);
 }
 
+PUBLIC {
+    RETURN_TOKEN(TOK_PUBLIC);
+}
+
 BASE {
     RETURN_TOKEN(TOK_REAL);
 }
@@ -517,6 +521,10 @@ ORDERED {
 
 EXPLAIN {
     RETURN_TOKEN(TOK_EXPLAIN);
+} 
+
+MAP {
+    RETURN_TOKEN(TOK_MAP);
 } 
 
 \|\| {

@@ -73,6 +73,8 @@ free_dbroot(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
 
     RDB_destroy_op_map(&dbrootp->upd_opmap);
 
+    RDB_destroy_hashmap(&dbrootp->ptbmap);
+
     RDB_free(dbrootp);
 }
 
@@ -181,15 +183,36 @@ find_del_table(RDB_database *dbp)
 /*
  * Close all user tables
  */
-static int
+int
 RDB_close_user_tables(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_object *tbp;
-    
+    RDB_hashmap_iter it;
+    void *datap;
+    char *keyp;
+
     while ((tbp = find_del_table(dbp)) != NULL) {
         if (close_table(tbp, dbp->dbrootp->envp, ecp) != RDB_OK)
             return RDB_ERROR;
     }
+
+    /* Close public tables */
+
+    RDB_init_hashmap_iter(&it, &dbp->dbrootp->ptbmap);
+
+    while ((datap = RDB_hashmap_next(&it, &keyp)) != NULL) {
+        if (datap != NULL) {
+            tbp = datap;
+            if (close_table(tbp, dbp->dbrootp->envp, ecp)
+                    != RDB_OK)
+                return RDB_ERROR;
+        }
+    }
+
+    RDB_destroy_hashmap_iter(&it);
+
+    RDB_clear_hashmap(&dbp->dbrootp->ptbmap);
+
     return RDB_OK;
 }    
 
@@ -217,6 +240,7 @@ close_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     close_table(dbrootp->table_attr_tbp, dbrootp->envp, ecp);
     close_table(dbrootp->table_attr_defvals_tbp, dbrootp->envp, ecp);
     close_table(dbrootp->vtables_tbp, dbrootp->envp, ecp);
+    close_table(dbrootp->ptables_tbp, dbrootp->envp, ecp);
     close_table(dbrootp->table_recmap_tbp, dbrootp->envp, ecp);
     close_table(dbrootp->dbtables_tbp, dbrootp->envp, ecp);
     close_table(dbrootp->keys_tbp, dbrootp->envp, ecp);
@@ -272,6 +296,8 @@ new_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
     RDB_init_op_map(&dbrootp->ro_opmap);
     RDB_init_op_map(&dbrootp->upd_opmap);
 
+    RDB_init_hashmap(&dbrootp->ptbmap, 100);
+
     dbrootp->first_dbp = NULL;
     dbrootp->first_constrp = NULL;
     dbrootp->constraints_read = RDB_FALSE;
@@ -321,6 +347,8 @@ assoc_systables(RDB_dbroot *dbrootp, RDB_database *dbp, RDB_exec_context *ecp)
     if (RDB_assoc_table_db(dbrootp->rtables_tbp, dbp, ecp) != RDB_OK)
         return RDB_ERROR;
     if (RDB_assoc_table_db(dbrootp->vtables_tbp, dbp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_assoc_table_db(dbrootp->ptables_tbp, dbp, ecp) != RDB_OK)
         return RDB_ERROR;
     if (RDB_assoc_table_db(dbrootp->table_recmap_tbp, dbp, ecp) != RDB_OK)
         return RDB_ERROR;
@@ -1016,10 +1044,9 @@ create_table(const char *name, RDB_type *reltyp,
                 int default_attrc, const RDB_attr *default_attrv,
                 RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_object *tbp;
     RDB_transaction tx;
 
-    tbp = RDB_new_rtable(name, RDB_TRUE, reltyp, keyc, keyv,
+    RDB_object *tbp = RDB_new_rtable(name, RDB_TRUE, reltyp, keyc, keyv,
             default_attrc, default_attrv, RDB_TRUE, ecp);
     if (tbp == NULL) {
         return NULL;
@@ -1066,10 +1093,9 @@ create_table(const char *name, RDB_type *reltyp,
  */
 
 /**
-<strong>RDB_create_table</strong> creates a persistent table
-with name <var>name</var> in the database
+Create a real table with name <var>name</var> in the database
 the transaction *<var>txp</var> interacts with
-and returns a pointer to the newly created RDB_object structure
+and return a pointer to the newly created RDB_object structure
 which represents the table.
 
 If an error occurs, an error value is left in *<var>ecp</var>.
@@ -1145,7 +1171,6 @@ points to the default value for that attribute.
 Entries with a <var>defaultp</var> of NULL are ignored.
 Other fields of RDB_attr are ignored, but <var>options</var> should be set to zero
 for compatibility with future versions.
-
 */
 RDB_object *
 RDB_create_table_from_type(const char *name, RDB_type *reltyp,
@@ -1199,9 +1224,10 @@ RDB_create_table_from_type(const char *name, RDB_type *reltyp,
 }
 
 /**
-RDB_get_table looks up the global table with name <var>name</var>
-in the environment of the database the transaction
-specified by <var>txp</var> interacts with and returns a pointer to it.
+RDB_get_table looks up the real, virtual, or public table
+with name <var>name</var> in the environment of the database
+the transaction specified by <var>txp</var> interacts with
+and returns a pointer to it.
 
 If an error occurs, an error value is left in *<var>ecp</var>.
 
@@ -1245,18 +1271,39 @@ RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
                 name);
     }
 
+    /* Search public table in db root */
+    tbp = RDB_hashmap_get(&txp->dbp->dbrootp->ptbmap, name);
+    if (tbp != NULL) {
+        /* Found */
+        return tbp;
+    }
+
     /* If not found, read from catalog, search in real tables first */
     tbp = RDB_cat_get_rtable(name, ecp, txp);
     if (tbp != NULL)
         return tbp;
+
     errp = RDB_get_err(ecp);
     if (errp != NULL) {
+        /* If the error is rdb_not_found_error, return */
         if (RDB_obj_type(errp) != &RDB_NOT_FOUND_ERROR)
             return NULL;
         RDB_clear_err(ecp);
     }
 
     tbp = RDB_cat_get_vtable(name, ecp, txp);
+    if (tbp != NULL)
+        return tbp;
+
+    errp = RDB_get_err(ecp);
+    if (errp != NULL) {
+        /* If the error is not rdb_not_found_error, return */
+        if (RDB_obj_type(errp) != &RDB_NOT_FOUND_ERROR)
+            return NULL;
+        RDB_clear_err(ecp);
+    }
+
+    tbp = RDB_cat_get_ptable(name, ecp, txp);
 
     if (tbp == NULL && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
         /* Replace not_found_error with name_error */

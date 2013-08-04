@@ -381,6 +381,22 @@ RDB_init_table_from_type(RDB_object *, const char *, RDB_type *,
         int, const RDB_attr[],
         RDB_exec_context *);
 
+int
+RDB_create_public_table(const char *,
+        int, const RDB_attr[],
+        int, const RDB_string_vec[],
+        RDB_exec_context *, RDB_transaction *);
+
+int
+RDB_create_public_table_from_type(const char *,
+                RDB_type *,
+                int, const RDB_string_vec[],
+                RDB_exec_context *, RDB_transaction *);
+
+int
+RDB_map_public_table(const char *, RDB_expression *,
+        RDB_exec_context *, RDB_transaction *);
+
 RDB_object *
 RDB_get_table(const char *, RDB_exec_context *, RDB_transaction *);
 

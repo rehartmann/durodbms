@@ -223,7 +223,8 @@ RDB_expr_var_name(const RDB_expression *exp)
 }
 
 static RDB_expression *
-new_expr(RDB_exec_context *ecp) {
+new_expr(RDB_exec_context *ecp)
+{
     RDB_expression *exp = RDB_alloc(sizeof (RDB_expression), ecp);
     if (exp == NULL) {
         return NULL;

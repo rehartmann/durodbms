@@ -656,6 +656,138 @@ error:
 }
 
 int
+Duro_exec_vardef_public(RDB_parse_node *nodep, RDB_exec_context *ecp)
+{
+    RDB_parse_node *keylistnodep;
+    int keyc;
+    RDB_string_vec *keyv;
+    RDB_bool freekeys = RDB_FALSE;
+    RDB_expression *initexp = NULL;
+    RDB_type *tbtyp = NULL;
+    const char *varname = RDB_expr_var_name(nodep->exp);
+
+    if (Duro_txnp == NULL) {
+        RDB_raise_no_running_tx(ecp);
+        return RDB_ERROR;
+    }
+
+    /* Init value without type? */
+    if (nodep->nextp->nextp->kind == RDB_NODE_TOK
+            && nodep->nextp->nextp->val.token == TOK_INIT) {
+        /* No type - get INIT value */
+        initexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp, ecp, &Duro_txnp->tx);
+        if (initexp == NULL)
+            return RDB_ERROR;
+        keylistnodep = nodep->nextp->nextp->nextp->nextp;
+        tbtyp = Duro_expr_type_retry(initexp, ecp);
+        if (tbtyp == NULL) {
+            return RDB_ERROR;
+        }
+
+        tbtyp = RDB_dup_nonscalar_type(tbtyp, ecp);
+        if (tbtyp == NULL)
+            return RDB_ERROR;
+    } else {
+        tbtyp = Duro_parse_node_to_type_retry(nodep->nextp->nextp, ecp);
+        if (tbtyp == NULL)
+            return RDB_ERROR;
+        if (nodep->nextp->nextp->nextp->kind == RDB_NODE_INNER
+                && nodep->nextp->nextp->nextp->val.children.firstp != NULL
+                && nodep->nextp->nextp->nextp->val.children.firstp->kind == RDB_NODE_TOK
+                && nodep->nextp->nextp->nextp->val.children.firstp->val.token == TOK_INIT) {
+            /* Get INIT value */
+            initexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp->val.children.firstp->nextp,
+                    ecp, &Duro_txnp->tx);
+            if (initexp == NULL)
+                return RDB_ERROR;
+
+            keylistnodep = nodep->nextp->nextp->nextp->nextp;
+        } else {
+            keylistnodep = nodep->nextp->nextp->nextp;
+        }
+    }
+
+    /*
+     * Check if the variable already exists
+     */
+    if (RDB_hashmap_get(current_varmapp != NULL ?
+            &current_varmapp->map : &root_module.varmap, varname) != NULL) {
+        RDB_raise_element_exists(varname, ecp);
+        return RDB_ERROR;
+    }
+
+    if (!RDB_type_is_relation(tbtyp)) {
+        RDB_raise_type_mismatch("relation type required", ecp);
+        goto error;
+    }
+
+    if (keylistnodep->kind == RDB_NODE_INNER
+            && keylistnodep->val.children.firstp != NULL) {
+        /* Get keys from KEY nodes */
+        keyv = keylist_to_keyv(keylistnodep, &keyc, ecp);
+        if (keyv == NULL)
+            goto error;
+        freekeys = RDB_TRUE;
+    } else {
+        /*
+         * Key list is empty - if there is an INIT expression,
+         * get the keys from it, otherwise pass
+         * a keyv of NULL which means the table is all-key
+         */
+        if (initexp != NULL) {
+            keyc = RDB_infer_keys(initexp, &get_var, current_varmapp,
+                    Duro_envp, ecp, &Duro_txnp->tx, &keyv, &freekeys);
+            if (keyc == RDB_ERROR) {
+                keyv = NULL;
+                goto error;
+            }
+        } else {
+            keyv = NULL;
+        }
+    }
+
+    if (RDB_create_public_table_from_type(varname, tbtyp, keyc, keyv, ecp, &Duro_txnp->tx) != RDB_OK) {
+        goto error;
+    }
+
+    /* !!
+    if (initexp != NULL) {
+        if (Duro_evaluate_retry(initexp, ecp, tbp) != RDB_OK) {
+            goto error;
+        }
+    }
+    */
+
+    if (RDB_parse_get_interactive())
+        printf("Public table %s created.\n", varname);
+
+    if (freekeys) {
+        int i;
+
+        for (i = 0; i < keyc; i++) {
+            RDB_free(keyv[i].strv);
+        }
+        RDB_free(keyv);
+    }
+
+    return RDB_OK;
+
+error:
+    if (tbtyp != NULL && !RDB_type_is_scalar(tbtyp)) {
+        RDB_del_nonscalar_type(tbtyp, ecp);
+    }
+    if (freekeys) {
+        int i;
+
+        for (i = 0; i < keyc; i++) {
+            RDB_free(keyv[i].strv);
+        }
+        RDB_free(keyv);
+    }
+    return RDB_ERROR;
+}
+
+int
 Duro_exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
     int keyc;

@@ -15,6 +15,12 @@ int
 RDB_cat_insert(RDB_object *, RDB_exec_context *, RDB_transaction *);
 
 int
+RDB_cat_insert_ptable(const char *,
+        int, const RDB_attr[],
+        int, const RDB_string_vec[],
+        RDB_exec_context *, RDB_transaction *);
+
+int
 RDB_cat_delete(RDB_object *, RDB_exec_context *, RDB_transaction *);
 
 int
@@ -32,6 +38,24 @@ RDB_cat_get_rtable(const char *, RDB_exec_context *, RDB_transaction *);
 
 RDB_object *
 RDB_cat_get_vtable(const char *, RDB_exec_context *, RDB_transaction *);
+
+RDB_object *
+RDB_cat_get_ptable_vt(const char *, RDB_exec_context *, RDB_transaction *);
+
+RDB_object *
+RDB_cat_get_ptable(const char *, RDB_exec_context *, RDB_transaction *);
+
+int
+RDB_cat_map_ptable(const char *, RDB_expression *,
+        RDB_exec_context *, RDB_transaction *);
+
+RDB_type *
+RDB_cat_get_table_type(const char *, RDB_exec_context *,
+        RDB_transaction *);
+
+int
+RDB_cat_get_keys(const char *, RDB_exec_context *, RDB_transaction *,
+         int *, RDB_string_vec **);
 
 int
 RDB_cat_rename_table(RDB_object *, const char *, RDB_exec_context *,

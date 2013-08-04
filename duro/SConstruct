@@ -14,7 +14,7 @@ import os
 bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.5.3')
 with_durotcl = int(ARGUMENTS.get('with_durotcl', 1))
 
-release = '0.18'
+release = '0.19'
 
 env = Environment(ENV = os.environ, tools = ['default', 'textfile'])
 
@@ -61,9 +61,9 @@ recsrc = ['rec/cursor.c', 'rec/env.c', 'rec/index.c', 'rec/recmap.c']
 
 relsrc = ['rel/array.c', 'rel/database.c', 'rel/operator.c', 'rel/builtinops.c',
         'rel/expression.c', 'rel/evaluate.c', 'rel/exprtype.c',
-        'rel/stable.c', 'rel/qresult.c', 'rel/qr_tclose.c',
-        'rel/serialize.c', 'rel/table.c', 'rel/vtable.c', 'rel/aggrf.c',
-        'rel/update.c', 'rel/insert.c', 'rel/contains.c',
+        'rel/stable.c', 'rel/qresult.c', 'rel/qr_tclose.c', 'rel/serialize.c',
+        'rel/table.c', 'rel/vtable.c', 'rel/ptable.c', 'rel/key.c',
+        'rel/aggrf.c', 'rel/update.c', 'rel/insert.c', 'rel/contains.c',
         'rel/transaction.c', 'rel/delete.c', 'rel/tuple.c',
         'rel/type.c', 'rel/utype.c', 'rel/builtintypes.c',
         'rel/object.c', 'rel/catalog.c', 'rel/cat_type.c', 'rel/cat_op.c',
@@ -230,7 +230,7 @@ gen_hdrs = Split('gen/hashmap.h gen/hashmapit.h gen/hashtable.h '
         'gen/releaseno.h')
 rec_hdrs = Split('rec/cursor.h rec/env.h rec/dbdefs.h rec/index.h rec/recmap.h')
 rel_hdrs = Split('rel/rdb.h rel/typeimpl.h util/www.h')
-rel_ihdrs = Split('rel/catalog.h rel/cat_type.h rel/cat_op.h '
+rel_ihdrs = Split('rel/catalog.h rel/key.h rel/cat_type.h rel/cat_op.h '
 		'rel/delete.h rel/serialize.h '
         'rel/insert.h rel/transform.h rel/internal.h rel/stable.h '
         'rel/optimize.h rel/update.h rel/qresult.h rel/qr_tclose.h '

@@ -2270,7 +2270,6 @@ static int
 exec_indexdrop(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
     int ret;
-    RDB_transaction tmp_tx;
     const char *indexname = RDB_expr_var_name(nodep->exp);
 
     if (Duro_txnp == NULL) {
@@ -2287,9 +2286,25 @@ exec_indexdrop(RDB_parse_node *nodep, RDB_exec_context *ecp)
     return ret;
 
 error:
-    if (Duro_txnp == NULL)
-        RDB_rollback(ecp, &tmp_tx);
     return RDB_ERROR;
+}
+
+static int
+exec_map(RDB_parse_node *nodep, RDB_exec_context *ecp)
+{
+    RDB_expression *exp;
+    const char *tbname = RDB_expr_var_name(nodep->exp);
+
+    if (Duro_txnp == NULL) {
+        RDB_raise_no_running_tx(ecp);
+        return RDB_ERROR;
+    }
+
+    exp = RDB_parse_node_expr(nodep->nextp, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
+    if (exp == NULL)
+        return RDB_ERROR;
+
+    return RDB_map_public_table(tbname, exp, ecp, &Duro_txnp->tx);
 }
 
 static int
@@ -2360,6 +2375,9 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
                         case TOK_PRIVATE:
                             ret = Duro_exec_vardef_private(firstchildp->nextp, ecp);
                             break;
+                        case TOK_PUBLIC:
+                            ret = Duro_exec_vardef_public(firstchildp->nextp, ecp);
+                            break;
                         default:
                             ret = Duro_exec_vardef(firstchildp->nextp, ecp);
                     }
@@ -2429,6 +2447,9 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
                 break;
             case TOK_IMPLEMENT:
                 ret = exec_typeimpl(firstchildp->nextp->nextp, ecp);
+                break;
+            case TOK_MAP:
+                ret = exec_map(firstchildp->nextp, ecp);
                 break;
             default:
                 RDB_raise_internal("invalid token", ecp);

@@ -8,6 +8,7 @@
 #include "rdb.h"
 #include "typeimpl.h"
 #include "internal.h"
+#include "key.h"
 #include "stable.h"
 #include "qresult.h"
 #include "delete.h"
@@ -67,44 +68,6 @@ RDB_free_obj(RDB_object *objp, RDB_exec_context *ecp)
     return ret;
 }
 
-/* !! really belongs into table.c */
-static int
-table_ilen(const RDB_object *tbp, size_t *lenp, RDB_exec_context *ecp)
-{
-    int ret;
-    size_t len;
-    RDB_object tpl;
-    RDB_qresult *qrp;
-
-    qrp = RDB_table_qresult((RDB_object*) tbp, ecp, NULL);
-    if (qrp == NULL)
-        return RDB_ERROR;
-
-    RDB_init_obj(&tpl);
-
-    *lenp = 0;
-    while ((ret = RDB_next_tuple(qrp, &tpl, ecp, NULL)) == RDB_OK) {
-        tpl.store_typ = RDB_type_is_scalar(tbp->store_typ) ?
-                tbp->store_typ->def.scalar.arep->def.basetyp
-                : tbp->store_typ->def.basetyp;
-        ret = RDB_obj_ilen(&tpl, &len, ecp);
-        if (ret != RDB_OK) {
-             RDB_destroy_obj(&tpl, ecp);
-            RDB_del_qresult(qrp, ecp, NULL);
-            return RDB_ERROR;
-        }
-        *lenp += len;
-    }
-    RDB_destroy_obj(&tpl, ecp);
-    if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
-        RDB_clear_err(ecp);
-    } else {
-        RDB_del_qresult(qrp, ecp, NULL);
-        return RDB_ERROR;
-    }
-    return RDB_del_qresult(qrp, ecp, NULL);
-}
-
 int
 RDB_obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
 {
@@ -143,7 +106,7 @@ RDB_obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
             return RDB_OK;
         }
         case RDB_OB_TABLE:
-            return table_ilen(objp, lenp, ecp);
+            return RDB_table_ilen(objp, lenp, ecp);
         case RDB_OB_ARRAY:
         {
             RDB_object *elemp;
@@ -1440,20 +1403,6 @@ RDB_obj_set_typeinfo(RDB_object *objp, RDB_type *typ)
 }
 
 /*@}*/
-
-/**
- * Delete candidate keys.
- */
-void
-RDB_free_keys(int keyc, RDB_string_vec *keyv)
-{
-    int i;
-
-    for (i = 0; i < keyc; i++) {
-        RDB_free_strvec(keyv[i].strc, keyv[i].strv);
-    }
-    RDB_free(keyv);
-}
 
 /* Works only for scalar types */
 void

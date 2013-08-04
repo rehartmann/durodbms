@@ -7,6 +7,7 @@
 
 #include "rdb.h"
 #include "typeimpl.h"
+#include "key.h"
 #include "catalog.h"
 #include "stable.h"
 #include "qresult.h"
@@ -24,21 +25,9 @@ dup_keyv(int keyc, const RDB_string_vec keyv[], RDB_exec_context *ecp)
     return RDB_dup_rename_keys(keyc, keyv, NULL, ecp);
 }
 
-static RDB_bool
-strvec_is_subset(const RDB_string_vec *v1p, const RDB_string_vec *v2p)
-{
-    int i;
-
-    for (i = 0; i < v1p->strc; i++) {
-        if (RDB_find_str(v2p->strc, v2p->strv, v1p->strv[i]) == -1)
-            return RDB_FALSE;
-    }
-    return RDB_TRUE;
-}
-
 /**
- * Creates a stored table, but not the recmap and the indexes
- * and does not insert the table into the catalog.
+ * Create a stored table, but not the recmap and the indexes
+ * and do not insert the table into the catalog.
  * reltyp is consumed on success (must not be freed by caller).
  */
 RDB_object *
@@ -66,7 +55,6 @@ RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
         int default_attrc, const RDB_attr *default_attrv,
         RDB_bool usr, RDB_expression *exp, RDB_exec_context *ecp)
 {
-    int i;
     RDB_string_vec allkey; /* Used if keyv is NULL */
     int attrc;
 
@@ -83,54 +71,8 @@ RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
     attrc = reltyp->def.basetyp->def.tuple.attrc;
 
     if (keyv != NULL) {
-        int j;
-
-        /* At least one key is required */
-        if (keyc < 1) {
-            RDB_raise_invalid_argument("key is required", ecp);
+        if (RDB_check_keys(reltyp, keyc, keyv, ecp) != RDB_OK)
             return RDB_ERROR;
-        }
-
-        /*
-         * Check all keys
-         */
-        for (i = 0; i < keyc; i++) {
-            /* Check if all the key attributes appear in the type */
-            for (j = 0; j < keyv[i].strc; j++) {
-                if (RDB_tuple_type_attr(reltyp->def.basetyp, keyv[i].strv[j])
-                        == NULL) {
-                    RDB_raise_invalid_argument("invalid key", ecp);
-                    return RDB_ERROR;
-                }
-            }
-
-            /* Check if an attribute appears twice in a key */
-            for (j = 0; j < keyv[i].strc - 1; j++) {
-                /* Search attribute name in the remaining key */
-                if (RDB_find_str(keyv[i].strc - j - 1, keyv[i].strv + j + 1,
-                        keyv[i].strv[j]) != -1) {
-                    RDB_raise_invalid_argument("invalid key", ecp);
-                    return RDB_ERROR;
-                }
-            }
-        }
-
-        /* Check if a key is a subset of another */
-        for (i = 0; i < keyc - 1; i++) {
-            for (j = i + 1; j < keyc; j++) {
-                if (keyv[i].strc <= keyv[j].strc) {
-                    if (strvec_is_subset(&keyv[i], &keyv[j])) {
-                        RDB_raise_invalid_argument("invalid key", ecp);
-                        return RDB_ERROR;
-                    }
-                } else {
-                    if (strvec_is_subset(&keyv[j], &keyv[i])) {
-                        RDB_raise_invalid_argument("invalid key", ecp);
-                        return RDB_ERROR;
-                    }
-                }
-            }
-        }
     }
 
     tbp->kind = RDB_OB_TABLE;
@@ -157,13 +99,10 @@ RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
     } else {
         if (keyv == NULL) {
             /* Create key for all-key table */
-            allkey.strc = attrc;
-            allkey.strv = RDB_alloc(sizeof (char *) * attrc, ecp);
-            if (allkey.strv == NULL) {
+            if (RDB_all_key(attrc, reltyp->def.basetyp->def.tuple.attrv,
+                    ecp, &allkey) != RDB_OK)
                 goto error;
-            }
-            for (i = 0; i < attrc; i++)
-                allkey.strv[i] = reltyp->def.basetyp->def.tuple.attrv[i].name;
+
             keyc = 1;
             keyv = &allkey;
         }
@@ -195,6 +134,43 @@ error:
     }
     RDB_free(allkey.strv);
     return RDB_ERROR;
+}
+
+int
+RDB_table_ilen(const RDB_object *tbp, size_t *lenp, RDB_exec_context *ecp)
+{
+    int ret;
+    size_t len;
+    RDB_object tpl;
+    RDB_qresult *qrp;
+
+    qrp = RDB_table_qresult((RDB_object*) tbp, ecp, NULL);
+    if (qrp == NULL)
+        return RDB_ERROR;
+
+    RDB_init_obj(&tpl);
+
+    *lenp = 0;
+    while ((ret = RDB_next_tuple(qrp, &tpl, ecp, NULL)) == RDB_OK) {
+        tpl.store_typ = RDB_type_is_scalar(tbp->store_typ) ?
+                tbp->store_typ->def.scalar.arep->def.basetyp
+                : tbp->store_typ->def.basetyp;
+        ret = RDB_obj_ilen(&tpl, &len, ecp);
+        if (ret != RDB_OK) {
+             RDB_destroy_obj(&tpl, ecp);
+            RDB_del_qresult(qrp, ecp, NULL);
+            return RDB_ERROR;
+        }
+        *lenp += len;
+    }
+    RDB_destroy_obj(&tpl, ecp);
+    if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+        RDB_clear_err(ecp);
+    } else {
+        RDB_del_qresult(qrp, ecp, NULL);
+        return RDB_ERROR;
+    }
+    return RDB_del_qresult(qrp, ecp, NULL);
 }
 
 /** @addtogroup table

@@ -942,10 +942,12 @@ RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
     tuptyp->name = NULL;
     tuptyp->kind = RDB_TP_TUPLE;
     tuptyp->def.tuple.attrc = attrc;
-    tuptyp->def.tuple.attrv = RDB_alloc(attrc * sizeof (RDB_attr), ecp);
-    if (tuptyp->def.tuple.attrv == NULL) {
-        RDB_free(tuptyp);
-        return NULL;
+    if (attrc > 0) {
+        tuptyp->def.tuple.attrv = RDB_alloc(attrc * sizeof (RDB_attr), ecp);
+        if (tuptyp->def.tuple.attrv == NULL) {
+            RDB_free(tuptyp);
+            return NULL;
+        }
     }
     for (i = 0; i < attrc; i++)
         tuptyp->def.tuple.attrv[i].name = NULL;
