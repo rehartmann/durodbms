@@ -4,7 +4,7 @@ exec tclsh "$0" ${1+"$@"}
 
 # $Id$
 #
-# Test poblic tables
+# Test public tables
 #
 
 package require tcltest 2.2
@@ -38,6 +38,13 @@ test create {creating and populating public table} -setup $SETUP -body {
         
         var p public relation {no int, c string} key {no};
 
+        -- not mapped
+        try
+            var i init count(p);
+        catch err name_error;
+            put_line('name error caught');
+        end try;
+
         map p r1;
 
         -- type mismatch
@@ -65,7 +72,8 @@ test create {creating and populating public table} -setup $SETUP -body {
 
         commit;
     }
-} -result {type mismatch caught
+} -result {name error caught
+type mismatch caught
 invalid arguments caught
 1
 one
