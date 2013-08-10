@@ -71,7 +71,7 @@ RDB_cat_insert_index(const char *name, int attrc, const RDB_seq_item attrv[],
         RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_cat_index_tablename(const char *, char **tbnamep, RDB_exec_context *,
+RDB_cat_index_tablename(const char *, RDB_object *tbnamep, RDB_exec_context *,
         RDB_transaction *);
 
 int
@@ -84,6 +84,10 @@ RDB_cat_get_indexes(const char *tablename, RDB_dbroot *dbrootp,
 int
 RDB_cat_create_constraint(const char *name, RDB_expression *exp,
                       RDB_exec_context *, RDB_transaction *);
+
+int
+RDB_cat_db_exists(const char *, RDB_dbroot *, RDB_exec_context *,
+        RDB_transaction *);
 
 int
 RDB_cat_major_version(void);

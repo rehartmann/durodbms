@@ -476,6 +476,8 @@ thus a table is created by declaring a variable.
 <p>A table is persistent if and only if it belongs to a database.
 A running transaction is required to create or access database tables.
 
+<h3>Real tables</h3>
+
 <p>Creating a real database table:
 
 <pre>
@@ -495,6 +497,8 @@ D> insert r2 tup{no 1};
 1 element affected.
 </pre>
 
+<h3>Private tables</h3>
+
 <p>Private tables are transient, they do not belong to any database
 and do not require a transaction to create or access them.
 
@@ -506,6 +510,8 @@ Local table p created.
 D>
 </pre>
 
+<h3>Virtual tables (aka views)</h3>
+
 <p>Creating a virtual table:
 
 <pre>
@@ -515,6 +521,12 @@ D>
 </pre>
 
 <p>This creates a projection over attribute <code>no</code>.
+
+<h3>Public tables</h3>
+
+<p>...
+
+<h3>Insert, update, delete</h3>
 
 <p>Inserting a single tuple:</p>
 

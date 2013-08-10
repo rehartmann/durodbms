@@ -1112,10 +1112,11 @@ RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     }
 
     /*
-     * Provide "=" and "<>" for user-defined types
+     * Provide "=" and "<>" for types with possreps
      */
     if (argc == 2 && RDB_type_is_scalar(argtv[0])
-            && !argtv[0]->def.scalar.builtin && RDB_type_equals(argtv[0], argtv[1])) {
+            && argtv[0]->def.scalar.repc > 0
+            && RDB_type_equals(argtv[0], argtv[1])) {
         int ret;
 
         if (strcmp(name, "=") == 0) {
@@ -1141,6 +1142,7 @@ RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
             return op;
         }
     }
+
     /*
      * Operator was not found in map, so read from catalog
      * if a transaction is available

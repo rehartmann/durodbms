@@ -428,8 +428,6 @@ get_db(const char *name, RDB_dbroot *dbrootp, RDB_exec_context *ecp)
 {
     RDB_database *dbp = NULL;
     RDB_transaction tx;
-    RDB_object tpl;
-    RDB_bool b;
     int ret;
 
     /* Search the DB list for the database */
@@ -443,55 +441,28 @@ get_db(const char *name, RDB_dbroot *dbrootp, RDB_exec_context *ecp)
      * Not found, read database from catalog
      */
 
-    tx.dbp = NULL;
-    ret = RDB_begin_tx_env(ecp, &tx, dbrootp->envp, NULL);
-    if (ret != RDB_OK) {
-        goto error;
-    }
-
-    /*
-     * Check if the database exists by checking if the DBTABLES contains
-     * sys_rtables for this database.
-     */
-
-    RDB_init_obj(&tpl);
-    ret = RDB_tuple_set_string(&tpl, "tablename", "sys_rtables", ecp);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        goto error;
-    }
-    ret = RDB_tuple_set_string(&tpl, "dbname", name, ecp);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        goto error;
-    }
-
     dbp = new_db(name, ecp);
     if (dbp == NULL) {
         goto error;
     }
 
-    ret = RDB_table_contains(dbrootp->dbtables_tbp, &tpl, ecp, &tx, &b);
+    if (assoc_systables(dbrootp, dbp, ecp) != RDB_OK)
+        goto error;
+    dbp->dbrootp = dbrootp;
+
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
-        RDB_destroy_obj(&tpl, ecp);
+        goto error;
+    }
+
+    if (RDB_cat_db_exists(name, dbrootp, ecp, &tx) != RDB_OK) {
         RDB_rollback(ecp, &tx);
         goto error;
     }
-    if (!b) {
-        RDB_destroy_obj(&tpl, ecp);
-        RDB_rollback(ecp, &tx);
-        RDB_raise_not_found("database not found", ecp);
-        goto error;
-    }
-    RDB_destroy_obj(&tpl, ecp);
 
     ret = RDB_commit(ecp, &tx);
     if (ret != RDB_OK)
         return NULL;
-
-    if (assoc_systables(dbrootp, dbp, ecp) != RDB_OK)
-        goto error;
-    dbp->dbrootp = dbrootp;
 
     /* Insert database into list */
     dbp->nextdbp = dbrootp->first_dbp;

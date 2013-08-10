@@ -345,6 +345,9 @@ RDB_errcode_to_error(int errcode, RDB_exec_context *ecp, RDB_transaction *txp)
         case EINVAL:
             RDB_raise_invalid_argument("", ecp);
             break;
+        case ENOENT:
+            RDB_raise_resource_not_found(db_strerror(errcode), ecp);
+            break;
         case DB_KEYEXIST:
             RDB_raise_key_violation("", ecp);
             break;

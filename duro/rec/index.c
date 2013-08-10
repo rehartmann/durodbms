@@ -254,7 +254,7 @@ RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     int ret;
 
     ret = new_index(rmp, namp, filenamp, envp, fieldc, fieldv, &ixp);
-    if (ret != RDB_OK)
+    if (ret != 0)
         return ret;
 
     if (!(RDB_UNIQUE & flags))
@@ -276,7 +276,7 @@ RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
 
     *ixpp = ixp;
 
-    return RDB_OK;
+    return 0;
 
 error:
     RDB_close_index(ixp);

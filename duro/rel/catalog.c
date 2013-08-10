@@ -28,7 +28,7 @@ enum {
 
 static RDB_attr table_attr_attrv[] = {
         { "attrname", &RDB_STRING, NULL, 0 },
-        { "tablename", &RDB_STRING, NULL, 0 },
+        { "tablename", &RDB_IDENTIFIER, NULL, 0 },
         { "type", &RDB_BINARY, NULL, 0 },
         { "i_fno", &RDB_INTEGER, NULL, 0 } };
 static char *table_attr_keyattrv[] = { "attrname", "tablename" };
@@ -36,20 +36,20 @@ static RDB_string_vec table_attr_keyv[] = { { 2, table_attr_keyattrv } };
 
 static RDB_attr table_attr_defvals_attrv[] = {
             { "attrname", &RDB_STRING, NULL, 0 },
-            { "tablename", &RDB_STRING, NULL, 0 },
+            { "tablename", &RDB_IDENTIFIER, NULL, 0 },
             { "default_value", &RDB_BINARY, NULL, 0 } };
 static char *table_attr_defvals_keyattrv[] = { "attrname", "tablename" };
 static RDB_string_vec table_attr_defvals_keyv[] = { { 2, table_attr_defvals_keyattrv } };
 
 static RDB_attr rtables_attrv[] = {
-    { "tablename", &RDB_STRING, NULL, 0 },
+    { "tablename", &RDB_IDENTIFIER, NULL, 0 },
     { "is_user", &RDB_BOOLEAN, NULL, 0 },
 };
 static char *rtables_keyattrv[] = { "tablename" };
 static RDB_string_vec rtables_keyv[] = { { 1, rtables_keyattrv } };
 
 static RDB_attr vtables_attrv[] = {
-    { "tablename", &RDB_STRING, NULL, 0 },
+    { "tablename", &RDB_IDENTIFIER, NULL, 0 },
     { "is_user", &RDB_BOOLEAN, NULL, 0 },
     { "i_def", &RDB_BINARY, NULL, 0 }
 };
@@ -58,7 +58,7 @@ static char *vtables_keyattrv[] = { "tablename" };
 static RDB_string_vec vtables_keyv[] = { { 1, vtables_keyattrv } };
 
 static RDB_attr ptables_attrv[] = {
-    { "tablename", &RDB_STRING, NULL, 0 },
+    { "tablename", &RDB_IDENTIFIER, NULL, 0 },
     { "is_user", &RDB_BOOLEAN, NULL, 0 },
     { "i_def", &RDB_BINARY, NULL, 0 }
 };
@@ -67,7 +67,7 @@ static char *ptables_keyattrv[] = { "tablename" };
 static RDB_string_vec ptables_keyv[] = { { 1, ptables_keyattrv } };
 
 static RDB_attr table_recmap_attrv[] = {
-    { "tablename", &RDB_STRING, NULL, 0 },
+    { "tablename", &RDB_IDENTIFIER, NULL, 0 },
     { "recmap", &RDB_STRING, NULL, 0 },
 };
 static char *table_recmap_keyattrv1[] = { "tablename" };
@@ -76,14 +76,14 @@ static RDB_string_vec table_recmap_keyv[] = {
     { 1, table_recmap_keyattrv1 }, { 1, table_recmap_keyattrv2 } };
 
 static RDB_attr dbtables_attrv[] = {
-    { "tablename", &RDB_STRING },
+    { "tablename", &RDB_IDENTIFIER },
     { "dbname", &RDB_STRING }
 };
 static char *dbtables_keyattrv[] = { "tablename", "dbname" };
 static RDB_string_vec dbtables_keyv[] = { { 2, dbtables_keyattrv } };
 
 static RDB_attr keys_attrv[] = {
-    { "tablename", &RDB_STRING, NULL, 0 },
+    { "tablename", &RDB_IDENTIFIER, NULL, 0 },
     { "keyno", &RDB_INTEGER, NULL, 0 },
     { "attrs", NULL, NULL, 0 } /* type is set to a relation type later */
 };
@@ -141,7 +141,7 @@ static RDB_string_vec upd_ops_keyv[] = { { 2, upd_ops_keyattrv } };
 
 static RDB_attr indexes_attrv[] = {
     { "name", &RDB_STRING, NULL, 0 },
-    { "tablename", &RDB_STRING, NULL, 0 },
+    { "tablename", &RDB_IDENTIFIER, NULL, 0 },
     { "attrs", NULL, NULL, 0 }, /* type is set to an array type later */
     { "unique", &RDB_BOOLEAN, 0 },
     { "ordered", &RDB_BOOLEAN, 0 }
@@ -170,33 +170,65 @@ static RDB_attr version_info_attrv[] = {
 static RDB_string_vec version_info_keyv[] = { { 0, NULL } };
 
 static int
-dbtables_insert(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+string_to_id(RDB_object *id, const char *str, RDB_exec_context *ecp)
 {
-    RDB_object tpl;
-    int ret;
+    RDB_object strobj;
+    RDB_object *strobjp = &strobj;
 
-    /* Insert (database, table) pair into sys_dbtables */
-    RDB_init_obj(&tpl);
+    RDB_init_obj(&strobj);
+    if (RDB_string_to_obj(&strobj, str, ecp) != RDB_OK)
+        goto error;
 
-    if (RDB_tuple_set_string(&tpl, "tablename", RDB_table_name(tbp), ecp)
+    /* Call selector */
+    if (RDB_call_ro_op_by_name("identifier", 1, &strobjp, ecp, NULL, id)
             != RDB_OK)
-    {
-        RDB_destroy_obj(&tpl, ecp);
-        return RDB_ERROR;
-    }
-    if (RDB_tuple_set_string(&tpl, "dbname", txp->dbp->name, ecp) != RDB_OK)
-    {
-        RDB_destroy_obj(&tpl, ecp);
-        return RDB_ERROR;
-    }
-    ret = RDB_insert(txp->dbp->dbrootp->dbtables_tbp, &tpl, ecp, txp);
-    RDB_destroy_obj(&tpl, ecp);
-    
-    return ret;
+        goto error;
+    RDB_destroy_obj(&strobj, ecp);
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&strobj, ecp);
+    return RDB_ERROR;
 }
 
 static int
-insert_key(const RDB_string_vec *keyp, int i, const char *tablename,
+dbtables_insert(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_object tpl;
+    RDB_object tbnameobj;
+
+    /* Insert (database, table) pair into sys_dbtables */
+    RDB_init_obj(&tpl);
+    RDB_init_obj(&tbnameobj);
+
+    if (string_to_id(&tbnameobj, RDB_table_name(tbp), ecp) != RDB_OK)
+        goto error;
+
+    if (RDB_tuple_set(&tpl, "tablename", &tbnameobj, ecp) != RDB_OK) {
+        goto error;
+    }
+    if (RDB_tuple_set_string(&tpl, "dbname", txp->dbp->name, ecp) != RDB_OK)
+    {
+        goto error;
+    }
+
+    if (RDB_insert(txp->dbp->dbrootp->dbtables_tbp, &tpl, ecp, txp) != RDB_OK)
+        goto error;
+
+    RDB_destroy_obj(&tbnameobj, ecp);
+    RDB_destroy_obj(&tpl, ecp);
+
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&tbnameobj, ecp);
+    RDB_destroy_obj(&tpl, ecp);
+
+    return RDB_ERROR;
+}
+
+static int
+insert_key(const RDB_string_vec *keyp, int i, RDB_object *tablenamep,
         RDB_dbroot *dbrootp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
@@ -209,7 +241,7 @@ insert_key(const RDB_string_vec *keyp, int i, const char *tablename,
     if (RDB_tuple_set_int(&tpl, "keyno", i, ecp) != RDB_OK)
         goto error;
 
-    if (RDB_tuple_set_string(&tpl, "tablename", tablename, ecp) != RDB_OK)
+    if (RDB_tuple_set(&tpl, "tablename", tablenamep, ecp) != RDB_OK)
         goto error;
 
     if (RDB_tuple_set(&tpl, "attrs", NULL, ecp) != RDB_OK)
@@ -264,11 +296,17 @@ insert_defvals(RDB_object *tbp, RDB_dbroot *dbrootp,
     int ret;
     int i;
     RDB_object tpl;
+    RDB_object tbnameobj;
     RDB_type *tuptyp = tbp->typ->def.basetyp;
 
+    /* Insert (database, table) pair into sys_dbtables */
     RDB_init_obj(&tpl);
-    ret = RDB_tuple_set_string(&tpl, "tablename", RDB_table_name(tbp), ecp);
-    if (ret != RDB_OK) {
+    RDB_init_obj(&tbnameobj);
+
+    if (string_to_id(&tbnameobj, RDB_table_name(tbp), ecp) != RDB_OK)
+        goto error;
+
+    if (RDB_tuple_set(&tpl, "tablename", &tbnameobj, ecp) != RDB_OK) {
         goto error;
     }
 
@@ -314,10 +352,12 @@ insert_defvals(RDB_object *tbp, RDB_dbroot *dbrootp,
             }
         }
     }
+    RDB_destroy_obj(&tbnameobj, ecp);
     RDB_destroy_obj(&tpl, ecp);
     return RDB_OK;
 
 error:
+    RDB_destroy_obj(&tbnameobj, ecp);
     RDB_destroy_obj(&tpl, ecp);
     return RDB_ERROR;
 }
@@ -328,35 +368,28 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_object tpl;
+    RDB_object tbnameobj;
     RDB_type *tuptyp = tbp->typ->def.basetyp;
     int ret;
     int i;
 
     /* insert entry into table sys_rtables */
     RDB_init_obj(&tpl);
-    ret = RDB_tuple_set_string(&tpl, "tablename", RDB_table_name(tbp), ecp);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&tpl, ecp);
-        return RDB_ERROR;
-    }
+    RDB_init_obj(&tbnameobj);
+
+    if (string_to_id(&tbnameobj, RDB_table_name(tbp), ecp) != RDB_OK)
+        goto error;
+    if (RDB_tuple_set(&tpl, "tablename", &tbnameobj, ecp) != RDB_OK)
+        goto error;
     ret = RDB_tuple_set_bool(&tpl, "is_user", tbp->val.tb.is_user, ecp);
     if (ret != RDB_OK) {
-        RDB_destroy_obj(&tpl, ecp);
-        return RDB_ERROR;
+        goto error;
     }
-    ret = RDB_insert(dbrootp->rtables_tbp, &tpl, ecp, txp);
-    RDB_destroy_obj(&tpl, ecp);
-    if (ret != RDB_OK) {
-        return RDB_ERROR;
+    if (RDB_insert(dbrootp->rtables_tbp, &tpl, ecp, txp) != RDB_OK) {
+        goto error;
     }
 
-    /* insert entries into table sys_tableattrs */
-    RDB_init_obj(&tpl);
-    ret = RDB_tuple_set_string(&tpl, "tablename", RDB_table_name(tbp), ecp);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&tpl, ecp);
-        return RDB_ERROR;
-    }
+    /* Insert entries into table sys_tableattrs */
 
     for (i = 0; i < tuptyp->def.tuple.attrc; i++) {
         RDB_object typedata;
@@ -367,48 +400,50 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
                 ecp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&typedata, ecp);
-            RDB_destroy_obj(&tpl, ecp);
-            return RDB_ERROR;
+            goto error;
         }
         ret = RDB_tuple_set(&tpl, "type", &typedata, ecp);
         RDB_destroy_obj(&typedata, ecp);
         if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl, ecp);
-            return RDB_ERROR;
+            goto error;
         }
 
         ret = RDB_tuple_set_string(&tpl, "attrname", attrname, ecp);
         if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl, ecp);
-            return ret;
+            goto error;
         }
         ret = RDB_tuple_set_int(&tpl, "i_fno", i, ecp);
         if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl, ecp);
-            return ret;
+            goto error;
         }
         ret = RDB_insert(dbrootp->table_attr_tbp, &tpl, ecp, txp);
         if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl, ecp);
-            return ret;
+            goto error;
         }
     }
-    RDB_destroy_obj(&tpl, ecp);
 
     if (tbp->val.tb.default_tplp != NULL) {
         if (insert_defvals(tbp, dbrootp, ecp, txp) != RDB_OK)
-            return RDB_ERROR;
+            goto error;
     }
 
     /*
      * Insert keys into sys_keys
      */
     for (i = 0; i < tbp->val.tb.keyc; i++) {
-        if (insert_key(&tbp->val.tb.keyv[i], i, RDB_table_name(tbp), dbrootp,
+        if (insert_key(&tbp->val.tb.keyv[i], i, &tbnameobj, dbrootp,
                 ecp, txp) != RDB_OK)
-            return RDB_ERROR;
+            goto error;
     }
+
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&tbnameobj, ecp);
     return RDB_OK;
+
+error:
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&tbnameobj, ecp);
+    return RDB_ERROR;
 }
 
 static int
@@ -417,14 +452,20 @@ insert_vtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
 {
     int ret;
     RDB_object tpl;
+    RDB_object tbnameobj;
     RDB_object defval;
 
     RDB_init_obj(&tpl);
     RDB_init_obj(&defval);
+    RDB_init_obj(&tbnameobj);
 
     /* Insert entry into sys_vtables */
 
-    ret = RDB_tuple_set_string(&tpl, "tablename", RDB_table_name(tbp), ecp);
+    ret = string_to_id(&tbnameobj, RDB_table_name(tbp), ecp);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = RDB_tuple_set(&tpl, "tablename", &tbnameobj, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -458,6 +499,7 @@ insert_vtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
 cleanup:
     RDB_destroy_obj(&tpl, ecp);
     RDB_destroy_obj(&defval, ecp);
+    RDB_destroy_obj(&tbnameobj, ecp);
 
     return ret;
 }
@@ -472,16 +514,22 @@ RDB_cat_insert_index(const char *name, int attrc, const RDB_seq_item attrv[],
     RDB_object tpl;
     RDB_object attrsarr;
     RDB_object attrtpl;
+    RDB_object tbnameobj;
 
     RDB_init_obj(&tpl);
     RDB_init_obj(&attrsarr);
     RDB_init_obj(&attrtpl);
+    RDB_init_obj(&tbnameobj);
+
+    ret = string_to_id(&tbnameobj, tbname, ecp);
+    if (ret != RDB_OK)
+        goto cleanup;
 
     ret = RDB_tuple_set_string(&tpl, "name", name, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_tuple_set_string(&tpl, "tablename", tbname, ecp);
+    ret = RDB_tuple_set(&tpl, "tablename", &tbnameobj, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -517,6 +565,7 @@ cleanup:
     RDB_destroy_obj(&tpl, ecp);
     RDB_destroy_obj(&attrsarr, ecp);
     RDB_destroy_obj(&attrtpl, ecp);
+    RDB_destroy_obj(&tbnameobj, ecp);
     return ret;
 }
 
@@ -526,10 +575,19 @@ RDB_cat_insert_table_recmap(RDB_object *tbp, const char *rmname,
 {
     int ret;
     RDB_object tpl;
+    RDB_object tbnameobj;
+
+    RDB_init_obj(&tbnameobj);
+
+    /* Insert entry into sys_vtables */
+
+    ret = string_to_id(&tbnameobj, RDB_table_name(tbp), ecp);
+    if (ret != RDB_OK)
+        goto cleanup;
 
     RDB_init_obj(&tpl);
 
-    ret = RDB_tuple_set_string(&tpl, "tablename", RDB_table_name(tbp), ecp);
+    ret = RDB_tuple_set(&tpl, "tablename", &tbnameobj, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -541,11 +599,12 @@ RDB_cat_insert_table_recmap(RDB_object *tbp, const char *rmname,
 
 cleanup:
     RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&tbnameobj, ecp);
     return ret;
 }
 
 int
-RDB_cat_index_tablename(const char *name, char **tbnamep,
+RDB_cat_index_tablename(const char *name, RDB_object *tbnamep,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
@@ -580,17 +639,17 @@ RDB_cat_index_tablename(const char *name, char **tbnamep,
     ret = RDB_extract_tuple(vtbp, ecp, txp, &tpl);
     RDB_drop_table(vtbp, ecp, txp);
     if (ret != RDB_OK) {
-        RDB_destroy_obj(&tpl, ecp);
-        return RDB_ERROR;
+        goto error;
     }
 
-    *tbnamep = RDB_dup_str(RDB_tuple_get_string(&tpl, "tablename"));
+    if (RDB_copy_obj(tbnamep, RDB_tuple_get(&tpl, "tablename"), ecp) != RDB_OK)
+        goto error;
     RDB_destroy_obj(&tpl, ecp);
-    if (*tbnamep == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
     return RDB_OK;
+
+error:
+    RDB_destroy_obj(&tpl, ecp);
+    return RDB_ERROR;
 }
 
 int
@@ -677,6 +736,7 @@ RDB_cat_insert_ptable(const char *name,
     RDB_object tpl;
     int ret;
     int i;
+    RDB_object tbnameobj;
     RDB_object defval;
 
     RDB_init_obj(&tpl);
@@ -686,10 +746,14 @@ RDB_cat_insert_ptable(const char *name,
      * Insert entry into table sys_ptables
      */
 
-    ret = RDB_tuple_set_string(&tpl, "tablename", name, ecp);
-    if (ret != RDB_OK) {
+    RDB_init_obj(&tpl);
+    RDB_init_obj(&tbnameobj);
+
+    if (string_to_id(&tbnameobj, name, ecp) != RDB_OK)
         goto error;
-    }
+    if (RDB_tuple_set(&tpl, "tablename", &tbnameobj, ecp) != RDB_OK)
+        goto error;
+
     ret = RDB_tuple_set_bool(&tpl, "is_user", RDB_TRUE, ecp);
     if (ret != RDB_OK) {
         goto error;
@@ -709,7 +773,7 @@ RDB_cat_insert_ptable(const char *name,
 
     /* insert entries into table sys_tableattrs */
     RDB_init_obj(&tpl);
-    ret = RDB_tuple_set_string(&tpl, "tablename", name, ecp);
+    ret = RDB_tuple_set(&tpl, "tablename", &tbnameobj, ecp);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -749,18 +813,20 @@ RDB_cat_insert_ptable(const char *name,
      * Insert keys into sys_keys
      */
     for (i = 0; i < keyc; i++) {
-        if (insert_key(&keyv[i], i, name, txp->dbp->dbrootp, ecp, txp)
-                != RDB_OK)
+        if (insert_key(&keyv[i], i, &tbnameobj, txp->dbp->dbrootp,
+                ecp, txp) != RDB_OK)
             goto error;
     }
 
     RDB_destroy_obj(&tpl, ecp);
     RDB_destroy_obj(&defval, ecp);
+    RDB_destroy_obj(&tbnameobj, ecp);
     return RDB_OK;
 
 error:
     RDB_destroy_obj(&tpl, ecp);
     RDB_destroy_obj(&defval, ecp);
+    RDB_destroy_obj(&tbnameobj, ecp);
     return RDB_ERROR;
 }
 
@@ -773,6 +839,13 @@ tablename_eq_expr(const char *name, RDB_exec_context *ecp)
     if (argp == NULL) {
         return NULL;
     }
+    arg2p = RDB_expr_comp(argp, "name", ecp);
+    if (arg2p == NULL) {
+        RDB_del_expr(argp, ecp);
+        return NULL;
+    }
+    argp = arg2p;
+
     arg2p = RDB_string_to_expr(name, ecp);
     if (arg2p == NULL) {
         RDB_del_expr(argp, ecp);
@@ -837,8 +910,7 @@ static int
 delete_rtable(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    RDB_expression *exprp = RDB_eq(RDB_var_ref("tablename", ecp),
-            RDB_string_to_expr(RDB_table_name(tbp), ecp), ecp);
+    RDB_expression *exprp = tablename_eq_expr(RDB_table_name(tbp), ecp);
     if (exprp == NULL) {
         return RDB_ERROR;
     }
@@ -879,8 +951,7 @@ static int
 delete_vtable(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    RDB_expression *exprp = RDB_eq(RDB_var_ref("tablename", ecp),
-                   RDB_string_to_expr(RDB_table_name(tbp), ecp), ecp);
+    RDB_expression *exprp = tablename_eq_expr(RDB_table_name(tbp), ecp);
     if (exprp == NULL) {
         return RDB_ERROR;
     }
@@ -932,8 +1003,7 @@ RDB_cat_get_indexes(const char *tablename, RDB_dbroot *dbrootp,
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
-    argp = RDB_eq(RDB_var_ref("tablename", ecp),
-            RDB_string_to_expr(tablename, ecp), ecp);
+    argp = tablename_eq_expr(tablename, ecp);
     if (argp == NULL) {
         RDB_del_expr(exp, ecp);
         return RDB_ERROR;
@@ -1702,8 +1772,7 @@ RDB_cat_get_table_type(const char *name, RDB_exec_context *ecp,
         goto error;
     }
     RDB_add_arg(exp, argp);
-    argp = RDB_eq(RDB_var_ref("tablename", ecp),
-            RDB_string_to_expr(name, ecp), ecp);
+    argp = tablename_eq_expr(name, ecp);
     if (argp == NULL) {
         RDB_del_expr(exp, ecp);
         goto error;
@@ -1871,8 +1940,7 @@ RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
         goto error;
     }
     RDB_add_arg(exp, argp);
-    argp = RDB_eq(RDB_var_ref("tablename", ecp),
-            RDB_string_to_expr(name, ecp), ecp);
+    argp = tablename_eq_expr(name, ecp);
     if (argp == NULL) {
         RDB_del_expr(exp, ecp);
         goto error;
@@ -1938,8 +2006,7 @@ RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
             goto error;
         }
         RDB_add_arg(exp, argp);
-        argp = RDB_eq(RDB_var_ref("tablename", ecp),
-                RDB_string_to_expr(name, ecp), ecp);
+        argp = tablename_eq_expr(name, ecp);
         if (argp == NULL) {
             RDB_del_expr(exp, ecp);
             goto error;
@@ -2275,19 +2342,87 @@ error:
 }
 
 int
+RDB_cat_db_exists(const char *name, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_object tpl;
+    RDB_object tbnameobj;
+    RDB_bool b;
+
+    /*
+     * Check if the database exists by checking if the DBTABLES contains
+     * sys_rtables for this database.
+     */
+
+    RDB_init_obj(&tpl);
+    RDB_init_obj(&tbnameobj);
+
+    if (string_to_id(&tbnameobj, "sys_rtables", ecp) != RDB_OK)
+        goto error;
+
+    if (RDB_tuple_set(&tpl, "tablename", &tbnameobj, ecp) != RDB_OK) {
+        goto error;
+    }
+    if (RDB_tuple_set_string(&tpl, "dbname", name, ecp) != RDB_OK) {
+        goto error;
+    }
+
+    if (RDB_table_contains(dbrootp->dbtables_tbp, &tpl, ecp, txp, &b)
+            != RDB_OK) {
+        goto error;
+    }
+
+    if (!b) {
+        RDB_raise_not_found("database not found", ecp);
+        goto error;
+    }
+
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&tbnameobj, ecp);
+
+    return RDB_OK;
+
+error:
+
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&tbnameobj, ecp);
+
+    return RDB_ERROR;
+}
+
+static RDB_expression *
+string_to_id_expr(const char *str, RDB_exec_context *ecp)
+{
+    RDB_object obj;
+    RDB_expression *exp;
+
+    RDB_init_obj(&obj);
+    if (string_to_id(&obj, str, ecp) != RDB_OK)
+        goto error;
+    exp = RDB_obj_to_expr (&obj, ecp);
+    if (exp == NULL)
+        goto error;
+    RDB_destroy_obj(&obj, ecp);
+    return exp;
+
+error:
+    RDB_destroy_obj(&obj, ecp);
+    return NULL;
+}
+
+int
 RDB_cat_rename_table(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;
     RDB_attr_update upd;
-    RDB_expression *condp = RDB_eq(RDB_var_ref("tablename", ecp),
-            RDB_string_to_expr(RDB_table_name(tbp), ecp), ecp);
+    RDB_expression *condp = tablename_eq_expr(RDB_table_name(tbp), ecp);
     if (condp == NULL) {
         return RDB_ERROR;
     }
 
     upd.name = "tablename";
-    upd.exp = RDB_string_to_expr(name, ecp);
+    upd.exp = string_to_id_expr(name, ecp);
     if (upd.exp == NULL) {
         ret = RDB_ERROR;
         goto cleanup;

@@ -919,7 +919,8 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
     int ret;
     int i;
     int xi;
-    char *tbname;
+    RDB_object tbname;
+    RDB_object tbnamestr;
     RDB_object *tbp;
     void *p;
 
@@ -928,19 +929,22 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
-    ret = RDB_cat_index_tablename(name, &tbname, ecp, txp);
-    if (ret != RDB_OK)
-        return RDB_ERROR;
+    RDB_init_obj(&tbname);
+    RDB_init_obj(&tbnamestr);
 
-    tbp = RDB_get_table(tbname, ecp, txp);
-    RDB_free(tbname);
+    if (RDB_cat_index_tablename(name, &tbname, ecp, txp) != RDB_OK)
+        goto error;
+
+    if (RDB_obj_comp(&tbname, "name", &tbnamestr, NULL, ecp, txp) != RDB_OK)
+        goto error;
+
+    tbp = RDB_get_table(RDB_obj_string(&tbnamestr), ecp, txp);
     if (tbp == NULL)
-        return RDB_ERROR;
+        goto error;
 
     /* Delete index from catalog */
-    ret = RDB_cat_delete_index(name, ecp, txp);
-    if (ret != RDB_OK)
-        return ret;
+    if (RDB_cat_delete_index(RDB_obj_string(&tbnamestr), ecp, txp) != RDB_OK)
+        goto error;
 
     if (tbp->val.tb.stp != NULL) {
         /*
@@ -956,8 +960,20 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
             RDB_free(tbp->val.tb.stp->indexv);
             ret = RDB_cat_get_indexes(tbp->val.tb.name, txp->dbp->dbrootp, ecp, txp,
                     &tbp->val.tb.stp->indexv);
-            if (ret != RDB_OK)
-                return RDB_ERROR;
+            if (ret == RDB_ERROR)
+                goto error;
+            for (i = 0; i < tbp->val.tb.stp->indexc; i++) {
+                char *p = strchr(tbp->val.tb.stp->indexv[i].name, '$');
+                if (p == NULL || strcmp (p, "$0") != 0) {
+                    ret = RDB_open_table_index(tbp,
+                            &tbp->val.tb.stp->indexv[i], RDB_db_env(RDB_tx_db(txp)), ecp,
+                            txp);
+                    if (ret != RDB_OK)
+                        goto error;
+                } else {
+                    tbp->val.tb.stp->indexv[i].idxp = NULL;
+                }
+            }
 
             /* Search again */
             for (i = 0; i < tbp->val.tb.stp->indexc
@@ -965,15 +981,17 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
                     i++);
             if (i >= tbp->val.tb.stp->indexc) {
                 RDB_raise_internal("invalid index", ecp);
-                return RDB_ERROR;
+                goto error;
             }
         }
         xi = i;
 
-        /* Destroy index */
-        ret = RDB_add_del_index(txp, tbp->val.tb.stp->indexv[i].idxp, ecp);
-        if (ret != RDB_OK)
-            return ret;
+        if (tbp->val.tb.stp->indexv[i].idxp != NULL) {
+            /* Destroy index */
+            if (RDB_add_del_index(txp, tbp->val.tb.stp->indexv[i].idxp, ecp)
+                    != RDB_OK)
+                goto error;
+        }
 
         /*
          * Delete index entry
@@ -989,11 +1007,18 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
         p = RDB_realloc(tbp->val.tb.stp->indexv,
                 sizeof(RDB_tbindex) * tbp->val.tb.stp->indexc, ecp);
         if (p == NULL)
-            return RDB_ERROR;
+            goto error;
         tbp->val.tb.stp->indexv = p;
     }
 
+    RDB_destroy_obj(&tbname, ecp);
+    RDB_destroy_obj(&tbnamestr, ecp);
     return RDB_OK;
+
+error:
+    RDB_destroy_obj(&tbname, ecp);
+    RDB_destroy_obj(&tbnamestr, ecp);
+    return RDB_ERROR;
 }
 
 /*@}*/

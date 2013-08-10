@@ -136,6 +136,8 @@ RDB_type RDB_SYSTEM_ERROR;
 
 RDB_type RDB_SYNTAX_ERROR;
 
+RDB_type RDB_IDENTIFIER;
+
 RDB_hashmap RDB_builtin_type_map;
 
 static int
@@ -368,6 +370,14 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
         "syntax_error",
         1,
         &syntax_comp
+    };
+
+    static RDB_attr id_comp = { "name", &RDB_STRING };
+
+    static RDB_possrep id_rep = {
+        "identifier",
+        1,
+        &id_comp
     };
 
     static RDB_operator compare_string_op = {
@@ -799,6 +809,19 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_SYNTAX_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_SYNTAX_ERROR.compare_op = NULL;
 
+    RDB_IDENTIFIER.kind = RDB_TP_SCALAR;
+    RDB_IDENTIFIER.ireplen = RDB_VARIABLE_LEN;
+    RDB_IDENTIFIER.name = "identifier";
+    RDB_IDENTIFIER.def.scalar.builtin = RDB_TRUE;
+    RDB_IDENTIFIER.def.scalar.repc = 1;
+    RDB_IDENTIFIER.def.scalar.repv = &id_rep;
+    RDB_IDENTIFIER.def.scalar.arep = &RDB_STRING;
+    RDB_IDENTIFIER.def.scalar.constraintp = NULL;
+    RDB_IDENTIFIER.def.scalar.initexp = NULL;
+    RDB_IDENTIFIER.def.scalar.sysimpl = RDB_TRUE;
+    RDB_IDENTIFIER.def.scalar.init_val_is_valid = RDB_FALSE;
+    RDB_IDENTIFIER.compare_op = NULL;
+
     if (RDB_init_builtin_ops(ecp) != RDB_OK)
         return RDB_ERROR;
 
@@ -903,6 +926,10 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     if (RDB_add_type(&RDB_SYNTAX_ERROR, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    if (RDB_add_type(&RDB_IDENTIFIER, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 

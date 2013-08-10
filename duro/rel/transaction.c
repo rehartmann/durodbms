@@ -9,6 +9,8 @@
 #include "internal.h"
 #include <gen/strfns.h>
 
+#include <errno.h>
+
 typedef struct RDB_rmlink {
     RDB_recmap *rmp;
     struct RDB_rmlink *nextp;
@@ -76,9 +78,12 @@ del_storage(RDB_transaction *txp)
     int ret = RDB_OK;
 
     for (ixlinkp = txp->delixp;
-         (ixlinkp != NULL) && (ret == RDB_OK);
-         ixlinkp = ixlinkp->nextp) {
+        (ixlinkp != NULL) && (ret == RDB_OK);
+        ixlinkp = ixlinkp->nextp) {
         ret = RDB_delete_index(ixlinkp->ixp, txp->envp, NULL);
+        /* If the index was not found, ignore it */
+        if (ret == ENOENT)
+            ret = 0;
     }
 
     for (rmlinkp = txp->delrmp;
@@ -159,7 +164,8 @@ RDB_commit(RDB_exec_context *ecp, RDB_transaction *txp)
 
     /* Delete recmaps and indexes scheduled for deletion */
     ret = del_storage(txp);
-    if (ret != RDB_OK) {
+    if (ret != 0) {
+        RDB_errcode_to_error(ret, ecp, NULL);
         return ret;
     }
 

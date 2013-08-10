@@ -2530,6 +2530,8 @@ Duro_exec_stmt_impl_tx(RDB_parse_node *stmtp, RDB_exec_context *ecp)
     /* No implicit tx if no database is available. */
     if (implicit_tx) {
         if (Duro_get_db(ecp) == NULL) {
+            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
+                return RDB_ERROR;
             RDB_clear_err(ecp);
             implicit_tx = RDB_FALSE;
         }

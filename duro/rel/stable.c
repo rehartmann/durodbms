@@ -70,11 +70,13 @@ RDB_close_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp)
     }
 
     /* Close recmap */
-    ret = RDB_close_recmap(stp->recmapp);
-    free_stored_table(stp);
-    if (ret != 0) {
-        RDB_errcode_to_error(ret, ecp, NULL);
-        return RDB_ERROR;
+    if (stp->recmapp != NULL) {
+        ret = RDB_close_recmap(stp->recmapp);
+        free_stored_table(stp);
+        if (ret != 0) {
+            RDB_errcode_to_error(ret, ecp, NULL);
+            return RDB_ERROR;
+        }
     }
     return RDB_OK;
 }
@@ -746,7 +748,11 @@ RDB_open_table_index(RDB_object *tbp, RDB_tbindex *indexp,
 
 cleanup:
     RDB_free(fieldv);
-    return ret;
+    if (ret != 0) {
+        RDB_errcode_to_error(ret, ecp, txp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
 }
 
 int
