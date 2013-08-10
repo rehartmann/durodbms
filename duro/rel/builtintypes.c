@@ -195,6 +195,33 @@ RDB_add_type(RDB_type *typ, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
+/* Create constraint expression for identifiers */
+static RDB_expression *
+id_constraint_expr(RDB_exec_context *ecp)
+{
+    RDB_expression *argp;
+    RDB_expression *exp = RDB_ro_op("regex_like", ecp);
+    if (exp == NULL)
+        goto error;
+
+    argp = RDB_var_ref("name", ecp);
+    if (argp == NULL)
+        goto error;
+    RDB_add_arg(exp, argp);
+
+    argp = RDB_string_to_expr("^[a-zA-Z][a-zA-Z0-9_#]*$", ecp);
+    if (argp == NULL)
+        goto error;
+    RDB_add_arg(exp, argp);
+
+    return exp;
+
+error:
+    if (exp != NULL)
+        RDB_del_expr(exp, ecp);
+    return NULL;
+}
+
 /** @addtogroup type
  * @{
  */
@@ -501,8 +528,8 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_NO_MEMORY_ERROR.def.scalar.initexp = NULL;
     RDB_NO_MEMORY_ERROR.def.scalar.sysimpl = RDB_TRUE;
 
-    /* Selector is called for initialization */
-    RDB_NO_MEMORY_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
+    RDB_init_obj(&RDB_NO_MEMORY_ERROR.def.scalar.init_val);
+    RDB_NO_MEMORY_ERROR.def.scalar.init_val_is_valid = RDB_TRUE;
 
     RDB_NO_MEMORY_ERROR.compare_op = NULL;
 
@@ -521,6 +548,7 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_NO_RUNNING_TX_ERROR.def.scalar.constraintp = NULL;
     RDB_NO_RUNNING_TX_ERROR.def.scalar.initexp = NULL;
     RDB_NO_RUNNING_TX_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_init_obj(&RDB_NO_RUNNING_TX_ERROR.def.scalar.init_val);
     RDB_NO_RUNNING_TX_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
     RDB_NO_RUNNING_TX_ERROR.compare_op = NULL;
 
@@ -721,7 +749,8 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.constraintp = NULL;
     RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.initexp = NULL;
     RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.sysimpl = RDB_TRUE;
-    RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
+    RDB_init_obj(&RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.init_val);
+    RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.init_val_is_valid = RDB_TRUE;
     RDB_LOCK_NOT_GRANTED_ERROR.compare_op = NULL;
 
     RDB_AGGREGATE_UNDEFINED_ERROR.kind = RDB_TP_SCALAR;
@@ -757,7 +786,8 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_VERSION_MISMATCH_ERROR.def.scalar.constraintp = NULL;
     RDB_VERSION_MISMATCH_ERROR.def.scalar.initexp = NULL;
     RDB_VERSION_MISMATCH_ERROR.def.scalar.sysimpl = RDB_TRUE;
-    RDB_VERSION_MISMATCH_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
+    RDB_init_obj(&RDB_VERSION_MISMATCH_ERROR.def.scalar.init_val);
+    RDB_VERSION_MISMATCH_ERROR.def.scalar.init_val_is_valid = RDB_TRUE;
     RDB_VERSION_MISMATCH_ERROR.compare_op = NULL;
 
     RDB_DEADLOCK_ERROR.kind = RDB_TP_SCALAR;
@@ -775,7 +805,8 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_DEADLOCK_ERROR.def.scalar.constraintp = NULL;
     RDB_DEADLOCK_ERROR.def.scalar.initexp = NULL;
     RDB_DEADLOCK_ERROR.def.scalar.sysimpl = RDB_TRUE;
-    RDB_DEADLOCK_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
+    RDB_init_obj(&RDB_DEADLOCK_ERROR.def.scalar.init_val);
+    RDB_DEADLOCK_ERROR.def.scalar.init_val_is_valid = RDB_TRUE;
     RDB_DEADLOCK_ERROR.compare_op = NULL;
 
     RDB_FATAL_ERROR.kind = RDB_TP_SCALAR;
@@ -793,7 +824,8 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_FATAL_ERROR.def.scalar.constraintp = NULL;
     RDB_FATAL_ERROR.def.scalar.sysimpl = RDB_TRUE;
     RDB_FATAL_ERROR.def.scalar.initexp = NULL;
-    RDB_FATAL_ERROR.def.scalar.init_val_is_valid = RDB_FALSE;
+    RDB_init_obj(&RDB_FATAL_ERROR.def.scalar.init_val);
+    RDB_FATAL_ERROR.def.scalar.init_val_is_valid = RDB_TRUE;
     RDB_FATAL_ERROR.compare_op = NULL;
 
     RDB_SYNTAX_ERROR.kind = RDB_TP_SCALAR;
@@ -816,7 +848,9 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_IDENTIFIER.def.scalar.repc = 1;
     RDB_IDENTIFIER.def.scalar.repv = &id_rep;
     RDB_IDENTIFIER.def.scalar.arep = &RDB_STRING;
-    RDB_IDENTIFIER.def.scalar.constraintp = NULL;
+    RDB_IDENTIFIER.def.scalar.constraintp = id_constraint_expr(ecp);
+    if (RDB_IDENTIFIER.def.scalar.constraintp == NULL)
+        return RDB_ERROR;
     RDB_IDENTIFIER.def.scalar.initexp = NULL;
     RDB_IDENTIFIER.def.scalar.sysimpl = RDB_TRUE;
     RDB_IDENTIFIER.def.scalar.init_val_is_valid = RDB_FALSE;

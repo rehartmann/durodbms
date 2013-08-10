@@ -4,7 +4,12 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 0.19
 
+- Added type 'identifier' which is used in the catalog.
+
 - Added support for public tables.
+
+- Fixed possible double free in the parser when invalid
+  characters are read.
 
 DuroDBMS 0.18
 

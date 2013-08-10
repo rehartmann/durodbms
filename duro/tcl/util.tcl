@@ -4,7 +4,7 @@
 # Utility procedures for Durotcl
 #
 
-package provide duro 0.17
+package provide duro 0.19
 
 namespace eval duro {
 
@@ -22,25 +22,29 @@ proc tables {flag tx} {
     }
 
     if {$flag != "-virtual"} {
-        duro::table expr t "(sys_rtables $cond) \
-                join (sys_dbtables where dbname = \"$db\")" $tx
+        duro::table expr t \
+                "extend ((sys_rtables $cond) \
+                        join (sys_dbtables where dbname = \"$db\")) \
+                : { tablename_string := the_name(tablename) } \
+                { tablename_string }" $tx
         set arr [duro::array create t $tx]
         set i 0
         duro::array foreach tpl $arr {
-            ::array set a $tpl
-            lappend tables $a(tablename)
+            lappend tables [lindex $tpl 1]
         } $tx
         duro::array drop $arr
         duro::table drop t $tx
     }
 
     if {$flag != "-real"} {
-        duro::table expr t "(sys_vtables $cond) \
-                join (sys_dbtables where dbname = \"$db\")" $tx
+        duro::table expr t \
+                "extend ((sys_vtables $cond) \
+                        join (sys_dbtables where dbname = \"$db\")) \
+                : { tablename_string := the_name(tablename) } \
+                { tablename_string }" $tx
         set arr [duro::array create t $tx]
         duro::array foreach tpl $arr {
-            ::array set a $tpl
-            lappend tables $a(tablename)
+            lappend tables [lindex $tpl 1]
         } $tx
         duro::array drop $arr
         duro::table drop t $tx

@@ -820,6 +820,7 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
     else
 	    sprintf(buf, "invalid character %c at line %d", yytext[0], yylineno);
     RDB_raise_syntax(buf, RDB_parse_ecp);
+    yylval = NULL;
     return TOK_INVALID;
 }
 

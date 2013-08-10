@@ -1151,11 +1151,6 @@ RDB_create_table_from_type(const char *name, RDB_type *reltyp,
 {
     int i;
 
-    if (name != NULL && !RDB_legal_name(name)) {
-        RDB_raise_invalid_argument("invalid table name", ecp);
-        return NULL;
-    }
-
     if (reltyp->kind != RDB_TP_RELATION) {
         RDB_raise_type_mismatch("relation type required", ecp);
         return NULL;

@@ -188,6 +188,10 @@ string_to_id(RDB_object *id, const char *str, RDB_exec_context *ecp)
 
 error:
     RDB_destroy_obj(&strobj, ecp);
+    if (RDB_obj_type(RDB_get_err(ecp))
+            == &RDB_TYPE_CONSTRAINT_VIOLATION_ERROR) {
+        RDB_raise_invalid_argument("invalid name", ecp);
+    }
     return RDB_ERROR;
 }
 
