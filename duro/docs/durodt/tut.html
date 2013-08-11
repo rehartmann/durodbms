@@ -790,28 +790,48 @@ D>
 
 <h2 id="user-types">User-defined types</h2>
 
-<p>Example for defining a type:</p>
+<p>Imagine we have employee numbers which start with the character 'E'
+followed by one or more digits.
+
+<p>We can define a type for this purpose as follows:
 
 <pre>
-D> type len possrep { n float } constraint n >= 0.0 init len(0.0);
-Type len defined.
+D> type empno possrep { no string } constraint no regex_like '^E[0-9]+$' or no = '' init empno('');
+Type empno defined.
+D> 
 </pre>
 
-<p>This defines a type <code>len</code> with a single property
-<code>n</code> of type <code>float</code>.
-Only positive values of <code>n</code> are permitted.
+<p>We also allow the empty string if there is no value to store.
+It may be a good idea to allow only values of a certain (fixed) length;
+this is omitted here to keep the example simple.
 
 <p>Before the type can be used, it must first be implemented.
-This can be done using IMPLEMENT TYPE:</p>
+This can be done using IMPLEMENT TYPE:
 
 <pre>
-D> implement type len; end implement;
-Type len implemented.
+D> implement type empno; end implement;
+Type empno implemented.
 </pre>
 
-<p>This works only for types with exactly one possible representation.
-If a user-defined type has more than one possible representation,
-an actual representation must be specified together with
+<p>After a type has been defined and implemented,
+it can be used to declare and assign variables. Example:
+
+<pre>
+D> var empno empno;
+D> empno := empno('1234');
+type_constraint_violation_error: empno
+D> empno := empno('A1234');
+type_constraint_violation_error: empno
+D> empno := empno('E1234');
+1 element affected.
+D> put_line(the_no(empno));
+E1234
+D> 
+</pre>
+
+<p>Things are getting a little more complex if a user-defined type has more
+than one ossible representation.
+In this case, an actual representation must be specified together with
 selector, getter, and setter operators which provide
 the mapping between the possible representations and the actual representation.
 These operators are accessing the actual representation.
@@ -877,15 +897,7 @@ implement type point as tuple { x float, y float };
 end implement;
 </pre>
 
-<p>After a type has been defined and implemented,
-it can be used to declare and assign variables, like so:
-
-<pre>
-D> var l len;
-D> l := len(1.0);
-1 element affected.
-D>
-</pre>
+<p>Usage examples:
 
 <pre>
 D> var p point;

@@ -1460,7 +1460,7 @@ op_regex_like(int argc, RDB_object *argv[], RDB_operator *op,
     regex_t reg;
     int ret;
 
-    ret = regcomp(&reg, argv[1]->val.bin.datap, REG_NOSUB);
+    ret = regcomp(&reg, argv[1]->val.bin.datap, REG_EXTENDED);
     if (ret != 0) {
         RDB_raise_invalid_argument("invalid regular expression", ecp);
         return RDB_ERROR;
