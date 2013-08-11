@@ -23,6 +23,10 @@ set ::DBSETUP {
     }
 }
 
+set ::CLEANUP {
+    removeDirectory dbenv
+}
+
 test arraysel {array selectors and index_of} -body {
     exec $testdir/../../dli/durodt << {
 	    -- without type 
@@ -121,7 +125,7 @@ test ptarray {array from private table} -body {
 3
 }
 
-test ops {operators with array arguments} -setup $DBSETUP -body {
+test ops {operators with array arguments} -setup $DBSETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         CONNECT('dbenv');
         CURRENT_DB := 'D';
@@ -160,7 +164,7 @@ test ops {operators with array arguments} -setup $DBSETUP -body {
 3
 }
 
-test retops {operator returning array} -setup $DBSETUP -body {
+test retops {operator returning array} -setup $DBSETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         CONNECT('dbenv');
         CURRENT_DB := 'D';
@@ -193,7 +197,7 @@ test retops {operator returning array} -setup $DBSETUP -body {
 5
 }
 
-test array_utype {type with array-valued component} -setup $DBSETUP -body {
+test array_utype {type with array-valued component} -setup $DBSETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         CONNECT('dbenv');
         CURRENT_DB := 'D';

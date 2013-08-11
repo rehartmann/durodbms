@@ -23,7 +23,11 @@ set ::SETUP {
     }
 }
 
-test create {creating and populating public table} -setup $SETUP -body {
+set ::CLEANUP {
+    removeDirectory dbenv
+}
+
+test create {creating and populating public table} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -81,7 +85,7 @@ one
 two
 }
 
-test rollback {rollback after accessing public} -setup $SETUP -body {
+test rollback {rollback after accessing public} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';

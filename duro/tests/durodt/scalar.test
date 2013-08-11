@@ -25,6 +25,10 @@ set ::SETUP {
     }
 }
 
+set ::CLEANUP {
+    removeDirectory dbenv
+}
+
 test scalar_builtin {built-in scalar definitions and operators} -body {
     exec $testdir/../../dli/durodt $testdir/scalar.td
 } -result {2
@@ -75,7 +79,7 @@ test casts {cast operators} -body {
 Do
 }
 
-test deftype {user-defined types} -setup $SETUP -body {
+test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -191,7 +195,7 @@ error #2 caused by incomplete type caught
 type constraint violation caught
 }
 
-test deftypemr {user-defined type with multiple possreps} -setup $SETUP -body {
+test deftypemr {user-defined type with multiple possreps} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -287,7 +291,7 @@ test deftypemr {user-defined type with multiple possreps} -setup $SETUP -body {
 200.12
 }
 
-test deftypemri {user-defined type with multiple possreps and incomplete implementation} -setup $SETUP -body {
+test deftypemri {user-defined type with multiple possreps and incomplete implementation} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -334,7 +338,7 @@ test deftypemri {user-defined type with multiple possreps and incomplete impleme
 declaration with unimplemented type caught
 }
 
-test defroop {read-only user-defined operators} -setup $SETUP -body {
+test defroop {read-only user-defined operators} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt -e dbenv -d D << {
         operator testop() returns string;
             var a integer;
@@ -422,7 +426,7 @@ test defroop {read-only user-defined operators} -setup $SETUP -body {
 0
 }
 
-test defupdop {user-defined update operators} -setup $SETUP -body {
+test defupdop {user-defined update operators} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';
         begin transaction;
@@ -478,7 +482,7 @@ test defupdop {user-defined update operators} -setup $SETUP -body {
 invalid updates caught
 }
 
-test typeinf {type inference} -setup $SETUP -body {
+test typeinf {type inference} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';
         operator zero() returns int;
@@ -494,7 +498,7 @@ test typeinf {type inference} -setup $SETUP -body {
 } -result {0 0
 }
 
-test trycatch {TRY .. CATCH} -setup $SETUP -body {
+test trycatch {TRY .. CATCH} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';
         begin transaction;
@@ -517,7 +521,7 @@ test trycatch {TRY .. CATCH} -setup $SETUP -body {
 } -result {caught
 }
 
-test getenv {GETENV operator} -setup $SETUP -body {
+test getenv {GETENV operator} -setup $SETUP -cleanup $CLEANUP -body {
     set ::env(TEST) DUROTEST
 
     exec $testdir/../../dli/durodt -e dbenv << {
@@ -527,7 +531,7 @@ test getenv {GETENV operator} -setup $SETUP -body {
 }
 
 test with {WITH expression} -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
+    exec $testdir/../../dli/durodt << {
         put(WITH (C := 100): WITH (A := 7, B := C): A+B); put_line('');
         
         -- empty WITH
@@ -538,7 +542,7 @@ test with {WITH expression} -body {
 }
 
 test like {LIKE operator} -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
+    exec $testdir/../../dli/durodt << {
         put_line(if 'abc' like '?bc' then 'true' else 'false');
         put_line(if 'aabc' like '?bc' then 'true' else 'false');
         put_line(if 'abc' like 'a*c' then 'true' else 'false');

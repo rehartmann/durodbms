@@ -23,7 +23,12 @@ set ::SETUP {
     }
 }
 
-test insert {creating table and inserting tuples} -setup $SETUP -body {
+set ::CLEANUP {
+    removeDirectory dbenv
+}
+
+test insert {creating table and inserting tuples} \
+            -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -97,7 +102,7 @@ element_exists_error
 3 tuples
 }
 
-test update {creating table and updating tuples} -setup $SETUP -body {
+test update {creating table and updating tuples} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -146,7 +151,7 @@ key violation caught
 Uno
 }
 
-test foreach_drop {DROP in FOREACH} -setup $SETUP -body {
+test foreach_drop {DROP in FOREACH} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -168,7 +173,7 @@ test foreach_drop {DROP in FOREACH} -setup $SETUP -body {
 } -result {in_use caught
 }
 
-test invalid_type {invalid (scalar) type for table} -setup $SETUP -match glob -body {
+test invalid_type {invalid (scalar) type for table} -setup $SETUP -cleanup $CLEANUP -match glob -body {
     exec $testdir/../../dli/durodt << {
 	    connect('dbenv');
     	current_db := 'D';
@@ -178,7 +183,7 @@ test invalid_type {invalid (scalar) type for table} -setup $SETUP -match glob -b
     }
 }  -returnCodes {1} -result {*type_mismatch_error*}
 
-test join_extend {Natural JOIN/EXTEND}  -setup $SETUP -body {
+test join_extend {Natural JOIN/EXTEND}  -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -238,7 +243,7 @@ test join_extend {Natural JOIN/EXTEND}  -setup $SETUP -body {
 2 y 1 yy
 }
 
-test ra {relational algebra} -setup $SETUP -body {
+test ra {relational algebra} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -333,7 +338,7 @@ x
 y
 }
 
-test virtual_assign {assignment to virtual tables} -setup $SETUP -body {
+test virtual_assign {assignment to virtual tables} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt -e dbenv -d D << {
         begin tx;
         var emp real rel{emp_id int, dept_id int, name string} key {emp_id};
@@ -369,7 +374,7 @@ Smith
 Jones
 }
 
-test tupleattr {tuple-valued attributes} -setup $SETUP -body {
+test tupleattr {tuple-valued attributes} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -430,7 +435,7 @@ test updop {user defined update operators} -setup $SETUP -body {
 } -result {durox
 }
 
-test roop {user defined read-only operators} -setup $SETUP -body {
+test roop {user defined read-only operators} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -474,7 +479,7 @@ test zero_attrs {Tables with zero attributes} -setup $SETUP -body {
 } -result {RELATION {}
 }
 
-test logic {Logic operators} -setup $SETUP -body {
+test logic {Logic operators} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -579,7 +584,7 @@ test logic {Logic operators} -setup $SETUP -body {
 2 1
 }
 
-test aggregate {Aggregate operators} -setup $SETUP -body {
+test aggregate {Aggregate operators} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -604,7 +609,7 @@ TRUE
 TRUE
 }
 
-test summarize {SUMMARIZE} -setup $SETUP -body {
+test summarize {SUMMARIZE} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -669,7 +674,7 @@ test relrel {table with relation attribute} -setup $SETUP -body {
 yo
 }
 
-test index {creating index} -setup $SETUP -match glob -body {
+test index {creating index} -setup $SETUP -cleanup $CLEANUP -match glob -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -712,7 +717,7 @@ test index {creating index} -setup $SETUP -match glob -body {
 }
 
 
-test real_default {public real table with default values} -setup $SETUP -body {
+test real_default {public real table with default values} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -763,7 +768,7 @@ test real_default {public real table with default values} -setup $SETUP -body {
 6 120 xyy
 }
 
-test dbconstraint {db/table constraints 1} -setup $SETUP -body {
+test dbconstraint {db/table constraints 1} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';
         begin transaction;
@@ -822,7 +827,7 @@ test dbconstraint2 {db/table constraints 2} -setup $SETUP -body {
 }
 
 # Test referential constraint, including optimization and EXPLAIN <assignment>
-test refconstraint {referential constraint} -setup $SETUP -body {
+test refconstraint {referential constraint} -setup $SETUP -cleanup $CLEANUP -body {
     puts -nonewline [exec $testdir/../../dli/durodt -e dbenv -d D << {
         begin tx;
         var customers real rel {cust_id int, name string} key {cust_id};
@@ -917,7 +922,7 @@ test refconstraint {referential constraint} -setup $SETUP -body {
 delete from customers caught
 }
 
-test matching_index {MINUS, INTERSECT, SEMIJOIN, SEMIMINUS with index on table #2} -match glob -body {
+test matching_index {MINUS, INTERSECT, SEMIJOIN, SEMIMINUS with index on table #2} -setup $SETUP -cleanup $CLEANUP -match glob -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';
         begin transaction;
@@ -972,7 +977,7 @@ test matching_index {MINUS, INTERSECT, SEMIJOIN, SEMIMINUS with index on table #
 1 C
 }
 
-test utypetable {table with attribute of user-defined type} -body {
+test utypetable {table with attribute of user-defined type} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';
         begin transaction;
@@ -1016,7 +1021,7 @@ a
 caught in_use_error
 }
 
-test implicit_tx {implicit transactions} -setup $SETUP -body {
+test implicit_tx {implicit transactions} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         implicit_tx := true;
 

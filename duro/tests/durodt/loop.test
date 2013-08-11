@@ -23,7 +23,11 @@ set ::DBSETUP {
     }
 }
 
-test for {FOR} -setup $DBSETUP -body {
+set ::CLEANUP {
+    removeDirectory dbenv
+}
+
+test for {FOR} -setup $DBSETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         var i INTEGER;
     
@@ -48,7 +52,7 @@ test for {FOR} -setup $DBSETUP -body {
 1
 }
 
-test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -body {
+test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         CURRENT_DB := 'D';
         begin transaction;
@@ -126,7 +130,7 @@ test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -body {
 dropping FOR variable: error caught
 }
 
-test leave_op {Unmatched LEAVE in operator} -setup $DBSETUP -body {
+test leave_op {Unmatched LEAVE in operator} -setup $DBSETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         CURRENT_DB := 'D';
         begin tx;
