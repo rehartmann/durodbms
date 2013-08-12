@@ -41,6 +41,59 @@ Aj
 error caught
 }
 
+test scalar_builtin_types_pr {built-in scalar types with possreps} -body {
+    exec $testdir/../../dli/durodt << {
+
+        var inv_arg_err invalid_argument_error;
+        put_line(the_msg(inv_arg_err));
+
+        var nrt_err no_running_transaction_error;
+
+        var type_mismatch_err type_mismatch_error;
+
+        var not_found_err not_found_error;
+
+        var op_not_found_err operator_not_found_error;
+
+        var name_err name_error;
+
+        var element_exists_err element_exists_error;
+
+        var type_constraint_violation_err type_constraint_violation_error;
+
+        var key_violation_err key_violation_error;
+
+        var predicate_violation_err predicate_violation_error;
+
+        var aggregate_undefined_err aggregate_undefined_error;
+
+        var version_mismatch_err version_mismatch_error;
+
+        var not_supported_err not_supported_error;
+
+        var syntax_err syntax_error;
+
+        var in_user_err in_use_error;
+
+        var no_mem_err no_memory_error;
+
+        var sys_err system_error;
+
+        var lock_not_granted_err lock_not_granted_error;
+
+        var deadlock_err deadlock_error;
+
+        var res_not_found_err resource_not_found_error;
+
+        var internal_err internal_error;
+
+        var fatal_err fatal_error;
+
+        var id identifier;
+    }
+} -result {
+}
+
 test casts {cast operators} -body {
     exec $testdir/../../dli/durodt << {
 	    put(cast_as_integer('11')); put_line('');

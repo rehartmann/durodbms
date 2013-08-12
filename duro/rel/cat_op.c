@@ -161,7 +161,7 @@ RDB_cat_load_ro_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp
         }
         symname = RDB_tuple_get_string(&tpl, "symbol");
         if (strcmp(symname, "RDB_sys_select") == 0) {
-            op->opfn.ro_fp = &RDB_sys_select;
+            op->opfn.ro_fp = &RDB_op_sys_select;
         } else {
             op->opfn.ro_fp = (RDB_ro_op_func *) lt_dlsym(op->modhdl, symname);
             if (op->opfn.ro_fp == NULL) {

@@ -31,13 +31,14 @@ RDB_get_possrep(const RDB_type *typ, const char *repname)
  * Implements a system-generated selector
  */
 int
-RDB_sys_select(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *retvalp)
+RDB_sys_select(int argc, RDB_object *argv[], const char *opname,
+        RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp,
+        RDB_object *retvalp)
 {
     RDB_possrep *prp;
 
     /* Find possrep */
-    prp = RDB_get_possrep(op->rtyp, op->name);
+    prp = RDB_get_possrep(typ, opname);
     if (prp == NULL) {
         RDB_raise_invalid_argument("component name is NULL", ecp);
         return RDB_ERROR;
@@ -46,7 +47,7 @@ RDB_sys_select(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context 
     /* If *retvalp carries a value, it must match the type */
     if (retvalp->kind != RDB_OB_INITIAL
             && (retvalp->typ == NULL
-                || !RDB_type_equals(retvalp->typ, op->rtyp))) {
+                || !RDB_type_equals(retvalp->typ, typ))) {
         RDB_raise_type_mismatch("invalid selector return type", ecp);
         return RDB_ERROR;
     }
@@ -60,14 +61,25 @@ RDB_sys_select(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context 
         int i;
 
         for (i = 0; i < argc; i++) {
-            if (RDB_tuple_set(retvalp, op->rtyp->def.scalar.repv[0].compv[i].name,
+            if (RDB_tuple_set(retvalp, typ->def.scalar.repv[0].compv[i].name,
                     argv[i], ecp) != RDB_OK) {
                 return RDB_ERROR;
             }
         }
     }
-    retvalp->typ = op->rtyp;
+    retvalp->typ = typ;
     return RDB_OK;
+}
+
+/**
+ * Implements a system-generated selector.
+ * Signature is conformant to RDB_ro_op_func.
+ */
+int
+RDB_op_sys_select(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
+{
+    return RDB_sys_select(argc, argv, op->name, op->rtyp, ecp, txp, retvalp);
 }
 
 typedef struct get_comp_type_data {

@@ -1194,7 +1194,7 @@ RDB_add_selector(RDB_type *typ, RDB_exec_context *ecp)
         RDB_free(argtv);
     if (datap == NULL)
         goto error;
-    datap->opfn.ro_fp = &RDB_sys_select;
+    datap->opfn.ro_fp = &RDB_op_sys_select;
 
     if (RDB_put_op(&RDB_builtin_ro_op_map, datap, ecp) != RDB_OK) {
         goto error;

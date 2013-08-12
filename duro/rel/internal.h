@@ -513,12 +513,16 @@ int
 RDB_add_selector(RDB_type *, RDB_exec_context *);
 
 int
-RDB_sys_select(int argc, RDB_object *argv[], RDB_operator *,
-        RDB_exec_context *, RDB_transaction *, RDB_object *retvalp);
+RDB_sys_select(int argc, RDB_object *argv[], const char *opname,
+        RDB_type *, RDB_exec_context *, RDB_transaction *, RDB_object *);
+
+int
+RDB_op_sys_select(int argc, RDB_object *argv[], RDB_operator *,
+        RDB_exec_context *, RDB_transaction *, RDB_object *);
 
 RDB_object **
-RDB_index_objpv(struct RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
-        int objpc, RDB_bool asc, RDB_exec_context *);
+RDB_index_objpv(struct RDB_tbindex *, RDB_expression *, RDB_type *,
+        int, RDB_bool, RDB_exec_context *);
 
 struct RDB_tbindex *
 RDB_expr_sortindex (RDB_expression *);
