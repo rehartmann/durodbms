@@ -19,7 +19,7 @@ B -> 4711}
 
 test lstables {list all tables} -setup $SETUP -body {
     exec [configure -testdir]/lstables -e dbenv -d TEST | sort
-} -result {DEPTS
+} -result {depts
 EMPS1
 EMPS2}
 
@@ -210,5 +210,10 @@ SALARY: 4000.000000
 EMPNO: 4
 NAME: Miller
 SALARY: 5000.000000}
+
+test interp {interpreter} -setup $SETUP -body {
+    exec [configure -testdir]/test_interp
+} -result {Test
+2} 
 
 cleanupTests

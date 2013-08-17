@@ -10,6 +10,7 @@
 #include "iinterp.h"
 #include "interp_core.h"
 #include "interp_assign.h"
+#include "ioop.h"
 #include "exparse.h"
 #include "parse.h"
 #include <gen/hashmap.h>
@@ -31,6 +32,11 @@
 
 extern int yylineno;
 
+typedef struct yy_buffer_state *YY_BUFFER_STATE;
+
+YY_BUFFER_STATE yy_scan_string(const char *txt);
+void yy_delete_buffer(YY_BUFFER_STATE);
+
 int err_line;
 
 typedef struct yy_buffer_state *YY_BUFFER_STATE;
@@ -43,30 +49,6 @@ static const char *impl_typename;
 
 static RDB_object current_db_obj;
 static RDB_object implicit_tx_obj;
-
-void
-Duro_exit_interp(void)
-{
-    RDB_exec_context ec;
-
-    RDB_init_exec_context(&ec);
-
-    Duro_destroy_vars();
-
-    if (RDB_parse_get_interactive()) {
-        RDB_destroy_obj(&prompt, &ec);
-    }
-
-    if (Duro_txnp != NULL) {
-        RDB_rollback(&ec, &Duro_txnp->tx);
-
-        if (RDB_parse_get_interactive())
-            printf("Transaction rolled back.\n");
-    }
-    if (Duro_envp != NULL)
-        RDB_close_env(Duro_envp);
-    RDB_destroy_exec_context(&ec);
-}
 
 /*
  * Operator exit() without arguments
@@ -233,94 +215,26 @@ trace_op(int argc, RDB_object *argv[], RDB_operator *op,
     return RDB_OK;
 }
 
-int
-Duro_init_interp(RDB_exec_context *ecp, const char *dbname)
-{
-    static RDB_parameter exit_int_params[1];
-    static RDB_parameter connect_params[1];
-    static RDB_parameter create_db_params[1];
-    static RDB_parameter create_env_params[1];
-    static RDB_parameter system_params[2];
-    static RDB_parameter trace_params[2];
-
-    exit_int_params[0].typ = &RDB_INTEGER;
-    exit_int_params[0].update = RDB_FALSE;
-    connect_params[0].typ = &RDB_STRING;
-    connect_params[0].update = RDB_FALSE;
-    create_db_params[0].typ = &RDB_STRING;
-    create_db_params[0].update = RDB_FALSE;
-    create_env_params[0].typ = &RDB_STRING;
-    create_env_params[0].update = RDB_FALSE;
-    system_params[0].typ = &RDB_STRING;
-    system_params[0].update = RDB_FALSE;
-    system_params[1].typ = &RDB_INTEGER;
-    system_params[1].update = RDB_TRUE;
-    trace_params[0].typ = &RDB_INTEGER;
-    trace_params[0].update = RDB_FALSE;
-
-    Duro_init_vars();
-
-    leave_targetname = NULL;
-    impl_typename = NULL;
-    current_foreachp = NULL;
-
-    RDB_init_op_map(&Duro_sys_module.upd_op_map);
-
-    RDB_init_obj(&current_db_obj);
-    RDB_init_obj(&implicit_tx_obj);
-
-    if (RDB_put_upd_op(&Duro_sys_module.upd_op_map, "exit", 0, NULL, &exit_op, ecp) != RDB_OK)
-        goto error;
-    if (RDB_put_upd_op(&Duro_sys_module.upd_op_map, "exit", 1, exit_int_params, &exit_int_op,
-            ecp) != RDB_OK)
-        goto error;
-    if (RDB_put_upd_op(&Duro_sys_module.upd_op_map, "connect", 1, connect_params, &connect_op,
-            ecp) != RDB_OK)
-        goto error;
-    if (RDB_put_upd_op(&Duro_sys_module.upd_op_map, "disconnect", 0, NULL, &disconnect_op,
-            ecp) != RDB_OK)
-        goto error;
-    if (RDB_put_upd_op(&Duro_sys_module.upd_op_map, "create_db", 1, create_db_params,
-            &create_db_op, ecp) != RDB_OK)
-        goto error;
-    if (RDB_put_upd_op(&Duro_sys_module.upd_op_map, "create_env", 1, create_env_params,
-            &create_env_op, ecp) != RDB_OK)
-        goto error;
-    if (RDB_put_upd_op(&Duro_sys_module.upd_op_map, "system", 2, system_params, &system_op,
-            ecp) != RDB_OK)
-        goto error;
-    if (RDB_put_upd_op(&Duro_sys_module.upd_op_map, "trace", 1, trace_params,
-            &trace_op, ecp) != RDB_OK)
-        goto error;
-
-    /* Create current_db and implicit_tx in system module */
-
-    if (RDB_string_to_obj(&current_db_obj, dbname, ecp) != RDB_OK) {
-        goto error;
+/* Add I/O operators and variables */
+static int
+add_io(RDB_exec_context *ecp) {
+    if (RDB_add_io_ops(&Duro_sys_module.upd_op_map, ecp) != RDB_OK) {
+        return RDB_ERROR;
     }
 
-    RDB_bool_to_obj(&implicit_tx_obj, RDB_FALSE);
-
-    if (RDB_hashmap_put(&Duro_sys_module.varmap, "current_db", &current_db_obj)
-            != RDB_OK) {
+    if (RDB_hashmap_put(&Duro_sys_module.varmap, "stdin", &DURO_STDIN_OBJ) != RDB_OK) {
         RDB_raise_no_memory(ecp);
-        goto error;
+        return RDB_ERROR;
     }
-
-    if (RDB_hashmap_put(&Duro_sys_module.varmap, "implicit_tx", &implicit_tx_obj)
-            != RDB_OK) {
+    if (RDB_hashmap_put(&Duro_sys_module.varmap, "stdout", &DURO_STDOUT_OBJ) != RDB_OK) {
         RDB_raise_no_memory(ecp);
-        goto error;
+        return RDB_ERROR;
     }
-
+    if (RDB_hashmap_put(&Duro_sys_module.varmap, "stderr", &DURO_STDERR_OBJ) != RDB_OK) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     return RDB_OK;
-
-error:
-    RDB_destroy_obj(&current_db_obj, ecp);
-    RDB_destroy_obj(&implicit_tx_obj, ecp);
-
-    RDB_destroy_op_map(&Duro_sys_module.upd_op_map);
-    return RDB_ERROR;
 }
 
 static int
@@ -2604,8 +2518,143 @@ Duro_process_stmt(RDB_exec_context *ecp)
     return RDB_parse_del_node(stmtp, ecp);
 }
 
+/**@defgroup interp Interpreter functions
+ * \#include <dli/iinterp.h>
+ * @{
+ */
+
+/**
+ * Initialize the interpreter.
+ */
+int
+Duro_init_interp(RDB_exec_context *ecp, const char *dbname)
+{
+    static RDB_parameter exit_int_params[1];
+    static RDB_parameter connect_params[1];
+    static RDB_parameter create_db_params[1];
+    static RDB_parameter create_env_params[1];
+    static RDB_parameter system_params[2];
+    static RDB_parameter trace_params[2];
+
+    exit_int_params[0].typ = &RDB_INTEGER;
+    exit_int_params[0].update = RDB_FALSE;
+    connect_params[0].typ = &RDB_STRING;
+    connect_params[0].update = RDB_FALSE;
+    create_db_params[0].typ = &RDB_STRING;
+    create_db_params[0].update = RDB_FALSE;
+    create_env_params[0].typ = &RDB_STRING;
+    create_env_params[0].update = RDB_FALSE;
+    system_params[0].typ = &RDB_STRING;
+    system_params[0].update = RDB_FALSE;
+    system_params[1].typ = &RDB_INTEGER;
+    system_params[1].update = RDB_TRUE;
+    trace_params[0].typ = &RDB_INTEGER;
+    trace_params[0].update = RDB_FALSE;
+
+    Duro_init_vars();
+
+    leave_targetname = NULL;
+    impl_typename = NULL;
+    current_foreachp = NULL;
+
+    RDB_init_op_map(&Duro_sys_module.upd_op_map);
+
+    RDB_init_obj(&current_db_obj);
+    RDB_init_obj(&implicit_tx_obj);
+
+    if (RDB_put_upd_op(&Duro_sys_module.upd_op_map, "exit", 0, NULL, &exit_op, ecp) != RDB_OK)
+        goto error;
+    if (RDB_put_upd_op(&Duro_sys_module.upd_op_map, "exit", 1, exit_int_params, &exit_int_op,
+            ecp) != RDB_OK)
+        goto error;
+    if (RDB_put_upd_op(&Duro_sys_module.upd_op_map, "connect", 1, connect_params, &connect_op,
+            ecp) != RDB_OK)
+        goto error;
+    if (RDB_put_upd_op(&Duro_sys_module.upd_op_map, "disconnect", 0, NULL, &disconnect_op,
+            ecp) != RDB_OK)
+        goto error;
+    if (RDB_put_upd_op(&Duro_sys_module.upd_op_map, "create_db", 1, create_db_params,
+            &create_db_op, ecp) != RDB_OK)
+        goto error;
+    if (RDB_put_upd_op(&Duro_sys_module.upd_op_map, "create_env", 1, create_env_params,
+            &create_env_op, ecp) != RDB_OK)
+        goto error;
+    if (RDB_put_upd_op(&Duro_sys_module.upd_op_map, "system", 2, system_params, &system_op,
+            ecp) != RDB_OK)
+        goto error;
+    if (RDB_put_upd_op(&Duro_sys_module.upd_op_map, "trace", 1, trace_params,
+            &trace_op, ecp) != RDB_OK)
+        goto error;
+
+    /* Create current_db and implicit_tx in system module */
+
+    if (RDB_string_to_obj(&current_db_obj, dbname, ecp) != RDB_OK) {
+        goto error;
+    }
+
+    RDB_bool_to_obj(&implicit_tx_obj, RDB_FALSE);
+
+    if (RDB_hashmap_put(&Duro_sys_module.varmap, "current_db", &current_db_obj)
+            != RDB_OK) {
+        RDB_raise_no_memory(ecp);
+        goto error;
+    }
+
+    if (RDB_hashmap_put(&Duro_sys_module.varmap, "implicit_tx", &implicit_tx_obj)
+            != RDB_OK) {
+        RDB_raise_no_memory(ecp);
+        goto error;
+    }
+
+    if (add_io(ecp) != RDB_OK) {
+        goto error;
+    }
+
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&current_db_obj, ecp);
+    RDB_destroy_obj(&implicit_tx_obj, ecp);
+
+    RDB_destroy_op_map(&Duro_sys_module.upd_op_map);
+    return RDB_ERROR;
+}
+
+/**
+ * Release resources allocated during interpreter initialization.
+ * Also close the environment that was passed to RDB_init_interp().
+ */
 void
-Duro_print_error(const RDB_object *errobjp)
+Duro_exit_interp(void)
+{
+    RDB_exec_context ec;
+
+    RDB_init_exec_context(&ec);
+
+    Duro_destroy_vars();
+
+    if (RDB_parse_get_interactive()) {
+        RDB_destroy_obj(&prompt, &ec);
+    }
+
+    if (Duro_txnp != NULL) {
+        RDB_rollback(&ec, &Duro_txnp->tx);
+
+        if (RDB_parse_get_interactive())
+            printf("Transaction rolled back.\n");
+    }
+
+    if (Duro_envp != NULL)
+        RDB_close_env(Duro_envp);
+
+    RDB_destroy_exec_context(&ec);
+}
+
+/**
+ * Print an error to an output stream.
+ */
+void
+Duro_print_error(const RDB_object *errobjp, FILE *f)
 {
     RDB_exec_context ec;
     RDB_object msgobj;
@@ -2614,18 +2663,22 @@ Duro_print_error(const RDB_object *errobjp)
     RDB_init_exec_context(&ec);
     RDB_init_obj(&msgobj);
 
-    fputs (RDB_type_name(errtyp), stderr);
+    fputs(RDB_type_name(errtyp), f);
 
     if (RDB_obj_comp(errobjp, "msg", &msgobj, NULL, &ec, NULL) == RDB_OK) {
-        fprintf(stderr, ": %s", RDB_obj_string(&msgobj));
+        fprintf(f, ": %s", RDB_obj_string(&msgobj));
     }
 
-    fputs ("\n", stderr);
+    fputs ("\n", f);
 
     RDB_destroy_obj(&msgobj, &ec);
     RDB_destroy_exec_context(&ec);
 }
 
+/**
+ * Make the interpreter raise a system_error.
+ * This function may be called from a signal handler.
+ */
 void
 Duro_dt_interrupt(void)
 {
@@ -2636,7 +2689,7 @@ Duro_dt_interrupt(void)
  * Read statements from file infilename and execute them.
  * If infilename is NULL, read from standard input.
  * If the input is a terminal, a function for reading lines must be
- * provided using RDB_parse_set_readline_fn().
+ * provided using RDB_parse_set_read_line_fn().
  */
 int
 Duro_dt_execute(RDB_environment *dbenvp, const char *infilename,
@@ -2678,7 +2731,7 @@ Duro_dt_execute(RDB_environment *dbenvp, const char *infilename,
             RDB_object *errobjp = RDB_get_err(ecp);
             if (errobjp != NULL) {
                 if (RDB_parse_get_interactive()) {
-                    Duro_print_error(errobjp);
+                    Duro_print_error(errobjp, stderr);
                     RDB_parse_init_buf(NULL);
                 } else {
                     fprintf(stderr, "error in statement at or near line %d: ", err_line);
@@ -2706,8 +2759,46 @@ error:
     return RDB_ERROR;
 }
 
+/**
+ * Read statements from string instr and execute them.
+ */
+int
+Duro_dt_execute_str(RDB_environment *dbenvp, const char *instr,
+        RDB_exec_context *ecp)
+{
+    YY_BUFFER_STATE buf;
+    Duro_envp = dbenvp;
+    Duro_interrupted = 0;
+
+    RDB_parse_set_interactive(RDB_FALSE);
+
+    buf = yy_scan_string(instr);
+
+    while (Duro_process_stmt(ecp) == RDB_OK);
+
+    RDB_object *errobjp = RDB_get_err(ecp);
+    if (errobjp != NULL) {
+        goto error;
+    } else {
+        /* Exit on EOF  */
+        yy_delete_buffer(buf);
+        return RDB_OK;
+    }
+
+error:
+    yy_delete_buffer(buf);
+    return RDB_ERROR;
+}
+
+/**
+ * Return a pointer to the prompt that is used in interactive mode.
+ */
 const char*
 Duro_dt_prompt(void)
 {
     return RDB_obj_string(&prompt);
 }
+
+/*
+ * @}
+ */

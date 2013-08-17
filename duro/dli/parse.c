@@ -1339,7 +1339,8 @@ RDB_parse_node_to_type(RDB_parse_node *nodep, RDB_gettypefn *getfnp, void *getar
  * Parse the <a href="../../expressions.html">expression</a>
 specified by <var>txt</var>.
 
-@returns The parsed expression, or NULL if the parsing failed.
+@returns A pointer to the RDB_parse_node representing the expression,
+or NULL if the parsing failed.
 
 @par Errors:
 <dl>

@@ -2,6 +2,7 @@
 
 #include <rel/rdb.h>
 #include <stdio.h>
+#include <assert.h>
 
 int
 create_tables(RDB_database *dbp, RDB_exec_context *ecp)
@@ -63,10 +64,10 @@ create_tables(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    printf("Creating table DEPTS\n");
+    printf("Creating table depts\n");
     key.strv = dept_key_attrs;
     key.strc = 1;
-    tbp = RDB_create_table("DEPTS", 2, dept_attrs, 1, &key, ecp, &tx);
+    tbp = RDB_create_table("depts", 2, dept_attrs, 1, &key, ecp, &tx);
     if (tbp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
@@ -92,8 +93,11 @@ fill_tables(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_init_obj(&deptpl);
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
+    assert(tbp != NULL);
     tbp2 = RDB_get_table("EMPS2", ecp, &tx);
-    tbp3 = RDB_get_table("DEPTS", ecp, &tx);
+    assert(tbp2 != NULL);
+    tbp3 = RDB_get_table("depts", ecp, &tx);
+    assert(tbp3 != NULL);
 
     printf("Filling EMPS1\n");
 
@@ -167,7 +171,7 @@ fill_tables(RDB_database *dbp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         goto error;
 
-    printf("Filling DEPTS\n");
+    printf("Filling depts\n");
 
     ret = RDB_tuple_set_int(&deptpl, "DEPTNO", 1, ecp);
     if (ret != RDB_OK)

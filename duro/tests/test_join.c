@@ -54,7 +54,7 @@ test_join(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    tbp2 = RDB_get_table("DEPTS", ecp, &tx);
+    tbp2 = RDB_get_table("depts", ecp, &tx);
     if (tbp2 == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;

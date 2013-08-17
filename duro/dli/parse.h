@@ -36,11 +36,27 @@ RDB_parse_stmt(RDB_exec_context *);
 RDB_parse_node *
 RDB_parse_stmt_string(const char *, RDB_exec_context *);
 
+/**@addtogroup parse
+ * @{
+ */
+
+/**
+ * Provide a function that will be used to read the next line
+ * in interactive mode.
+ */
 void
 RDB_parse_set_read_line_fn(RDB_read_line_fn *fnp);
 
+/**
+ * Provide a function that will be used to free a line of input
+ * read by the function passed to RDB_parse_set_read_line_fn().
+ */
 void
 RDB_parse_set_free_line_fn(RDB_free_line_fn *fnp);
+
+/*
+ * @}
+ */
 
 RDB_bool
 RDB_parse_get_interactive(void);

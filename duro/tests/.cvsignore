@@ -39,3 +39,4 @@ test_relation_op
 *.16
 lstables
 test_assign_where
+test_interp

@@ -65,7 +65,7 @@ test_useop(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     }
 
-    tbp = RDB_get_table("DEPTS", ecp, &tx);
+    tbp = RDB_get_table("depts", ecp, &tx);
     if (tbp == NULL) {
         goto error;
     }
