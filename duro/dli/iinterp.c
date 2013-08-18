@@ -2686,31 +2686,21 @@ Duro_dt_interrupt(void)
 }
 
 /**
- * Read statements from file infilename and execute them.
- * If infilename is NULL, read from standard input.
+ * Read statements from input stream *infp and execute them.
  * If the input is a terminal, a function for reading lines must be
  * provided using RDB_parse_set_read_line_fn().
  */
 int
-Duro_dt_execute(RDB_environment *dbenvp, const char *infilename,
+Duro_dt_execute(RDB_environment *dbenvp, FILE *infp,
         RDB_exec_context *ecp)
 {
-    FILE *infile = NULL;
     Duro_envp = dbenvp;
     Duro_interrupted = 0;
-
-    if (infilename != NULL) {
-        infile = fopen(infilename, "r");
-        if (infile == NULL) {
-            RDB_raise_resource_not_found(infilename, ecp);
-            return RDB_ERROR;
-        }
-    }
 
     /* Initialize error line */
     err_line = -1;
 
-    if (isatty(fileno(infile != NULL ? infile : stdin))) {
+    if (isatty(fileno(infp))) {
         RDB_parse_set_interactive(RDB_TRUE);
 
         /* Prompt is only needed in interactive mode */
@@ -2724,7 +2714,7 @@ Duro_dt_execute(RDB_environment *dbenvp, const char *infilename,
         RDB_parse_set_interactive(RDB_FALSE);
     }
 
-    RDB_parse_init_buf(infile != NULL ? infile : stdin);
+    RDB_parse_init_buf(infp);
 
     for(;;) {
         if (Duro_process_stmt(ecp) != RDB_OK) {
@@ -2741,10 +2731,6 @@ Duro_dt_execute(RDB_environment *dbenvp, const char *infilename,
             } else {
                 /* Exit on EOF  */
                 puts("");
-                if (infile != NULL) {
-                    fclose(infile);
-                    infile = NULL;
-                }
                 RDB_parse_destroy_buf();
                 return RDB_OK;
             }
@@ -2752,9 +2738,6 @@ Duro_dt_execute(RDB_environment *dbenvp, const char *infilename,
     }
 
 error:
-    if (infile != NULL) {
-        fclose(infile);
-    }
     RDB_parse_destroy_buf();
     return RDB_ERROR;
 }

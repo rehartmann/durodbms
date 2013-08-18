@@ -121,6 +121,7 @@ main(int argc, char *argv[])
     char *dbname = "";
     RDB_environment *envp;
     char *infilename;
+    FILE *infp = NULL;
 #ifndef _WIN32
     struct sigaction sigact;
 #endif
@@ -169,6 +170,14 @@ main(int argc, char *argv[])
         infilename = NULL;
     }
 
+    if (infilename != NULL) {
+        infp = fopen(infilename, "r");
+        if (infp == NULL) {
+            fprintf(stderr, "cannot open %s: %s\n", infilename, strerror(errno));
+            exit(2);
+        }
+    }
+
     if (envname != NULL) {
         ret = RDB_open_env(envname, &envp, 0);
         if (ret != RDB_OK) {
@@ -202,7 +211,7 @@ main(int argc, char *argv[])
         goto error;
     }
 
-    if (Duro_dt_execute(envp, infilename, &ec) != RDB_OK) {
+    if (Duro_dt_execute(envp, infp != NULL ? infp : stdin, &ec) != RDB_OK) {
         Duro_print_error(RDB_get_err(&ec), stderr);
         Duro_exit_interp();
         goto error;
@@ -210,10 +219,16 @@ main(int argc, char *argv[])
 
     Duro_exit_interp();
 
+    if (infp != NULL)
+        fclose(infp);
+
     RDB_destroy_exec_context(&ec);
     return 0;
 
 error:
+    if (infp != NULL)
+        fclose(infp);
+
     RDB_destroy_exec_context(&ec);
     return 1;
 }
