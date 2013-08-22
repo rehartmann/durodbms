@@ -473,12 +473,9 @@ to TRUE or FALSE, respectively.
 <p>As required by <cite>TTM</cite>, tables are variables in DuroDBMS,
 thus a table is created by declaring a variable. 
 
-<p>A table is persistent if and only if it belongs to a database.
-A running transaction is required to create or access database tables.
-
 <h3>Real tables</h3>
 
-<p>Creating a real database table:
+<p>Creating a real table:
 
 <pre>
 D> var r real relation { no int, name string } key {no};
@@ -524,7 +521,26 @@ D>
 
 <h3>Public tables</h3>
 
-<p>...
+<p>DuroDBMS support public tables as a means to provide logical data independence,
+separating the application from the database.
+
+<p>A public table can be defined as follows:
+
+<pre>
+D> var pt public relation { no int, name string } key {no};
+Public table pt created.
+D> 
+</pre>
+
+<p>Before a public table can be used, a mapping between it and and one or more database
+tables must be defined. This can be done using the MAP operator.
+
+<p>A simple example (using the table <var>r</var> defined above):
+
+<pre>
+D> map pt r;
+D>
+</pre>
 
 <h3>Insert, update, delete</h3>
 

@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2012 Rene Hartmann.
+ * Copyright (C) 2003-2013 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -107,7 +107,10 @@ RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
             keyv = &allkey;
         }
 
-        /* Copy candidate keys */
+        /*
+         * Copy candidate keys. The attribute name must be copied
+         * because RDB_all_key() did not copy them.
+         */
         tbp->val.tb.keyv = dup_keyv(keyc, keyv, ecp);
         if (tbp->val.tb.keyv == NULL) {
             goto error;

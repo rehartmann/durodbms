@@ -44,7 +44,7 @@ test insert {creating table and inserting tuples} \
         begin tx;
         insert r tup {i 3, d 1.0, c 'Z'};
 
-        insert r relation {} {}; -- ?
+        insert r relation {} {}; -- !! ?
 
         var a init 1;
         insert r rel {tuple {i a, d 1.0, c 'X'}, tup {i 2, d 1.1, c 'Y'}};

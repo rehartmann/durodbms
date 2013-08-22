@@ -318,8 +318,8 @@ typedef RDB_object *RDB_getobjfn(const char *, void *);
 
 typedef RDB_type *RDB_gettypefn(const char *, void *);
 
-char *
-RDB_db_name(RDB_database *);
+const char *
+RDB_db_name(const RDB_database *);
 
 RDB_environment *
 RDB_db_env(RDB_database *);

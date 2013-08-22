@@ -85,6 +85,19 @@ one
 two
 }
 
+test create_allkey {creating public table that is implicitly all-key} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+        var r1 real relation {no int, c string} key {no, c};
+        var p public relation {no int, c string};
+        map p r1;
+        commit;
+    }
+}
+
 test rollback {rollback after accessing public} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');

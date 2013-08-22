@@ -33,7 +33,7 @@ scons install
 
 <p>fcgi_durodt provides an update operator <var>fcgi_accept</var> which is defined as follows:
 
-<p>OPERATOR fcgi_accept(request_accepted boolean) UPDATES {};
+<p>OPERATOR fcgi_accept(request_accepted boolean) UPDATES { request_accepted };
 
 <p><var>fcgi_accept</var> waits for a request and sets
 <var>request_accepted</var> to TRUE if a request has arrived and is ready for processing.
@@ -140,6 +140,6 @@ It uses www_form_to_tuple to convert the query string or form data to a tuple.
 http://localhost/fcgi-bin/gettables.td?pattern=*
 (assuming the program is stored under the name getttables.td
 in the fcgi-bin direcory of the local webserver) 
-lists all tables in the environment.
+lists all tables in the database <em>D</em>.
 
 </html>

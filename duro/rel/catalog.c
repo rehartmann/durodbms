@@ -787,8 +787,7 @@ RDB_cat_insert_ptable(const char *name,
     if (RDB_tuple_set(&tpl, "tablename", &tbnameobj, ecp) != RDB_OK)
         goto error;
 
-    ret = RDB_tuple_set_bool(&tpl, "is_user", RDB_TRUE, ecp);
-    if (ret != RDB_OK) {
+    if (RDB_tuple_set_bool(&tpl, "is_user", RDB_TRUE, ecp) != RDB_OK) {
         goto error;
     }
 
@@ -796,18 +795,15 @@ RDB_cat_insert_ptable(const char *name,
     if (RDB_binary_set(&defval, 0, NULL, 0, ecp) != RDB_OK) {
         goto error;
     }
-    ret = RDB_tuple_set(&tpl, "i_def", &defval, ecp);
-    if (ret != RDB_OK)
+    if (RDB_tuple_set(&tpl, "i_def", &defval, ecp) != RDB_OK)
         goto error;
-    ret = RDB_insert(txp->dbp->dbrootp->ptables_tbp, &tpl, ecp, txp);
-    if (ret != RDB_OK) {
+    if (RDB_insert(txp->dbp->dbrootp->ptables_tbp, &tpl, ecp, txp) != RDB_OK) {
         goto error;
     }
 
     /* insert entries into table sys_tableattrs */
     RDB_init_obj(&tpl);
-    ret = RDB_tuple_set(&tpl, "tablename", &tbnameobj, ecp);
-    if (ret != RDB_OK) {
+    if (RDB_tuple_set(&tpl, "tablename", &tbnameobj, ecp) != RDB_OK) {
         goto error;
     }
 

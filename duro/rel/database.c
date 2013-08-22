@@ -30,8 +30,8 @@ specified by <var>dbp</var>.
 
 The name of the database.
 */
-char *
-RDB_db_name(RDB_database *dbp)
+const char *
+RDB_db_name(const RDB_database *dbp)
 {
     return dbp->name;
 }
@@ -1452,6 +1452,10 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
                 RDB_hashmap_put(&dbp->tbmap, tbp->val.tb.name, NULL);
             }
         }
+
+        /*
+         * !! Remove table from list of public tables
+         */
 
         /*
          * Delete recmap, if any

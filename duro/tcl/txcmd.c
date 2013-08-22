@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2005 René Hartmann.
+ * Copyright (C) 2004-2005 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -173,6 +173,6 @@ Duro_txdb_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
         return TCL_ERROR;
     }
     txp = Tcl_GetHashValue(entryp);
-    Tcl_SetResult(interp, RDB_db_name(RDB_tx_db(txp)), TCL_VOLATILE);
+    Tcl_SetResult(interp, (char *) RDB_db_name(RDB_tx_db(txp)), TCL_VOLATILE);
     return RDB_OK;
 }

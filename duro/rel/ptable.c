@@ -22,6 +22,7 @@ RDB_create_public_table_from_type(const char *name,
 {
     int i;
     RDB_transaction tx;
+    RDB_string_vec allkey;
 
     if (name != NULL && !RDB_legal_name(name)) {
         RDB_raise_invalid_argument("invalid table name", ecp);
@@ -62,31 +63,42 @@ RDB_create_public_table_from_type(const char *name,
         return RDB_ERROR;
     }
 
+    allkey.strv = NULL;
     if (keyv != NULL) {
         if (RDB_check_keys(reltyp, keyc, keyv, ecp) != RDB_OK)
             return RDB_ERROR;
     } else {
-        /* Create key ... */
+        if (RDB_all_key(reltyp->def.basetyp->def.tuple.attrc,
+                reltyp->def.basetyp->def.tuple.attrv, ecp, &allkey) != RDB_OK)
+            return RDB_ERROR;
+
+        keyc = 1;
+        keyv = &allkey;
     }
 
     /* Create subtransaction */
     if (RDB_begin_tx(ecp, &tx, txp->dbp, txp) != RDB_OK)
-        return RDB_ERROR;
+        goto error;
 
     /* Insert table into catalog */
     if (RDB_cat_insert_ptable(name, reltyp->def.basetyp->def.tuple.attrc,
             reltyp->def.basetyp->def.tuple.attrv, keyc, keyv, ecp, &tx) != RDB_OK) {
         /* Don't destroy type */
         RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
+        goto error;
     }
 
     if (RDB_commit(ecp, &tx) != RDB_OK) {
-         RDB_hashmap_put(&txp->dbp->tbmap, name, NULL);
-        return RDB_ERROR;
+        RDB_hashmap_put(&txp->dbp->tbmap, name, NULL);
+        goto error;
     }
 
+    RDB_free(allkey.strv);
     return RDB_OK;
+
+error:
+    RDB_free(allkey.strv);
+    return RDB_ERROR;
 }
 
 /**
