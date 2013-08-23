@@ -16,7 +16,7 @@ set testdir [::tcltest::configure -testdir]
 test private {creating private table and inserting tuples} -body {
     exec $testdir/../../dli/durodt << {
         var pr1 private relation {i int, d float, c string} key {i};
-        insert pr1 relation {} {};
+        insert pr1 relation {i int, d float, c string} {};
 
         try
             var ir private relation {i int} key {i};

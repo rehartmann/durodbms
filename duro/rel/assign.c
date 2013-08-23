@@ -1627,6 +1627,48 @@ assign_needs_tx(int insc, const RDB_ma_insert insv[],
     return need_tx;
 }
 
+/* Check if the source relation type matches the destination table */
+static RDB_bool
+source_table_type_matches(const RDB_object *dsttbp, const RDB_type *srctyp) {
+    int i;
+    RDB_attr *attrp;
+    RDB_type *dsttptyp = RDB_base_type(RDB_obj_type(dsttbp));
+
+    /* Every source attribute must appear in the destination */
+    for (i = 0; i < srctyp->def.basetyp->def.tuple.attrc; i++) {
+        attrp = RDB_tuple_type_attr(dsttptyp,
+                srctyp->def.basetyp->def.tuple.attrv[i].name);
+        if (attrp == NULL || !RDB_type_equals(attrp->typ,
+                srctyp->def.basetyp->def.tuple.attrv[i].typ))
+            return RDB_FALSE;
+    }
+
+    /*
+     * Every destination attribute must either appear in the source
+     * or in the default attributes
+     */
+    for (i = 0; i < dsttptyp->def.tuple.attrc; i++) {
+        attrp = RDB_tuple_type_attr(srctyp->def.basetyp,
+                dsttptyp->def.tuple.attrv[i].name);
+        if (attrp != NULL) {
+            /*
+             * If the attribute was found in the source table,
+             * types must match
+             */
+            if (!RDB_type_equals(attrp->typ, dsttptyp->def.tuple.attrv[i].typ))
+                return RDB_FALSE;
+        } else {
+            /* Attribute must appear in default attributes */
+            if (dsttbp->val.tb.default_tplp == NULL
+                    || RDB_tuple_get(dsttbp->val.tb.default_tplp,
+                            dsttptyp->def.tuple.attrv[i].name) == NULL) {
+                return RDB_FALSE;
+            }
+        }
+    }
+    return RDB_TRUE;
+}
+
 /**
  * Perform a number of insert, update, delete,
 and copy operations in a single call.
@@ -1823,6 +1865,19 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                     if (rc == RDB_ERROR) {
                         rcount = RDB_ERROR;
                         goto cleanup;
+                    }
+                    if (rc == 0) {
+                        /*
+                         * If the source table was empty, check types
+                         * (Otherwise the type is checked during insertion of the tuples)
+                         */
+                        if (!source_table_type_matches(ninsv[i].tbp,
+                                RDB_obj_type(ninsv[i].objp))) {
+                            RDB_raise_type_mismatch(
+                                    "Source table type does not match destination", ecp);
+                            rcount = RDB_ERROR;
+                            goto cleanup;
+                        }
                     }
                     rcount += rc;
                     break;

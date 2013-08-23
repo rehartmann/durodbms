@@ -44,7 +44,11 @@ test insert {creating table and inserting tuples} \
         begin tx;
         insert r tup {i 3, d 1.0, c 'Z'};
 
-        insert r relation {} {}; -- !! ?
+        try
+            insert r relation {} {};
+        catch err type_mismatch_error;
+            put_line('type mismatch caught');
+        end try;
 
         var a init 1;
         insert r rel {tuple {i a, d 1.0, c 'X'}, tup {i 2, d 1.1, c 'Y'}};
@@ -93,7 +97,8 @@ test insert {creating table and inserting tuples} \
 
         commit;
     }
-} -result {4
+} -result {type mismatch caught
+4
 3
 Y
 key violation caught (1)
@@ -716,7 +721,6 @@ test index {creating index} -setup $SETUP -cleanup $CLEANUP -match glob -body {
 39
 }
 
-
 test real_default {public real table with default values} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
@@ -726,7 +730,16 @@ test real_default {public real table with default values} -setup $SETUP -cleanup
         var r1 real relation {i int, r float, c string} key {i}
                 default {r 1.2, c 'xyz'};
         insert r1 tup {i 5};
-        var t1 init tuple from r1;
+        insert r1 rel {i int} {};
+
+        -- Must fail
+        try
+            insert r1 rel {} {};
+        catch err type_mismatch_error;
+            put_line('type_mismatch_error caught');
+        end try;
+
+        insert r1 rel {tup {i 1}, tup {i 2}};
 
         var r2 real relation {i int, r float, c string}
                 init rel {tup {i 0, r 1.0, c 'Zz'}}
@@ -748,11 +761,14 @@ test real_default {public real table with default values} -setup $SETUP -cleanup
             put_line('r4: invalid_argument_error caught');
         end try;
 
-        commit;
+        var t1 tuple same_heading_as(r1);
+        foreach t1 in r1 order (i asc);
+            put(t1.i); put(' ');
+            put(cast_as_integer(t1.r * 100.0)); put(' ');
+            put(t1.c); put_line('');
+        end foreach;
 
-        put(t1.i); put(' ');
-        put(cast_as_integer(t1.r * 100.0)); put(' ');
-        put(t1.c); put_line('');
+        commit;
 
         put(t2.i); put(' ');
         put(cast_as_integer(t2.r * 100.0)); put(' ');
@@ -762,7 +778,10 @@ test real_default {public real table with default values} -setup $SETUP -cleanup
         put(cast_as_integer(t3.r * 100.0)); put(' ');
         put(t3.c); put_line('');
     }
-} -result {r4: invalid_argument_error caught
+} -result {type_mismatch_error caught
+r4: invalid_argument_error caught
+1 120 xyz
+2 120 xyz
 5 120 xyz
 5 120 xyz
 6 120 xyy
