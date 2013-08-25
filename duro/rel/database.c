@@ -175,7 +175,7 @@ find_del_table(RDB_database *dbp)
         }
 
         tbp = (RDB_object *) datap;
-    } while (tbp == NULL || !tbp->val.tb.is_user || table_refs(dbp, tbp));
+    } while (tbp == NULL || !RDB_table_is_user(tbp) || table_refs(dbp, tbp));
     RDB_destroy_hashmap_iter(&it);
     return tbp;
 }
@@ -1409,7 +1409,7 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     int ret;
     RDB_constraint *constrp;
 
-    if (tbp->kind == RDB_OB_TABLE && tbp->val.tb.is_persistent) {
+    if (tbp->kind == RDB_OB_TABLE && RDB_table_is_persistent(tbp)) {
         RDB_database *dbp;
         RDB_dbroot *dbrootp;
 
@@ -1519,7 +1519,7 @@ RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
     if (table_dep_check(tbp, ecp, txp) != RDB_OK)
         return RDB_ERROR;
 
-    if (tbp->val.tb.is_persistent) {
+    if (RDB_table_is_persistent(tbp)) {
         RDB_database *dbp;
 
         /* Update catalog */
@@ -1592,7 +1592,7 @@ RDB_add_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     }
 
     /* Turning a local real table into a persistent table is not supported */
-    if (!tbp->val.tb.is_persistent && RDB_vtable_expr(tbp) == NULL) {
+    if (!RDB_table_is_persistent(tbp) && RDB_vtable_expr(tbp) == NULL) {
         RDB_raise_not_supported(
                 "operation not supported for local real tables", ecp);
         return RDB_ERROR;
@@ -1609,7 +1609,7 @@ RDB_add_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (RDB_assoc_table_db(tbp, txp->dbp, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    tbp->val.tb.is_persistent = RDB_TRUE;
+    tbp->val.tb.flags |= RDB_TB_PERSISTENT;
 
     return RDB_OK;
 }

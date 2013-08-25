@@ -76,8 +76,11 @@ RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
     }
 
     tbp->kind = RDB_OB_TABLE;
-    tbp->val.tb.is_user = usr;
-    tbp->val.tb.is_persistent = persistent;
+    tbp->val.tb.flags = 0;
+    if (usr)
+        tbp->val.tb.flags |= RDB_TB_USER;
+    if (persistent)
+        tbp->val.tb.flags |= RDB_TB_PERSISTENT;
     tbp->val.tb.keyv = NULL;
     tbp->val.tb.default_tplp = NULL;
     tbp->val.tb.stp = NULL;
@@ -211,7 +214,7 @@ RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *ecp,
         goto cleanup;
 
     while ((ret = RDB_next_tuple(qrp, &tpl, ecp, txp)) == RDB_OK) {
-        if (!dstp->val.tb.is_persistent)
+        if (!RDB_table_is_persistent(dstp))
             ret = RDB_insert_real(dstp, &tpl, ecp, NULL);
         else
             ret = RDB_insert_real(dstp, &tpl, ecp, txp);
@@ -493,7 +496,9 @@ is transient.
 RDB_bool
 RDB_table_is_persistent(const RDB_object *tbp)
 {
-	return tbp->val.tb.is_persistent;
+    if (tbp->kind != RDB_OB_TABLE)
+        return RDB_FALSE;
+    return (RDB_bool) ((tbp->val.tb.flags & RDB_TB_PERSISTENT) != 0);
 }
 
 /**
@@ -509,6 +514,20 @@ RDB_bool
 RDB_table_is_real(const RDB_object *tbp)
 {
     return (RDB_bool) (tbp->val.tb.exp == NULL);
+}
+
+/**
+ * Check if the table *<var>tbp</var> is a user table.
+
+@returns
+
+RDB_TRUE if *<var>tbp</var> is a user table, RDB_FALSE if it
+is not.
+ */
+RDB_bool
+RDB_table_is_user(const RDB_object *tbp)
+{
+    return (RDB_bool) ((tbp->val.tb.flags & RDB_TB_USER) != 0);
 }
 
 /**
@@ -831,7 +850,7 @@ RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,
         return RDB_ERROR;
     }
 
-    if (tbp->val.tb.is_persistent) {
+    if (RDB_table_is_persistent(tbp)) {
         /* Insert index into catalog */
         ret = RDB_cat_insert_index(name, idxcompc, idxcompv,
                 RDB_FALSE,

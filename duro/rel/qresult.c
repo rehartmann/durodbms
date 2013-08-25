@@ -290,7 +290,7 @@ init_stored_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_expression *exp,
 
     /* !! delay after first call to RDB_next_tuple()? */
     ret = RDB_recmap_cursor(&qrp->val.stored.curp, tbp->val.tb.stp->recmapp,
-                    RDB_FALSE, tbp->val.tb.is_persistent ? txp->txid : NULL);
+                    RDB_FALSE, RDB_table_is_persistent(tbp) ? txp->txid : NULL);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp, txp);
         return RDB_ERROR;
@@ -801,7 +801,7 @@ init_where_index_qresult(RDB_qresult *qrp, RDB_expression *texp,
     }
 
     ret = RDB_index_cursor(&qrp->val.stored.curp, indexp->idxp, RDB_FALSE,
-            qrp->val.stored.tbp->val.tb.is_persistent ? txp->txid : NULL);
+            RDB_table_is_persistent(qrp->val.stored.tbp) ? txp->txid : NULL);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp, txp);
         return RDB_ERROR;
@@ -1851,7 +1851,7 @@ RDB_get_by_uindex(RDB_object *tbp, RDB_object *objpv[], RDB_tbindex *indexp,
                 resfv[rfi++].no = fno;
         }
         ret = RDB_get_fields(tbp->val.tb.stp->recmapp, fv, resfc,
-                             tbp->val.tb.is_persistent ? txp->txid : NULL, resfv);
+                             RDB_table_is_persistent(tbp) ? txp->txid : NULL, resfv);
     } else {
         int rfi = 0;
 
@@ -1867,7 +1867,7 @@ RDB_get_by_uindex(RDB_object *tbp, RDB_object *objpv[], RDB_tbindex *indexp,
                 resfv[rfi++].no = fno;
         }
         ret = RDB_index_get_fields(indexp->idxp, fv, resfc,
-                tbp->val.tb.is_persistent ? txp->txid : NULL, resfv);
+                RDB_table_is_persistent(tbp) ? txp->txid : NULL, resfv);
     }
 
     if (ret != RDB_OK) {

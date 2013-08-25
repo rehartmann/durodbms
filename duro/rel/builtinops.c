@@ -835,7 +835,7 @@ op_vtable(int argc, RDB_object *argv[], RDB_operator *op,
 
     for (i = 0; i < argc; i++) {
         if (argv[i]->kind == RDB_OB_TABLE) {
-            if (argv[i]->val.tb.is_persistent) {
+            if (RDB_table_is_persistent(argv[i])) {
                 argexp = RDB_table_ref(argv[i], ecp);
             } else if (argv[i]->val.tb.exp != NULL) {
                 argexp = RDB_dup_expr(argv[i]->val.tb.exp, ecp);

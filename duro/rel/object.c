@@ -659,13 +659,13 @@ RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
                 }
                 /* Delete all tuples */
                 ret = RDB_delete_real(dstvalp, NULL, ecp,
-                        dstvalp->val.tb.is_persistent ? txp : NULL);
+                        RDB_table_is_persistent(dstvalp) ? txp : NULL);
                 if (ret == (RDB_int) RDB_ERROR)
                     return RDB_ERROR;
             }
             rc = RDB_move_tuples(dstvalp, (RDB_object *) srcvalp, ecp,
-                    srcvalp->val.tb.is_persistent || srcvalp->val.tb.exp != NULL
-                    || dstvalp->val.tb.is_persistent ? txp : NULL);
+                    RDB_table_is_persistent(srcvalp) || srcvalp->val.tb.exp != NULL
+                    || RDB_table_is_persistent(dstvalp) ? txp : NULL);
             if (rc == RDB_ERROR)
                 return RDB_ERROR;
             return RDB_OK;

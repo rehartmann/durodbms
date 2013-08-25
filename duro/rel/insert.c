@@ -87,11 +87,11 @@ RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
 
     RDB_cmp_ecp = ecp;
     ret = RDB_insert_rec(tbp->val.tb.stp->recmapp, fvp,
-            tbp->val.tb.is_persistent ? txp->txid : NULL);
+            RDB_table_is_persistent(tbp) ? txp->txid : NULL);
     if (ret == DB_KEYEXIST) {
         /* check if the tuple is an element of the table */
         if (RDB_contains_rec(tbp->val.tb.stp->recmapp, fvp,
-                tbp->val.tb.is_persistent ? txp->txid : NULL) == RDB_OK) {
+                RDB_table_is_persistent(tbp) ? txp->txid : NULL) == RDB_OK) {
             RDB_raise_element_exists("tuple is already in table", ecp);
         } else {
             RDB_errcode_to_error(ret, ecp, txp);

@@ -1039,8 +1039,8 @@ RDB_expr_equals(const RDB_expression *ex1p, const RDB_expression *ex2p,
             return RDB_obj_equals(&ex1p->def.obj, &ex2p->def.obj, ecp, txp,
                     resp);
         case RDB_EX_TBP:
-            if (ex1p->def.tbref.tbp->val.tb.is_persistent
-                    || ex2p->def.tbref.tbp->val.tb.is_persistent) {
+            if (RDB_table_is_persistent(ex1p->def.tbref.tbp)
+                    || RDB_table_is_persistent(ex2p->def.tbref.tbp)) {
                 *resp = (RDB_bool) (ex1p->def.tbref.tbp == ex2p->def.tbref.tbp);
                 return RDB_OK;
             }

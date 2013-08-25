@@ -1236,8 +1236,8 @@ cleanup:
 static RDB_bool
 copy_needs_tx(const RDB_object *dstp, const RDB_object *srcp)
 {
-    return (RDB_bool) ((dstp->kind == RDB_OB_TABLE && dstp->val.tb.is_persistent)
-            || (srcp->kind == RDB_OB_TABLE && srcp->val.tb.is_persistent));
+    return (RDB_bool) ((dstp->kind == RDB_OB_TABLE && RDB_table_is_persistent(dstp))
+            || (srcp->kind == RDB_OB_TABLE && RDB_table_is_persistent(srcp)));
 }
 
 /*
@@ -1607,10 +1607,10 @@ assign_needs_tx(int insc, const RDB_ma_insert insv[],
     RDB_bool need_tx;
 
     /* Check if a persistent table is involved */
-    for (i = 0; i < delc && !delv[i].tbp->val.tb.is_persistent; i++);
+    for (i = 0; i < delc && !RDB_table_is_persistent(delv[i].tbp); i++);
     need_tx = (RDB_bool) (i < delc);
     if (!need_tx) {
-        for (i = 0; i < updc && !updv[i].tbp->val.tb.is_persistent; i++);
+        for (i = 0; i < updc && !RDB_table_is_persistent(updv[i].tbp); i++);
         need_tx = (RDB_bool) (i < updc);
     }
     if (!need_tx) {
@@ -1619,7 +1619,7 @@ assign_needs_tx(int insc, const RDB_ma_insert insv[],
     }
     if (!need_tx) {
         for (i = 0;
-             i < insc && !insv[i].tbp->val.tb.is_persistent;
+             i < insc && !RDB_table_is_persistent(insv[i].tbp);
              i++);
         need_tx = (RDB_bool) (i < insc);
     }

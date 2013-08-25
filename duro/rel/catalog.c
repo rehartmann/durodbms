@@ -404,7 +404,7 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         goto error;
     if (RDB_tuple_set(&tpl, "tablename", &tbnameobj, ecp) != RDB_OK)
         goto error;
-    if (RDB_tuple_set_bool(&tpl, "is_user", tbp->val.tb.is_user, ecp)
+    if (RDB_tuple_set_bool(&tpl, "is_user", RDB_table_is_user(tbp), ecp)
             != RDB_OK) {
         goto error;
     }
@@ -724,7 +724,7 @@ RDB_cat_insert(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
          * For user tables, the indexes are inserted when the recmap is created.
          */
         if (ret == RDB_OK) {
-            if (!tbp->val.tb.is_user) {
+            if (!RDB_table_is_user(tbp)) {
                 int i;
 
                 for (i = 0; i < tbp->val.tb.stp->indexc; i++) {
@@ -1110,7 +1110,7 @@ RDB_cat_get_indexes(const char *tablename, RDB_dbroot *dbrootp,
                 ret = indexp->attrc;
                 goto cleanup;
             }
-            
+
             indexp->attrv = RDB_alloc(sizeof (RDB_seq_item) * indexp->attrc, ecp);
             if (indexp->attrv == NULL) {
                 ret = RDB_ERROR;
@@ -2275,8 +2275,12 @@ RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         goto error;
 
-    tbp->val.tb.is_persistent = RDB_TRUE;
-    tbp->val.tb.is_user = usr;
+    tbp->val.tb.flags = RDB_TB_PERSISTENT;
+    if (usr) {
+        tbp->val.tb.flags |= RDB_TB_USER;
+    } else {
+        tbp->val.tb.flags &= ~RDB_TB_USER;
+    }
 
     tbp->val.tb.name = RDB_dup_str(name);
     if (tbp->val.tb.name == NULL) {
@@ -2387,8 +2391,12 @@ RDB_cat_get_ptable(const char *name, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         goto error;
 
-    tbp->val.tb.is_persistent = RDB_TRUE;
-    tbp->val.tb.is_user = usr;
+    tbp->val.tb.flags = RDB_TB_PERSISTENT;
+    if (usr) {
+        tbp->val.tb.flags |= RDB_TB_USER;
+    } else {
+        tbp->val.tb.flags &= ~RDB_TB_USER;
+    }
 
     tbp->val.tb.name = RDB_dup_str(name);
     if (tbp->val.tb.name == NULL) {

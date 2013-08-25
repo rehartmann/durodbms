@@ -41,10 +41,10 @@ delete_by_uindex(RDB_object *tbp, RDB_object *objpv[], RDB_tbindex *indexp,
     RDB_cmp_ecp = ecp;
     if (indexp->idxp == NULL) {
         ret = RDB_delete_rec(tbp->val.tb.stp->recmapp, fv,
-                tbp->val.tb.is_persistent ? txp->txid : NULL);
+                RDB_table_is_persistent(tbp) ? txp->txid : NULL);
     } else {
         ret = RDB_index_delete_rec(indexp->idxp, fv,
-                tbp->val.tb.is_persistent ? txp->txid : NULL);
+                RDB_table_is_persistent(tbp) ? txp->txid : NULL);
     }
     switch (ret) {
         case RDB_OK:
@@ -83,7 +83,7 @@ RDB_delete_real(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
     }
 
     ret = RDB_recmap_cursor(&curp, tbp->val.tb.stp->recmapp, RDB_TRUE,
-            tbp->val.tb.is_persistent ? txp->txid : NULL);
+            RDB_table_is_persistent(tbp) ? txp->txid : NULL);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp, txp);
         return RDB_ERROR;
@@ -235,7 +235,7 @@ delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
     keylen = indexp->attrc;
 
     ret = RDB_index_cursor(&curp, indexp->idxp, RDB_TRUE,
-            refexp->def.tbref.tbp->val.tb.is_persistent ?
+            RDB_table_is_persistent(refexp->def.tbref.tbp) ?
             txp->txid : NULL);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp, txp);

@@ -294,7 +294,7 @@ serialize_table(RDB_object *valp, int *posp, RDB_object *tbp,
         RDB_exec_context *ecp)
 {
     /* If the table is persistent, write name only */
-    if (tbp->val.tb.is_persistent)
+    if (RDB_table_is_persistent(tbp))
         return RDB_serialize_str(valp, posp, RDB_table_name(tbp), ecp);
     if (RDB_serialize_str(valp, posp, "", ecp) != RDB_OK)
         return RDB_ERROR;

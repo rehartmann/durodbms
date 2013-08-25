@@ -198,8 +198,8 @@ RDB_create_tbindex(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp
 
     /* Create record-layer index */
     ret = RDB_create_index(tbp->val.tb.stp->recmapp,
-                  tbp->val.tb.is_persistent ? indexp->name : NULL,
-                  tbp->val.tb.is_persistent ? RDB_DATAFILE : NULL,
+                  RDB_table_is_persistent(tbp) ? indexp->name : NULL,
+                  RDB_table_is_persistent(tbp) ? RDB_DATAFILE : NULL,
                   envp, indexp->attrc, fieldv, cmpv, flags,
                   txp != NULL ? txp->txid : NULL, &indexp->idxp);
     if (ret != RDB_OK) {
@@ -253,7 +253,7 @@ keys_to_indexes(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             }
         }
 
-        if (tbp->val.tb.is_persistent) {
+        if (RDB_table_is_persistent(tbp)) {
             tbp->val.tb.stp->indexv[oindexc + i].name = RDB_alloc(strlen(RDB_table_name(tbp)) + 4, ecp);
             if (tbp->val.tb.stp->indexv[oindexc + i].name == NULL) {
                 return RDB_ERROR;
@@ -261,7 +261,7 @@ keys_to_indexes(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             /* build index name */            
             sprintf(tbp->val.tb.stp->indexv[oindexc + i].name, "%s$%d", RDB_table_name(tbp), i);
 
-            if (tbp->val.tb.is_user) {
+            if (RDB_table_is_user(tbp)) {
                 ret = RDB_cat_insert_index(tbp->val.tb.stp->indexv[oindexc + i].name,
                         tbp->val.tb.stp->indexv[oindexc + i].attrc,
                         tbp->val.tb.stp->indexv[oindexc + i].attrv,
@@ -297,8 +297,8 @@ create_indexes(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp,
 
     for (i = 0; i < tbp->val.tb.stp->indexc; i++) {
         /* Create a BDB secondary index if it's not the primary index */
-        if ((!tbp->val.tb.is_persistent && i > 0)
-                || (tbp->val.tb.is_persistent && !index_is_primary(tbp->val.tb.stp->indexv[i].name))) {
+        if ((!RDB_table_is_persistent(tbp) && i > 0)
+                || (RDB_table_is_persistent(tbp) && !index_is_primary(tbp->val.tb.stp->indexv[i].name))) {
             int flags = 0;
 
             if (tbp->val.tb.stp->indexv[i].unique)
@@ -365,7 +365,7 @@ key_fnos(RDB_object *tbp, int **flenvp, const RDB_bool ascv[],
      * Try to get primary index (not available for new tables or
      * newly opened system tables)
      */
-    if (tbp->val.tb.is_persistent) {
+    if (RDB_table_is_persistent(tbp)) {
         pindexp = NULL;
         for (i = 0; i < tbp->val.tb.stp->indexc; i++) {
             if (index_is_primary(tbp->val.tb.stp->indexv[i].name)) {
@@ -466,7 +466,7 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
     int piattrc = tbp->val.tb.keyv[0].strc;
 
     /* Do not use a transaction if the table is transient */
-    if (!tbp->val.tb.is_persistent)
+    if (!RDB_table_is_persistent(tbp))
        txp = NULL;
 
     if (txp != NULL && !RDB_tx_is_running(txp)) {
@@ -492,7 +492,7 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
         }
     }
 
-    if (tbp->val.tb.is_persistent && tbp->val.tb.is_user) {
+    if (RDB_table_is_persistent(tbp) && RDB_table_is_user(tbp)) {
         /* Get indexes from catalog */
         tbp->val.tb.stp->indexc = RDB_cat_get_indexes(RDB_table_name(tbp), txp->dbp->dbrootp,
                 ecp, txp, &tbp->val.tb.stp->indexv);
@@ -514,7 +514,7 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
     /*
      * If the table is a persistent user table, insert recmap into sys_table_recmap
      */
-    if (tbp->val.tb.is_persistent && tbp->val.tb.is_user) {
+    if (RDB_table_is_persistent(tbp) && RDB_table_is_user(tbp)) {
         ret = RDB_cat_insert_table_recmap(tbp, RDB_table_name(tbp), ecp, txp);
         if (ret == RDB_ERROR
                 && RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR) {
@@ -543,18 +543,18 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
      * is always the same if the table is stored as an attribute in a table.
      */
     flags = 0;
-    if (ascv != NULL || !tbp->val.tb.is_persistent)
+    if (ascv != NULL || !RDB_table_is_persistent(tbp))
         flags |= RDB_ORDERED;
     if (ascv == NULL)
         flags |= RDB_UNIQUE;
 
-    if (tbp->val.tb.is_persistent && envp->trace) {
+    if (RDB_table_is_persistent(tbp) && envp->trace) {
         fprintf(stderr, "Creating physical storage for table %s\n",
                 RDB_table_name(tbp));
     }
-    ret = RDB_create_recmap(tbp->val.tb.is_persistent ?
+    ret = RDB_create_recmap(RDB_table_is_persistent(tbp) ?
             (rmname == NULL ? RDB_table_name(tbp) : rmname) : NULL,
-            tbp->val.tb.is_persistent ? RDB_DATAFILE : NULL,
+            RDB_table_is_persistent(tbp) ? RDB_DATAFILE : NULL,
             envp, attrc, flenv, piattrc, cmpv, flags,
             txp != NULL ? txp->txid : NULL,
             &tbp->val.tb.stp->recmapp);
@@ -633,7 +633,7 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
     int attrc = tbp->typ->def.basetyp->def.tuple.attrc;
     int piattrc = tbp->val.tb.keyv[0].strc;
 
-    if (!tbp->val.tb.is_persistent)
+    if (!RDB_table_is_persistent(tbp))
        txp = NULL;
 
     if (txp != NULL && !RDB_tx_is_running(txp)) {
@@ -741,8 +741,8 @@ RDB_open_table_index(RDB_object *tbp, RDB_tbindex *indexp,
 
     /* open index */
     ret = RDB_open_index(tbp->val.tb.stp->recmapp,
-                  tbp->val.tb.is_persistent ? indexp->name : NULL,
-                  tbp->val.tb.is_persistent ? RDB_DATAFILE : NULL,
+                  RDB_table_is_persistent(tbp) ? indexp->name : NULL,
+                  RDB_table_is_persistent(tbp) ? RDB_DATAFILE : NULL,
                   envp, indexp->attrc, fieldv, indexp->unique ? RDB_UNIQUE : 0,
                   txp != NULL ? txp->txid : NULL, &indexp->idxp);
 

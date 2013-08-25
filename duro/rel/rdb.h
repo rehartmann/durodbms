@@ -32,7 +32,9 @@ along with DuroDBMS; if not, write to the Free Software Foundation, Inc.,
 
 enum {
     RDB_ERROR = -1,
-    RDB_UNBUFFERED = 1
+    RDB_UNBUFFERED = 1,
+    RDB_TB_USER = 1,
+    RDB_TB_PERSISTENT = 2
 };
 
 #define RDB_GETTER_INFIX "_get_"
@@ -99,8 +101,7 @@ typedef struct RDB_object {
             size_t len;
         } bin;
         struct {
-            RDB_bool is_user;
-            RDB_bool is_persistent;
+            int flags;
             char *name;
 
             /*
@@ -525,6 +526,9 @@ RDB_table_is_persistent(const RDB_object *);
 
 RDB_bool
 RDB_table_is_real(const RDB_object *);
+
+RDB_bool
+RDB_table_is_user(const RDB_object *);
 
 int
 RDB_table_is_empty(RDB_object *, RDB_exec_context *, RDB_transaction *,
