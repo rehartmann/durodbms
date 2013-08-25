@@ -1454,8 +1454,12 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         }
 
         /*
-         * !! Remove table from list of public tables
+         * Remove table from public tables
          */
+        if (RDB_hashmap_get(&dbrootp->ptbmap, tbp->val.tb.name) != NULL) {
+            if (RDB_hashmap_put(&dbrootp->ptbmap, tbp->val.tb.name, NULL) != RDB_OK)
+                return RDB_ERROR;
+        }
 
         /*
          * Delete recmap, if any

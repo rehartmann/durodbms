@@ -70,19 +70,53 @@ test create {creating and populating public table} -setup $SETUP -cleanup $CLEAN
 
         var tp tuple same_heading_as(p);
         foreach tp in p order(no asc);
-            put_line(cast_as_string(tp.no));
+            put(tp.no);
+            put(' ');
             put_line(tp.c);
         end foreach;
 
+        put(count(p)); put_line('');
+        commit;
+
+        put_line('');
+
+        begin tx;
+
+        -- remap to new table
+        var r4 real relation {no int, c string} init rel{tup{no 10, c 'ten'}} key {no};
+
+        map p r4;
+
+        insert p tup{no 11, c 'eleven'};
+
+        foreach tp in p order(no asc);
+            put(tp.no);
+            put(' ');
+            put_line(tp.c);
+        end foreach;        
+
+        drop var p;
+
+        try
+            var cnt init count(p);
+        catch err name_error;
+            put_line('name error caught');
+        end try;
+
+        put(count(r1)); put_line('');
         commit;
     }
 } -result {name error caught
 type mismatch caught
 invalid arguments caught
-1
-one
+1 one
+2 two
 2
-two
+
+10 ten
+11 eleven
+name error caught
+2
 }
 
 test create_allkey {creating public table that is implicitly all-key} -setup $SETUP -cleanup $CLEANUP -body {
@@ -94,6 +128,10 @@ test create_allkey {creating public table that is implicitly all-key} -setup $SE
         var r1 real relation {no int, c string} key {no, c};
         var p public relation {no int, c string};
         map p r1;
+        commit;
+
+        begin tx;
+        drop var p;
         commit;
     }
 }

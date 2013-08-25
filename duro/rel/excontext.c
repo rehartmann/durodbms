@@ -332,7 +332,8 @@ RDB_ec_get_property(RDB_exec_context *ecp, const char *name)
 }
 
 /**
- * Raise an error that corresponds to a error code. It can be a POSIX error code,
+ * Raise an error that corresponds to the error code <var>errcode</var>.
+ * <var>errcode</var> can be a POSIX error code,
  * a Berkeley DB error code or an error code from the record layer.
  */
 void

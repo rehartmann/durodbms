@@ -997,6 +997,27 @@ cleanup:
     return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
 }
 
+/* Delete a public table from the catalog */
+static int
+delete_ptable(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret;
+    RDB_expression *exprp = tablename_eq_expr(RDB_table_name(tbp), ecp);
+    if (exprp == NULL) {
+        return RDB_ERROR;
+    }
+    ret = RDB_delete(txp->dbp->dbrootp->ptables_tbp, exprp, ecp, txp);
+    if (ret == RDB_ERROR)
+        goto cleanup;
+
+    ret = RDB_delete(txp->dbp->dbrootp->dbtables_tbp, exprp, ecp, txp);
+
+cleanup:
+    RDB_del_expr(exprp, ecp);
+
+    return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
+}
+
 /**
  * Delete table *tbp from the catalog.
  */
@@ -1005,8 +1026,11 @@ RDB_cat_delete(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (tbp->val.tb.exp == NULL)
         return delete_rtable(tbp, ecp, txp);
-    else
-        return delete_vtable(tbp, ecp, txp);
+
+    /* Can be a virtual or public table - delete from both catalog tables */
+    if (delete_vtable(tbp, ecp, txp) != RDB_OK)
+        return RDB_ERROR;
+    return delete_ptable(tbp, ecp, txp);
 }
 
 /*
