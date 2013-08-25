@@ -88,18 +88,6 @@ provide_entry(RDB_object *tplp, const char *attrname, RDB_exec_context *ecp,
  * @{
  */
 
-/** @struct RDB_renaming rdb.h <rel/rdb.h>
- * Represents an attribute renaming.
- */
-
-/** @struct RDB_wrapping rdb.h <rel/rdb.h>
- * Represents an attribute wrapping.
- */
-
-/** @struct RDB_virtual_attr rdb.h <rel/rdb.h>
- * Represents a virtual attribute, used for EXTEND.
- */
-
 /**
  * RDB_tuple_set sets the attribute <var>name</var> of the tuple
 variable specified by <var>tplp</var> to the value specified by

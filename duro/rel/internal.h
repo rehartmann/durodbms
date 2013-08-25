@@ -19,7 +19,10 @@ enum {
     RDB_DFL_MAP_CAPACITY = 37,
 
     /** marks types which have been defined but not implemented */
-    RDB_NOT_IMPLEMENTED = -2
+    RDB_NOT_IMPLEMENTED = -2,
+
+    RDB_TB_USER = 1,
+    RDB_TB_PERSISTENT = 2
 };
 
 enum RDB_expr_kind {

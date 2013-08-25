@@ -180,59 +180,6 @@ find_del_table(RDB_database *dbp)
     return tbp;
 }
 
-/*
- * Close all user tables
- */
-int
-RDB_close_user_tables(RDB_database *dbp, RDB_exec_context *ecp)
-{
-    RDB_object *tbp;
-    RDB_hashmap_iter it;
-    void *datap;
-    char *keyp;
-
-    while ((tbp = find_del_table(dbp)) != NULL) {
-        if (close_table(tbp, dbp->dbrootp->envp, ecp) != RDB_OK)
-            return RDB_ERROR;
-    }
-
-    /* Close public tables */
-
-    RDB_init_hashmap_iter(&it, &dbp->dbrootp->ptbmap);
-
-    while ((datap = RDB_hashmap_next(&it, &keyp)) != NULL) {
-        if (datap != NULL) {
-            tbp = datap;
-            if (close_table(tbp, dbp->dbrootp->envp, ecp)
-                    != RDB_OK)
-                return RDB_ERROR;
-        }
-    }
-
-    RDB_destroy_hashmap_iter(&it);
-
-    RDB_clear_hashmap(&dbp->dbrootp->ptbmap);
-
-    return RDB_OK;
-}    
-
-static int
-release_db(RDB_database *dbp, RDB_exec_context *ecp)
-{
-    int ret;
-
-    ret = RDB_close_user_tables(dbp, ecp);
-    if (ret != RDB_OK)
-        return RDB_ERROR;
-
-    ret = rm_db(dbp, ecp);
-    if (ret != RDB_OK)
-        return ret;
-    
-    free_db(dbp);
-    return ret;
-}
-
 static void
 close_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
 {
@@ -251,6 +198,23 @@ close_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     close_table(dbrootp->indexes_tbp, dbrootp->envp, ecp);
     close_table(dbrootp->constraints_tbp, dbrootp->envp, ecp);
     close_table(dbrootp->version_info_tbp, dbrootp->envp, ecp);
+}
+
+static int
+release_db(RDB_database *dbp, RDB_exec_context *ecp)
+{
+    int ret;
+
+    ret = RDB_close_user_tables(dbp, ecp);
+    if (ret != RDB_OK)
+        return RDB_ERROR;
+
+    ret = rm_db(dbp, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    free_db(dbp);
+    return ret;
 }
 
 /* cleanup function to close all DBs and tables */
@@ -1053,14 +1017,7 @@ create_table(const char *name, RDB_type *reltyp,
 
 /** @defgroup table Table functions 
  * @{
- */
-
-/** @struct RDB_attr rdb.h <rel/rdb.h>
- * This struct is used to specify attribute definitions.
- */
-
-/** @struct RDB_string_vec rdb.h <rel/rdb.h>
- * This struct is used to specify attribute definitions.
+ * \#include <dli/parse.h>
  */
 
 /**
@@ -1643,3 +1600,39 @@ RDB_remove_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
 */
 
 /*@}*/
+
+/*
+ * Close all user tables
+ */
+int
+RDB_close_user_tables(RDB_database *dbp, RDB_exec_context *ecp)
+{
+    RDB_object *tbp;
+    RDB_hashmap_iter it;
+    void *datap;
+    char *keyp;
+
+    while ((tbp = find_del_table(dbp)) != NULL) {
+        if (close_table(tbp, dbp->dbrootp->envp, ecp) != RDB_OK)
+            return RDB_ERROR;
+    }
+
+    /* Close public tables */
+
+    RDB_init_hashmap_iter(&it, &dbp->dbrootp->ptbmap);
+
+    while ((datap = RDB_hashmap_next(&it, &keyp)) != NULL) {
+        if (datap != NULL) {
+            tbp = datap;
+            if (close_table(tbp, dbp->dbrootp->envp, ecp)
+                    != RDB_OK)
+                return RDB_ERROR;
+        }
+    }
+
+    RDB_destroy_hashmap_iter(&it);
+
+    RDB_clear_hashmap(&dbp->dbrootp->ptbmap);
+
+    return RDB_OK;
+}

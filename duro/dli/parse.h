@@ -54,7 +54,7 @@ RDB_parse_set_read_line_fn(RDB_read_line_fn *fnp);
 void
 RDB_parse_set_free_line_fn(RDB_free_line_fn *fnp);
 
-/*
+/**
  * @}
  */
 

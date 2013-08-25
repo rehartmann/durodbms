@@ -120,7 +120,7 @@ RDB_load_type_ops(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
     return RDB_OK;
 }
 
-/** @addtogroup type Type functions
+/** @defgroup type Type functions
  * @{
  */
 
@@ -466,10 +466,6 @@ RDB_type_attrs(RDB_type *typ, int *attrcp)
     *attrcp = typ->def.tuple.attrc;
     return typ->def.tuple.attrv;
 }
-
-/** @struct RDB_possrep rdb.h <rel/rdb.h>
- * Specifies a possible representation.
- */
 
 /**
 Return a pointer to RDB_type structure which

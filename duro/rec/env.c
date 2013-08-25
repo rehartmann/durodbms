@@ -13,6 +13,7 @@
 
 /** @defgroup env Database environment functions 
  * @{
+ * \#include <rec/env.h>
  */
 
 /**

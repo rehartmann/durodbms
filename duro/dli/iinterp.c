@@ -2782,6 +2782,6 @@ Duro_dt_prompt(void)
     return RDB_obj_string(&prompt);
 }
 
-/*
+/**
  * @}
  */

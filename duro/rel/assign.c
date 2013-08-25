@@ -1582,18 +1582,6 @@ check_conflicts_deps(int insc, const RDB_ma_insert insv[],
  * @{
  */
 
-/** @struct RDB_ma_insert rdb.h <rel/rdb.h>
- * Represents an insert.
- */
-
-/** @struct RDB_ma_update rdb.h <rel/rdb.h>
- * Represents an update.
- */
-
-/** @struct RDB_ma_delete rdb.h <rel/rdb.h>
- * Represents a delete.
- */
-
 /*
  * Check if a multiple assignment requires a running transaction.
  */

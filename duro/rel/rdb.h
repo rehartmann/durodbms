@@ -32,9 +32,7 @@ along with DuroDBMS; if not, write to the Free Software Foundation, Inc.,
 
 enum {
     RDB_ERROR = -1,
-    RDB_UNBUFFERED = 1,
-    RDB_TB_USER = 1,
-    RDB_TB_PERSISTENT = 2
+    RDB_UNBUFFERED = 1
 };
 
 #define RDB_GETTER_INFIX "_get_"
@@ -42,11 +40,22 @@ enum {
 
 #define RDB_THE_PREFIX "the_"
 
+/**@addtogroup type
+ * @{
+ */
+
+/**
+ * Specifies a possible representation.
+ */
 typedef struct {
     char *name;
     int compc;
     struct RDB_attr *compv;
 } RDB_possrep;
+
+/**
+ * @}
+ */
 
 enum RDB_obj_kind {
     RDB_OB_INITIAL,
@@ -59,6 +68,39 @@ enum RDB_obj_kind {
     RDB_OB_ARRAY
 };
 
+typedef struct RDB_expression RDB_expression;
+
+typedef struct RDB_expr_list {
+    RDB_expression *firstp;
+    RDB_expression *lastp;
+} RDB_expr_list;
+
+/**@addtogroup array
+ * @{
+ */
+
+/**
+ * This struct is used to specify an attribute and a direction
+ * for tuple ordering.
+ */
+typedef struct {
+    /** Attribute name. */
+    char *attrname;
+    /** RDB_TRUE if order is ascending, RDB_FALSE if order is descending. */
+    RDB_bool asc;
+} RDB_seq_item;
+
+/**
+ * @}
+ */
+
+/**@addtogroup table
+ * @{
+ */
+
+/**
+ * Represents a vector of strings.
+ */
 typedef struct {
     /** The number of strings. */
     int strc;
@@ -66,12 +108,40 @@ typedef struct {
     char **strv;
 } RDB_string_vec;
 
-typedef struct RDB_expression RDB_expression;
+/**
+ * @}
+ */
 
-typedef struct RDB_expr_list {
-    RDB_expression *firstp;
-    RDB_expression *lastp;
-} RDB_expr_list;
+typedef struct RDB_op_data RDB_operator;
+
+typedef struct RDB_qresult RDB_qresult;
+
+/* Function definition for reading lines of input */
+typedef char *RDB_read_line_fn(void);
+typedef void RDB_free_line_fn(char *);
+
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
+
+/* internal */
+enum RDB_tp_kind {
+    RDB_TP_SCALAR,
+    RDB_TP_TUPLE,
+    RDB_TP_RELATION,
+    RDB_TP_ARRAY
+};
+
+typedef struct RDB_database RDB_database;
+
+typedef struct RDB_transaction {
+    /* internal */
+    RDB_database *dbp;
+    RDB_environment *envp;
+    DB_TXN *txid;
+    void *user_data;
+    struct RDB_transaction *parentp;
+    struct RDB_rmlink *delrmp;
+    struct RDB_ixlink *delixp;
+} RDB_transaction;
 
 /**
  * A RDB_object structure carries a value of an arbitrary type,
@@ -110,7 +180,7 @@ typedef struct RDB_object {
              */
             int keyc;
             RDB_string_vec *keyv;
-            
+
             /* NULL if it's a real table */
             RDB_expression *exp;
 
@@ -155,25 +225,7 @@ typedef struct {
     RDB_hashmap pmap;
 } RDB_exec_context;
 
-typedef struct RDB_type RDB_type;
-
-typedef struct RDB_op_data RDB_operator;
-
-typedef struct RDB_qresult RDB_qresult;
-
-/* Function definition for reading lines of input */
-typedef char *RDB_read_line_fn(void);
-typedef void RDB_free_line_fn(char *);
-
-/* internal */
-enum RDB_tp_kind {
-    RDB_TP_SCALAR,
-    RDB_TP_TUPLE,
-    RDB_TP_RELATION,
-    RDB_TP_ARRAY
-};
-
-struct RDB_type {
+typedef struct RDB_type {
     /* internal */
     char *name;
     enum RDB_tp_kind kind;
@@ -195,11 +247,11 @@ struct RDB_type {
             RDB_bool builtin;
 
             /* RDB_TRUE if selector/getters/setters are provided by the system */
-            RDB_bool sysimpl; 
+            RDB_bool sysimpl;
 
             /* Actual representation, if the type is represented by another type.
                Otherwise NULL. */
-            struct RDB_type *arep; 
+            struct RDB_type *arep;
 
             RDB_expression *constraintp;
             RDB_expression *initexp;
@@ -207,19 +259,65 @@ struct RDB_type {
             RDB_bool init_val_is_valid;
         } scalar;
     } def;
-};
+} RDB_type;
 
+#endif
+
+/**@addtogroup table
+ * @{
+ */
+
+/**
+ * This struct is used to specify attribute definitions.
+ */
+typedef struct RDB_attr {
+    /** The name of the attribute. */
+    char *name;
+
+    /** The type of the attribute. */
+    RDB_type *typ;
+
+    /**
+     * If not NULL, this field must point to an RDB_object structure
+     * that specifies the default value for the attribute.
+     */
+    RDB_object *defaultp;
+
+    /**
+     * This field is currently ignored.
+     * It should be set to zero for compatibility
+     * with future versions of DuroDBMS.
+     */
+    int options;
+} RDB_attr;
+
+/**
+ * @}
+ */
+
+/**@addtogroup operator
+ * @{
+ */
+
+/**
+ * Represents a parameter of an operator.
+ */
 typedef struct RDB_parameter {
     /**
      * Parameter type
      */
     RDB_type *typ;
+
     /**
      * RDB_TRUE if and only if it's an update parameter.
      * Defined only for update operators.
      */
     RDB_bool update;
 } RDB_parameter;
+
+/**
+ * @}
+ */
 
 typedef void RDB_op_cleanup_func(RDB_operator *);
 
@@ -279,45 +377,86 @@ RDB_EXTERN_VAR RDB_type RDB_IDENTIFIER;
 
 RDB_EXTERN_VAR RDB_type RDB_IOSTREAM_ID;
 
+/** @addtogroup tuple
+ * @{
+ */
+
+/** @struct RDB_virtual_attr rdb.h <rel/rdb.h>
+ * Represents a virtual attribute, used for EXTEND.
+ */
 typedef struct {
     char *name;
     RDB_expression *exp;
 } RDB_virtual_attr;
 
+/** @struct RDB_renaming rdb.h <rel/rdb.h>
+ * Represents an attribute renaming.
+ */
 typedef struct {
     char *from;
     char *to;
 } RDB_renaming;
 
+/** @struct RDB_wrapping rdb.h <rel/rdb.h>
+ * Represents an attribute wrapping.
+ */
 typedef struct {
     int attrc;
     char **attrv;
     char *attrname;
 } RDB_wrapping;
 
-typedef struct {
-    /** Attribute name. */
-    char *attrname;
-    /** RDB_TRUE if order is ascending, RDB_FALSE if order is descending. */
-    RDB_bool asc;
-} RDB_seq_item;
-
-typedef struct RDB_database RDB_database;
-
-typedef struct RDB_transaction {
-    /* internal */
-    RDB_database *dbp;
-    RDB_environment *envp;
-    DB_TXN *txid;
-    void *user_data;
-    struct RDB_transaction *parentp;
-    struct RDB_rmlink *delrmp;
-    struct RDB_ixlink *delixp;
-} RDB_transaction;
+/**
+ * @}
+ */
 
 typedef RDB_object *RDB_getobjfn(const char *, void *);
 
 typedef RDB_type *RDB_gettypefn(const char *, void *);
+
+/** @addtogroup generic
+ * @{
+ */
+
+/**
+ * Represents an insert.
+ */
+typedef struct {
+    RDB_object *tbp;
+    RDB_object *objp;
+} RDB_ma_insert;
+
+typedef struct {
+    const char *name;
+    RDB_expression *exp;
+} RDB_attr_update;
+
+/**
+ * Represents an update.
+ */
+typedef struct {
+    RDB_object *tbp;
+    RDB_expression *condp;
+    int updc;
+    RDB_attr_update *updv;
+} RDB_ma_update;
+
+/**
+ * Represents a delete.
+ */
+typedef struct {
+    RDB_object *tbp;
+    RDB_expression *condp;
+} RDB_ma_delete;
+
+typedef struct {
+    RDB_object *dstp;
+    RDB_object *srcp;
+} RDB_ma_copy;
+
+/**
+ * @}
+ */
 
 const char *
 RDB_db_name(const RDB_database *);
@@ -337,27 +476,6 @@ RDB_drop_db(RDB_database *, RDB_exec_context *);
 
 int
 RDB_get_dbs(RDB_environment *, RDB_object *, RDB_exec_context *);
-
-typedef struct RDB_attr {
-    /** The name of the attribute. */
-    char *name;
-
-    /** The type of the attribute. */
-    RDB_type *typ;
-
-    /**
-     * If not NULL, this field must point to an RDB_object structure
-     * that specifies the default value for the attribute.
-     */
-    RDB_object *defaultp;
-
-    /**
-     * This field is currently ignored.
-     * It should be set to zero for compatibility
-     * with future versions of DuroDBMS.
-     */
-    int options;
-} RDB_attr;
 
 RDB_object *
 RDB_create_table(const char *,
@@ -419,11 +537,6 @@ RDB_set_table_name(RDB_object *, const char *, RDB_exec_context *,
 int
 RDB_add_table(RDB_object *, RDB_exec_context *, RDB_transaction *);
 
-typedef struct {
-    const char *name;
-    RDB_expression *exp;
-} RDB_attr_update;
-
 int
 RDB_insert(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *,
         RDB_transaction *);
@@ -443,28 +556,6 @@ RDB_copy_table(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *,
 RDB_int
 RDB_move_tuples(RDB_object *, RDB_object *, RDB_exec_context *,
         RDB_transaction *);
-
-typedef struct {
-    RDB_object *tbp;
-    RDB_object *objp;
-} RDB_ma_insert;
-
-typedef struct {
-    RDB_object *tbp;
-    RDB_expression *condp;
-    int updc;
-    RDB_attr_update *updv;
-} RDB_ma_update;
-
-typedef struct {
-    RDB_object *tbp;
-    RDB_expression *condp;
-} RDB_ma_delete;
-
-typedef struct {
-    RDB_object *dstp;
-    RDB_object *srcp;
-} RDB_ma_copy;
 
 RDB_int
 RDB_multi_assign(int, const RDB_ma_insert[],

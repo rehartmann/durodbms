@@ -132,7 +132,7 @@ else:
 env.Alias('apidocs', 'docs/api/html/index.html')
 
 env.Command('docs/api/html/index.html',
-        ['Doxyfile'] + recsrc + relsrc + interpsrc
+        ['Doxyfile'] + recsrc + relsrc + interpsrc + ['rel/rdb.h']
             + ['dli/parse.c', 'dli/ioop.c', 'dli/iinterp.c', 'dli/parse.h'],
         'doxygen')
 

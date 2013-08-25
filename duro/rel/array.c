@@ -108,17 +108,14 @@ error:
     return RDB_ERROR;
 }
 
-/** @defgroup array Array functions 
+/**@defgroup array Array functions
  * @{
- */
-
-/** @struct RDB_seq_item rdb.h <rel/rdb.h>
- * This struct is used to specify an attribute and a direction
- * for tuple ordering.
+ * \#include <rel/rdb.h>
+ *
  */
 
 /**
- * RDB_table_to_array creates an array which contains
+ * Create an array which contains
 all tuples from the table specified by <var>tbp</var>.
 If <var>seqitc</var> is zero, the order of the tuples is undefined.
 If <var>seqitc</var> is greater than zero, the order of the tuples
