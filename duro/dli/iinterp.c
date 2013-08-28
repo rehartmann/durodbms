@@ -2253,10 +2253,11 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
                 ret = exec_case(firstchildp->nextp, ecp, retinfop);
                 break;
             case TOK_FOR:
-                ret = exec_for(firstchildp->nextp, NULL, ecp, retinfop);
-                break;
-            case TOK_FOREACH:
-                ret = exec_foreach(firstchildp->nextp, NULL, ecp, retinfop);
+                if (firstchildp->nextp->nextp->val.token == TOK_IN) {
+                    ret = exec_foreach(firstchildp->nextp, NULL, ecp, retinfop);
+                } else {
+                    ret = exec_for(firstchildp->nextp, NULL, ecp, retinfop);
+                }
                 break;
             case TOK_WHILE:
                 ret = exec_while(firstchildp->nextp, NULL, ecp, retinfop);
@@ -2388,12 +2389,13 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
                             firstchildp, ecp, retinfop);
                     break;
                 case TOK_FOR:
-                    ret = exec_for(firstchildp->nextp->nextp->nextp,
-                            firstchildp, ecp, retinfop);
-                    break;
-                case TOK_FOREACH:
-                    ret = exec_foreach(firstchildp->nextp->nextp->nextp,
-                            firstchildp, ecp, retinfop);
+                    if (firstchildp->nextp->nextp->nextp->nextp->val.token == TOK_IN) {
+                        ret = exec_foreach(firstchildp->nextp->nextp->nextp,
+                                firstchildp, ecp, retinfop);
+                    } else {
+                        ret = exec_for(firstchildp->nextp->nextp->nextp,
+                                firstchildp, ecp, retinfop);
+                    }
                     break;
                 default:
                     RDB_raise_internal("invalid token", ecp);

@@ -69,11 +69,11 @@ test create {creating and populating public table} -setup $SETUP -cleanup $CLEAN
         insert r1 tup{no 2, c 'two'};
 
         var tp tuple same_heading_as(p);
-        foreach tp in p order(no asc);
+        for tp in p order(no asc);
             put(tp.no);
             put(' ');
             put_line(tp.c);
-        end foreach;
+        end for;
 
         put(count(p)); put_line('');
         commit;
@@ -89,11 +89,11 @@ test create {creating and populating public table} -setup $SETUP -cleanup $CLEAN
 
         insert p tup{no 11, c 'eleven'};
 
-        foreach tp in p order(no asc);
+        for tp in p order(no asc);
             put(tp.no);
             put(' ');
             put_line(tp.c);
-        end foreach;        
+        end for;        
 
         drop var p;
 

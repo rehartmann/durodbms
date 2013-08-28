@@ -88,12 +88,12 @@ test private {creating private table and inserting tuples} -body {
         var pr6 private rel {n int, m int} init rel{tup{n 5, m 5}};
         pr6 := pr3;
         var t tuple same_heading_as(pr6);
-        foreach t in pr6 order(n asc, m asc);
+        for t in pr6 order(n asc, m asc);
             put(cast_as_string(t.n));
             put(' ');
             put(cast_as_string(t.m));
             put_line('');
-        end foreach;
+        end for;
     }
 } -result {double creation caught
 key_violation_error
@@ -194,9 +194,9 @@ test ra {relational algebra} -body {
 	    put_line('');
 	
 	    var t tuple{i INT};
-	    foreach t in rel{tup{i 1}} union rel{tup{i 2}} order (i desc);
+	    for t in rel{tup{i 1}} union rel{tup{i 2}} order (i desc);
 	        put(t.i); put_line('');
-	    end foreach;
+	    end for;
 	    put_line('');
 
         put((tuple from (rel{tup{i 1}, tup{i 2}} minus rel{tup{i 1}})).i);
@@ -307,13 +307,13 @@ test private_default {private table with default values} -body {
 test tclose {TCLOSE} -body {
     exec $testdir/../../dli/durodt << {
         var t tuple {n1 int, n2 int};
-        foreach t in tclose(rel{tup{n1 1, n2 2}, tup{n1 2, n2 3},
+        for t in tclose(rel{tup{n1 1, n2 2}, tup{n1 2, n2 3},
                 tup{n1 3, n2 12}, tup{n1 10, n2 10}, tup{n1 10, n2 8}})
                 order (n1 asc, n2 asc);
             put(t.n1); put(' ');
             put(t.n2); put_line('');
-        end foreach;
-        
+        end for;
+
         put_line(if is_empty(tclose(rel {n1 int, n2 int} {}))
                 then 'empty' else 'not empty');
         

@@ -312,19 +312,19 @@ test deftypemr {user-defined type with multiple possreps} -setup $SETUP -cleanup
 
         var tp tuple same_heading_as(p);
 
-        foreach tp in p order(id asc);
+        for tp in p order(id asc);
              put(the_i(tp.amount)); put_line('');
              put(the_r(tp.amount)); put_line('');
-        end foreach;
+        end for;
 
         var p2 private relation {id int, amount fixed2}
                 init rel { tuple { id 1, amount fixed2r(500.11) },
                        tuple { id 2, amount fixed2i(20012) } };
 
-        foreach tp in p2 order(id asc);
+        for tp in p2 order(id asc);
              put(the_i(tp.amount)); put_line('');
              put(the_r(tp.amount)); put_line('');
-        end foreach;
+        end for;
     }
 } -result {0
 0.0

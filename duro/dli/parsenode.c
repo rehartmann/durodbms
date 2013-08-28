@@ -355,8 +355,6 @@ RDB_token_name(int tok)
             return "FOR";
         case TOK_TO:
             return "TO";
-        case TOK_FOREACH:
-            return "FOREACH";
         case TOK_WHILE:
             return "WHILE";
         case TOK_LEAVE:

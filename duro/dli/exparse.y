@@ -135,7 +135,6 @@ yyerror(const char *);
 %token TOK_WHEN "WHEN"
 %token TOK_END "END"
 %token TOK_FOR "FOR"
-%token TOK_FOREACH "FOREACH"
 %token TOK_TO "TO"
 %token TOK_WHILE "WHILE"
 %token TOK_LEAVE "LEAVE"
@@ -613,9 +612,9 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $10);
         RDB_parse_add_child($$, $11);
     }
-    | TOK_FOREACH TOK_ID TOK_IN expression
+    | TOK_FOR TOK_ID TOK_IN expression
             TOK_ORDER '(' order_item_commalist ')' ';'
-            ne_statement_list TOK_END TOK_FOREACH ';' {
+            ne_statement_list TOK_END TOK_FOR ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -647,9 +646,9 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $12);
         RDB_parse_add_child($$, $13);
     }
-    | TOK_ID ':' TOK_FOREACH TOK_ID TOK_IN expression
+    | TOK_ID ':' TOK_FOR TOK_ID TOK_IN expression
             TOK_ORDER '(' order_item_commalist ')' ';'
-            ne_statement_list TOK_END TOK_FOREACH ';' {
+            ne_statement_list TOK_END TOK_FOR ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);

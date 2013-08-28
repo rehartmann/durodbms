@@ -20,7 +20,7 @@
 <li><a href="#tables">Tables</a>
 <li><a href="#dbconstraints">Database constraints</a>
 <li><a href="#arrays">Arrays</a>
-<li><a href="#foreach">FOREACH</a>
+<li><a href="#foreach">FOR .. IN</a>
 <li><a href="#io">I/O</a>
 <li><a href="#user-ops">User-defined operators</a>
 <li><a href="#user-types">User-defined types</a>
@@ -683,17 +683,17 @@ D>   put(a[i]); put_line('');
 D> end for;
 </pre>
 
-<h2 id="foreach">FOREACH</h2>
+<h2 id="foreach">FOR .. IN</h2>
 
-<p>Duro D/T supports a FOREACH statement.
+<p>Duro D/T supports a second FOR statement which iterates over all tuple values of a table.
 The example below prints all tuples of table r in an unspecified order
-using FOREACH instead of using LOAD: 
+using FOR instead of using LOAD: 
 
 <pre>
 D> var t tup same_heading_as(r);
-D> foreach t in r order();
+D> for t in r order();
 D>   put(t); put_line('');
-D> end foreach;
+D> end for;
 </pre>
 
 <h2 id="io">I/O</h2>
@@ -769,9 +769,9 @@ end while;
 
 -- Write lines in sorted order
 var lt tup same_heading_as(lines);
-foreach lt in lines order(line asc);
+for lt in lines order(line asc);
     put_line(lt.line);
-end foreach;
+end for;
 </pre>
 
 <h2 id="user-ops">User-defined operators</h2>
