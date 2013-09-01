@@ -947,7 +947,7 @@ int
 RDB_assoc_table_db(RDB_object *tbp, RDB_database *dbp, RDB_exec_context *ecp)
 {
     /* Insert table into table map */
-    int ret = RDB_hashmap_put(&dbp->tbmap, tbp->val.tb.name, tbp);
+    int ret = RDB_hashmap_put(&dbp->tbmap, RDB_table_name(tbp), tbp);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp, NULL);
         return RDB_ERROR;
@@ -981,10 +981,29 @@ create_table(const char *name, RDB_type *reltyp,
 {
     RDB_transaction tx;
 
-    RDB_object *tbp = RDB_new_rtable(name, RDB_TRUE, reltyp, keyc, keyv,
+    RDB_object *tbp = RDB_hashmap_get(&txp->dbp->tbmap, name);
+    if (tbp != NULL) {
+        /* Table found - check if it exists in the catalog */
+        if (RDB_check_table(tbp, ecp, txp) == RDB_OK) {
+            RDB_raise_element_exists("table already exists", ecp);
+            return NULL;
+        } else {
+            /* Table no longer valid - recycle its RDB_object structure */
+            char *name = tbp->val.tb.name;
+            tbp->val.tb.name = NULL;
+            if (RDB_init_table_i(tbp, NULL, RDB_TRUE, reltyp,
+                    keyc, keyv, default_attrc, default_attrv,
+                    RDB_TRUE, NULL, ecp) != RDB_OK) {
+                return NULL;
+            }
+            tbp->val.tb.name = name;
+        }
+    } else {
+        tbp = RDB_new_rtable(name, RDB_TRUE, reltyp, keyc, keyv,
             default_attrc, default_attrv, RDB_TRUE, ecp);
-    if (tbp == NULL) {
-        return NULL;
+        if (tbp == NULL) {
+            return NULL;
+        }
     }
 
     /* Create subtransaction */
@@ -1175,7 +1194,6 @@ RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object *tbp;
     RDB_database *dbp;
-    RDB_object *errp;
 
     /* Search table in all databases */
     dbp = txp->dbp->dbrootp->first_dbp;
@@ -1202,37 +1220,26 @@ RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     }
 
     /* If not found, read from catalog, search in real tables first */
-    tbp = RDB_cat_get_rtable(name, ecp, txp);
-    if (tbp != NULL)
-        return tbp;
+    tbp = RDB_new_obj(ecp);
+    if (tbp == NULL)
+        return NULL;
 
-    errp = RDB_get_err(ecp);
-    if (errp != NULL) {
-        /* If the error is rdb_not_found_error, return */
-        if (RDB_obj_type(errp) != &RDB_NOT_FOUND_ERROR)
-            return NULL;
-        RDB_clear_err(ecp);
+    tbp->val.tb.name = RDB_dup_str(name);
+    if (tbp->val.tb.name == NULL) {
+        RDB_destroy_obj(tbp, ecp);
+        return NULL;
     }
 
-    tbp = RDB_cat_get_vtable(name, ecp, txp);
-    if (tbp != NULL)
+    if (RDB_cat_get_table(tbp, ecp, txp) == RDB_OK)
         return tbp;
 
-    errp = RDB_get_err(ecp);
-    if (errp != NULL) {
-        /* If the error is not rdb_not_found_error, return */
-        if (RDB_obj_type(errp) != &RDB_NOT_FOUND_ERROR)
-            return NULL;
-        RDB_clear_err(ecp);
-    }
-
-    tbp = RDB_cat_get_ptable(name, ecp, txp);
-
-    if (tbp == NULL && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+    if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
         /* Replace not_found_error with name_error */
         RDB_raise_name(name, ecp);
     }
-    return tbp;
+
+    RDB_destroy_obj(tbp, ecp);
+    return NULL;
 }
 
 /*
@@ -1612,15 +1619,9 @@ RDB_close_user_tables(RDB_database *dbp, RDB_exec_context *ecp)
     void *datap;
     char *keyp;
 
-    while ((tbp = find_del_table(dbp)) != NULL) {
-        if (close_table(tbp, dbp->dbrootp->envp, ecp) != RDB_OK)
-            return RDB_ERROR;
-    }
-
     /* Close public tables */
 
     RDB_init_hashmap_iter(&it, &dbp->dbrootp->ptbmap);
-
     while ((datap = RDB_hashmap_next(&it, &keyp)) != NULL) {
         if (datap != NULL) {
             tbp = datap;
@@ -1629,10 +1630,58 @@ RDB_close_user_tables(RDB_database *dbp, RDB_exec_context *ecp)
                 return RDB_ERROR;
         }
     }
-
     RDB_destroy_hashmap_iter(&it);
 
     RDB_clear_hashmap(&dbp->dbrootp->ptbmap);
+
+    while ((tbp = find_del_table(dbp)) != NULL) {
+        if (close_table(tbp, dbp->dbrootp->envp, ecp) != RDB_OK)
+            return RDB_ERROR;
+    }
+
+    return RDB_OK;
+}
+
+/*
+ * Set CHECK flag for all user tables
+ */
+int
+RDB_set_user_tables_check(RDB_database *dbp, RDB_exec_context *ecp)
+{
+    RDB_object *tbp;
+    RDB_hashmap_iter it;
+    void *datap;
+    char *keyp;
+
+    /* Public tables */
+
+    RDB_init_hashmap_iter(&it, &dbp->dbrootp->ptbmap);
+    while ((datap = RDB_hashmap_next(&it, &keyp)) != NULL) {
+        if (datap != NULL) {
+            tbp = datap;
+            if (tbp->val.tb.stp != NULL) {
+                RDB_close_stored_table(tbp->val.tb.stp, ecp);
+                tbp->val.tb.stp = NULL;
+            }
+            tbp->val.tb.flags |= RDB_TB_CHECK;
+        }
+    }
+    RDB_destroy_hashmap_iter(&it);
+
+    RDB_init_hashmap_iter(&it, &dbp->tbmap);
+    while ((datap = RDB_hashmap_next(&it, &keyp)) != NULL) {
+        if (datap != NULL) {
+            tbp = datap;
+            if (RDB_table_is_user(tbp)) {
+                if (tbp->val.tb.stp != NULL) {
+                    RDB_close_stored_table(tbp->val.tb.stp, ecp);
+                    tbp->val.tb.stp = NULL;
+                }
+                tbp->val.tb.flags |= RDB_TB_CHECK;
+            }
+        }
+    }
+    RDB_destroy_hashmap_iter(&it);
 
     return RDB_OK;
 }

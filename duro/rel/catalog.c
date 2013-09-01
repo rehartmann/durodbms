@@ -1926,12 +1926,11 @@ error:
 }
 
 /* Read a real table from the catalog */
-RDB_object *
-RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
+static int
+RDB_cat_get_rtable(RDB_object *tbp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_expression *exp, *argp;
-    RDB_object *tbp = NULL;
     RDB_object *tmptb1p = NULL;
     RDB_object *tmptb3p = NULL;
     RDB_object *tmptb4p = NULL;
@@ -1949,6 +1948,7 @@ RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
     RDB_type *tbtyp;
     int indexc;
     RDB_tbindex *indexv;
+    char *name = tbp->val.tb.name;
     const char *recmapname = NULL;
 
     RDB_init_obj(&arr);
@@ -2105,12 +2105,18 @@ RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
         }
     }
 
-    tbp = RDB_new_rtable(name, RDB_TRUE, tbtyp, keyc, keyv, 0, NULL, usr, ecp);
-    RDB_free_keys(keyc, keyv);
-    if (tbp == NULL) {
+    /* Keep name from being free'd */
+    tbp->val.tb.name = NULL;
+
+    if (RDB_init_table_i(tbp, NULL, RDB_TRUE, tbtyp, keyc, keyv,
+            0, NULL, usr, NULL, ecp) != RDB_OK) {
+        RDB_free_keys(keyc, keyv);
         RDB_del_nonscalar_type(tbtyp, ecp);
         goto error;
     }
+    /* Restore name */
+    tbp->val.tb.name = name;
+    RDB_free_keys(keyc, keyv);
 
     if (RDB_set_defvals(tbp, defvalc, defvalattrv, ecp) != RDB_OK) {
         goto error;
@@ -2153,7 +2159,7 @@ RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
     if (defvalc > 0)
         RDB_free(defvalattrv);
 
-    return tbp;
+    return RDB_OK;
 
 error:
     RDB_destroy_obj(&arr, ecp);
@@ -2177,21 +2183,17 @@ error:
         RDB_free(defvalattrv);
     }
 
-    if (tbp != NULL)
-        RDB_free_obj(tbp, ecp);
-
-    return NULL;
+    return RDB_ERROR;
 } /* RDB_cat_get_rtable */
 
-static RDB_object *
-RDB_binobj_to_vtable(RDB_object *valp, RDB_exec_context *ecp,
+static int
+RDB_binobj_to_vtable(RDB_object *tbp, RDB_object *valp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_expression *exp, *texp;
     int pos = 0;
-    int ret = RDB_deserialize_expr(valp, &pos, ecp, txp, &exp);
-    if (ret != RDB_OK)
-        return NULL;
+    if (RDB_deserialize_expr(valp, &pos, ecp, txp, &exp) != RDB_OK)
+        return RDB_ERROR;
 
     /*
      * Resolve table names so the underlying real table(s) can be
@@ -2200,23 +2202,23 @@ RDB_binobj_to_vtable(RDB_object *valp, RDB_exec_context *ecp,
     texp = RDB_expr_resolve_varnames(exp, NULL, NULL, ecp, txp);
     RDB_del_expr(exp, ecp);
     if (texp == NULL)
-        return NULL;
+        return RDB_ERROR;
 
-    return RDB_expr_to_vtable(texp, ecp, txp);
+    return RDB_vtexp_to_obj(texp, ecp, txp, tbp);
 }
 
-RDB_object *
-RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
+static int
+RDB_cat_get_vtable(RDB_object *tbp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    RDB_object *tbp;
     RDB_expression *exp, *argp;
-    RDB_object *tmptbp = NULL;
     RDB_object tpl;
     RDB_object arr;
     RDB_object *valp;
     RDB_bool usr;
     int ret;
+    RDB_object *tmptbp = NULL;
+    char *name = tbp->val.tb.name;
 
     /*
      * Read virtual table data from the catalog
@@ -2266,13 +2268,13 @@ RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
 
     valp = RDB_tuple_get(&tpl, "i_def");
 
-    tbp = RDB_binobj_to_vtable(valp, ecp, txp);
-    if (tbp == NULL)
+    tbp->val.tb.name = NULL;
+    if (RDB_binobj_to_vtable(tbp, valp, ecp, txp) != RDB_OK)
         goto error;
+    tbp->val.tb.name = name;
 
     RDB_destroy_obj(&tpl, ecp);
-    ret = RDB_destroy_obj(&arr, ecp);
-    if (ret != RDB_OK)
+    if (RDB_destroy_obj(&arr, ecp) != RDB_OK)
         goto error;
 
     tbp->val.tb.flags = RDB_TB_PERSISTENT;
@@ -2280,12 +2282,6 @@ RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
         tbp->val.tb.flags |= RDB_TB_USER;
     } else {
         tbp->val.tb.flags &= ~RDB_TB_USER;
-    }
-
-    tbp->val.tb.name = RDB_dup_str(name);
-    if (tbp->val.tb.name == NULL) {
-        RDB_raise_no_memory(ecp);
-        return NULL;
     }
 
     if (RDB_assoc_table_db(tbp, txp->dbp, ecp) != RDB_OK)
@@ -2296,13 +2292,13 @@ RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
                 "Definition of virtual table %s read from the catalog\n",
                 name);
     }
-    return tbp;
+    return RDB_OK;
 
 error:
     RDB_destroy_obj(&tpl, ecp);
     RDB_destroy_obj(&arr, ecp);
     
-    return NULL;
+    return RDB_ERROR;
 } /* RDB_cat_get_vtable */
 
 RDB_object *
@@ -2344,17 +2340,17 @@ RDB_cat_get_ptable_vt(const char *name, RDB_exec_context *ecp,
     return restbp;
 }
 
-RDB_object *
-RDB_cat_get_ptable(const char *name, RDB_exec_context *ecp,
+static int
+RDB_cat_get_ptable(RDB_object *tbp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    RDB_object *tbp;
-    RDB_object *tmptbp = NULL;
     RDB_object tpl;
     RDB_object arr;
     RDB_object *valp;
     RDB_bool usr;
     int ret;
+    char *name = tbp->val.tb.name;
+    RDB_object *tmptbp = NULL;
 
     /*
      * Read virtual table data from the catalog
@@ -2365,7 +2361,7 @@ RDB_cat_get_ptable(const char *name, RDB_exec_context *ecp,
 
     tmptbp = RDB_cat_get_ptable_vt(name, ecp, txp);
     if (tmptbp == NULL)
-        return NULL;
+        return RDB_ERROR;
     ret = RDB_extract_tuple(tmptbp, ecp, txp, &tpl);
     RDB_drop_table(tmptbp, ecp, txp);
     if (ret != RDB_OK) {
@@ -2382,9 +2378,10 @@ RDB_cat_get_ptable(const char *name, RDB_exec_context *ecp,
         goto error;
     }
 
-    tbp = RDB_binobj_to_vtable(valp, ecp, txp);
-    if (tbp == NULL)
+    tbp->val.tb.name = NULL;
+    if (RDB_binobj_to_vtable(tbp, valp, ecp, txp) != RDB_OK)
         goto error;
+    tbp->val.tb.name = name;
 
     RDB_destroy_obj(&tpl, ecp);
     ret = RDB_destroy_obj(&arr, ecp);
@@ -2398,12 +2395,6 @@ RDB_cat_get_ptable(const char *name, RDB_exec_context *ecp,
         tbp->val.tb.flags &= ~RDB_TB_USER;
     }
 
-    tbp->val.tb.name = RDB_dup_str(name);
-    if (tbp->val.tb.name == NULL) {
-        RDB_raise_no_memory(ecp);
-        return NULL;
-    }
-
     if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
         fprintf(stderr,
                 "Definition of virtual public %s read from the catalog\n",
@@ -2414,16 +2405,34 @@ RDB_cat_get_ptable(const char *name, RDB_exec_context *ecp,
             name, tbp);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp, NULL);
-        return NULL;
+        return RDB_ERROR;
     }
 
-    return tbp;
+    return RDB_OK;
 
 error:
     RDB_destroy_obj(&tpl, ecp);
     RDB_destroy_obj(&arr, ecp);
 
-    return NULL;
+    return RDB_ERROR;
+}
+
+int
+RDB_cat_get_table(RDB_object *tbp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    if (RDB_cat_get_rtable(tbp, ecp, txp) == RDB_OK)
+        return RDB_OK;
+
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
+        return RDB_ERROR;
+
+    if (RDB_cat_get_vtable(tbp, ecp, txp) == RDB_OK)
+        return RDB_OK;
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
+        return RDB_ERROR;
+
+    return RDB_cat_get_ptable(tbp, ecp, txp);
 }
 
 int

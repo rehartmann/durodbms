@@ -747,6 +747,11 @@ init_index_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_tbindex *indexp,
 {
     int ret;
 
+    if (RDB_TB_CHECK & tbp->val.tb.flags) {
+        if (RDB_check_table(tbp, ecp, txp) != RDB_OK)
+            return RDB_ERROR;
+    }
+
     /* !! delay after first call to RDB_next_tuple()? */
     qrp->endreached = RDB_FALSE;
     qrp->exp = NULL;
@@ -1033,6 +1038,11 @@ init_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_exec_context *ecp,
     qrp->endreached = RDB_FALSE;
     qrp->matp = NULL;
 
+    if (RDB_TB_CHECK & tbp->val.tb.flags) {
+        if (RDB_check_table(tbp, ecp, txp) != RDB_OK)
+            return RDB_ERROR;
+    }
+
     if (RDB_table_is_persistent(tbp) && !RDB_tx_is_running(txp)) {
         RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
@@ -1202,7 +1212,14 @@ RDB_table_iterator(RDB_object *tbp,
                    RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_qresult *qrp;
-    RDB_expression *texp = RDB_optimize(tbp, seqitc, seqitv, ecp, txp);
+    RDB_expression *texp;
+
+    if (RDB_TB_CHECK & tbp->val.tb.flags) {
+        if (RDB_check_table(tbp, ecp, txp) != RDB_OK)
+            return NULL;
+    }
+
+    texp = RDB_optimize(tbp, seqitc, seqitv, ecp, txp);
     if (texp == NULL)
         return NULL;
 

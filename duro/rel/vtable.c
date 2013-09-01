@@ -41,6 +41,7 @@ RDB_vtexp_to_obj(RDB_expression *exp, RDB_exec_context *ecp,
     if (tbtyp == NULL)
         return RDB_ERROR;
 
+    /* Preserve table name */
     if (RDB_init_table_i(tbp, NULL, RDB_FALSE, 
             tbtyp, 0, NULL, 0, NULL, RDB_TRUE, exp, ecp) != RDB_OK) {
         return RDB_ERROR;

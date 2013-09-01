@@ -18,6 +18,7 @@
 #include <gen/strfns.h>
 
 #include <string.h>
+#include <assert.h>
 
 static RDB_string_vec *
 dup_keyv(int keyc, const RDB_string_vec keyv[], RDB_exec_context *ecp)
@@ -49,6 +50,7 @@ RDB_new_rtable(const char *name, RDB_bool persistent,
     return tbp;
 }
 
+/* Turn *tbp into a table */
 int
 RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
         RDB_type *reltyp, int keyc, const RDB_string_vec keyv[],
@@ -75,6 +77,10 @@ RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
             return RDB_ERROR;
     }
 
+    /* Ignore error so *tbp won't be left in a half-initialized state */
+    RDB_destroy_obj(tbp, ecp);
+
+    RDB_init_obj(tbp);
     tbp->kind = RDB_OB_TABLE;
     tbp->val.tb.flags = 0;
     if (usr)
@@ -89,7 +95,7 @@ RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
         tbp->val.tb.name = RDB_dup_str(name);
         if (tbp->val.tb.name == NULL) {
             RDB_raise_no_memory(ecp);
-            goto error;
+            return RDB_ERROR;
         }
     } else {
         tbp->val.tb.name = NULL;
@@ -104,7 +110,7 @@ RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
             /* Create key for all-key table */
             if (RDB_all_key(attrc, reltyp->def.basetyp->def.tuple.attrv,
                     ecp, &allkey) != RDB_OK)
-                goto error;
+                return RDB_ERROR;
 
             keyc = 1;
             keyv = &allkey;
@@ -116,30 +122,20 @@ RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
          */
         tbp->val.tb.keyv = dup_keyv(keyc, keyv, ecp);
         if (tbp->val.tb.keyv == NULL) {
-            goto error;
+            return RDB_ERROR;
         }
         tbp->val.tb.keyc = keyc;
     }
+    RDB_free(allkey.strv);
+
     tbp->val.tb.exp = exp;
 
     tbp->typ = reltyp;
 
     if (RDB_set_defvals(tbp, default_attrc, default_attrv, ecp) != RDB_OK)
-        goto error;
-
-    RDB_free(allkey.strv);
+        return RDB_ERROR;
 
     return RDB_OK;
-
-error:
-    /* Clean up */
-    if (tbp != NULL) {
-        RDB_free(tbp->val.tb.name);
-        if (tbp->val.tb.keyv != NULL)
-            RDB_free_keys(tbp->val.tb.keyc, tbp->val.tb.keyv);
-    }
-    RDB_free(allkey.strv);
-    return RDB_ERROR;
 }
 
 int
@@ -240,13 +236,13 @@ cleanup:
  * Like RDB_init_table(), but uses a RDB_type argument
  * instead of attribute arguments.
 
-If <var>default_attrc</var> is greater than zero,
-<var>default_attrv</var> must point to an array of length <var>default_attrc</var>
-where <var>name</var> is the attribute name and <var>defaultp</var>
-points to the default value for that attribute.
-Entries with a <var>defaultp</var> of NULL are ignored.
-Other fields of RDB_attr are ignored, but <var>options</var> should be set to zero
-for compatibility with future versions.
+ * If <var>default_attrc</var> is greater than zero,
+ * <var>default_attrv</var> must point to an array of length <var>default_attrc</var>
+ * where <var>name</var> is the attribute name and <var>defaultp</var>
+ * points to the default value for that attribute.
+ * Entries with a <var>defaultp</var> of NULL are ignored.
+ * Other fields of RDB_attr are ignored, but <var>options</var> should be set to zero
+ * for compatibility with future versions.
  *
  * If it returns with RDB_OK, <var>rtyp</var> is consumed.
  */
@@ -503,12 +499,12 @@ RDB_table_is_persistent(const RDB_object *tbp)
 
 /**
  * RDB_table_is_real returns if the table *<var>tbp</var>
-is real.
+is real or private.
 
 @returns
 
 RDB_TRUE if *<var>tbp</var> is real, RDB_FALSE if it
-is virtual.
+is not.
  */
 RDB_bool
 RDB_table_is_real(const RDB_object *tbp)
@@ -769,6 +765,11 @@ RDB_set_defvals(RDB_object *tbp, int attrc, const RDB_attr attrv[],
     RDB_object *tplp;
     int i;
 
+    if (tbp->val.tb.default_tplp != NULL) {
+        RDB_free_obj(tbp->val.tb.default_tplp, ecp);
+        tbp->val.tb.default_tplp = NULL;
+    }
+
     /* Check if there are actually any default values */
     for (i = 0; i < attrc; i++) {
         if (attrv[i].defaultp != NULL) {
@@ -796,6 +797,29 @@ RDB_set_defvals(RDB_object *tbp, int attrc, const RDB_attr attrv[],
 error:
     RDB_free_obj(tplp, ecp);
     return RDB_ERROR;;
+}
+
+int
+RDB_check_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+     /* Re-read table from catalog */
+    if (RDB_cat_get_table(tbp, ecp, txp) != RDB_OK) {
+        assert(tbp->kind == RDB_OB_TABLE);
+
+        /* Make sure the check flag is still set */
+        tbp->val.tb.flags |= RDB_TB_CHECK;
+
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+            /* Table not found in catalog, so it is invalid */
+            RDB_raise_invalid_argument("table does not exist", ecp);
+        }
+        return RDB_ERROR;
+    }
+
+    /* Table was found */
+    tbp->val.tb.flags &= ~RDB_TB_CHECK;
+
+    return RDB_OK;
 }
 
 /**
@@ -858,6 +882,11 @@ RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,
                 ecp, txp);
         if (ret != RDB_OK)
             goto error;
+    }
+
+    if (RDB_TB_CHECK & tbp->val.tb.flags) {
+        if (RDB_check_table(tbp, ecp, txp) != RDB_OK)
+            return RDB_ERROR;
     }
 
     /*

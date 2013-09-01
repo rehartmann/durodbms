@@ -1734,6 +1734,11 @@ RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
         return NULL;
     }
 
+    if (RDB_TB_CHECK & tbp->val.tb.flags) {
+        if (RDB_check_table(tbp, ecp, txp) != RDB_OK)
+            return NULL;
+    }
+
     if (tbp->val.tb.exp == NULL) {
         /* It's a real table - no optimization possible */
         if (seqitc > 0 && tbp->val.tb.stp != NULL) {

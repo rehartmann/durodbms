@@ -215,7 +215,7 @@ RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp)
      * been undone
      */
     if (txp->dbp != NULL)
-        return RDB_close_user_tables(txp->dbp, ecp);
+        return RDB_set_user_tables_check(txp->dbp, ecp);
 
     return RDB_OK;
 }

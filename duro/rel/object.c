@@ -915,7 +915,7 @@ set_str_obj_len(RDB_object *objp, size_t len, RDB_exec_context *ecp)
 to the string value specified by <var>str</var>.
 
 The RDB_object must either be newly initialized or of type
-STRING.
+string.
  */
 int
 RDB_string_to_obj(RDB_object *valp, const char *str, RDB_exec_context *ecp)
@@ -931,7 +931,7 @@ RDB_string_to_obj(RDB_object *valp, const char *str, RDB_exec_context *ecp)
  * Set *<var>valp</var> to the string that begins at <var>str</var>
  * limited to a length of <var>n</var> bytes.
 <var>valp</var> must either be newly initialized or of type
-STRING.
+string.
  */
 int
 RDB_string_n_to_obj(RDB_object *valp, const char *str, size_t n,

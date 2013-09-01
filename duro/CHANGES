@@ -4,6 +4,11 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 0.19
 
+- A rollback now sets all user tables to a special state so that when they
+  are accessed it is checked if they still exist in the catalog.
+
+- Replaced FOREACH by FOR.
+
 - Added type 'identifier' which is used in the catalog.
 
 - Added support for public tables.

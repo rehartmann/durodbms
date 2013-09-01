@@ -92,6 +92,7 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
         goto cleanup;
     }        
 
+    RDB_init_obj(&tmptb);
     ret = RDB_init_table_from_type(&tmptb, NULL, tmptbtyp,
             1, tbp->val.tb.keyv, 0, NULL, ecp);
     if (ret != RDB_OK) {

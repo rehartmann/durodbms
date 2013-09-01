@@ -33,17 +33,11 @@ int
 RDB_possreps_query(const char *name, RDB_exec_context *, RDB_transaction *,
         RDB_object **tbpp);
 
-RDB_object *
-RDB_cat_get_rtable(const char *, RDB_exec_context *, RDB_transaction *);
-
-RDB_object *
-RDB_cat_get_vtable(const char *, RDB_exec_context *, RDB_transaction *);
+int
+RDB_cat_get_table(RDB_object *, RDB_exec_context *, RDB_transaction *);
 
 RDB_object *
 RDB_cat_get_ptable_vt(const char *, RDB_exec_context *, RDB_transaction *);
-
-RDB_object *
-RDB_cat_get_ptable(const char *, RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_cat_map_ptable(const char *, RDB_expression *,

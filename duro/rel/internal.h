@@ -22,7 +22,8 @@ enum {
     RDB_NOT_IMPLEMENTED = -2,
 
     RDB_TB_USER = 1,
-    RDB_TB_PERSISTENT = 2
+    RDB_TB_PERSISTENT = 2,
+    RDB_TB_CHECK = 4
 };
 
 enum RDB_expr_kind {
@@ -231,6 +232,12 @@ RDB_table_equals(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *ecp,
 
 int
 RDB_close_user_tables(RDB_database *, RDB_exec_context *);
+
+int
+RDB_set_user_tables_check(RDB_database *, RDB_exec_context *);
+
+int
+RDB_check_table(RDB_object *, RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_expr_equals(const RDB_expression *, const RDB_expression *,

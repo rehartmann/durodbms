@@ -1064,3 +1064,68 @@ test implicit_tx {implicit transactions} -setup $SETUP -cleanup $CLEANUP -body {
 } -result {Gr
 Vanad
 }
+
+test rollback1 {rollback after real table creation} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+
+        var r1 real rel{no int, s string} key{no};
+        var r2 real rel{no1 int, no2 int};
+        insert r2 tup{no1 1, no2 1};
+
+        rollback;
+
+        begin tx;
+
+        try
+            put_line(cast_as_string(count(r1)));
+        catch err invalid_argument_error;
+            put_line('invalid_argument_error caught (1)');
+        end try;
+
+        try
+            put_line(cast_as_string(count(r2)));
+        catch err invalid_argument_error;
+           put_line('invalid_argument_error caught (2)');
+        end try;
+
+        commit;
+    }
+} -result {invalid_argument_error caught (1)
+invalid_argument_error caught (2)
+}
+
+test rollback2 {rollback after real table creation followed by re-creating the tables} \
+        -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+
+        var r1 real rel{no int, s string} key{no};
+        var r2 real rel{no1 int, no2 int};
+        insert r2 tup{no1 1, no2 1};
+
+        rollback;
+
+        begin tx;
+
+        -- Re-create tables w/ different heading
+        var r1 real rel{no int} key{no};
+        var r2 real rel{no int, s string};
+
+        insert r1 tup{no 1};
+        insert r2 tup{no 1, s 'truly relational'};
+
+        put_line(cast_as_string((tuple from r1).no));
+        put_line((tuple from r2).s);
+
+        commit;
+    }
+} -result {1
+truly relational
+}

@@ -197,7 +197,7 @@ RDB_create_recmap(const char *name, const char *filename,
     /* Create BDB database */
     ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filename, name,
             RDB_ORDERED & flags ? DB_BTREE : DB_HASH,
-            DB_CREATE, 0664);
+            DB_CREATE | DB_EXCL, 0664);
     if (ret != 0) {
         goto error;
     }
