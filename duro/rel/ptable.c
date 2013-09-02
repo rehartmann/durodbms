@@ -89,7 +89,6 @@ RDB_create_public_table_from_type(const char *name,
     }
 
     if (RDB_commit(ecp, &tx) != RDB_OK) {
-        RDB_hashmap_put(&txp->dbp->tbmap, name, NULL);
         goto error;
     }
 

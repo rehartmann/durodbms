@@ -1206,12 +1206,6 @@ RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         dbp = dbp->nextdbp;
     }
 
-    if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
-        fprintf(stderr,
-                "Trying to read table %s from the catalog\n",
-                name);
-    }
-
     /* Search public table in db root */
     tbp = RDB_hashmap_get(&txp->dbp->dbrootp->ptbmap, name);
     if (tbp != NULL) {
@@ -1220,6 +1214,13 @@ RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     }
 
     /* If not found, read from catalog, search in real tables first */
+
+    if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
+        fprintf(stderr,
+                "Trying to read table %s from the catalog\n",
+                name);
+    }
+
     tbp = RDB_new_obj(ecp);
     if (tbp == NULL)
         return NULL;
@@ -1659,10 +1660,6 @@ RDB_set_user_tables_check(RDB_database *dbp, RDB_exec_context *ecp)
     while ((datap = RDB_hashmap_next(&it, &keyp)) != NULL) {
         if (datap != NULL) {
             tbp = datap;
-            if (tbp->val.tb.stp != NULL) {
-                RDB_close_stored_table(tbp->val.tb.stp, ecp);
-                tbp->val.tb.stp = NULL;
-            }
             tbp->val.tb.flags |= RDB_TB_CHECK;
         }
     }

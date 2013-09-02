@@ -56,7 +56,6 @@ opt_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     if (nexp != NULL)
         RDB_del_expr(nexp, ecp);
     if (optexp == NULL) {
-        RDB_del_expr(optexp, ecp);
         return RDB_ERROR;
     }
 

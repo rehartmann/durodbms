@@ -914,6 +914,11 @@ dup_expr_deep(const RDB_expression *exp, RDB_exec_context *ecp,
             newexp = RDB_obj_to_expr(&exp->def.obj, ecp);
             break;
         case RDB_EX_TBP:
+            if (RDB_TB_CHECK & exp->def.tbref.tbp->val.tb.flags) {
+                if (RDB_check_table(exp->def.tbref.tbp, ecp, txp) != RDB_OK)
+                    return NULL;
+            }
+
             if (RDB_table_is_real(exp->def.tbref.tbp)) {
                 newexp = RDB_table_ref(exp->def.tbref.tbp, ecp);
             } else {
@@ -943,7 +948,6 @@ dup_expr_deep(const RDB_expression *exp, RDB_exec_context *ecp,
                 } else {
                     if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NAME_ERROR) {
                         /* Ignore error */
-                        RDB_clear_err(ecp);
                     } else {
                         return NULL;
                     }
