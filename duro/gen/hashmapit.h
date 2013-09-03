@@ -11,11 +11,11 @@ typedef struct {
 } RDB_hashmap_iter;
 
 void
-RDB_init_hashmap_iter(RDB_hashmap_iter *hip, RDB_hashmap *hp);
+RDB_init_hashmap_iter(RDB_hashmap_iter *, RDB_hashmap *);
 
 #define RDB_destroy_hashmap_iter(hp)
 
-void *
-RDB_hashmap_next(RDB_hashmap_iter *hp, char **keyp);
+const char *
+RDB_hashmap_next(RDB_hashmap_iter *, void **);
 
 #endif

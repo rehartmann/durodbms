@@ -47,14 +47,13 @@ void
 RDB_destroy_op_map(RDB_op_map *opmap)
 {
     RDB_hashmap_iter it;
-    char *keyp;
     void *op;
     RDB_exec_context ec;
 
     RDB_init_exec_context(&ec);
     RDB_init_hashmap_iter(&it, &opmap->map);
 
-    while ((op = RDB_hashmap_next(&it, &keyp)) != NULL) {
+    while (RDB_hashmap_next(&it, &op) != NULL) {
         struct op_entry *opep = op;
 
         if (opep != NULL)

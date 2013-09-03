@@ -70,18 +70,16 @@ void
 Duro_destroy_varmap(RDB_hashmap *map)
 {
     RDB_hashmap_iter it;
-    char *name;
-    RDB_object *objp;
+    void *datap;
     RDB_exec_context ec;
 
     RDB_init_exec_context(&ec);
     RDB_init_hashmap_iter(&it, map);
     for(;;) {
-        objp = RDB_hashmap_next(&it, &name);
-        if (name == NULL)
+        if (RDB_hashmap_next(&it, &datap) == NULL)
             break;
-        if (objp != NULL) {
-            drop_local_var(objp, &ec);
+        if (datap != NULL) {
+            drop_local_var(datap, &ec);
         }
     }
 
@@ -1063,16 +1061,16 @@ static const char *
 var_of_type(RDB_hashmap *mapp, RDB_type *typ)
 {
     RDB_hashmap_iter it;
-    char *namp;
-    RDB_object *objp;
+    const char *namp;
+    void *datap;
 
     RDB_init_hashmap_iter(&it, mapp);
     for(;;) {
-        objp = RDB_hashmap_next(&it, &namp);
+        namp = RDB_hashmap_next(&it, &datap);
         if (namp == NULL)
             break;
-        if (objp != NULL) {
-            RDB_type *vtyp = RDB_obj_type(objp);
+        if (datap != NULL) {
+            RDB_type *vtyp = RDB_obj_type((RDB_object *) datap);
 
             /* If the types are equal, return variable name */
             if (vtyp != NULL && RDB_type_equals(vtyp, typ))

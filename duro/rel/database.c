@@ -138,14 +138,12 @@ table_refs(RDB_database *dbp, RDB_object *tbp)
 {
     RDB_hashmap_iter it;
     RDB_object *rtbp;
-    char *keyp;
     void *datap;
 
     RDB_init_hashmap_iter(&it, &dbp->tbmap);
 
     do {
-        datap = RDB_hashmap_next(&it, &keyp);
-        if (keyp == NULL) {
+        if (RDB_hashmap_next(&it, &datap) == NULL) {
             RDB_destroy_hashmap_iter(&it);
             return RDB_FALSE;
         }
@@ -163,13 +161,11 @@ find_del_table(RDB_database *dbp)
     RDB_hashmap_iter it;
     RDB_object *tbp;
     void *datap;
-    char *keyp;
 
     RDB_init_hashmap_iter(&it, &dbp->tbmap);
 
     do {
-        datap = RDB_hashmap_next(&it, &keyp);
-        if (keyp == NULL) {
+        if (RDB_hashmap_next(&it, &datap) == NULL) {
             RDB_destroy_hashmap_iter(&it);
             return NULL;
         }
@@ -1618,12 +1614,11 @@ RDB_close_user_tables(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object *tbp;
     RDB_hashmap_iter it;
     void *datap;
-    char *keyp;
 
     /* Close public tables */
 
     RDB_init_hashmap_iter(&it, &dbp->dbrootp->ptbmap);
-    while ((datap = RDB_hashmap_next(&it, &keyp)) != NULL) {
+    while (RDB_hashmap_next(&it, &datap) != NULL) {
         if (datap != NULL) {
             tbp = datap;
             if (close_table(tbp, dbp->dbrootp->envp, ecp)
@@ -1652,12 +1647,11 @@ RDB_set_user_tables_check(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object *tbp;
     RDB_hashmap_iter it;
     void *datap;
-    char *keyp;
 
     /* Public tables */
 
     RDB_init_hashmap_iter(&it, &dbp->dbrootp->ptbmap);
-    while ((datap = RDB_hashmap_next(&it, &keyp)) != NULL) {
+    while (RDB_hashmap_next(&it, &datap) != NULL) {
         if (datap != NULL) {
             tbp = datap;
             tbp->val.tb.flags |= RDB_TB_CHECK;
@@ -1666,7 +1660,7 @@ RDB_set_user_tables_check(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_destroy_hashmap_iter(&it);
 
     RDB_init_hashmap_iter(&it, &dbp->tbmap);
-    while ((datap = RDB_hashmap_next(&it, &keyp)) != NULL) {
+    while (RDB_hashmap_next(&it, &datap) != NULL) {
         if (datap != NULL) {
             tbp = datap;
             if (RDB_table_is_user(tbp)) {
