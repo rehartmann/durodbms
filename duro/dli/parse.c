@@ -29,12 +29,12 @@ extern YY_BUFFER_STATE RDB_parse_buffer;
 RDB_parse_node *RDB_parse_resultp;
 RDB_exec_context *RDB_parse_ecp;
 
-/* Array of tokens for keyword completion */
+/* Array of tokens in alphabetical order for keyword completion */
 int RDB_parse_tokens[] = {
     TOK_AND, TOK_ADD, TOK_ALL, TOK_ANY, TOK_AVG, TOK_ARRAY, TOK_AS, TOK_ASC,
     TOK_BEGIN, TOK_BUT, TOK_CALL, TOK_CASE, TOK_CATCH, TOK_COUNT, TOK_COMMIT,
-    TOK_CONSTRAINT, TOK_DELETE, TOK_DEFAULT, TOK_DIVIDEBY, TOK_DROP, TOK_DESC,
-    TOK_ELSE, TOK_END, TOK_EXPLAIN, TOK_EXTEND, TOK_FOR,
+    TOK_CONSTRAINT, TOK_DELETE, TOK_DEFAULT, TOK_DESC, TOK_DIVIDEBY, TOK_DROP,
+    TOK_D_UNION, TOK_ELSE, TOK_END, TOK_EXPLAIN, TOK_EXTEND, TOK_FOR,
     TOK_FROM, TOK_GROUP, TOK_IF, TOK_IMPLEMENT, TOK_IN, TOK_INDEX,
     TOK_INIT, TOK_INSERT, TOK_INTERSECT, TOK_JOIN, TOK_KEY, TOK_LEAVE,
     TOK_LIKE, TOK_LOAD, TOK_MAX, TOK_MATCHING,
@@ -911,6 +911,9 @@ binop_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *t
             break;
         case TOK_UNION:
             opnamep = "union";
+            break;
+        case TOK_D_UNION:
+            opnamep = "d_union";
             break;
         case TOK_INTERSECT:
             opnamep = "intersect";

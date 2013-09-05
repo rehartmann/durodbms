@@ -390,6 +390,7 @@ append_ro_op_ex(RDB_object *objp, const RDB_expression *exp, RDB_environment *en
             || strcmp(exp->def.op.name, "join") == 0
             || strcmp(exp->def.op.name, "semijoin") == 0
             || strcmp(exp->def.op.name, "union") == 0
+            || strcmp(exp->def.op.name, "d_union") == 0
             || strcmp(exp->def.op.name, "intersect") == 0
             || strcmp(exp->def.op.name, "minus") == 0
             || strcmp(exp->def.op.name, "semiminus") == 0

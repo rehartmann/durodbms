@@ -8,8 +8,8 @@
 #include "rdb.h"
 #include "transform.h"
 #include "internal.h"
-#include <gen/strfns.h>
 #include "tostr.h"
+#include <gen/strfns.h>
 
 #include <string.h>
 #include <assert.h>
@@ -852,6 +852,10 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         }
 
         if ((RDB_type_is_relation(argtv[0]) && RDB_type_is_relation(argtv[1]))) {
+            if (!RDB_type_equals(argtv[0], argtv[1])) {
+                RDB_raise_type_mismatch("argument types do not match", ecp);
+                goto error;
+            }
             typ = RDB_dup_nonscalar_type(argtv[0], ecp);
         } else if ((RDB_type_is_tuple(argtv[0]) && RDB_type_is_tuple(argtv[1]))) {
             typ = RDB_union_tuple_types(argtv[0], argtv[1], ecp);
@@ -864,7 +868,8 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         if (argc > 0)
             RDB_free(argtv);
         return typ;
-    } else if (strcmp(exp->def.op.name, "minus") == 0
+    } else if (strcmp(exp->def.op.name, "d_union") == 0
+                || strcmp(exp->def.op.name, "minus") == 0
                 || strcmp(exp->def.op.name, "semiminus") == 0
                 || strcmp(exp->def.op.name, "intersect") == 0
                 || strcmp(exp->def.op.name, "semijoin") == 0) {
@@ -875,7 +880,8 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
         }
 
-        if (strcmp(exp->def.op.name, "minus") == 0
+        if (strcmp(exp->def.op.name, "d_union") == 0
+                || strcmp(exp->def.op.name, "minus") == 0
                 || strcmp(exp->def.op.name, "intersect") == 0) {
             if (!RDB_type_equals(argtv[0], argtv[1])) {
                 RDB_raise_type_mismatch("argument types do not match", ecp);

@@ -71,6 +71,7 @@ yyerror(const char *);
 %token TOK_LIT_BOOLEAN "boolean literal"
 %token TOK_WHERE "WHERE"
 %token TOK_UNION "UNION"
+%token TOK_D_UNION "D_UNION"
 %token TOK_INTERSECT "INTERSECT"
 %token TOK_MINUS "MINUS"
 %token TOK_SEMIMINUS "SEMIMINUS"
@@ -167,7 +168,7 @@ yyerror(const char *);
 %token TOK_INVALID "invalid"
 
 %left TOK_FROM TOK_ELSE ','
-%left TOK_UNION TOK_MINUS TOK_INTERSECT TOK_SEMIMINUS TOK_JOIN TOK_SEMIJOIN
+%left TOK_UNION TOK_D_UNION TOK_MINUS TOK_INTERSECT TOK_SEMIMINUS TOK_JOIN TOK_SEMIJOIN
         TOK_MATCHING TOK_DIVIDEBY TOK_PER
 %left TOK_SUBSET_OF TOK_IN
 %left TOK_WHERE '{' TOK_RENAME TOK_WRAP TOK_UNWRAP TOK_GROUP TOK_UNGROUP ':'
@@ -1616,6 +1617,18 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $5);
     }
     | expression TOK_UNION expression {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            YYABORT;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+    }
+    | expression TOK_D_UNION expression {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);

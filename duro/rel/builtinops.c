@@ -698,6 +698,12 @@ OPERATOR union(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION<
 
 <hr>
 
+<h3 id="op_d_union">OPERATOR d_union</h3>
+
+OPERATOR d_union(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+
+<hr>
+
 <h3 id="op_update">OPERATOR update</h3>
 
 OPERATOR update(R1 <em>RELATION</em>, DST_ATTRNAME string, SRC_EXPR <em>ANY</em>, ...) RETURNS <em>RELATION</em>;
@@ -1115,8 +1121,30 @@ op_union(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     /* Relation UNION - check types */
-    if (typ1 == NULL || !RDB_type_is_relation(typ1)
-            || typ2 == NULL || !RDB_type_is_relation(typ2)) {
+    if (typ1 == NULL || typ2 == NULL) {
+        RDB_raise_type_mismatch("relation argument required", ecp);
+        return RDB_ERROR;
+    }
+
+    return op_vtable(argc, argv, op, ecp, txp, retvalp);
+}
+
+static int
+op_d_union(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_type *typ1, *typ2;
+
+    if (argc != 2) {
+        RDB_raise_invalid_argument("invalid # of arguments", ecp);
+        return RDB_ERROR;
+    }
+
+    typ1 = RDB_obj_type(argv[0]);
+    typ2 = RDB_obj_type(argv[1]);
+
+    /* Check types */
+    if (typ1 == NULL || typ2 == NULL) {
         RDB_raise_type_mismatch("relation argument required", ecp);
         return RDB_ERROR;
     }
@@ -2273,6 +2301,10 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
         return ret;
 
     ret = RDB_put_global_ro_op("union", -1, NULL, NULL, &op_union, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = RDB_put_global_ro_op("d_union", -1, NULL, NULL, &op_d_union, ecp);
     if (ret != RDB_OK)
         return ret;
 

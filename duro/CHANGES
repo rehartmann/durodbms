@@ -4,6 +4,8 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 0.19
 
+- Added D_UNION.
+
 - A rollback now sets all user tables to a special state so that when they
   are accessed it is checked if they still exist in the catalog.
 

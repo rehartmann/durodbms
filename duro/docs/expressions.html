@@ -55,6 +55,7 @@ where = expression WHERE expression.
 rename = expression RENAME '{' [id AS id {',' id AS id}] '}'.
 
 dyadic_relation_op_inv = expression UNION expression
+        | expression D_UNION expression
         | expression INTERSECT expression
         | expression MINUS expression
         | expression SEMIMINUS expression

@@ -42,7 +42,6 @@ qr_matching_tuple(RDB_qresult *qrp, const RDB_object *tplp,
         RDB_destroy_obj(&tpl, ecp);
         return RDB_ERROR;
     }
-    RDB_clear_err(ecp);
     return RDB_destroy_obj(&tpl, ecp);
 }
 
@@ -266,7 +265,8 @@ RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
                 }
                 return project_matching(exp, tplp, ecp, txp, resultp);
             }
-            if (strcmp (exp->def.op.name, "union") == 0
+            if ((strcmp (exp->def.op.name, "union") == 0
+                 || strcmp (exp->def.op.name, "d_union") == 0)
                     && exp->def.op.args.firstp != NULL
                     && exp->def.op.args.firstp->nextp != NULL) {
                 return union_matching(exp, tplp, ecp, txp, resultp);

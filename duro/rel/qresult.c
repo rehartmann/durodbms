@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2012 Rene Hartmann.
+ * Copyright (C) 2003-2013 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -140,8 +140,7 @@ do_summarize(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg,
     if (lqrp == NULL) {
         return RDB_ERROR;
     }
-    ret = RDB_duprem(lqrp, ecp, txp);
-    if (ret != RDB_OK) {
+    if (RDB_duprem(lqrp, ecp, txp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -951,6 +950,7 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     }
     if ((strcmp(exp->def.op.name, "where") == 0)
             || (strcmp(exp->def.op.name, "union") == 0)
+            || (strcmp(exp->def.op.name, "d_union") == 0)
             || (strcmp(exp->def.op.name, "minus") == 0)
             || (strcmp(exp->def.op.name, "semiminus") == 0)
             || (strcmp(exp->def.op.name, "intersect") == 0)
@@ -1096,6 +1096,9 @@ expr_dups(RDB_expression *exp, RDB_exec_context *ecp, RDB_bool *resp)
         return expr_dups(exp->def.op.args.firstp, ecp, resp);
     } else if (strcmp(exp->def.op.name, "union") == 0) {
         *resp = RDB_TRUE;
+        return RDB_OK;
+    } else if (strcmp(exp->def.op.name, "d_union") == 0) {
+        *resp = RDB_FALSE;
         return RDB_OK;
     } else if (strcmp(exp->def.op.name, "join") == 0) {
         if (expr_dups(exp->def.op.args.firstp, ecp, resp) != RDB_OK)
@@ -2467,6 +2470,45 @@ next_union_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 }
 
 static int
+next_d_union_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    int ret;
+    RDB_bool match;
+
+    if (!qrp->val.children.qrp->endreached) {
+        ret = RDB_next_tuple(qrp->val.children.qrp, tplp, ecp, txp);
+        if (ret == RDB_OK || RDB_obj_type(RDB_get_err(ecp))
+                    != &RDB_NOT_FOUND_ERROR)
+            return ret;
+    }
+    RDB_clear_err(ecp);
+
+    /* Switch to second table */
+    if (qrp->val.children.qr2p == NULL) {
+        qrp->val.children.qr2p = RDB_expr_qresult(
+                qrp->exp->def.op.args.firstp->nextp, ecp, txp);
+        if (qrp->val.children.qr2p == NULL)
+            return RDB_ERROR;
+    }
+
+    if (RDB_next_tuple(qrp->val.children.qr2p, tplp, ecp, txp) != RDB_OK)
+        return RDB_ERROR;
+
+    /* Check if tuple is in the 1st argument */
+    if (RDB_expr_matching_tuple(qrp->exp->def.op.args.firstp, tplp, ecp, txp,
+            &match) != RDB_OK) {
+        return RDB_ERROR;
+    }
+    if (match) {
+        RDB_raise_element_exists("duplicate tuple in d_union", ecp);
+        return RDB_ERROR;
+    }
+
+    return RDB_OK;
+}
+
+static int
 next_semijoin_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
@@ -2608,29 +2650,26 @@ RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
             if (next_semiminus_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else if (strcmp(qrp->exp->def.op.name, "union") == 0) {
-            ret = next_union_tuple(qrp, tplp, ecp, txp);
-            if (ret != RDB_OK)
+            if (next_union_tuple(qrp, tplp, ecp, txp) != RDB_OK)
+                return RDB_ERROR;
+        } else if (strcmp(qrp->exp->def.op.name, "d_union") == 0) {
+            if (next_d_union_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else if ((strcmp(qrp->exp->def.op.name, "intersect") == 0)
                 || (strcmp(qrp->exp->def.op.name, "semijoin") == 0)) {
-            ret = next_semijoin_tuple(qrp, tplp, ecp, txp);
-            if (ret != RDB_OK)
+            if (next_semijoin_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else if (strcmp(qrp->exp->def.op.name, "extend") == 0) {
-            ret = next_extend_tuple(qrp, tplp, ecp, txp);
-            if (ret != RDB_OK)
+            if (next_extend_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else if (strcmp(qrp->exp->def.op.name, "wrap") == 0) {
-            ret = next_wrap_tuple(qrp, tplp, ecp, txp);
-            if (ret != RDB_OK)
+            if (next_wrap_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else if (strcmp(qrp->exp->def.op.name, "unwrap") == 0) {
-            ret = next_unwrap_tuple(qrp, tplp, ecp, txp);
-            if (ret != RDB_OK)
+            if (next_unwrap_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else if (strcmp(qrp->exp->def.op.name, "divide") == 0) {
-            ret = next_sdivide_tuple(qrp, tplp, ecp, txp);
-            if (ret != RDB_OK)
+            if (next_sdivide_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else if (strcmp(qrp->exp->def.op.name, "tclose") == 0) {
             if (RDB_next_tclose_tuple(qrp, tplp, ecp, txp) != RDB_OK)
