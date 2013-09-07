@@ -185,25 +185,86 @@ test sdivide {small DIVIDE} -body {
 2
 }
 
-test ra {relational algebra} -body {
+test union {UNION and D_UNION} -body {
     exec $testdir/../../dli/durodt << {
+        var p private init rel{tup{n 1, s 'alpha'}};
+        var v int;
+
 	    var arr array tuple{i int};
 	    load arr from rel{tup{i 1}} union rel{tup{i 2}} order (i asc);
 	    put(arr[0].i); put_line('');
 	    put(arr[1].i); put_line('');
 	    put_line('');
 	
-	    var t tuple{i INT};
-	    for t in rel{tup{i 1}} union rel{tup{i 2}} order (i desc);
-	        put(t.i); put_line('');
+	    var tp tuple{i int, s string};
+	    for tp in rel{tup{i 1, s 'a'}} union rel{tup{i 2, s 'b'}} order (i desc);
+	        put(tp.i); put(' ');
+	        put(tp.s); put_line('');
 	    end for;
 	    put_line('');
 
+        try
+            v := count(p union rel{tup{n 2, m 3, s 'beta'}});
+        catch err type_mismatch_error;
+            put_line('type mismatch (1)');
+        end try;
+
+        try
+            v := count(p d_union rel{tup{n 2, m 3, s 'beta'}});
+        catch err type_mismatch_error;
+            put_line('type mismatch (2)');
+        end try;
+
+        put_line((tuple from p union rel{tup{n 1, s 'alpha'}}).s);
+        
+        try
+        put_line((tuple from p d_union rel{tup{n 1, s 'alpha'}}).s);
+        catch err element_exists_error;
+            put_line('element_exists_error caught');
+        end try;
+
+        var tp2 tuple same_heading_as(p);
+        for tp2 in p d_union rel{tup{n 1, s 'alfa'}} order (s asc);
+            put_line(tp2.s);
+        end for;
+
+        put_line('');
+
+        for tp2 in rel{tup{n 1, s 'alfa'}, tup{n 2, s 'beta'}} d_union p
+                order (s asc);
+            put_line(tp2.s);
+        end for;
+
+        if (tup{n 1, s 'alfa'} in (p d_union rel{tup{n 1, s 'alfa'}})) then
+            put_line('ok');
+        end if;
+    }
+} -result {1
+2
+
+2 b
+1 a
+
+type mismatch (1)
+type mismatch (2)
+alpha
+element_exists_error caught
+alfa
+alpha
+
+alfa
+alpha
+beta
+ok
+}
+
+test ra {relational algebra} -body {
+    exec $testdir/../../dli/durodt << {
         put((tuple from (rel{tup{i 1}, tup{i 2}} minus rel{tup{i 1}})).i);
         put_line('');
 
-	    put(count(rel{tup{i 1}} minus rel{tup{i 1}}));
-	    put_line('');
+        put(count(rel{tup{i 1}} minus rel{tup{i 1}}));
+        put_line('');
 
         put(is_empty(rel{tup{i 1}} intersect rel{tup{i 2}}));
         put_line('');
@@ -232,13 +293,7 @@ test ra {relational algebra} -body {
                 pr intersect (pr matching rel{tup{id 2}, tup{id 3}}))
                .name);
     }
-} -result {1
-2
-
-2
-1
-
-2
+} -result {2
 0
 TRUE
 y

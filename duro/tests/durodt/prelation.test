@@ -119,60 +119,6 @@ name error caught
 2
 }
 
-test union {UNION and D_UNION} -body {
-    exec $testdir/../../dli/durodt << {
-        var p private init rel{tup{n 1, s 'alpha'}};
-        var v int;
-
-        try
-            v := count(p union rel{tup{n 2, m 3, s 'beta'}});
-        catch err type_mismatch_error;
-            put_line('type mismatch (1)');
-        end try;
-
-        try
-            v := count(p d_union rel{tup{n 2, m 3, s 'beta'}});
-        catch err type_mismatch_error;
-            put_line('type mismatch (2)');
-        end try;
-
-        put_line((tuple from p union rel{tup{n 1, s 'alpha'}}).s);
-        
-        try
-        put_line((tuple from p d_union rel{tup{n 1, s 'alpha'}}).s);
-        catch err element_exists_error;
-            put_line('element_exists_error caught');
-        end try;
-
-        var tp tuple same_heading_as(p);
-        for tp in p d_union rel{tup{n 1, s 'alfa'}} order (s asc);
-            put_line(tp.s);
-        end for;
-
-        put_line('');
-
-        for tp in rel{tup{n 1, s 'alfa'}, tup{n 2, s 'beta'}} d_union p
-                order (s asc);
-            put_line(tp.s);
-        end for;
-
-        if (tup{n 1, s 'alfa'} in (p d_union rel{tup{n 1, s 'alfa'}})) then
-            put_line('ok');
-        end if;
-    }
-} -result {type mismatch (1)
-type mismatch (2)
-alpha
-element_exists_error caught
-alfa
-alpha
-
-alfa
-alpha
-beta
-ok
-}
-
 test create_allkey {creating public table that is implicitly all-key} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');

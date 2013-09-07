@@ -248,6 +248,60 @@ test join_extend {Natural JOIN/EXTEND}  -setup $SETUP -cleanup $CLEANUP -body {
 2 y 1 yy
 }
 
+test union {UNION and D_UNION} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+
+        var t1 real init relation { tuple {n 1, s 'x'}, tuple {n 2, s 'y'} } key {n};
+        var t2 real init relation { tuple {n 2, s 'y'}, tuple {n 3, s 'z'} } key {n};
+        var t3 real init relation { tuple {n 2, s 'yy'}, tuple {n 3, s 'z'} } key {n};
+
+        var tp tuple same_heading_as(t1);
+        for tp in t1 union t2 order (n asc, s asc);
+            put(tp.n); put(' ');
+            put_line(tp.s);
+        end for;
+        put_line('');
+
+        for tp in t1 union t3 order (n asc, s asc);
+            put(tp.n); put(' ');
+            put_line(tp.s);
+        end for;
+        put_line('');
+
+        try
+            for tp in t1 d_union t2 order (n asc, s asc);
+                put(tp.n); put(' ');
+                put_line(tp.s);
+            end for;
+        catch err element_exists_error;
+            put_line('duplicate tuple caught');
+        end try;
+
+        for tp in t1 d_union t3 order (n asc, s asc);
+            put(tp.n); put(' ');
+            put_line(tp.s);
+        end for;
+    }
+} -result {1 x
+2 y
+3 z
+
+1 x
+2 y
+2 yy
+3 z
+
+duplicate tuple caught
+1 x
+2 y
+2 yy
+3 z
+}
+
 test ra {relational algebra} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
