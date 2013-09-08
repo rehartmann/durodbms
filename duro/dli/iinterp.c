@@ -2761,8 +2761,7 @@ Duro_dt_execute_str(RDB_environment *dbenvp, const char *instr,
 
     while (Duro_process_stmt(ecp) == RDB_OK);
 
-    RDB_object *errobjp = RDB_get_err(ecp);
-    if (errobjp != NULL) {
+    if (RDB_get_err(ecp) != NULL) {
         goto error;
     } else {
         /* Exit on EOF  */

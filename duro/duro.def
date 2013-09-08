@@ -248,6 +248,7 @@ RDB_parse_tokens
 RDB_release_number
 Duro_init_interp
 Duro_exit_interp
+Duro_dt_execute_str
 RDB_www_form_to_tuple
 RDB_put_global_ro_op
 RDB_errcode_to_error
