@@ -141,8 +141,9 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>operator_not_found_error
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.
-<dt>invalid_argument
+<dt>invalid_argument_error
 <dd>*<var>arrp</var> is neither newly initialized nor an array.
+<dd>The table represented by *<var>tbp</var> does not exist. (e.g. after a rollback)
 </dl>
 
 The call may also fail for a @ref system-errors "system error",

@@ -45,7 +45,7 @@ upd_to_vals(int updc, const RDB_attr_update updv[],
                 RDB_destroy_obj(&valv[i], ecp);
             return ret;
         }
-    }                
+    }
     return RDB_OK;
 }
 

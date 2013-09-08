@@ -372,6 +372,9 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>operator_not_found_error
 <dd>The definition of the table specified by <var>srcp</var>
 refers to a non-existing operator.
+<dt>invalid_argument_error
+<dd>*<var>srcp</var> or *<var>dstp</var> is a table that does not exist.
+(e.g. after a rollback)
 </dl>
 
 The call may also fail for a @ref system-errors "system error",
@@ -414,6 +417,8 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dd>The table is empty.
 <dt>invalid_argument_error
 <dd>The table contains more than one tuple.
+<dd>The table represented by *<var>tbp</var> does not exist.
+(e.g. after a rollback)
 <dt>operator_not_found_error
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.
@@ -498,12 +503,12 @@ RDB_table_is_persistent(const RDB_object *tbp)
 }
 
 /**
- * RDB_table_is_real returns if the table *<var>tbp</var>
+ * RDB_table_is_real checks if the table *<var>tbp</var>
 is real or private.
 
 @returns
 
-RDB_TRUE if *<var>tbp</var> is real, RDB_FALSE if it
+RDB_TRUE if *<var>tbp</var> is a real or private table, RDB_FALSE if it
 is not.
  */
 RDB_bool
@@ -547,6 +552,8 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>operator_not_found_error
 <dd>The definition of one of the tables
 refers to a non-existing operator.
+<dt>invalid_argument_error
+<dd>One of the tables does not exist. (e.g. after a rollback)
 </dl>
 
 The call may also fail for a @ref system-errors "system error",

@@ -43,6 +43,8 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>invalid_argument_error
 <dd><var>attrname</var> is NULL and the table has more than one
 attribute.
+<dt>
+<dd>The table represented by *<var>tbp</var> does not exist. (e.g. after a rollback)
 </dl>
 
 The call may also fail for a @ref system-errors "system error",
@@ -135,6 +137,8 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>invalid_argument_error
 <dd><var>attrname</var> is NULL and the table has more than one
 attribute.
+<dt>
+<dd>The table represented by *<var>tbp</var> does not exist. (e.g. after a rollback)
 </dl>
 
 The call may also fail for a @ref system-errors "system error",
@@ -226,6 +230,8 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>invalid_argument_error
 <dd><var>attrname</var> is NULL and the table has more than one
 attribute.
+<dt>
+<dd>The table represented by *<var>tbp</var> does not exist. (e.g. after a rollback)
 </dl>
 
 The call may also fail for a @ref system-errors "system error",
@@ -328,6 +334,8 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>invalid_argument_error
 <dd><var>attrname</var> is NULL and the table has more than one
 attribute.
+<dt>
+<dd>The table represented by *<var>tbp</var> does not exist. (e.g. after a rollback)
 </dl>
 
 The call may also fail for a @ref system-errors "system error",
@@ -432,6 +440,8 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>invalid_argument_error
 <dd><var>attrname</var> is NULL and the table has more than one
 attribute.
+<dt>
+<dd>The table represented by *<var>tbp</var> does not exist. (e.g. after a rollback)
 </dl>
 
 The call may also fail for a @ref system-errors "system error",
@@ -503,7 +513,7 @@ RDB_sum(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
 }
 
 /**
- * RDB_avg computes the average over the attribute
+ * Computes the average over the attribute
 <var>attrname</var> of the table specified by <var>tbp</var>
 and stores the result at the location
 pointed to by <var>resultp</var>.
@@ -531,6 +541,8 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>invalid_argument_error
 <dd><var>attrname</var> is NULL and the table has more than one
 attribute.
+<dt>
+<dd>The table represented by *<var>tbp</var> does not exist. (e.g. after a rollback)
 <dt>aggregate_undefined_error
 <dd>The table is empty.
 </dl>
@@ -668,6 +680,8 @@ On failure, (RDB_int)RDB_ERROR is returned.
 <dt>operator_not_found_error
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.
+<dt>invalid_argument_error
+<dd>The table represented by *<var>tbp</var> does not exist. (e.g. after a rollback)
 </dl>
 
 The call may also fail for a @ref system-errors "system error",

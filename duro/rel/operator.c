@@ -99,7 +99,7 @@ Overloading operators is possible.
 <dl>
 <dt>no_running_tx_error
 <dd>*<var>txp</var> is not a running transaction.
-<dt>element_exist_error
+<dt>element_exists_error
 <dd>A read-only operator with this name and signature does already exist.
 </dl>
 
@@ -258,7 +258,7 @@ Overloading operators is possible.
 <dl>
 <dt>no_running_tx_error
 <dd>*<var>txp</var> is not a running transaction.
-<dt>element_exist_error
+<dt>element_exists_error
 <dd>An update operator with this name and signature does already exist.
 </dl>
 
@@ -412,6 +412,9 @@ found.
 <dt>type_mismatch_error
 <dd>A read-only operator that matches <var>name</var> could be found,
 but it does not match the argument types.
+<dt>invalid_argument_error
+<dd>One or more of the arguments is a table that does not exist.
+(e.g. after a rollback)
 </dl>
 
 If <var>txp</var> is NULL, only built-in operators can be found.
@@ -698,6 +701,9 @@ The arguments must carry type information.
 <dt>operator_not_found_error
 <dd>An update operator that matches the name and arguments could not be
 found.
+<dt>invalid_argument_error
+<dd>One or more of the arguments is a table that does not exist.
+(e.g. after a rollback)
 </dl>
 
 If the user-supplied function which implements the operator raises an

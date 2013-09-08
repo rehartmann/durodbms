@@ -1079,6 +1079,8 @@ attribute.
 <dt>invalid_argument_error
 <dd>One or more of the arguments are incorrect. For example, a key attribute
 does not appear in <var>attrv</var>, etc.
+<dt>element_exists_error
+<dd>There is already a database table with name <var>name</var>.
 </dl>
 
 The call may also fail for a @ref system-errors "system error",

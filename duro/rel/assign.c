@@ -1744,6 +1744,8 @@ plus <var>objc</var>. If an error occurred, (RDB_int) RDB_ERROR is returned.
 but does not.
 <dt>invalid_argument_error
 <dd>A table appears twice as a target.
+<dt>
+<dd>A table does not exist. (e.g. after a rollback)
 <dt>not_supported_error
 <dd>A table is both source and target.
 <dd>A virtual table appears as a target in <var>copyv</var>.
@@ -2061,9 +2063,8 @@ into the table specified by <var>tbp</var>.
 
 If an error occurs, an error value is left in *<var>ecp</var>.
 
-Currently, RDB_insert is not supported for virtual tables which are the result
-of a UNION, MINUS, SEMIMINUS, INTERSECT, JOIN, SEMIJOIN, SUMMARIZE, DIVIDE,
-GROUP, or UNGROUP.
+Calling RDB_insert on virtual tables is only supported for tables defined using
+the following operators: WHERE, project, remove, RENAME, EXTEND, WRAP, and UNWRAP.
 
 @returns
 

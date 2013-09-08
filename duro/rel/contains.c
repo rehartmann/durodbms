@@ -33,6 +33,9 @@ If an error occurred, RDB_ERROR is returned.
 <dd><var>txp</var> does not point to a running transaction.
 <dt>invalid_argument_error
 <dd>A table attribute is missing in the tuple.
+<dt>
+<dd>The table represented by *<var>tbp</var> does not exist.
+(e.g. after a rollback)
 <dt>type_mismatch_error
 <dd>The type of a tuple attribute does not match the type of the
 corresponding table attribute.

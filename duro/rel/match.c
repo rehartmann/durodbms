@@ -334,6 +334,9 @@ If an error occurred, RDB_ERROR is returned.
 <dt>operator_not_found_error
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.
+<dt>invalid_argument_error
+<dd>*<var>srcp</var> or *<var>dstp</var> is a table that does not exist.
+(e.g. after a rollback)
 </dl>
 
 The call may also fail for a @ref system-errors "system error",
