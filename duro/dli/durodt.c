@@ -193,17 +193,17 @@ main(int argc, char *argv[])
     RDB_init_exec_context(&ec);
 
     if (RDB_init_builtin_types(&ec) != RDB_OK) {
-        Duro_print_error(RDB_get_err(&ec), stderr);
+        Duro_print_error(RDB_get_err(&ec));
         goto error;
     }
 
     if (Duro_init_interp(&ec, dbname) != RDB_OK) {
-        Duro_print_error(RDB_get_err(&ec), stderr);
+        Duro_print_error(RDB_get_err(&ec));
         goto error;
     }
 
     if (Duro_dt_execute_path(envp, infilename, &ec) != RDB_OK) {
-        Duro_print_error(RDB_get_err(&ec), stderr);
+        Duro_print_error(RDB_get_err(&ec));
         Duro_exit_interp();
         goto error;
     }

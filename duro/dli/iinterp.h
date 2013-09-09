@@ -13,7 +13,10 @@ void
 Duro_exit_interp(void);
 
 void
-Duro_print_error(const RDB_object *, FILE *);
+Duro_print_error(const RDB_object *);
+
+void
+Duro_print_error_f(const RDB_object *, FILE *);
 
 void
 Duro_dt_interrupt(void);

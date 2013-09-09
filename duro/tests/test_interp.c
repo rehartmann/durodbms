@@ -43,7 +43,7 @@ main(void)
             "put_line (cast_as_string(count(depts)));"
             "commit;",
             &ec) != RDB_OK) {
-        Duro_print_error(RDB_get_err(&ec), stderr);
+        Duro_print_error(RDB_get_err(&ec));
         abort();
     }
 

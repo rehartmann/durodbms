@@ -2653,10 +2653,18 @@ Duro_exit_interp(void)
 }
 
 /**
+ * Print an error to stderr.
+ */
+void
+Duro_print_error(const RDB_object *errobjp) {
+    Duro_print_error_f(errobjp, stderr);
+}
+
+/**
  * Print an error to an output stream.
  */
 void
-Duro_print_error(const RDB_object *errobjp, FILE *f)
+Duro_print_error_f(const RDB_object *errobjp, FILE *f)
 {
     RDB_exec_context ec;
     RDB_object msgobj;
@@ -2751,7 +2759,7 @@ Duro_dt_execute(RDB_environment *dbenvp, FILE *infp,
             RDB_object *errobjp = RDB_get_err(ecp);
             if (errobjp != NULL) {
                 if (RDB_parse_get_interactive()) {
-                    Duro_print_error(errobjp, stderr);
+                    Duro_print_error(errobjp);
                     RDB_parse_init_buf(NULL);
                 } else {
                     fprintf(stderr, "error in statement at or near line %d: ", err_line);
