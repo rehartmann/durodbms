@@ -2688,6 +2688,34 @@ Duro_dt_interrupt(void)
 }
 
 /**
+ * Read statements from file given by <var>path</var> and execute them.
+ * If <var>path</var> is NULL, read from standard input.
+ * If the input is a terminal, a function for reading lines must be
+ * provided using RDB_parse_set_read_line_fn().
+ */
+int
+Duro_dt_execute_path(RDB_environment *dbenvp, const char *path,
+        RDB_exec_context *ecp)
+{
+    int ret;
+    FILE *fp = NULL;
+
+    if (path != NULL) {
+        fp = fopen(path, "r");
+        if (fp == NULL) {
+            RDB_raise_resource_not_found(path, ecp);
+            return RDB_ERROR;
+        }
+    } else {
+        fp = stdin;
+    }
+    ret = Duro_dt_execute(dbenvp, fp, ecp);
+    if (path != NULL)
+        fclose(fp);
+    return ret;
+}
+
+/**
  * Read statements from input stream *infp and execute them.
  * If the input is a terminal, a function for reading lines must be
  * provided using RDB_parse_set_read_line_fn().

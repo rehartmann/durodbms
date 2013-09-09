@@ -214,6 +214,7 @@ RDB_parse_init_buf
 Duro_print_error
 Duro_dt_interrupt
 Duro_dt_execute
+Duro_dt_execute_path
 Duro_dt_invoke_ro_op
 Duro_dt_invoke_update_op
 Duro_dt_prompt
