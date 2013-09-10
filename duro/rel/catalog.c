@@ -893,6 +893,34 @@ tablename_eq_expr(const char *name, RDB_exec_context *ecp)
     return exp;
 }
 
+static RDB_expression *
+dbname_eq_expr(const char *name, RDB_exec_context *ecp)
+{
+    RDB_expression *exp;
+    RDB_expression *arg2p;
+    RDB_expression *argp = RDB_var_ref("dbname", ecp);
+    if (argp == NULL) {
+        return NULL;
+    }
+
+    arg2p = RDB_string_to_expr(name, ecp);
+    if (arg2p == NULL) {
+        RDB_del_expr(argp, ecp);
+        return NULL;
+    }
+    exp = RDB_eq(argp, arg2p, ecp);
+    if (exp == NULL) {
+        RDB_del_expr(argp, ecp);
+        RDB_del_expr(arg2p, ecp);
+        return NULL;
+    }
+
+    /* Set transformed flag to avoid infinite recursion */
+    exp->transformed = RDB_TRUE;
+    return exp;
+}
+
+
 int
 RDB_cat_map_ptable(const char *name, RDB_expression *exp,
         RDB_exec_context *ecp, RDB_transaction *txp)
@@ -1925,6 +1953,77 @@ error:
     return NULL;
 }
 
+static RDB_expression *
+db_query(RDB_database *dbp, RDB_exec_context *ecp)
+{
+    RDB_expression *argp;
+    RDB_expression *exp = RDB_ro_op("where", ecp);
+    if (exp == NULL) {
+        return NULL;
+    }
+    argp = RDB_table_ref(dbp->dbrootp->dbtables_tbp, ecp);
+    if (argp == NULL) {
+        RDB_del_expr(exp, ecp);
+        return NULL;
+    }
+    RDB_add_arg(exp, argp);
+    argp = dbname_eq_expr(dbp->name, ecp);
+    if (argp == NULL) {
+        RDB_del_expr(exp, ecp);
+        return NULL;
+    }
+    RDB_add_arg(exp, argp);
+    return exp;
+}
+
+static RDB_expression *
+table_query(RDB_database *dbp, RDB_object *tables_tbp,
+        const char *name, RDB_exec_context *ecp)
+{
+    RDB_expression *argp;
+    RDB_expression *exp = RDB_ro_op("where", ecp);
+    if (exp == NULL) {
+        return NULL;
+    }
+    argp = RDB_table_ref(tables_tbp, ecp);
+    if (argp == NULL) {
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+    argp = tablename_eq_expr(name, ecp);
+    if (argp == NULL) {
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+
+    argp = exp;
+    exp = RDB_ro_op("join", ecp);
+    if (exp == NULL) {
+        RDB_del_expr(argp, ecp);
+        goto error;
+    }
+
+    /* Set transformed flags to avoid infinite recursion */
+    argp->transformed = RDB_TRUE;
+
+    RDB_add_arg(exp, argp);
+    argp = db_query(dbp, ecp);
+    if (argp == NULL) {
+        goto error;
+    }
+    argp->transformed = RDB_TRUE;
+    RDB_add_arg(exp, argp);
+
+    exp->transformed = RDB_TRUE;
+
+    return exp;
+
+error:
+    if (exp != NULL)
+        RDB_del_expr(exp, NULL);
+    return NULL;
+}
+
 /* Read a real table from the catalog */
 static int
 RDB_cat_get_rtable(RDB_object *tbp, RDB_exec_context *ecp,
@@ -1955,30 +2054,9 @@ RDB_cat_get_rtable(RDB_object *tbp, RDB_exec_context *ecp,
     RDB_init_obj(&tpl);
     RDB_init_obj(&attrnameobj);
 
-    /* !! Should check if table is from txp->dbp ... */
-
-    exp = RDB_ro_op("where", ecp);
-    if (exp == NULL) {
+    exp = table_query(txp->dbp, txp->dbp->dbrootp->rtables_tbp, name, ecp);
+    if (exp == NULL)
         goto error;
-    }
-    argp = RDB_table_ref(txp->dbp->dbrootp->rtables_tbp, ecp);
-    if (argp == NULL) {
-        RDB_del_expr(exp, ecp);
-        goto error;
-    }
-    RDB_add_arg(exp, argp);
-    argp = tablename_eq_expr(name, ecp);
-    if (argp == NULL) {
-        RDB_del_expr(exp, ecp);
-        goto error;
-    }
-
-    /* Set transformed flags to avoid infinite recursion */
-
-    argp->transformed = RDB_TRUE;
-    RDB_add_arg(exp, argp);
-
-    exp->transformed = RDB_TRUE;
 
     tmptb1p = RDB_expr_to_vtable(exp, ecp, txp);
     if (tmptb1p == NULL) {
@@ -2211,7 +2289,7 @@ static int
 RDB_cat_get_vtable(RDB_object *tbp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    RDB_expression *exp, *argp;
+    RDB_expression *exp;
     RDB_object tpl;
     RDB_object arr;
     RDB_object *valp;
@@ -2227,37 +2305,16 @@ RDB_cat_get_vtable(RDB_object *tbp, RDB_exec_context *ecp,
     RDB_init_obj(&arr);
     RDB_init_obj(&tpl);
 
-    exp = RDB_ro_op("where", ecp);
-    if (exp == NULL) {
+    exp = table_query(txp->dbp, txp->dbp->dbrootp->vtables_tbp, name, ecp);
+    if (exp == NULL)
         goto error;
-    }
-    argp = RDB_table_ref(txp->dbp->dbrootp->vtables_tbp, ecp);
-    if (argp == NULL) {
-        RDB_del_expr(exp, ecp);
-        goto error;
-    }
 
-    /* Set transformed flags to avoid infinite recursion */
-
-    argp->transformed = RDB_TRUE;
-    RDB_add_arg(exp, argp);
-
-    argp = tablename_eq_expr(name, ecp);
-    if (argp == NULL) {
-        RDB_del_expr(exp, ecp);
-        goto error;
-    }
-
-    argp->transformed = RDB_TRUE;
-    RDB_add_arg(exp, argp);
-
-    exp->transformed = RDB_TRUE;
     tmptbp = RDB_expr_to_vtable(exp, ecp, txp);
     if (tmptbp == NULL) {
         RDB_del_expr(exp, ecp);
         goto error;
     }
-    
+
     ret = RDB_extract_tuple(tmptbp, ecp, txp, &tpl);
     RDB_drop_table(tmptbp, ecp, txp);
     if (ret != RDB_OK) {
