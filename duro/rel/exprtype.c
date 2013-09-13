@@ -1121,6 +1121,6 @@ RDB_type *
 RDB_expr_type_tpltyp(RDB_expression *exp, const RDB_type *tpltyp,
         RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    return RDB_expr_type(exp, &get_tuple_attr_type, (RDB_type *) tpltyp,
-            envp, ecp, txp);
+    return RDB_expr_type(exp, tpltyp != NULL ? &get_tuple_attr_type : NULL,
+            (RDB_type *) tpltyp, envp, ecp, txp);
 }

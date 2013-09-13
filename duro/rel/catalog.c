@@ -211,13 +211,23 @@ dbtables_insert(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (RDB_tuple_set(&tpl, "tablename", &tbnameobj, ecp) != RDB_OK) {
         goto error;
     }
-    if (RDB_tuple_set_string(&tpl, "dbname", txp->dbp->name, ecp) != RDB_OK)
-    {
+    if (RDB_tuple_set_string(&tpl, "dbname", txp->dbp->name, ecp) != RDB_OK) {
         goto error;
     }
 
-    if (RDB_insert(txp->dbp->dbrootp->dbtables_tbp, &tpl, ecp, txp) != RDB_OK)
-        goto error;
+    if (RDB_table_is_user(tbp)) {
+        if (RDB_insert(txp->dbp->dbrootp->dbtables_tbp, &tpl, ecp, txp) != RDB_OK)
+            goto error;
+    } else {
+        /*
+         * If it's a system table bypass contraint checking because resolving
+         * table names may not yet work
+         */
+        if (RDB_insert_real(txp->dbp->dbrootp->dbtables_tbp, &tpl, ecp, txp)
+                != RDB_OK)
+            goto error;
+    }
+
 
     RDB_destroy_obj(&tbnameobj, ecp);
     RDB_destroy_obj(&tpl, ecp);
@@ -408,8 +418,15 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
             != RDB_OK) {
         goto error;
     }
-    if (RDB_insert(dbrootp->rtables_tbp, &tpl, ecp, txp) != RDB_OK) {
-        goto error;
+
+    if (RDB_table_is_user(tbp)) {
+        if (RDB_insert(dbrootp->rtables_tbp, &tpl, ecp, txp) != RDB_OK) {
+            goto error;
+        }
+    } else {
+        if (RDB_insert_real(dbrootp->rtables_tbp, &tpl, ecp, txp) != RDB_OK) {
+            goto error;
+        }
     }
 
     /* Insert entries into table sys_tableattrs */
@@ -721,7 +738,7 @@ RDB_cat_insert(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
         /*
          * If it's a system table, insert indexes into the catalog.
-         * For user tables, the indexes are inserted when the recmap is created.
+         * For user tables, the key indexes are inserted when the recmap is created.
          */
         if (ret == RDB_OK) {
             if (!RDB_table_is_user(tbp)) {
@@ -972,6 +989,11 @@ delete_rtable(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (exprp == NULL) {
         return RDB_ERROR;
     }
+
+    ret = RDB_delete(txp->dbp->dbrootp->indexes_tbp, exprp, ecp, txp);
+    if (ret == RDB_ERROR)
+        goto cleanup;
+
     ret = RDB_delete(txp->dbp->dbrootp->rtables_tbp, exprp, ecp, txp);
     if (ret == RDB_ERROR)
         goto cleanup;
@@ -990,10 +1012,6 @@ delete_rtable(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         goto cleanup;
 
     ret = RDB_delete(txp->dbp->dbrootp->keys_tbp, exprp, ecp, txp);
-    if (ret == RDB_ERROR)
-        goto cleanup;
-
-    ret = RDB_delete(txp->dbp->dbrootp->indexes_tbp, exprp, ecp, txp);
     if (ret == RDB_ERROR)
         goto cleanup;
 
@@ -1300,6 +1318,61 @@ open_indexes(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
+static RDB_expression *
+index_rtable_constraint(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
+{
+    RDB_expression *exp, *arg1p, *arg2p;
+
+    /* Create expression sys_indexes { tablename } subset_of sys_rtables { tablename } */
+    exp = RDB_ro_op("project", ecp);
+    if (exp == NULL)
+        return NULL;
+
+    arg1p = RDB_table_ref(dbrootp->indexes_tbp, ecp);
+    if (arg1p == NULL)
+        goto error;
+    RDB_add_arg(exp, arg1p);
+
+    arg1p = RDB_string_to_expr("tablename", ecp);
+    if (arg1p == NULL)
+        goto error;
+    RDB_add_arg(exp, arg1p);
+
+    arg2p = RDB_ro_op("project", ecp);
+    if (arg2p == NULL)
+        goto error;
+
+    arg1p = RDB_table_ref(dbrootp->rtables_tbp, ecp);
+    if (arg1p == NULL) {
+        RDB_del_expr(arg1p, ecp);
+        goto error;
+    }
+    RDB_add_arg(arg2p, arg1p);
+
+    arg1p = RDB_string_to_expr("tablename", ecp);
+    if (arg1p == NULL) {
+        RDB_del_expr(arg1p, ecp);
+        goto error;
+    }
+    RDB_add_arg(arg2p, arg1p);
+
+    arg1p = exp;
+    exp = RDB_ro_op("subset_of", ecp);
+    if (exp == NULL) {
+        RDB_del_expr(arg1p, ecp);
+        RDB_del_expr(arg2p, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, arg1p);
+    RDB_add_arg(exp, arg2p);
+    return exp;
+
+error:
+    if (exp != NULL)
+        RDB_del_expr(exp, ecp);
+    return NULL;
+}
+
 /*
  * Create or open system tables.
  * If the tables are created, associate them with the database pointed to by
@@ -1470,6 +1543,15 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
             &dbrootp->indexes_tbp);
     if (ret != RDB_OK) {
         return ret;
+    }
+
+    if (create) {
+        /* Add referential constraint INDEX -> RTABLE */
+        RDB_expression *exp = index_rtable_constraint(dbrootp, ecp);
+        if (exp == NULL)
+            return RDB_ERROR;
+        if (RDB_create_constraint("SYS_INDEXES_RTABLE", exp, ecp, txp) != RDB_OK)
+            return RDB_ERROR;
     }
 
     if (!create && (dbrootp->rtables_tbp->val.tb.stp->indexc == -1)) {
