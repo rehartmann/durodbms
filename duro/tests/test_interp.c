@@ -48,7 +48,7 @@ main(void)
     }
 
     RDB_destroy_exec_context(&ec);
-    Duro_exit_interp();
+    Duro_destroy_interp();
 
     return 0;
 }

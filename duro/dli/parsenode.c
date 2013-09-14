@@ -92,6 +92,15 @@ RDB_parse_node_child(const RDB_parse_node *nodep, RDB_int idx)
     return chnodep;
 }
 
+/**@addtogroup parse
+ * \#include <dli/parse.h>
+ * @{
+ */
+
+/**
+ * Destroy the parse node *nodep and free its memory, including all children.
+ * The expression returned from RDB_parse_node_expr() will also be destroyed.
+ */
 int
 RDB_parse_del_node(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
@@ -106,12 +115,13 @@ RDB_parse_del_node(RDB_parse_node *nodep, RDB_exec_context *ecp)
             ret = ret2;
     }
     if (nodep->whitecommp != NULL) {
-        RDB_destroy_obj(nodep->whitecommp, ecp);
-        RDB_free(nodep->whitecommp);
+        RDB_free_obj(nodep->whitecommp, ecp);
     }
     RDB_free(nodep);
     return ret;
 }
+
+/* @} */
 
 int
 RDB_parse_del_nodelist(RDB_parse_node *nodep, RDB_exec_context *ecp)

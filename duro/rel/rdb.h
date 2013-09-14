@@ -859,6 +859,9 @@ RDB_init_obj(RDB_object *);
 int
 RDB_destroy_obj(RDB_object *, RDB_exec_context *);
 
+int
+RDB_free_obj(RDB_object *, RDB_exec_context *);
+
 void
 RDB_bool_to_obj(RDB_object *, RDB_bool v);
 

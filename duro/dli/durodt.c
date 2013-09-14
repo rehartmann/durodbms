@@ -204,11 +204,11 @@ main(int argc, char *argv[])
 
     if (Duro_dt_execute_path(envp, infilename, &ec) != RDB_OK) {
         Duro_print_error(RDB_get_err(&ec));
-        Duro_exit_interp();
+        Duro_destroy_interp();
         goto error;
     }
 
-    Duro_exit_interp();
+    Duro_destroy_interp();
 
     RDB_destroy_exec_context(&ec);
     return 0;

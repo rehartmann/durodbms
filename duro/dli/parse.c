@@ -1224,6 +1224,22 @@ inner_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *t
     return NULL;
 }
 
+/**@defgroup parse Parsing functions
+ * \#include <dli/parse.h>
+ * @{
+ */
+
+/**
+ * Convert a parse tree to an expression.
+ * The expression is managed by the parse node. Calling RDB_parse_del_node()
+ * will destroy the expression.
+ *
+ * @returns the expression, or NULL if the parse tree could not be converted.
+ * (But see the warning below)
+ *
+ * @warning Passing a parse node that is not a syntactically valid expression
+ * may lead to undefined behavior.
+ */
 RDB_expression *
 RDB_parse_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp,
         RDB_transaction *txp)
@@ -1231,15 +1247,59 @@ RDB_parse_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp,
     if (nodep->exp != NULL)
         return nodep->exp;
 
-    assert(nodep->kind != RDB_NODE_TOK);
-
-    if (nodep->kind == RDB_NODE_INNER) {
-        if (inner_node_expr(nodep, ecp, txp) == NULL)
-            return NULL;
+    if (nodep->kind == RDB_NODE_TOK) {
+        RDB_raise_syntax("unexpected token", ecp);
+        return NULL;
     }
 
-    return nodep->exp;
+    if (nodep->kind == RDB_NODE_INNER) {
+        return inner_node_expr(nodep, ecp, txp);
+    }
+
+    RDB_raise_syntax("no expression", ecp);
+    return NULL;
 }
+
+/**
+ * Parse the <a href="../../expressions.html">expression</a>
+specified by <var>txt</var>.
+
+@returns A pointer to the RDB_parse_node representing the expression,
+or NULL if the parsing failed.
+
+@par Errors:
+<dl>
+<dt>SYNTAX_ERROR
+<dd>A syntax error occurred during parsing.
+</dl>
+
+The call may also fail for a @ref system-errors "system error".
+
+@warning The parser is not reentrant.
+ */
+RDB_parse_node *
+RDB_parse_expr(const char *txt, RDB_exec_context *ecp)
+{
+    int pret;
+    YY_BUFFER_STATE buf;
+
+    RDB_parse_ecp = ecp;
+
+    buf = yy_scan_string(txt);
+    RDB_parse_start_exp();
+    pret = yyparse();
+    yy_delete_buffer(buf);
+    if (pret != 0) {
+        if (RDB_get_err(ecp) == NULL) {
+            RDB_raise_internal("parser error", ecp);
+        }
+        return NULL;
+    }
+
+    return RDB_parse_resultp;
+}
+
+/*@}*/
 
 static RDB_type *
 tup_rel_node_to_type(RDB_parse_node *nodep, RDB_gettypefn *getfnp, void *getarg,
@@ -1332,52 +1392,6 @@ RDB_parse_node_to_type(RDB_parse_node *nodep, RDB_gettypefn *getfnp, void *getar
     RDB_raise_not_supported("unsupported type", ecp);
     return NULL;
 }
-
-/**@defgroup parse Parsing functions
- * \#include <dli/parse.h>
- * @{
- */
-
-/**
- * Parse the <a href="../../expressions.html">expression</a>
-specified by <var>txt</var>.
-
-@returns A pointer to the RDB_parse_node representing the expression,
-or NULL if the parsing failed.
-
-@par Errors:
-<dl>
-<dt>SYNTAX_ERROR
-<dd>A syntax error occurred during parsing.
-</dl>
-
-The call may also fail for a @ref system-errors "system error".
-
-@warning The parser is not reentrant.
- */
-RDB_parse_node *
-RDB_parse_expr(const char *txt, RDB_exec_context *ecp)
-{
-    int pret;
-    YY_BUFFER_STATE buf;
-
-    RDB_parse_ecp = ecp;
-
-    buf = yy_scan_string(txt);
-    RDB_parse_start_exp();
-    pret = yyparse();
-    yy_delete_buffer(buf);
-    if (pret != 0) {
-        if (RDB_get_err(ecp) == NULL) {
-            RDB_raise_internal("parser error", ecp);
-        }
-        return NULL;
-    }
-
-    return RDB_parse_resultp;
-}
-
-/*@}*/
 
 RDB_parse_node *
 RDB_parse_stmt(RDB_exec_context *ecp)

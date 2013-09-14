@@ -221,9 +221,6 @@ int
 RDB_table_ilen(const RDB_object *, size_t *, RDB_exec_context *);
 
 int
-RDB_free_obj(RDB_object *, RDB_exec_context *);
-
-int
 RDB_assoc_table_db(RDB_object *, RDB_database *, RDB_exec_context *);
 
 int

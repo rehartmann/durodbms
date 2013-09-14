@@ -57,7 +57,7 @@ static int
 exit_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    Duro_exit_interp();
+    Duro_destroy_interp();
     exit(0);
 }   
 
@@ -69,7 +69,7 @@ exit_int_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int exitcode = RDB_obj_int(argv[0]);
-    Duro_exit_interp();
+    Duro_destroy_interp();
     exit(exitcode);
 }   
 
@@ -2627,7 +2627,7 @@ error:
  * Also close the environment that was passed to RDB_init_interp().
  */
 void
-Duro_exit_interp(void)
+Duro_destroy_interp(void)
 {
     RDB_exec_context ec;
 

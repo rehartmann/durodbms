@@ -4,6 +4,10 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 0.19
 
+- Renamed Duro_exit_interp() to Duro_destroy_interp(). 
+
+- Added system constraint sys_indexes { tablename } subset_of sys_rtables { tablename }.  
+
 - Added D_UNION.
 
 - A rollback now sets all user tables to a special state so that when they

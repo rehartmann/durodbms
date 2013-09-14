@@ -459,7 +459,8 @@ WARN_LOGFILE           =
 # directories like "/usr/src/myproject". Separate the files or directories 
 # with spaces.
 
-INPUT = rec rel rel/rdb.h dli/parse.c dli/ioop.c dli/iinterp.c dli/parse.h
+INPUT = rec rel rel/rdb.h dli/parse.c dli/ioop.c dli/iinterp.c \
+        dli/parse.h dli/parsenode.c
 
 # If the value of the INPUT tag contains directories, you can use the 
 # FILE_PATTERNS tag to specify one or more wildcard pattern (like *.cpp 

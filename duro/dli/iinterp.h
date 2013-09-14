@@ -10,7 +10,7 @@ int
 Duro_init_interp(RDB_exec_context *, const char *);
 
 void
-Duro_exit_interp(void);
+Duro_destroy_interp(void);
 
 void
 Duro_print_error(const RDB_object *);
