@@ -264,6 +264,9 @@ RDB_delete_recmap(RDB_recmap *rmp, DB_TXN *txid)
 
     /* Call DB_ENV->dbremove() only if the recmap is persistent */
     if (rmp->envp != NULL && rmp->namp != NULL) {
+        if (rmp->envp->trace > 0) {
+            fprintf(stderr, "deleting recmap %s\n", rmp->namp);
+        }
         ret = rmp->envp->envp->dbremove(rmp->envp->envp, txid, rmp->filenamp,
                 rmp->namp, 0);
     }

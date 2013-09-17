@@ -980,10 +980,7 @@ create_table(const char *name, RDB_type *reltyp,
     RDB_object *tbp = RDB_hashmap_get(&txp->dbp->tbmap, name);
     if (tbp != NULL) {
         /* Table found - check if it exists in the catalog */
-        if (RDB_check_table(tbp, ecp, txp) == RDB_OK) {
-            RDB_raise_element_exists("table already exists", ecp);
-            return NULL;
-        } else {
+        if ((RDB_TB_CHECK & tbp->val.tb.flags) && (RDB_check_table(tbp, ecp, txp) != RDB_OK)) {
             /* Table no longer valid - recycle its RDB_object structure */
             char *name = tbp->val.tb.name;
             tbp->val.tb.name = NULL;
@@ -993,6 +990,9 @@ create_table(const char *name, RDB_type *reltyp,
                 return NULL;
             }
             tbp->val.tb.name = name;
+        } else {
+            RDB_raise_element_exists("table already exists", ecp);
+            return NULL;
         }
     } else {
         tbp = RDB_new_rtable(name, RDB_TRUE, reltyp, keyc, keyv,

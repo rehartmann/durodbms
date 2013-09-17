@@ -1303,3 +1303,37 @@ test rollback_p1 {rollback after virtual table creation} -setup $SETUP -cleanup 
 } -result {invalid argument or not found (1)
 invalid argument or not found (2)
 }
+
+test double_rtable {creating a table with the same name twice}  -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+        var r real relation { no int, name string } key {no};
+
+        insert r rel { tup { no 2, name 'two' }, tup { no 3, name 'three' } };
+        commit;
+
+        try
+            begin tx;
+            var r real rel { n int, s string } key { n };
+            commit;
+        catch err element_exists_error;
+            put_line('2nd creation caught');
+        end try;
+
+        begin tx;
+        drop var r;
+        var r real rel { id string, s string } key { id };
+        commit;
+
+        begin tx;
+        insert r tup { id '01', s 'Test' };
+        var tp init tuple from r;
+        commit;
+        put_line(tp.id || ' ' || tp.s);
+    }
+} -result {2nd creation caught
+01 Test
+}
