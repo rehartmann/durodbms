@@ -327,7 +327,7 @@ no db>
 <p>Tuple variables can be declared as follows:</p>
 
 <pre>
-no db> var t tuple { i integer, s string };
+no db> var tp tuple { i integer, s string };
 no db>
 </pre>
 
@@ -336,14 +336,14 @@ Like scalar variables, tuple variables can be explicitly initialized
 when they are declared:</p>
 
 <pre>
-no db> var t tup { i integer, s string } init tup { i 1, s 'One' };
+no db> var tp tup { i integer, s string } init tup { i 1, s 'One' };
 no db>
 </pre>
 
 Or shorter:
 
 <pre>
-no db> var t init tup { i 1, s 'One' };
+no db> var tp init tup { i 1, s 'One' };
 no db>
 </pre>
 
@@ -352,25 +352,25 @@ ordering in Duro D/T, so the statement above is perfectly equivalent
 to the following:
 
 <pre>
-no db> var t init tup { s 'One', i 1 };
+no db> var tp init tup { s 'One', i 1 };
 no db>
 </pre>
 
 <p>Tuples variables can be assigned and updated:</p>
 
 <pre>
-no db> t := tup { i 2, s 'Two' };
+no db> tp := tup { i 2, s 'Two' };
 1 element affected.
-no db> update t { i := 3 };
+no db> update tp { i := 3 };
 1 element affected.
-no db> update t { i := 4, s := 'Four' };
+no db> update tp { i := 4, s := 'Four' };
 1 element affected.
 </pre>
 
 <p>Accessing tuple attributes:
 
 <pre>
-no db> put_line(t.s);
+no db> put_line(tp.s);
 Four
 no db>
 </pre>
@@ -378,7 +378,7 @@ no db>
 <p>Alternative form:
 
 <pre>
-no db> put_line(s from t);
+no db> put_line(s from tp);
 Four
 no db>
 </pre>
@@ -596,15 +596,15 @@ D>
 This can be realized as follows:
 
 <pre>
-D> var r real rel { n int, s string } key { n };
-Table r created.
-D> constraint cr count(r) <= 2;
+D> var t real rel { n int, s string } key { n };
+Table t created.
+D> constraint cr count(t) <= 2;
 Constraint cr created.
-D> insert r tup { n 1, s 'one' };
+D> insert t tup { n 1, s 'one' };
 1 element affected.
-D> insert r tup { n 2, s 'two' };
+D> insert t tup { n 2, s 'two' };
 1 element affected.
-D> insert r tup { n 3, s 'three' };
+D> insert t tup { n 3, s 'three' };
 predicate_violation_error: cr
 D> 
 </pre>
@@ -690,9 +690,9 @@ The example below prints all tuples of table r in an unspecified order
 using FOR instead of using LOAD: 
 
 <pre>
-D> var t tup same_heading_as(r);
-D> for t in r order();
-D>   put(t); put_line('');
+D> var tp tup same_heading_as(r);
+D> for tp in r order();
+D>   put(tp); put_line('');
 D> end for;
 </pre>
 
@@ -783,6 +783,8 @@ D> operator incr(i integer) returns integer;
 D> return i + 1;
 D> end operator;
 Read-only operator incr created.
+D> put(incr(1)); put_line('');
+2
 D>
 </pre>
 
@@ -793,6 +795,10 @@ D> operator inc(i integer) updates { i };
 D> i := i + 1;
 D> end operator;
 Operator inc created.
+D> var n init 1;
+D> inc(n);
+D> put(n); put_line('');
+2
 D>
 </pre>
 

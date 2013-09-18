@@ -313,7 +313,13 @@ test ra {relational algebra} -setup $SETUP -cleanup $CLEANUP -body {
         		init relation { tuple {a 1, b 'x'}, tuple {a 2, b 'y'} } key {a};
         var t2 real relation {a int} key {a};
 
-        var v2 virtual t2 where a <= 2;  
+        var v2 virtual t2 where a <= 2;
+
+        try
+            drop var t2;
+        catch err in_use_error;
+            ;
+        end try;
 
         insert t2 relation { tuple {a 2}, tuple {a 3} };
 

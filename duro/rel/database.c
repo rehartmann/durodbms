@@ -1311,6 +1311,7 @@ table_dep_check(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         goto cleanup;
     }
     for (i = 0; i < len; i++) {
+        RDB_expression *tbexp;
         RDB_object *tplp = RDB_array_get(&tbarr, (RDB_int) i, ecp);
         if (tplp == NULL) {
             ret = RDB_ERROR;
@@ -1322,8 +1323,13 @@ table_dep_check(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             ret = RDB_ERROR;
             goto cleanup;
         }
-        if (!RDB_table_is_real(dtbp)) {
-            if (RDB_expr_refers(RDB_vtable_expr(dtbp), tbp)) {
+        tbexp = RDB_vtable_expr(dtbp);
+        if (tbexp != NULL) {
+            if (RDB_expr_resolve_tbnames(tbexp, ecp, txp) != RDB_OK) {
+                ret = RDB_ERROR;
+                goto cleanup;
+            }
+            if (RDB_expr_refers(tbexp, tbp)) {
                 RDB_raise_in_use("a virtual table depends on this table", ecp);
                 ret = RDB_ERROR;
                 goto cleanup;
