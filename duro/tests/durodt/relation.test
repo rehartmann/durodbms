@@ -1152,9 +1152,16 @@ test rollback_r1 {rollback after real table creation} -setup $SETUP -cleanup $CL
            put_line('invalid_argument_error caught (2)');
         end try;
 
-        drop var r1;
-        drop var r2;
-
+        try
+            drop var r1;
+        catch err invalid_argument_error;
+            ;
+        end try;
+        try
+            drop var r2;
+        catch err invalid_argument_error;
+            ;
+        end try;
         commit;
     }
 } -result {invalid_argument_error caught (1)
@@ -1223,8 +1230,16 @@ test rollback_v1 {rollback after virtual table creation} -setup $SETUP -cleanup 
            put_line('invalid_argument_error caught (2)');
         end try;
 
-        drop var v1;
-        drop var v2;
+        try
+            drop var v1;
+        catch err invalid_argument_error;
+            ;
+        end try;
+        try
+            drop var v2;
+        catch err invalid_argument_error;
+            ;
+        end try;
 
         commit;
     }

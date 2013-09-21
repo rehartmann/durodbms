@@ -1387,6 +1387,15 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             return RDB_ERROR;
         }
 
+        /*
+         * If the table is in CHECK state read it again from the catalog
+         * because otherwise the recmap won't get deleted
+         */
+        if (RDB_TB_CHECK & tbp->val.tb.flags) {
+            if (RDB_check_table(tbp, ecp, txp) != RDB_OK)
+                return RDB_ERROR;
+        }
+
         if (table_dep_check(tbp, ecp, txp) != RDB_OK) {
             return RDB_ERROR;
         }
