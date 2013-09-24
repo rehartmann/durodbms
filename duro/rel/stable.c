@@ -77,6 +77,8 @@ RDB_close_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp)
             RDB_errcode_to_error(ret, ecp, NULL);
             return RDB_ERROR;
         }
+    } else {
+        free_stored_table(stp);
     }
     return RDB_OK;
 }
