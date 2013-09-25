@@ -145,12 +145,13 @@ compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p)
 }
 
 /*
- * Create a recmap with the name specified by name in the DB environment
+ * Create a recmap with the <var>name</var> specified by name in the DB environment
  * pointed to by envp in the file specified by filename.
  * If filename is NULL, a transient recmap is created.
  * The recmap will have fieldc fields, the length of field i
  * is given by fieldlenv[i].
  * The first keyfcnt fields constitute the primary index.
+ * If a recmap with name <var>name</var> already exists, it is deleted.
  */
 int
 RDB_create_recmap(const char *name, const char *filename,
@@ -198,6 +199,13 @@ RDB_create_recmap(const char *name, const char *filename,
     ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filename, name,
             RDB_ORDERED & flags ? DB_BTREE : DB_HASH,
             DB_CREATE | DB_EXCL, 0664);
+    if (ret == EEXIST && envp != NULL) {
+        /* BDB database exists - remove it and try again */
+        envp->envp->dbremove(envp->envp, txid, filename, name, 0);
+        ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filename, name,
+                RDB_ORDERED & flags ? DB_BTREE : DB_HASH,
+                DB_CREATE | DB_EXCL, 0664);
+    }
     if (ret != 0) {
         goto error;
     }
