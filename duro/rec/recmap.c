@@ -151,7 +151,8 @@ compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p)
  * The recmap will have fieldc fields, the length of field i
  * is given by fieldlenv[i].
  * The first keyfcnt fields constitute the primary index.
- * If a recmap with name <var>name</var> already exists, it is deleted.
+ * If a recmap with name <var>name</var> already exists and envp is NULL,
+ * the existing recmap is deleted.
  */
 int
 RDB_create_recmap(const char *name, const char *filename,
