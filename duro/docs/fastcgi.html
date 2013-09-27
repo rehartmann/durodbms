@@ -42,7 +42,7 @@ A value of FALSE indicates that an error occured and the program should exit.
 <p>A tiny example program:
 
 <pre>
-#!/usr/local/durodbms.0.18/bin/fcgi_durodt
+#!/usr/local/durodbms.0.19/bin/fcgi_durodt
 
 var request_accepted boolean;
 var counter init 0;
@@ -69,12 +69,12 @@ end while;
 </pre>
 
 <p>Below a slightly more complex example program which returns
-the name of all tables whose matches a pattern passed with the request.
+the name of all tables whose name matches a pattern passed with the request.
 The programm accesses the database <var>D</var>
-stored in the database environment <var>dbenv</var>.
+stored in the database environment <var>/var/db/dbenv</var>.
 
 <pre>
-#!/usr/local/durodbms.0.18/bin/fcgi_durodt
+#!/usr/local/durodbms.0.19/bin/fcgi_durodt
 
 connect('/var/db/dbenv');
 current_db := 'D';
@@ -85,7 +85,6 @@ var request_accepted bool;
 
 while true;
     fcgi_accept(request_accepted);
-
     if not request_accepted then
         leave;
     end if;
@@ -114,8 +113,8 @@ while true;
         var tablenames array tuple{tablename string};
 
         begin tx;
-        load tablenames from (sys_rtables union sys_vtables)
-                where tablename like request_tp.pattern { tablename }
+        load tablenames from (sys_rtables { tablename } union sys_vtables { tablename })
+                where the_name(tablename) like request_tp.pattern
                 order (tablename asc);
         commit;
 
@@ -140,6 +139,6 @@ It uses www_form_to_tuple to convert the query string or form data to a tuple.
 http://localhost/fcgi-bin/gettables.td?pattern=*
 (assuming the program is stored under the name getttables.td
 in the fcgi-bin direcory of the local webserver) 
-lists all tables in the database <em>D</em>.
+lists all tables in the database environment <em>/var/db/dbenv</em>.
 
 </html>
