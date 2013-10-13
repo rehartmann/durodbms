@@ -6,9 +6,8 @@
  */
 
 #include "interp_core.h"
-#include <gen/hashmapit.h>
 #include "exparse.h"
-#include <rel/internal.h>
+#include <gen/hashmapit.h>
 
 #include <stddef.h>
 #include <string.h>
@@ -581,7 +580,8 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
          */
         if (initexp != NULL) {
             keyc = RDB_infer_keys(initexp, &get_var, current_varmapp,
-                    Duro_envp, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL, &keyv, &freekeys);
+                    Duro_envp, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL,
+                    &keyv, &freekeys);
             if (keyc == RDB_ERROR) {
                 keyv = NULL;
                 goto error;

@@ -9,6 +9,7 @@
 #include "rdb.h"
 #include "internal.h"
 #include <gen/strfns.h>
+#include <obj/objinternal.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -1029,3 +1030,76 @@ RDB_transform(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     }
     return RDB_OK;
 } /* RDB_transform */
+
+/*
+ * Convert the expression into a reference to an empty table
+ */
+int
+RDB_expr_to_empty_table(RDB_expression *exp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_type *typ = RDB_expr_type_tpltyp(exp, NULL, NULL, ecp, txp);
+    if (typ == NULL)
+        return RDB_ERROR;
+
+    /*
+     * exp->typ will be consumed by RDB_init_table_from_type(),
+     * so prevent it from being destroyed.
+     */
+    exp->typ = NULL;
+
+    if (RDB_drop_expr_children(exp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_destroy_expr(exp, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    exp->kind = RDB_EX_OBJ;
+    RDB_init_obj(&exp->def.obj);
+    return RDB_init_table_from_type(&exp->def.obj, NULL, typ, 0, NULL,
+            0, NULL, ecp);
+}
+
+/*
+ * Convert variable names referring to tables
+ * to table references if possible
+ */
+int
+RDB_expr_resolve_tbnames(RDB_expression *exp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_expression *argp;
+
+    switch (exp->kind) {
+        case RDB_EX_TUPLE_ATTR:
+        case RDB_EX_GET_COMP:
+            return RDB_expr_resolve_tbnames(exp->def.op.args.firstp,
+                    ecp, txp);
+        case RDB_EX_RO_OP:
+            argp = exp->def.op.args.firstp;
+            while (argp != NULL) {
+                if (RDB_expr_resolve_tbnames(argp, ecp, txp) != RDB_OK)
+                    return RDB_ERROR;
+                argp = argp->nextp;
+            }
+            return RDB_OK;
+        case RDB_EX_OBJ:
+        case RDB_EX_TBP:
+            return RDB_OK;
+        case RDB_EX_VAR:
+            if (exp->typ == NULL || RDB_type_is_relation(exp->typ)) {
+                RDB_object *tbp = RDB_get_table(exp->def.varname, ecp, txp);
+                if (tbp == NULL) {
+                    RDB_clear_err(ecp);
+                    return RDB_OK;
+                }
+
+                /* Transform into table ref */
+                RDB_free(exp->def.varname);
+                exp->kind = RDB_EX_TBP;
+                exp->def.tbref.tbp = tbp;
+                exp->def.tbref.indexp = NULL;
+            }
+    }
+    return RDB_OK;
+}

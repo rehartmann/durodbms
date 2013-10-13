@@ -10,7 +10,9 @@
 #include "internal.h"
 #include "stable.h"
 #include "qresult.h"
+#include <obj/objinternal.h>
 #include <gen/strfns.h>
+
 #include <string.h>
 
 static RDB_int
@@ -54,7 +56,7 @@ delete_by_uindex(RDB_object *tbp, RDB_object *objpv[], RDB_tbindex *indexp,
             rcount = 0;
             break;
         default:
-            RDB_errcode_to_error(ret, ecp, txp);
+            RDB_handle_errcode(ret, ecp, txp);
             rcount = RDB_ERROR;
     }
 
@@ -85,7 +87,7 @@ RDB_delete_real(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
     ret = RDB_recmap_cursor(&curp, tbp->val.tb.stp->recmapp, RDB_TRUE,
             RDB_table_is_persistent(tbp) ? txp->txid : NULL);
     if (ret != RDB_OK) {
-        RDB_errcode_to_error(ret, ecp, txp);
+        RDB_handle_errcode(ret, ecp, txp);
         return RDB_ERROR;
     }
     ret = RDB_cursor_first(curp);
@@ -103,7 +105,7 @@ RDB_delete_real(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
                         &datap, &len);
                 if (ret != RDB_OK) {
                    RDB_destroy_obj(&tpl, ecp);
-                   RDB_errcode_to_error(ret, ecp, txp);
+                   RDB_handle_errcode(ret, ecp, txp);
                    goto error;
                 }
                 RDB_init_obj(&val);
@@ -132,7 +134,7 @@ RDB_delete_real(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
         if (b) {
             ret = RDB_cursor_delete(curp);
             if (ret != RDB_OK) {
-                RDB_errcode_to_error(ret, ecp, txp);
+                RDB_handle_errcode(ret, ecp, txp);
                 RDB_destroy_obj(&tpl, ecp);
                 goto error;
             }
@@ -142,12 +144,12 @@ RDB_delete_real(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
         ret = RDB_cursor_next(curp, 0);
     };
     if (ret != DB_NOTFOUND) {
-        RDB_errcode_to_error(ret, ecp, txp);
+        RDB_handle_errcode(ret, ecp, txp);
         goto error;
     }
 
     if (RDB_destroy_cursor(curp) != RDB_OK) {
-        RDB_errcode_to_error(ret, ecp, txp);
+        RDB_handle_errcode(ret, ecp, txp);
         curp = NULL;
         goto error;
     }
@@ -238,7 +240,7 @@ delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
             RDB_table_is_persistent(refexp->def.tbref.tbp) ?
             txp->txid : NULL);
     if (ret != RDB_OK) {
-        RDB_errcode_to_error(ret, ecp, txp);
+        RDB_handle_errcode(ret, ecp, txp);
         return RDB_ERROR;
     }
 
@@ -323,7 +325,7 @@ delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
         if (del) {
             ret = RDB_cursor_delete(curp);
             if (ret != RDB_OK) {
-                RDB_errcode_to_error(ret, ecp, txp);
+                RDB_handle_errcode(ret, ecp, txp);
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
@@ -339,7 +341,7 @@ delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
     } while (ret == RDB_OK);
 
     if (ret != DB_NOTFOUND) {
-        RDB_errcode_to_error(ret, ecp, txp);
+        RDB_handle_errcode(ret, ecp, txp);
         rcount = RDB_ERROR;
     }
 
@@ -347,7 +349,7 @@ cleanup:
     if (curp != NULL) {
         ret = RDB_destroy_cursor(curp);
         if (ret != RDB_OK && rcount != RDB_ERROR) {
-            RDB_errcode_to_error(ret, ecp, txp);
+            RDB_handle_errcode(ret, ecp, txp);
             rcount = RDB_ERROR;
         }
     }

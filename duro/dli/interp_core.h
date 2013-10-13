@@ -9,8 +9,8 @@
 #define INTERP_CORE_H_
 
 #include <gen/hashmap.h>
-#include <rel/opmap.h>
 #include <rel/rdb.h>
+#include <obj/opmap.h>
 #include "parse.h"
 
 #include <signal.h>

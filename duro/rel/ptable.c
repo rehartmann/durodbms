@@ -7,8 +7,8 @@
 
 #include <rel/rdb.h>
 #include "internal.h"
-#include "key.h"
 #include "catalog.h"
+#include <obj/key.h>
 
 /** @addtogroup table
  * @{

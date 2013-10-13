@@ -11,10 +11,10 @@
 #include "rdb.h"
 #include "typeimpl.h"
 #include "internal.h"
-#include "key.h"
 #include "stable.h"
-
 #include <gen/strfns.h>
+#include <obj/key.h>
+#include <obj/objinternal.h>
 
 #include <string.h>
 #include <assert.h>
@@ -94,17 +94,6 @@ RDB_expr_to_vtable(RDB_expression *exp, RDB_exec_context *ecp,
     }
 
     return tbp;
-}
-
-/**
- * If *tbp is a virtual table, return the defining expression,
- * otherwise NULL.
- */
-RDB_expression *
-RDB_vtable_expr(const RDB_object *tbp) {
-    if (tbp->kind != RDB_OB_TABLE)
-        return NULL;
-    return tbp->val.tb.exp;
 }
 
 /*@}*/
@@ -431,8 +420,6 @@ error:
 
 /*
  * Infers keys from a relational expression.
- * Support for expressions with variable names is limited:
- * Only transient variables are supported, and only at the top level.
  */
 int
 RDB_infer_keys(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,

@@ -6,6 +6,7 @@
  */
 
 #include "env.h"
+#include "recmap.h"
 #include <gen/types.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -160,4 +161,50 @@ unsigned
 RDB_env_trace(RDB_environment *envp)
 {
     return envp->trace;
+}
+
+/**
+ * Raise an error that corresponds to the error code <var>errcode</var>.
+ * <var>errcode</var> can be a POSIX error code,
+ * a Berkeley DB error code or an error code from the record layer.
+ *
+ * If txp is not NULL and the error is a deadlock, abort the transaction
+ */
+void
+RDB_errcode_to_error(int errcode, RDB_exec_context *ecp)
+{
+    switch (errcode) {
+        case ENOMEM:
+            RDB_raise_no_memory(ecp);
+            break;
+        case EINVAL:
+            RDB_raise_invalid_argument("", ecp);
+            break;
+        case ENOENT:
+            RDB_raise_resource_not_found(db_strerror(errcode), ecp);
+            break;
+        case DB_KEYEXIST:
+            RDB_raise_key_violation("", ecp);
+            break;
+        case RDB_ELEMENT_EXISTS:
+            RDB_raise_element_exists("", ecp);
+            break;
+        case DB_NOTFOUND:
+            RDB_raise_not_found("", ecp);
+            break;
+        case DB_LOCK_NOTGRANTED:
+            RDB_raise_lock_not_granted(ecp);
+            break;
+        case DB_LOCK_DEADLOCK:
+            RDB_raise_deadlock(ecp);
+            break;
+        case DB_RUNRECOVERY:
+            RDB_raise_fatal(ecp);
+            break;
+        case RDB_RECORD_CORRUPTED:
+            RDB_raise_fatal(ecp);
+            break;
+        default:
+            RDB_raise_system(db_strerror(errcode), ecp);
+    }
 }

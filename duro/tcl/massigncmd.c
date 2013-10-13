@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include <rel/internal.h>
+#include <obj/objinternal.h>
 
 static int
 list_to_ins(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,

@@ -6,7 +6,10 @@
  */
 
 #include "io.h"
-#include "internal.h"
+#include "object.h"
+#include "type.h"
+#include "builtintypes.h"
+#include "objinternal.h"
 
 RDB_type RDB_IOSTREAM_ID;
 

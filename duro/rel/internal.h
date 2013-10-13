@@ -8,7 +8,8 @@
  * See the file COPYING for redistribution information.
  */
 
-#include "opmap.h"
+#include "obj/opmap.h"
+#include "obj/object.h"
 #include <rec/cursor.h>
 #include <gen/hashtable.h>
 
@@ -18,66 +19,9 @@ enum {
     /** initial capacities of attribute map and table map */
     RDB_DFL_MAP_CAPACITY = 37,
 
-    /** marks types which have been defined but not implemented */
-    RDB_NOT_IMPLEMENTED = -2,
-
     RDB_TB_USER = 1,
     RDB_TB_PERSISTENT = 2,
     RDB_TB_CHECK = 4
-};
-
-enum RDB_expr_kind {
-    RDB_EX_OBJ,
-    RDB_EX_TBP,
-
-    RDB_EX_VAR,
-
-    RDB_EX_TUPLE_ATTR,
-    RDB_EX_GET_COMP,
-    RDB_EX_RO_OP
-};
-
-struct RDB_expression {
-    enum RDB_expr_kind kind;
-    union {
-        char *varname;
-        RDB_object obj;
-        struct {
-            RDB_object *tbp;
-            struct RDB_tbindex *indexp;
-        } tbref;
-        struct {
-            RDB_expr_list args;
-            char *name;
-            struct {
-                int objc;
-                RDB_expression *stopexp;
-
-                /*
-                 * The following fields are only valid if objc > 0
-                 * or stopexp != NULL
-                 */
-
-                /* Optionally stores the values in objpv */
-                RDB_object *objv;
-
-                RDB_object **objpv;
-                RDB_bool asc;
-                RDB_bool all_eq;
-            } optinfo;
-        } op;
-    } def;
-
-    /*
-     * The expression type. NULL if the type has not been determined.
-     * If typ is non-scalar, it is destroyed by RDB_drop_expr().
-     */
-    RDB_type *typ; 
-    struct RDB_expression *nextp;
-
-    /* RDB_TRUE if the expression has been transformed by RDB_transform(). */
-    RDB_bool transformed;
-    RDB_bool optimized;
 };
 
 struct RDB_database {
@@ -89,11 +33,6 @@ struct RDB_database {
 
     struct RDB_dbroot *dbrootp;
 };
-
-typedef struct {
-    char *key;
-    RDB_object obj;
-} tuple_entry;
 
 typedef struct RDB_constraint {
     char *name;
@@ -150,21 +89,6 @@ typedef struct RDB_dbroot {
     RDB_object *version_info_tbp;
 } RDB_dbroot;
 
-struct RDB_op_data {
-    char *name;
-    RDB_type *rtyp;
-    RDB_object source;
-    lt_dlhandle modhdl;
-    int paramc;
-    struct RDB_parameter *paramv;
-    union {
-        RDB_upd_op_func *upd_fp;
-        RDB_ro_op_func *ro_fp;
-    } opfn;
-    void *u_data;
-    RDB_op_cleanup_func *cleanup_fp;
-};
-
 typedef struct {
     char *key;
     RDB_int fno;
@@ -177,15 +101,12 @@ struct RDB_tx_and_ec {
 
 extern RDB_hashmap RDB_builtin_type_map;
 
-extern RDB_op_map RDB_builtin_ro_op_map;
-
 /* Used to pass the execution context (not MT-safe!) */
 extern RDB_exec_context *RDB_cmp_ecp;
 
-/* Internal functions */
+extern RDB_op_map RDB_builtin_ro_op_map;
 
-int
-RDB_add_type(RDB_type *, RDB_exec_context *);
+/* Internal functions */
 
 /**
  * Abort transaction and all parent transactions
@@ -236,15 +157,8 @@ RDB_set_user_tables_check(RDB_database *, RDB_exec_context *);
 int
 RDB_check_table(RDB_object *, RDB_exec_context *, RDB_transaction *);
 
-int
-RDB_expr_equals(const RDB_expression *, const RDB_expression *,
-        RDB_exec_context *, RDB_transaction *, RDB_bool *);
-
 RDB_bool
 RDB_expr_is_string(const RDB_expression *);
-
-int
-RDB_destroy_expr(RDB_expression *, RDB_exec_context *);
 
 void
 RDB_expr_list_set_lastp(RDB_expr_list *);
@@ -348,9 +262,6 @@ RDB_dup_rename_keys(int keyc, const RDB_string_vec keyv[], RDB_expression *,
 char *
 RDB_rename_attr(const char *srcname, RDB_expression *);
 
-RDB_attr *
-RDB_tuple_type_attr(const RDB_type *tuptyp, const char *attrname);
-
 RDB_bool
 RDB_legal_name(const char *name);
 
@@ -358,39 +269,8 @@ int
 RDB_set_defvals(RDB_object *tbp, int attrc, const RDB_attr attrv[],
         RDB_exec_context *);
 
-RDB_object *
-RDB_tpl_get(const char *, void *);
-
 int
 RDB_find_rename_from(int renc, const RDB_renaming renv[], const char *name);
-
-RDB_expression *
-RDB_create_unexpr(RDB_expression *arg, enum RDB_expr_kind kind,
-        RDB_exec_context *);
-
-RDB_expression *
-RDB_create_binexpr(RDB_expression *arg1, RDB_expression *arg2,
-                    enum RDB_expr_kind kind, RDB_exec_context *);
-
-RDB_bool
-RDB_expr_refers(const RDB_expression *, const RDB_object *);
-
-RDB_bool
-RDB_expr_refers_var(const RDB_expression *, const char *attrname);
-
-RDB_bool
-RDB_expr_table_depend(const RDB_expression *, const RDB_object *);
-
-RDB_bool
-RDB_expr_expr_depend(const RDB_expression *, const RDB_expression *);
-
-int
-RDB_invrename_expr(RDB_expression *, RDB_expression *,
-        RDB_exec_context *);
-
-int
-RDB_resolve_exprnames(RDB_expression **, RDB_expression *,
-        RDB_exec_context *);
 
 int
 RDB_expr_to_empty_table(RDB_expression *, RDB_exec_context *,
@@ -433,6 +313,9 @@ RDB_invwrap_tuple(const RDB_object *tplp, RDB_expression *,
 int
 RDB_invunwrap_tuple(const RDB_object *, RDB_expression *,
         RDB_exec_context *, RDB_transaction *, RDB_object *restplp);
+
+RDB_object *
+RDB_tpl_get(const char *, void *);
 
 RDB_object *
 RDB_dup_vtable(RDB_object *, RDB_exec_context *);
@@ -504,11 +387,6 @@ RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
         RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_infer_keys(RDB_expression *, RDB_getobjfn *, void *,
-        RDB_environment *, RDB_exec_context *, RDB_transaction *,
-        RDB_string_vec **, RDB_bool *);
-
-int
 RDB_check_project_keyloss(RDB_expression *exp,
         int keyc, RDB_string_vec *keyv, RDB_bool presv[],
         RDB_exec_context *ecp);
@@ -517,18 +395,13 @@ int
 RDB_init_builtin_ops(RDB_exec_context *);
 
 int
-RDB_add_selector(RDB_type *, RDB_exec_context *);
-
-int
-RDB_sys_select(int argc, RDB_object *argv[], const char *opname,
-        RDB_type *, RDB_exec_context *, RDB_transaction *, RDB_object *);
-
-int
 RDB_op_sys_select(int argc, RDB_object *argv[], RDB_operator *,
         RDB_exec_context *, RDB_transaction *, RDB_object *);
 
+typedef struct RDB_tbindex RDB_tbindex;
+
 RDB_object **
-RDB_index_objpv(struct RDB_tbindex *, RDB_expression *, RDB_type *,
+RDB_index_objpv(RDB_tbindex *, RDB_expression *, RDB_type *,
         int, RDB_bool, RDB_exec_context *);
 
 struct RDB_tbindex *

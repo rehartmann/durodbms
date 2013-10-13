@@ -8,6 +8,8 @@
 #ifndef KEY_H_
 #define KEY_H_
 
+#include "type.h"
+
 int
 RDB_check_keys(const RDB_type *, int, const RDB_string_vec[],
         RDB_exec_context *);

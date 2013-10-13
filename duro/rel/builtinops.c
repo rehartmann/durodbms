@@ -1828,7 +1828,7 @@ RDB_put_global_ro_op(const char *name, int argc, RDB_type **argtv,
         RDB_type *rtyp, RDB_ro_op_func *fp, RDB_exec_context *ecp)
 {
     int ret;
-    RDB_operator *datap = RDB_new_operator(name, argc, argtv, rtyp, ecp);
+    RDB_operator *datap = RDB_new_op_data(name, argc, argtv, rtyp, ecp);
     if (datap == NULL)
         return RDB_ERROR;
     datap->opfn.ro_fp = fp;
@@ -2393,4 +2393,14 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
         return ret;
 
     return RDB_OK;
+}
+
+int
+RDB_init_builtin(RDB_exec_context *ecp)
+{
+    if (RDB_init_builtin_basic_types(ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_init_builtin_ops(ecp) != RDB_OK)
+        return RDB_ERROR;
+    return RDB_add_builtin_pr_types(ecp);
 }

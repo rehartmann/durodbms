@@ -158,14 +158,14 @@ RDB_commit(RDB_exec_context *ecp, RDB_transaction *txp)
 
     ret = txp->txid->commit(txp->txid, 0);
     if (ret != 0) {
-        RDB_errcode_to_error(ret, ecp, txp);
+        RDB_handle_errcode(ret, ecp, txp);
         return RDB_ERROR;
     }
 
     /* Delete recmaps and indexes scheduled for deletion */
     ret = del_storage(txp);
     if (ret != 0) {
-        RDB_errcode_to_error(ret, ecp, NULL);
+        RDB_handle_errcode(ret, ecp, NULL);
         return ret;
     }
 
@@ -203,7 +203,7 @@ RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp)
 
     ret = txp->txid->abort(txp->txid);
     if (ret != 0) {
-        RDB_errcode_to_error(ret, ecp, txp);
+        RDB_handle_errcode(ret, ecp, txp);
         return RDB_ERROR;
     }
 

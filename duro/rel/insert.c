@@ -94,11 +94,11 @@ RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
                 RDB_table_is_persistent(tbp) ? txp->txid : NULL) == RDB_OK) {
             RDB_raise_element_exists("tuple is already in table", ecp);
         } else {
-            RDB_errcode_to_error(ret, ecp, txp);
+            RDB_handle_errcode(ret, ecp, txp);
         }
         ret = RDB_ERROR;
     } else if (ret != RDB_OK) {
-        RDB_errcode_to_error(ret, ecp, txp);
+        RDB_handle_errcode(ret, ecp, txp);
         ret = RDB_ERROR;
     }
     if (ret == RDB_OK) {

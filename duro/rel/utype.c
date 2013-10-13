@@ -9,78 +9,11 @@
 #include "internal.h"
 #include "serialize.h"
 #include "cat_type.h"
+#include "cat_op.h"
+#include <obj/tuple.h>
+#include <obj/objinternal.h>
 
 #include <string.h>
-
-static RDB_possrep *
-RDB_get_possrep(const RDB_type *typ, const char *repname)
-{
-    int i;
-
-    if (!RDB_type_is_scalar(typ))
-        return NULL;
-    for (i = 0; i < typ->def.scalar.repc
-            && strcmp(typ->def.scalar.repv[i].name, repname) != 0;
-            i++);
-    if (i >= typ->def.scalar.repc)
-        return NULL;
-    return &typ->def.scalar.repv[i];
-}
-
-/**
- * Implements a system-generated selector
- */
-int
-RDB_sys_select(int argc, RDB_object *argv[], const char *opname,
-        RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp,
-        RDB_object *retvalp)
-{
-    RDB_possrep *prp;
-
-    /* Find possrep */
-    prp = RDB_get_possrep(typ, opname);
-    if (prp == NULL) {
-        RDB_raise_invalid_argument("component name is NULL", ecp);
-        return RDB_ERROR;
-    }
-
-    /* If *retvalp carries a value, it must match the type */
-    if (retvalp->kind != RDB_OB_INITIAL
-            && (retvalp->typ == NULL
-                || !RDB_type_equals(retvalp->typ, typ))) {
-        RDB_raise_type_mismatch("invalid selector return type", ecp);
-        return RDB_ERROR;
-    }
-
-    if (argc == 1) {
-        /* Copy value */
-        if (RDB_copy_obj_data(retvalp, argv[0], ecp, NULL) != RDB_OK)
-            return RDB_ERROR;
-    } else {
-        /* Copy tuple attributes */
-        int i;
-
-        for (i = 0; i < argc; i++) {
-            if (RDB_tuple_set(retvalp, typ->def.scalar.repv[0].compv[i].name,
-                    argv[i], ecp) != RDB_OK) {
-                return RDB_ERROR;
-            }
-        }
-    }
-    retvalp->typ = typ;
-    return RDB_OK;
-}
-
-/**
- * Implements a system-generated selector.
- * Signature is conformant to RDB_ro_op_func.
- */
-int
-RDB_op_sys_select(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *retvalp)
-{
-    return RDB_sys_select(argc, argv, op->name, op->rtyp, ecp, txp, retvalp);
-}
 
 typedef struct get_comp_type_data {
     const char *typename;
@@ -457,6 +390,21 @@ create_selector(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
     return ret;
 }
 
+static RDB_possrep *
+RDB_get_possrep(const RDB_type *typ, const char *repname)
+{
+    int i;
+
+    if (!RDB_type_is_scalar(typ))
+        return NULL;
+    for (i = 0; i < typ->def.scalar.repc
+            && strcmp(typ->def.scalar.repv[i].name, repname) != 0;
+            i++);
+    if (i >= typ->def.scalar.repc)
+        return NULL;
+    return &typ->def.scalar.repv[i];
+}
+
 /**
  * Check if the operator *<var>op</var> is a selector.
  */
@@ -798,7 +746,114 @@ error:
     return RDB_ERROR;
 }
 
-/* @} */
+/**
+Return a pointer to RDB_type structure which
+represents the type with the name <var>name</var>.
+
+@returns
+
+The pointer to the type on success, or NULL if an error occured.
+
+@par Errors:
+
+<dl>
+<dt>name_error</dt>
+<dd>A type with the name <var>name</var> could not be found.
+</dd>
+<dt></dt>
+<dd>The type <var>name</var> is not a built-in type and <var>txp</var> is NULL.
+</dd>
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+*/
+RDB_type *
+RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_type *typv[2];
+    RDB_operator *cmpop;
+    RDB_type *typ;
+    int ret;
+
+    /*
+     * search type in built-in type map
+     */
+    typ = RDB_hashmap_get(&RDB_builtin_type_map, name);
+    if (typ != NULL) {
+        return typ;
+    }
+
+    if (txp == NULL) {
+        RDB_raise_name(name, ecp);
+        return NULL;
+    }
+
+    /*
+     * Search type in dbroot type map
+     */
+    typ = RDB_hashmap_get(&txp->dbp->dbrootp->typemap, name);
+    if (typ != NULL) {
+        return typ;
+    }
+
+    /*
+     * Search type in catalog
+     */
+    ret = RDB_cat_get_type(name, ecp, txp, &typ);
+    if (ret != RDB_OK) {
+        RDB_type *errtyp = RDB_obj_type(RDB_get_err(ecp));
+        if (errtyp != NULL && errtyp == &RDB_NOT_FOUND_ERROR) {
+            RDB_raise_name(name, ecp);
+        }
+        return NULL;
+    }
+
+    /*
+     * Put type into type map
+     */
+    ret = RDB_hashmap_put(&txp->dbp->dbrootp->typemap, name, typ);
+    if (ret != RDB_OK) {
+        RDB_raise_no_memory(ecp);
+        return NULL;
+    }
+
+    if (typ->ireplen != RDB_NOT_IMPLEMENTED) {
+        /* Evaluate init expression */
+        RDB_init_obj(&typ->def.scalar.init_val);
+        if (RDB_evaluate(typ->def.scalar.initexp, NULL, NULL, NULL,
+                ecp, txp, &typ->def.scalar.init_val) != RDB_OK) {
+            RDB_destroy_obj(&typ->def.scalar.init_val, ecp);
+            return NULL;
+        }
+        typ->def.scalar.init_val_is_valid = RDB_TRUE;
+
+        /* Load selector, getters, and setters */
+        if (RDB_load_type_ops(typ, ecp, txp) != RDB_OK)
+            return NULL;
+    }
+
+    /*
+     * Search for comparison function (after type was put into type map
+     * so the type is available)
+     */
+    typv[0] = typ;
+    typv[1] = typ;
+    cmpop = RDB_get_ro_op("cmp", 2, typv, NULL, ecp, txp);
+    if (cmpop != NULL) {
+        typ->compare_op = cmpop;
+    } else {
+        RDB_object *errp = RDB_get_err(ecp);
+        if (errp != NULL
+                && RDB_obj_type(errp) != &RDB_OPERATOR_NOT_FOUND_ERROR
+                && RDB_obj_type(errp) != &RDB_TYPE_MISMATCH_ERROR) {
+            return NULL;
+        }
+        RDB_clear_err(ecp);
+    }
+
+    return typ;
+}
 
 /* @} */
 
@@ -866,4 +921,161 @@ RDB_check_type_constraint(RDB_object *valp, RDB_environment *envp,
         }
     }
     return RDB_OK;
+}
+
+int
+RDB_getter_name(const RDB_type *typ, const char *compname,
+        RDB_object *strobjp, RDB_exec_context *ecp)
+{
+    if (RDB_string_to_obj(strobjp, typ->name, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_append_string(strobjp, RDB_GETTER_INFIX, ecp) != RDB_OK)
+        return RDB_ERROR;
+    return RDB_append_string(strobjp, compname, ecp);
+}
+
+static int
+load_getter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_object opnameobj;
+    RDB_int cnt;
+
+    RDB_init_obj(&opnameobj);
+    if (RDB_getter_name(typ, compname, &opnameobj, ecp) != RDB_OK)
+        goto error;
+
+    cnt = RDB_cat_load_ro_op(RDB_obj_string(&opnameobj), ecp, txp);
+    if (cnt == (RDB_int) RDB_ERROR)
+        goto error;
+    if (cnt == 0) {
+        RDB_raise_operator_not_found(RDB_obj_string(&opnameobj), ecp);
+        goto error;
+    }
+    return RDB_destroy_obj(&opnameobj, ecp);
+
+error:
+    RDB_destroy_obj(&opnameobj, ecp);
+    return RDB_ERROR;
+}
+
+int
+RDB_setter_name(const RDB_type *typ, const char *compname,
+        RDB_object *strobjp, RDB_exec_context *ecp)
+{
+    if (RDB_string_to_obj(strobjp, typ->name, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_append_string(strobjp, RDB_SETTER_INFIX, ecp) != RDB_OK)
+        return RDB_ERROR;
+    return RDB_append_string(strobjp, compname, ecp);
+}
+
+static int
+load_setter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_object opnameobj;
+    RDB_int cnt;
+
+    RDB_init_obj(&opnameobj);
+    if (RDB_setter_name(typ, compname, &opnameobj, ecp) != RDB_OK)
+        goto error;
+
+    cnt = RDB_cat_load_upd_op(RDB_obj_string(&opnameobj), ecp, txp);
+    if (cnt == (RDB_int) RDB_ERROR)
+        goto error;
+    if (cnt == 0) {
+        RDB_raise_operator_not_found(RDB_obj_string(&opnameobj), ecp);
+        goto error;
+    }
+    return RDB_destroy_obj(&opnameobj, ecp);
+
+error:
+    RDB_destroy_obj(&opnameobj, ecp);
+    return RDB_ERROR;
+}
+
+/*
+ * Load selector, getters and setters of user-defined type
+ */
+int
+RDB_load_type_ops(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int i;
+
+    for (i = 0; i < typ->def.scalar.repc; i++) {
+        int j;
+
+        if (RDB_cat_load_ro_op(typ->def.scalar.repv[i].name, ecp, txp)
+                == (RDB_int) RDB_ERROR)
+            return RDB_ERROR;
+
+        if (!typ->def.scalar.sysimpl) {
+            /* Load getters and setters */
+            for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
+                if (load_getter(typ, typ->def.scalar.repv[i].compv[j].name, ecp, txp)
+                        != RDB_OK)
+                    return RDB_ERROR;
+                if (load_setter(typ, typ->def.scalar.repv[i].compv[j].name, ecp, txp)
+                        != RDB_OK)
+                    return RDB_ERROR;
+            }
+        }
+    }
+    return RDB_OK;
+}
+
+/**
+ * Implements a system-generated selector
+ */
+int
+RDB_sys_select(int argc, RDB_object *argv[], const char *opname,
+        RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    RDB_possrep *prp;
+
+    /* Find possrep */
+    prp = RDB_get_possrep(typ, opname);
+    if (prp == NULL) {
+        RDB_raise_invalid_argument("component name is NULL", ecp);
+        return RDB_ERROR;
+    }
+
+    /* If *retvalp carries a value, it must match the type */
+    if (retvalp->kind != RDB_OB_INITIAL
+            && (retvalp->typ == NULL
+                || !RDB_type_equals(retvalp->typ, typ))) {
+        RDB_raise_type_mismatch("invalid selector return type", ecp);
+        return RDB_ERROR;
+    }
+
+    if (argc == 1) {
+        /* Copy value */
+        if (RDB_copy_obj_data(retvalp, argv[0], ecp, NULL) != RDB_OK)
+            return RDB_ERROR;
+    } else {
+        /* Copy tuple attributes */
+        int i;
+
+        for (i = 0; i < argc; i++) {
+            if (RDB_tuple_set(retvalp, typ->def.scalar.repv[0].compv[i].name,
+                    argv[i], ecp) != RDB_OK) {
+                return RDB_ERROR;
+            }
+        }
+    }
+    retvalp->typ = typ;
+    return RDB_OK;
+}
+
+/**
+ * Implements a system-generated selector.
+ * Signature is conformant to RDB_ro_op_func.
+ */
+int
+RDB_op_sys_select(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
+{
+    return RDB_sys_select(argc, argv, op->name, op->rtyp, ecp, NULL, retvalp);
 }

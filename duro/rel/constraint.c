@@ -14,6 +14,8 @@
 #include "catalog.h"
 #include "serialize.h"
 #include <gen/strfns.h>
+#include <obj/objinternal.h>
+
 #include <string.h>
 
 static int

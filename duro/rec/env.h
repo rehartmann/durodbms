@@ -9,6 +9,7 @@
  */
 
 #include <db.h>
+#include <obj/excontext.h>
 
 enum {
     RDB_CREATE = 1
@@ -59,5 +60,8 @@ RDB_bdb_env(RDB_environment *);
 
 void
 RDB_env_set_trace(RDB_environment *, unsigned);
+
+void
+RDB_errcode_to_error(int, RDB_exec_context *);
 
 #endif

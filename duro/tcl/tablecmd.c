@@ -162,7 +162,7 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         }
     } else {
         tbp = (RDB_object *) Tcl_Alloc(sizeof (RDB_object));        
-
+        RDB_init_obj(tbp);
         ret = RDB_init_table(tbp, Tcl_GetString(objv[objc - 4]),
                 attrc, attrv, keyc, keyv, statep->current_ecp);
         if (ret != RDB_OK) {

@@ -11,6 +11,9 @@
 #include "typeimpl.h"
 #include "catalog.h"
 #include "internal.h"
+#include <obj/excontext.h>
+#include <obj/type.h>
+#include <obj/objinternal.h>
 #include <gen/strfns.h>
 #include <gen/hashmapit.h>
 #include <string.h>
@@ -74,7 +77,7 @@ RDB_close_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp)
         ret = RDB_close_recmap(stp->recmapp);
         free_stored_table(stp);
         if (ret != 0) {
-            RDB_errcode_to_error(ret, ecp, NULL);
+            RDB_handle_errcode(ret, ecp, NULL);
             return RDB_ERROR;
         }
     } else {
@@ -205,7 +208,7 @@ RDB_create_tbindex(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp
                   envp, indexp->attrc, fieldv, cmpv, flags,
                   txp != NULL ? txp->txid : NULL, &indexp->idxp);
     if (ret != RDB_OK) {
-        RDB_errcode_to_error(ret, ecp, txp);
+        RDB_handle_errcode(ret, ecp, txp);
         indexp->idxp = NULL;
         ret = RDB_ERROR;
     }
@@ -443,6 +446,14 @@ str_equals(const void *e1p, const void *e2p, void *arg)
             ((RDB_attrmap_entry *) e2p)->key) == 0;
 }
 
+static int
+cleanup_tb(RDB_object *tbp, RDB_exec_context *ecp)
+{
+    if (tbp->val.tb.stp == NULL)
+        return RDB_OK;
+    return RDB_delete_stored_table(tbp->val.tb.stp, ecp, NULL);
+}
+
 /*
  * Create the physical representation of a table.
  * (The recmap and the indexes)
@@ -480,6 +491,8 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
     if (tbp->val.tb.stp == NULL) {
         return RDB_ERROR;
     }
+
+    tbp->cleanup_fp = &cleanup_tb;
 
     tbp->val.tb.stp->recmapp = NULL;
     RDB_init_hashtable(&tbp->val.tb.stp->attrmap, RDB_DFL_MAP_CAPACITY, &hash_str,
@@ -562,7 +575,7 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
             &tbp->val.tb.stp->recmapp);
     if (ret != RDB_OK) {
         tbp->val.tb.stp->recmapp = NULL;
-        RDB_errcode_to_error(ret, ecp, txp);
+        RDB_handle_errcode(ret, ecp, txp);
         goto error;
     }
 
@@ -665,7 +678,7 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
         if (ret == ENOENT) {
             RDB_raise_not_found("table not found", ecp);
         } else {
-            RDB_errcode_to_error(ret, ecp, txp);
+            RDB_handle_errcode(ret, ecp, txp);
         }
         goto error;
     }
@@ -677,7 +690,7 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
             txp != NULL ? txp->txid : NULL,
             &tbp->val.tb.stp->est_cardinality);
     if (ret != 0) {
-        RDB_errcode_to_error(ret, ecp, txp);
+        RDB_handle_errcode(ret, ecp, txp);
         goto error;
     }
     if (tbp->val.tb.stp->est_cardinality == 0) {
@@ -751,7 +764,7 @@ RDB_open_table_index(RDB_object *tbp, RDB_tbindex *indexp,
 cleanup:
     RDB_free(fieldv);
     if (ret != 0) {
-        RDB_errcode_to_error(ret, ecp, txp);
+        RDB_handle_errcode(ret, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -788,10 +801,26 @@ RDB_delete_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp,
     } else {
         ret = RDB_delete_recmap(stp->recmapp, NULL);
         if (ret != RDB_OK) {
-            RDB_errcode_to_error(ret, ecp, txp);
+            RDB_handle_errcode(ret, ecp, txp);
             ret = RDB_ERROR;
         }
     }
     free_stored_table(stp);
     return ret;
+}
+
+/**
+ * Raise an error that corresponds to the error code <var>errcode</var>.
+ * <var>errcode</var> can be a POSIX error code,
+ * a Berkeley DB error code or an error code from the record layer.
+ *
+ * If txp is not NULL and the error is a deadlock, abort the transaction
+ */
+void
+RDB_handle_errcode(int errcode, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    if (errcode == DB_LOCK_DEADLOCK && txp != NULL) {
+        RDB_rollback_all(ecp, txp);
+    }
+    return RDB_errcode_to_error(errcode, ecp);
 }

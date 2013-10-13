@@ -5,10 +5,11 @@
  * See the file COPYING for redistribution information.
  */
 
-#include "rdb.h"
-#include "transform.h"
-#include "internal.h"
-#include "catalog.h"
+#include "object.h"
+#include "type.h"
+#include "objinternal.h"
+#include "builtintypes.h"
+#include "tuple.h"
 #include <gen/strfns.h>
 
 #include <string.h>
@@ -94,110 +95,6 @@ RDB_expr_resolve_varname_expr(RDB_expression **expp, const char *varname,
     abort();
 }
 
-/*
- * Copy type information from *srcexp to *dstexp
- * if the type info would otherwise get lost
- * (as with RELATION())
- */
-static int
-copy_expr_typeinfo_if_needed(RDB_expression *dstexp, const RDB_expression *srcexp,
-        RDB_exec_context *ecp)
-{
-    if (srcexp->typ != NULL && dstexp->typ == NULL
-            && srcexp->def.op.args.firstp == NULL
-            && strcmp(srcexp->def.op.name, "relation") == 0) {
-        RDB_type *typ = RDB_dup_nonscalar_type(srcexp->typ, ecp);
-        if (typ == NULL)
-            return RDB_ERROR;
-        dstexp->typ = typ;
-    }
-    return RDB_OK;
-}
-
-/**
- * Return a new expression in which all variable names for which
- * *<var>getfnp</var>() or RDB_get_table() return an RDB_object
- * have been replaced by this object.
- * Table names are replaced by table refs.
- */
-RDB_expression *
-RDB_expr_resolve_varnames(RDB_expression *exp, RDB_getobjfn *getfnp,
-        void *getdata, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_object *objp;
-
-    switch (exp->kind) {
-        case RDB_EX_TUPLE_ATTR:
-            return RDB_tuple_attr(
-                    RDB_expr_resolve_varnames(exp->def.op.args.firstp, getfnp, getdata, ecp, txp),
-                            exp->def.op.name, ecp);
-        case RDB_EX_GET_COMP:
-            return RDB_expr_comp(
-                    RDB_expr_resolve_varnames(exp->def.op.args.firstp, getfnp, getdata, ecp, txp),
-                            exp->def.op.name, ecp);
-        case RDB_EX_RO_OP:
-        {
-            RDB_expression *argp;
-            RDB_expression *newexp;
-
-            newexp = RDB_ro_op(exp->def.op.name, ecp);
-            if (newexp == NULL)
-                return NULL;
-
-            /* Perform resolve on all arguments */
-            argp = exp->def.op.args.firstp;
-            while (argp != NULL) {
-                RDB_expression *argexp = RDB_expr_resolve_varnames(
-                        argp, getfnp, getdata, ecp, txp);
-                if (argexp == NULL) {
-                    RDB_del_expr(newexp, ecp);
-                    return NULL;
-                }
-                RDB_add_arg(newexp, argexp);
-                argp = argp->nextp;
-            }
-
-            /*
-             * Duplicate type of RELATION() because otherwise the type information
-             * is lost
-             */
-            if (copy_expr_typeinfo_if_needed(newexp, exp, ecp) != RDB_OK) {
-                RDB_del_expr(newexp, ecp);
-                return NULL;
-            }
-
-            return newexp;
-        }
-        case RDB_EX_OBJ:
-            return RDB_obj_to_expr(&exp->def.obj, ecp);
-        case RDB_EX_TBP:
-            return RDB_table_ref(exp->def.tbref.tbp, ecp);
-        case RDB_EX_VAR:
-            if (getfnp != (RDB_getobjfn *) NULL) {
-                objp = (*getfnp)(exp->def.varname, getdata);
-                if (objp != NULL) {
-                    if (objp->kind == RDB_OB_TABLE && objp->val.tb.exp != NULL) {
-                        return RDB_expr_resolve_varnames(objp->val.tb.exp,
-                                getfnp, getdata, ecp, txp);
-                    }
-                    if (objp->kind == RDB_OB_TABLE)
-                        return RDB_table_ref(objp, ecp);
-                    return RDB_obj_to_expr(objp, ecp);
-                }
-            }
-            if (txp != NULL) {
-                objp = RDB_get_table(exp->def.varname, ecp, txp);
-                if (objp != NULL) {
-                    return RDB_table_ref(objp, ecp);
-                }
-                RDB_clear_err(ecp);
-            }
-                
-            return RDB_var_ref(exp->def.varname, ecp);
-    }
-    abort();
-} /* RDB_expr_resolve_varnames */
-
 /**
  * Return operator name for read-only operator expressions.
  * 
@@ -250,6 +147,7 @@ RDB_bool_to_expr(RDB_bool v, RDB_exec_context *ecp)
     }
         
     exp->kind = RDB_EX_OBJ;
+    exp->def.obj.cleanup_fp = NULL;
     exp->def.obj.typ = &RDB_BOOLEAN;
     exp->def.obj.kind = RDB_OB_BOOL;
     exp->def.obj.val.bool_val = v;
@@ -274,6 +172,7 @@ RDB_int_to_expr(RDB_int v, RDB_exec_context *ecp)
     }
         
     exp->kind = RDB_EX_OBJ;
+    exp->def.obj.cleanup_fp = NULL;
     exp->def.obj.typ = &RDB_INTEGER;
     exp->def.obj.kind = RDB_OB_INT;
     exp->def.obj.val.int_val = v;
@@ -298,6 +197,7 @@ RDB_float_to_expr(RDB_float v, RDB_exec_context *ecp)
     }
         
     exp->kind = RDB_EX_OBJ;
+    exp->def.obj.cleanup_fp = NULL;
     exp->def.obj.typ = &RDB_FLOAT;
     exp->def.obj.kind = RDB_OB_FLOAT;
     exp->def.obj.val.float_val = v;
@@ -322,6 +222,7 @@ RDB_string_to_expr(const char *v, RDB_exec_context *ecp)
     }
         
     exp->kind = RDB_EX_OBJ;
+    exp->def.obj.cleanup_fp = NULL;
     exp->def.obj.typ = &RDB_STRING;
     exp->def.obj.kind = RDB_OB_BIN;
     exp->def.obj.val.bin.datap = RDB_dup_str(v);
@@ -551,8 +452,8 @@ RDB_expr_comp(RDB_expression *arg, const char *compname,
     return exp;
 }
 
-static int
-drop_children(RDB_expression *exp, RDB_exec_context *ecp)
+int
+RDB_drop_expr_children(RDB_expression *exp, RDB_exec_context *ecp)
 {
     switch (exp->kind) {
         case RDB_EX_TUPLE_ATTR:
@@ -586,11 +487,31 @@ RDB_del_expr(RDB_expression *exp, RDB_exec_context *ecp)
 {
     int ret;
 
-    if (drop_children(exp, ecp) != RDB_OK)
+    if (RDB_drop_expr_children(exp, ecp) != RDB_OK)
         return RDB_ERROR;
     ret = RDB_destroy_expr(exp, ecp);
     RDB_free(exp);
     return ret;
+}
+
+/*
+ * Copy type information from *srcexp to *dstexp
+ * if the type info would otherwise get lost
+ * (as with RELATION())
+ */
+int
+RDB_copy_expr_typeinfo_if_needed(RDB_expression *dstexp, const RDB_expression *srcexp,
+        RDB_exec_context *ecp)
+{
+    if (srcexp->typ != NULL && dstexp->typ == NULL
+            && srcexp->def.op.args.firstp == NULL
+            && strcmp(srcexp->def.op.name, "relation") == 0) {
+        RDB_type *typ = RDB_dup_nonscalar_type(srcexp->typ, ecp);
+        if (typ == NULL)
+            return RDB_ERROR;
+        dstexp->typ = typ;
+    }
+    return RDB_OK;
 }
 
 static RDB_expression *
@@ -619,7 +540,7 @@ dup_ro_op(const RDB_expression *exp, RDB_exec_context *ecp)
      * because otherwise it would be impossible to determine the type
      * of the copy.
      */
-    if (copy_expr_typeinfo_if_needed(newexp, exp, ecp) != RDB_OK) {
+    if (RDB_copy_expr_typeinfo_if_needed(newexp, exp, ecp) != RDB_OK) {
         goto error;
     }
 
@@ -1007,83 +928,6 @@ RDB_create_binexpr(RDB_expression *arg1, RDB_expression *arg2,
 }
 
 int
-RDB_check_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
-        const RDB_type *checktyp, RDB_environment *envp,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_type *typ = RDB_expr_type_tpltyp(exp, tuptyp, envp, ecp, txp);
-    if (typ == NULL)
-        return RDB_ERROR;
-
-    if (!RDB_type_equals(typ, checktyp)) {
-        RDB_raise_type_mismatch("", ecp);
-        return RDB_ERROR;
-    }
-    return RDB_OK;
-}
-
-int
-RDB_expr_equals(const RDB_expression *ex1p, const RDB_expression *ex2p,
-        RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp)
-{
-    int ret;
-    RDB_expression *arg1p, *arg2p;
-
-    if (ex1p->kind != ex2p->kind) {
-        *resp = RDB_FALSE;
-        return RDB_OK;
-    }
-
-    switch (ex1p->kind) {
-        case RDB_EX_OBJ:
-            return RDB_obj_equals(&ex1p->def.obj, &ex2p->def.obj, ecp, txp,
-                    resp);
-        case RDB_EX_TBP:
-            if (RDB_table_is_persistent(ex1p->def.tbref.tbp)
-                    || RDB_table_is_persistent(ex2p->def.tbref.tbp)) {
-                *resp = (RDB_bool) (ex1p->def.tbref.tbp == ex2p->def.tbref.tbp);
-                return RDB_OK;
-            }
-            return RDB_obj_equals(ex1p->def.tbref.tbp, ex2p->def.tbref.tbp, ecp, txp,
-                    resp);
-        case RDB_EX_VAR:
-            *resp = (RDB_bool)
-                    (strcmp (ex1p->def.varname, ex2p->def.varname) == 0);
-            break;
-        case RDB_EX_TUPLE_ATTR:
-        case RDB_EX_GET_COMP:
-            ret = RDB_expr_equals(ex1p->def.op.args.firstp,
-                    ex2p->def.op.args.firstp, ecp, txp, resp);
-            if (ret != RDB_OK)
-                return RDB_ERROR;
-            *resp = (RDB_bool)
-                    (strcmp (ex1p->def.op.name, ex2p->def.op.name) == 0);
-            break;
-        case RDB_EX_RO_OP:
-            if (RDB_expr_list_length(&ex1p->def.op.args)
-                    != RDB_expr_list_length(&ex2p->def.op.args)
-                    || strcmp(ex1p->def.op.name, ex2p->def.op.name) != 0) {
-                *resp = RDB_FALSE;
-                return RDB_OK;
-            }
-            arg1p = ex1p->def.op.args.firstp;
-            arg2p = ex2p->def.op.args.firstp;
-            while (arg1p != NULL) {
-                ret = RDB_expr_equals(arg1p, arg2p, ecp, txp, resp);
-                if (ret != RDB_OK)
-                    return RDB_ERROR;
-                if (!*resp)
-                    return RDB_OK;
-                arg1p = arg1p->nextp;
-                arg2p = arg2p->nextp;
-            }
-            *resp = RDB_TRUE;
-            break;
-    }
-    return RDB_OK;
-}
-
-int
 RDB_invrename_expr(RDB_expression *exp, RDB_expression *texp,
         RDB_exec_context *ecp)
 {
@@ -1215,79 +1059,6 @@ RDB_attr_node(RDB_expression *exp, const char *attrname, char *opname)
     return NULL;
 }
 
-/*
- * Convert the expression into a reference to an empty table
- */
-int
-RDB_expr_to_empty_table(RDB_expression *exp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-    RDB_type *typ = RDB_expr_type_tpltyp(exp, NULL, NULL, ecp, txp);
-    if (typ == NULL)
-        return RDB_ERROR;
-
-    /*
-     * exp->typ will be consumed by RDB_init_table_from_type(),
-     * so prevent it from being destroyed.
-     */
-    exp->typ = NULL;
-
-    if (drop_children(exp, ecp) != RDB_OK)
-        return RDB_ERROR;
-    if (RDB_destroy_expr(exp, ecp) != RDB_OK) {
-        return RDB_ERROR;
-    }
-
-    exp->kind = RDB_EX_OBJ;
-    RDB_init_obj(&exp->def.obj);
-    return RDB_init_table_from_type(&exp->def.obj, NULL, typ, 0, NULL,
-            0, NULL, ecp);
-}
-
-/*
- * Convert variable names referring to tables
- * to table references if possible
- */
-int
-RDB_expr_resolve_tbnames(RDB_expression *exp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-    RDB_expression *argp;
-
-    switch (exp->kind) {
-        case RDB_EX_TUPLE_ATTR:
-        case RDB_EX_GET_COMP:
-            return RDB_expr_resolve_tbnames(exp->def.op.args.firstp,
-                    ecp, txp);
-        case RDB_EX_RO_OP:
-            argp = exp->def.op.args.firstp;
-            while (argp != NULL) {
-                if (RDB_expr_resolve_tbnames(argp, ecp, txp) != RDB_OK)
-                    return RDB_ERROR;
-                argp = argp->nextp;
-            }
-            return RDB_OK;
-        case RDB_EX_OBJ:
-        case RDB_EX_TBP:
-            return RDB_OK;
-        case RDB_EX_VAR:
-            if (exp->typ == NULL || RDB_type_is_relation(exp->typ)) {
-                RDB_object *tbp = RDB_get_table(exp->def.varname, ecp, txp);
-                if (tbp == NULL) {
-                    RDB_clear_err(ecp);
-                    return RDB_OK;
-                }
-
-                /* Transform into table ref */
-                RDB_free(exp->def.varname);
-                exp->kind = RDB_EX_TBP;
-                exp->def.tbref.tbp = tbp;
-                exp->def.tbref.indexp = NULL;
-            }
-    }
-    return RDB_OK;
-}
-
 /**
  * Check if *<var>op</var> is an operator with name <var>name</var>.
  */
@@ -1295,4 +1066,38 @@ RDB_bool
 RDB_expr_is_op(const RDB_expression *exp, const char *name)
 {
     return (exp->kind == RDB_EX_RO_OP) && (strcmp(exp->def.op.name, name) == 0);
+}
+
+/**
+ * Return TRUE if *srctbp depends on *dsttbp, FALSE otherwise.
+ */
+RDB_bool
+RDB_table_refers(const RDB_object *srctbp, const RDB_object *dsttbp)
+{
+    RDB_expression *exp;
+
+    if (srctbp == dsttbp)
+        return RDB_TRUE;
+
+    exp = RDB_vtable_expr(srctbp);
+    if (exp == NULL)
+        return RDB_FALSE;
+    return RDB_expr_refers(exp, dsttbp);
+}
+
+/**
+ * If *tbp is a virtual table, return the defining expression,
+ * otherwise NULL.
+ */
+RDB_expression *
+RDB_vtable_expr(const RDB_object *tbp) {
+    if (tbp->kind != RDB_OB_TABLE)
+        return NULL;
+    return tbp->val.tb.exp;
+}
+
+RDB_bool
+RDB_expr_is_table_ref(const RDB_expression *exp)
+{
+    return (RDB_bool) exp->kind == RDB_EX_TBP;
 }

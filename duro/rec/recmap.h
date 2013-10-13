@@ -18,8 +18,6 @@
  * records which consist of a key and a data part.
  */
 
-#define RDB_VARIABLE_LEN (-1) /* indicates a variable field length */
-
 enum {
     RDB_ELEMENT_EXISTS = -200,
     RDB_KEY_VIOLATION = -201,

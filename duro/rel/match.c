@@ -11,6 +11,7 @@
 #include "optimize.h"
 #include "internal.h"
 #include "stable.h"
+#include <obj/objinternal.h>
 
 #include <string.h>
 #include <assert.h>

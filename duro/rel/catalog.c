@@ -6,15 +6,16 @@
  */
 
 #include "catalog.h"
-#include "key.h"
 #include "typeimpl.h"
 #include "insert.h"
 #include "internal.h"
 #include "stable.h"
 #include "serialize.h"
-
 #include <gen/strfns.h>
 #include <gen/strdump.h>
+#include <obj/key.h>
+#include <obj/objinternal.h>
+
 #include <string.h>
 
 enum {
@@ -2543,7 +2544,7 @@ RDB_cat_get_ptable(RDB_object *tbp, RDB_exec_context *ecp,
     ret = RDB_hashmap_put(&txp->dbp->dbrootp->ptbmap,
             name, tbp);
     if (ret != RDB_OK) {
-        RDB_errcode_to_error(ret, ecp, NULL);
+        RDB_handle_errcode(ret, ecp, NULL);
         return RDB_ERROR;
     }
 

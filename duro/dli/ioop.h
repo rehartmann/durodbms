@@ -9,7 +9,7 @@
  */
 
 #include <rel/rdb.h>
-#include <rel/opmap.h>
+#include <obj/opmap.h>
 
 extern RDB_object DURO_STDIN_OBJ;
 extern RDB_object DURO_STDOUT_OBJ;

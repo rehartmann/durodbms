@@ -5,9 +5,13 @@
  * See the file COPYING for redistribution information.
  */
 
-#include "rdb.h"
-#include "internal.h"
+#include "builtintypes.h"
+#include "excontext.h"
+#include "expression.h"
 #include "io.h"
+#include "objinternal.h"
+#include "operator.h"
+#include <gen/hashmap.h>
 
 #include <string.h>
 
@@ -140,6 +144,8 @@ RDB_type RDB_IDENTIFIER;
 
 RDB_hashmap RDB_builtin_type_map;
 
+typedef struct RDB_transaction RDB_transaction;
+
 static int
 compare_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
@@ -179,7 +185,7 @@ RDB_add_type(RDB_type *typ, RDB_exec_context *ecp)
 {
     int ret = RDB_hashmap_put(&RDB_builtin_type_map, RDB_type_name(typ), typ);
     if (ret != RDB_OK) {
-        RDB_errcode_to_error(ret, ecp, NULL);
+        RDB_errno_to_error(ret, ecp);
         return RDB_ERROR;
     }
 
@@ -253,19 +259,152 @@ error:
  */
 
 /**
- * Initialize built-in types and operators.
+ * Initialize built-in types.
  *
- * RDB_init_builtin_types() may be called more than once.
+ * RDB_init_builtin_basic_types() may be called more than once.
  *
  * It is called by RDB_create_db_from_env() and RDB_get_db_from_env().
- * If neither of these functions have been called, RDB_init_builtin_types()
+ * If neither of these functions have been called, RDB_init_builtin_basic_types()
  * must be called to make built-in types and operators available.
  */
 int
-RDB_init_builtin_types(RDB_exec_context *ecp)
+RDB_init_builtin_basic_types(RDB_exec_context *ecp)
 {
     static RDB_bool initialized = RDB_FALSE;
 
+    static RDB_operator compare_string_op = {
+        "cmp",
+        &RDB_INTEGER
+    };
+
+    static RDB_operator compare_int_op = {
+        "cmp",
+        &RDB_INTEGER
+    };
+
+    static RDB_operator compare_float_op = {
+        "cmp",
+        &RDB_INTEGER
+    };
+
+    if (initialized) {
+        return RDB_OK;
+    }
+    initialized = RDB_TRUE;
+
+    RDB_BOOLEAN.kind = RDB_TP_SCALAR;
+    RDB_BOOLEAN.ireplen = 1;
+    RDB_BOOLEAN.name = "boolean";
+    RDB_BOOLEAN.def.scalar.builtin = RDB_TRUE;
+    RDB_BOOLEAN.def.scalar.repc = 0;
+    RDB_BOOLEAN.def.scalar.arep = NULL;
+    RDB_BOOLEAN.def.scalar.constraintp = NULL;
+    RDB_BOOLEAN.def.scalar.initexp = NULL;
+
+    RDB_init_obj(&RDB_BOOLEAN.def.scalar.init_val);
+    RDB_bool_to_obj(&RDB_BOOLEAN.def.scalar.init_val, RDB_FALSE);
+    RDB_BOOLEAN.def.scalar.init_val_is_valid = RDB_TRUE;
+
+    RDB_BOOLEAN.compare_op = NULL;
+
+    compare_string_op.opfn.ro_fp = &compare_string;
+
+    RDB_STRING.kind = RDB_TP_SCALAR;
+    RDB_STRING.ireplen = RDB_VARIABLE_LEN;
+    RDB_STRING.name = "string";
+    RDB_STRING.def.scalar.builtin = RDB_TRUE;
+    RDB_STRING.def.scalar.repc = 0;
+    RDB_STRING.def.scalar.arep = NULL;
+    RDB_STRING.def.scalar.constraintp = NULL;
+    RDB_STRING.def.scalar.initexp = NULL;
+
+    RDB_init_obj(&RDB_STRING.def.scalar.init_val);
+    if (RDB_string_to_obj(&RDB_STRING.def.scalar.init_val, "", ecp)
+            != RDB_OK) {
+        return RDB_ERROR;
+    }
+    RDB_STRING.def.scalar.init_val_is_valid = RDB_TRUE;
+
+    RDB_STRING.compare_op = &compare_string_op;
+
+    compare_int_op.opfn.ro_fp = &compare_int;
+
+    RDB_INTEGER.kind = RDB_TP_SCALAR;
+    RDB_INTEGER.ireplen = sizeof (RDB_int);
+    RDB_INTEGER.name = "integer";
+    RDB_INTEGER.def.scalar.builtin = RDB_TRUE;
+    RDB_INTEGER.def.scalar.repc = 0;
+    RDB_INTEGER.def.scalar.arep = NULL;
+    RDB_INTEGER.def.scalar.constraintp = NULL;
+    RDB_INTEGER.def.scalar.initexp = NULL;
+
+    RDB_init_obj(&RDB_INTEGER.def.scalar.init_val);
+    RDB_int_to_obj(&RDB_INTEGER.def.scalar.init_val, (RDB_int) 0);
+    RDB_INTEGER.def.scalar.init_val_is_valid = RDB_TRUE;
+
+    RDB_INTEGER.compare_op = &compare_int_op;
+
+    compare_float_op.opfn.ro_fp = &compare_float;
+
+    RDB_FLOAT.kind = RDB_TP_SCALAR;
+    RDB_FLOAT.ireplen = sizeof (RDB_float);
+    RDB_FLOAT.name = "float";
+    RDB_FLOAT.def.scalar.builtin = RDB_TRUE;
+    RDB_FLOAT.def.scalar.repc = 0;
+    RDB_FLOAT.def.scalar.arep = NULL;
+    RDB_FLOAT.def.scalar.constraintp = NULL;
+    RDB_FLOAT.def.scalar.initexp = NULL;
+
+    RDB_init_obj(&RDB_FLOAT.def.scalar.init_val);
+    RDB_float_to_obj(&RDB_FLOAT.def.scalar.init_val, (RDB_float) 0.0);
+    RDB_FLOAT.def.scalar.init_val_is_valid = RDB_TRUE;
+
+    RDB_FLOAT.compare_op = &compare_float_op;
+
+    RDB_BINARY.kind = RDB_TP_SCALAR;
+    RDB_BINARY.ireplen = RDB_VARIABLE_LEN;
+    RDB_BINARY.name = "binary";
+    RDB_BINARY.def.scalar.repc = 0;
+    RDB_BINARY.def.scalar.arep = NULL;
+    RDB_BINARY.def.scalar.builtin = RDB_TRUE;
+    RDB_BINARY.def.scalar.constraintp = NULL;
+    RDB_BINARY.def.scalar.initexp = NULL;
+    RDB_BINARY.compare_op = NULL;
+
+    RDB_init_obj(&RDB_BINARY.def.scalar.init_val);
+    if (RDB_binary_set(&RDB_BINARY.def.scalar.init_val, 0, NULL, (size_t) 0, ecp)
+            != RDB_OK) {
+        return RDB_ERROR;
+    }
+    RDB_BINARY.def.scalar.init_val_is_valid = RDB_TRUE;
+
+    RDB_init_hashmap(&RDB_builtin_type_map, 32);
+
+    /*
+     * Put built-in types into type map
+     */
+    if (RDB_add_type(&RDB_BOOLEAN, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+    if (RDB_add_type(&RDB_INTEGER, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+    if (RDB_add_type(&RDB_FLOAT, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+    if (RDB_add_type(&RDB_STRING, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+    if (RDB_add_type(&RDB_BINARY, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    return RDB_OK;
+}
+
+int
+RDB_add_builtin_pr_types(RDB_exec_context *ecp)
+{
     /*
      * Add error types
      */
@@ -432,112 +571,6 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
         1,
         &id_comp
     };
-
-    static RDB_operator compare_string_op = {
-        "cmp",
-        &RDB_INTEGER
-    };
-
-    static RDB_operator compare_int_op = {
-        "cmp",
-        &RDB_INTEGER
-    };
-
-    static RDB_operator compare_float_op = {
-        "cmp",
-        &RDB_INTEGER
-    };
-
-    if (initialized) {
-        return RDB_OK;
-    }
-    initialized = RDB_TRUE;
-
-    RDB_BOOLEAN.kind = RDB_TP_SCALAR;
-    RDB_BOOLEAN.ireplen = 1;
-    RDB_BOOLEAN.name = "boolean";
-    RDB_BOOLEAN.def.scalar.builtin = RDB_TRUE;
-    RDB_BOOLEAN.def.scalar.repc = 0;
-    RDB_BOOLEAN.def.scalar.arep = NULL;
-    RDB_BOOLEAN.def.scalar.constraintp = NULL;
-    RDB_BOOLEAN.def.scalar.initexp = NULL;
-
-    RDB_init_obj(&RDB_BOOLEAN.def.scalar.init_val);
-    RDB_bool_to_obj(&RDB_BOOLEAN.def.scalar.init_val, RDB_FALSE);
-    RDB_BOOLEAN.def.scalar.init_val_is_valid = RDB_TRUE;
-
-    RDB_BOOLEAN.compare_op = NULL;
-
-    compare_string_op.opfn.ro_fp = &compare_string;
-
-    RDB_STRING.kind = RDB_TP_SCALAR;
-    RDB_STRING.ireplen = RDB_VARIABLE_LEN;
-    RDB_STRING.name = "string";
-    RDB_STRING.def.scalar.builtin = RDB_TRUE;
-    RDB_STRING.def.scalar.repc = 0;
-    RDB_STRING.def.scalar.arep = NULL;
-    RDB_STRING.def.scalar.constraintp = NULL;
-    RDB_STRING.def.scalar.initexp = NULL;
-
-    RDB_init_obj(&RDB_STRING.def.scalar.init_val);
-    if (RDB_string_to_obj(&RDB_STRING.def.scalar.init_val, "", ecp)
-            != RDB_OK) {
-        return RDB_ERROR;
-    }
-    RDB_STRING.def.scalar.init_val_is_valid = RDB_TRUE;
-
-    RDB_STRING.compare_op = &compare_string_op;
-
-    compare_int_op.opfn.ro_fp = &compare_int;
-
-    RDB_INTEGER.kind = RDB_TP_SCALAR;
-    RDB_INTEGER.ireplen = sizeof (RDB_int);
-    RDB_INTEGER.name = "integer";
-    RDB_INTEGER.def.scalar.builtin = RDB_TRUE;
-    RDB_INTEGER.def.scalar.repc = 0;
-    RDB_INTEGER.def.scalar.arep = NULL;
-    RDB_INTEGER.def.scalar.constraintp = NULL;
-    RDB_INTEGER.def.scalar.initexp = NULL;
-
-    RDB_init_obj(&RDB_INTEGER.def.scalar.init_val);
-    RDB_int_to_obj(&RDB_INTEGER.def.scalar.init_val, (RDB_int) 0);
-    RDB_INTEGER.def.scalar.init_val_is_valid = RDB_TRUE;
-
-    RDB_INTEGER.compare_op = &compare_int_op;
-
-    compare_float_op.opfn.ro_fp = &compare_float;
-
-    RDB_FLOAT.kind = RDB_TP_SCALAR;
-    RDB_FLOAT.ireplen = sizeof (RDB_float);
-    RDB_FLOAT.name = "float";
-    RDB_FLOAT.def.scalar.builtin = RDB_TRUE;
-    RDB_FLOAT.def.scalar.repc = 0;
-    RDB_FLOAT.def.scalar.arep = NULL;
-    RDB_FLOAT.def.scalar.constraintp = NULL;
-    RDB_FLOAT.def.scalar.initexp = NULL;
-
-    RDB_init_obj(&RDB_FLOAT.def.scalar.init_val);
-    RDB_float_to_obj(&RDB_FLOAT.def.scalar.init_val, (RDB_float) 0.0);
-    RDB_FLOAT.def.scalar.init_val_is_valid = RDB_TRUE;
-
-    RDB_FLOAT.compare_op = &compare_float_op;
-
-    RDB_BINARY.kind = RDB_TP_SCALAR;
-    RDB_BINARY.ireplen = RDB_VARIABLE_LEN;
-    RDB_BINARY.name = "binary";
-    RDB_BINARY.def.scalar.repc = 0;
-    RDB_BINARY.def.scalar.arep = NULL;
-    RDB_BINARY.def.scalar.builtin = RDB_TRUE;
-    RDB_BINARY.def.scalar.constraintp = NULL;
-    RDB_BINARY.def.scalar.initexp = NULL;
-    RDB_BINARY.compare_op = NULL;
-
-    RDB_init_obj(&RDB_BINARY.def.scalar.init_val);
-    if (RDB_binary_set(&RDB_BINARY.def.scalar.init_val, 0, NULL, (size_t) 0, ecp)
-            != RDB_OK) {
-        return RDB_ERROR;
-    }
-    RDB_BINARY.def.scalar.init_val_is_valid = RDB_TRUE;
 
     RDB_NO_MEMORY_ERROR.kind = RDB_TP_SCALAR;
     RDB_NO_MEMORY_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -931,29 +964,11 @@ RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_IDENTIFIER.def.scalar.init_val_is_valid = RDB_TRUE;
     RDB_IDENTIFIER.compare_op = NULL;
 
+    /* !!
     if (RDB_init_builtin_ops(ecp) != RDB_OK)
         return RDB_ERROR;
+    */
 
-    RDB_init_hashmap(&RDB_builtin_type_map, 32);
-
-    /*
-     * Put built-in types into type map
-     */
-    if (RDB_add_type(&RDB_BOOLEAN, ecp) != RDB_OK) {
-        return RDB_ERROR;
-    }
-    if (RDB_add_type(&RDB_INTEGER, ecp) != RDB_OK) {
-        return RDB_ERROR;
-    }
-    if (RDB_add_type(&RDB_FLOAT, ecp) != RDB_OK) {
-        return RDB_ERROR;
-    }
-    if (RDB_add_type(&RDB_STRING, ecp) != RDB_OK) {
-        return RDB_ERROR;
-    }
-    if (RDB_add_type(&RDB_BINARY, ecp) != RDB_OK) {
-        return RDB_ERROR;
-    }
     if (RDB_add_type(&RDB_NO_MEMORY_ERROR, ecp) != RDB_OK) {
         return RDB_ERROR;
     }

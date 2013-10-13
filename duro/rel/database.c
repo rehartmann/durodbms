@@ -497,7 +497,7 @@ get_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
          * and create RDB_dbroot structure
          */
 
-        if (RDB_init_builtin_types(ecp) != RDB_OK) {
+        if (RDB_init_builtin(ecp) != RDB_OK) {
             goto error;
         }
         if (lt_dlinit() != 0) {
@@ -945,7 +945,7 @@ RDB_assoc_table_db(RDB_object *tbp, RDB_database *dbp, RDB_exec_context *ecp)
     /* Insert table into table map */
     int ret = RDB_hashmap_put(&dbp->tbmap, RDB_table_name(tbp), tbp);
     if (ret != RDB_OK) {
-        RDB_errcode_to_error(ret, ecp, NULL);
+        RDB_handle_errcode(ret, ecp, NULL);
         return RDB_ERROR;
     }
     return RDB_OK;

@@ -10,6 +10,7 @@
 #include "internal.h"
 #include "stable.h"
 #include "tostr.h"
+#include <obj/objinternal.h>
 
 #include <gen/strfns.h>
 #include <string.h>

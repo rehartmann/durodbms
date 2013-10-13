@@ -7,14 +7,14 @@
 
 #include "rdb.h"
 #include "typeimpl.h"
-#include "key.h"
 #include "catalog.h"
 #include "stable.h"
 #include "qresult.h"
 #include "insert.h"
 #include "optimize.h"
 #include "internal.h"
-
+#include <obj/key.h>
+#include <obj/objinternal.h>
 #include <gen/strfns.h>
 
 #include <string.h>
@@ -612,23 +612,6 @@ RDB_subset(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *ecp,
 
 error:
     return RDB_ERROR;
-}
-
-/**
- * Return TRUE if *srctbp depends on *dsttbp, FALSE otherwise.
- */
-RDB_bool
-RDB_table_refers(const RDB_object *srctbp, const RDB_object *dsttbp)
-{
-    RDB_expression *exp;
-
-    if (srctbp == dsttbp)
-        return RDB_TRUE;
-
-    exp = RDB_vtable_expr(srctbp);
-    if (exp == NULL)
-        return RDB_FALSE;
-    return RDB_expr_refers(exp, dsttbp);
 }
 
 /**

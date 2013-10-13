@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2007-2012 Rene Hartmann.
+ * Copyright (C) 2007-2013 Rene Hartmann.
  * See the file COPYING for redistribution information.
  *
  * Statement execution functions.
@@ -21,7 +21,6 @@
 #include <rel/typeimpl.h>
 #include <rel/qresult.h>
 #include <rel/optimize.h>
-#include <rel/internal.h>
 
 #include <sys/stat.h>
 #include <errno.h>
@@ -90,7 +89,7 @@ connect_op(int argc, RDB_object *argv[], RDB_operator *op,
         int ret = RDB_open_env(RDB_obj_string(argv[0]), &Duro_envp,
                 RDB_CREATE);
         if (ret != RDB_OK) {
-            RDB_errcode_to_error(ret, ecp, txp);
+            RDB_handle_errcode(ret, ecp, txp);
             Duro_envp = NULL;
             return RDB_ERROR;
         }
@@ -130,7 +129,7 @@ disconnect_op(int argc, RDB_object *argv[], RDB_operator *op,
     ret = RDB_close_env(Duro_envp);
     Duro_envp = NULL;
     if (ret != RDB_OK) {
-        RDB_errcode_to_error(ret, ecp, txp);
+        RDB_handle_errcode(ret, ecp, txp);
         Duro_envp = NULL;
         return RDB_ERROR;
     }
@@ -178,7 +177,7 @@ create_env_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     ret = RDB_open_env(RDB_obj_string(argv[0]), &Duro_envp, RDB_CREATE);
     if (ret != RDB_OK) {
-        RDB_errcode_to_error(ret, ecp, txp);
+        RDB_handle_errcode(ret, ecp, txp);
         Duro_envp = NULL;
         return RDB_ERROR;
     }
@@ -191,7 +190,7 @@ system_op(int argc, RDB_object *argv[], RDB_operator *op,
 {
     int ret = system(RDB_obj_string(argv[0]));
     if (ret == -1 || ret == 127) {
-        RDB_errcode_to_error(errno, ecp, txp);
+        RDB_handle_errcode(errno, ecp, txp);
         return RDB_ERROR;
     }
     RDB_int_to_obj(argv[1], (RDB_int) ret);
@@ -370,9 +369,9 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp)
                 goto cleanup;
             }
         } else {
-            if (exp->kind == RDB_EX_TBP) {
+            if (RDB_expr_is_table_ref(exp)) {
                 /* Special handling of table refs */
-                argpv[i] = exp->def.tbref.tbp;
+                argpv[i] = RDB_expr_obj(exp);
             } else if (paramp != NULL && paramp->update) {
                 /*
                  * If it's an update argument and the argument is not a variable,
@@ -588,7 +587,7 @@ exec_explain(RDB_parse_node *nodep, RDB_exec_context *ecp)
 
     ret = puts(RDB_obj_string(&strobj));
     if (ret == EOF) {
-        RDB_errcode_to_error(errno, ecp, &Duro_txnp->tx);
+        RDB_handle_errcode(errno, ecp, &Duro_txnp->tx);
     } else {
         ret = RDB_OK;
     }

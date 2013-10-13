@@ -10,6 +10,7 @@
 #include "internal.h"
 #include <gen/strfns.h>
 #include <gen/hashtabit.h>
+#include <obj/objinternal.h>
 #include <string.h>
 #include <assert.h>
 

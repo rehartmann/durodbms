@@ -10,6 +10,7 @@
 #include "qr_tclose.h"
 #include "internal.h"
 #include "qresult.h"
+#include "obj/objinternal.h"
 
 int
 RDB_tclose_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,

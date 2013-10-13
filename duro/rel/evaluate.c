@@ -12,6 +12,8 @@
 #include "tostr.h"
 #include "pexpr.h"
 #include "stable.h"
+#include <obj/objinternal.h>
+
 #include <string.h>
 
 /*

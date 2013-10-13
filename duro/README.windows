@@ -17,7 +17,7 @@ The following software is required for running this version of DuroDBMS:
 Add the directories where the respective DLLs are located to PATH,
 together with the 'bin' subdirectory of the DuroDBMS root directory.
 
-DuroDBMS 0.19 has been tested under Linux/x86 and Windows XP with Berkeley
+DuroDBMS has been tested under Linux/x86 and Windows XP with Berkeley
 DB 5.3 and Tcl 8.5.
 
 To learn about how to use DuroDBMS, see the documentation in the 'docs'
@@ -28,7 +28,7 @@ The Tcl interface can be found in the 'lib' subdirectory.
 The easiest way to make it available to application
 scripts is to add this subdirectory to TCLLIBPATH, e.g.:
 
-    set TCLLIBPATH=C:/durodbms.0.19/lib
+    set TCLLIBPATH=C:/durodbms.0.20/lib
 
 DuroDBMS is still under development. Report bugs to
 rhartmann@users.sourceforge.net or use a Sourceforge tracker

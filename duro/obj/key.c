@@ -7,9 +7,13 @@
  * Key functions
  */
 
-#include "rdb.h"
-#include "internal.h"
+#include "object.h"
+#include "excontext.h"
+#include "type.h"
+#include <gen/types.h>
 #include <gen/strfns.h>
+
+#include <stdlib.h>
 
 static RDB_bool
 strvec_is_subset(const RDB_string_vec *v1p, const RDB_string_vec *v2p)

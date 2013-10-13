@@ -1,14 +1,16 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005-2012 Rene Hartmann.
+ * Copyright (C) 2005-2013 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
-#include "rdb.h"
-#include "internal.h"
+#include "excontext.h"
+#include "builtintypes.h"
 #include <gen/hashmap.h>
+
 #include <errno.h>
+#include <string.h>
 
 /** @defgroup excontext Execution context functions
  * @{
@@ -97,7 +99,6 @@ RDB_clear_err(RDB_exec_context *ecp)
     }
 }
 
-/*@{*/
 /** Convenience function to raise a system-provided error.
  */
 RDB_object *
@@ -298,8 +299,6 @@ RDB_raise_syntax(const char *msg, RDB_exec_context *ecp)
     return raise_msg_err(&RDB_SYNTAX_ERROR, msg, ecp);
 }
 
-/*@}*/
-
 /** <strong>RDB_ec_set_property</strong> sets the property <var>name</var>
 of the RDB_exec_context given by <var>ecp</var> to <var>val</var>.
 
@@ -312,7 +311,7 @@ RDB_ec_set_property(RDB_exec_context *ecp, const char *name, void *val)
 {
     int ret = RDB_hashmap_put(&ecp->pmap, name, val);
     if (ret != RDB_OK) {
-        RDB_errcode_to_error(ret, ecp, NULL);
+        RDB_errno_to_error(ret, ecp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -337,7 +336,7 @@ RDB_ec_get_property(RDB_exec_context *ecp, const char *name)
  * a Berkeley DB error code or an error code from the record layer.
  */
 void
-RDB_errcode_to_error(int errcode, RDB_exec_context *ecp, RDB_transaction *txp)
+RDB_errno_to_error(int errcode, RDB_exec_context *ecp)
 {
     switch (errcode) {
         case ENOMEM:
@@ -347,34 +346,10 @@ RDB_errcode_to_error(int errcode, RDB_exec_context *ecp, RDB_transaction *txp)
             RDB_raise_invalid_argument("", ecp);
             break;
         case ENOENT:
-            RDB_raise_resource_not_found(db_strerror(errcode), ecp);
-            break;
-        case DB_KEYEXIST:
-            RDB_raise_key_violation("", ecp);
-            break;
-        case RDB_ELEMENT_EXISTS:
-            RDB_raise_element_exists("", ecp);
-            break;
-        case DB_NOTFOUND:
-            RDB_raise_not_found("", ecp);
-            break;
-        case DB_LOCK_NOTGRANTED:
-            RDB_raise_lock_not_granted(ecp);
-            break;
-        case DB_LOCK_DEADLOCK:
-            if (txp != NULL) {
-                RDB_rollback_all(ecp, txp);
-            }
-            RDB_raise_deadlock(ecp);
-            break;
-        case DB_RUNRECOVERY:
-            RDB_raise_fatal(ecp);
-            break;
-        case RDB_RECORD_CORRUPTED:
-            RDB_raise_fatal(ecp);
+            RDB_raise_resource_not_found(strerror(errcode), ecp);
             break;
         default:
-            RDB_raise_system(db_strerror(errcode), ecp);
+            RDB_raise_system(strerror(errcode), ecp);
     }
 }
 

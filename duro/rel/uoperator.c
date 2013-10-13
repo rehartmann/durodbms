@@ -10,6 +10,8 @@
 #include "cat_op.h"
 #include "serialize.h"
 #include <gen/strfns.h>
+#include <obj/operator.h>
+#include <obj/objinternal.h>
 
 #include <string.h>
 #include <stdlib.h>
@@ -860,77 +862,12 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         ret = RDB_delete(txp->dbp->dbrootp->ro_ops_tbp, exp, ecp, txp);
         if (ret == RDB_ERROR) {
             RDB_del_expr(exp, ecp);
-            RDB_errcode_to_error(ret, ecp, txp);
+            RDB_handle_errcode(ret, ecp, txp);
             return RDB_ERROR;
         }
     }
 
     return RDB_OK;
-}
-
-/**
- * Return the idx-th parameter of *<var>op</var>
- */
-RDB_parameter *
-RDB_get_parameter(const RDB_operator *op, int idx)
-{
-    if (idx >= op->paramc)
-        return NULL;
-    return &op->paramv[idx];
-}
-
-/**
- * Return the name of *<var>op</var>
- */
-const char *
-RDB_operator_name(const RDB_operator *op)
-{
-    return op->name;
-}
-
-/**
- * Return the return type of *<var>op</var> if it's a read-only operator.
- */
-RDB_type *
-RDB_return_type(const RDB_operator *op)
-{
-    return op->rtyp;
-}
-
-/**
- * Return the source code of operator *<var>op</var>.
- *
- * @returns a pointer to the source code, or NULL if no source code
- * was specified when the operator was created.
- */
-const char *
-RDB_operator_source(const RDB_operator *op)
-{
-    const char *srcp = RDB_obj_string(&op->source);
-    return *srcp == '\0' ? NULL : srcp;
-}
-
-
-void *
-RDB_op_u_data(const RDB_operator *op)
-{
-    return op->u_data;
-}
-
-void
-RDB_set_op_u_data(RDB_operator *op, void *u_data)
-{
-    op->u_data = u_data;
-}
-
-/**
- * Set function which is invoked when the *<var>op</var>
- * is deleted from memory
- */
-void
-RDB_set_op_cleanup_fn(RDB_operator *op,  RDB_op_cleanup_func *fp)
-{
-    op->cleanup_fp = fp;
 }
 
 /*@}*/
@@ -1126,7 +1063,7 @@ RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         int ret;
 
         if (strcmp(name, "=") == 0) {
-            op = RDB_new_operator(name, 2, argtv, &RDB_BOOLEAN, ecp);
+            op = RDB_new_op_data(name, 2, argtv, &RDB_BOOLEAN, ecp);
             if (op == NULL) {
                 return NULL;
             }
@@ -1137,7 +1074,7 @@ RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
             return op;
         }
         if (strcmp(name, "<>") == 0) {
-            op = RDB_new_operator(name, 2, argtv, &RDB_BOOLEAN, ecp);
+            op = RDB_new_op_data(name, 2, argtv, &RDB_BOOLEAN, ecp);
             if (op == NULL) {
                 return NULL;
             }
@@ -1195,7 +1132,7 @@ RDB_add_selector(RDB_type *typ, RDB_exec_context *ecp)
      * Create RDB_operator and put it into read-only operator map
      */
 
-    datap = RDB_new_operator(typ->name, argc, argtv, typ, ecp);
+    datap = RDB_new_op_data(typ->name, argc, argtv, typ, ecp);
     if (argtv != NULL)
         RDB_free(argtv);
     if (datap == NULL)

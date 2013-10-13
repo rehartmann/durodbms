@@ -12,7 +12,7 @@ int main(void)
     RDB_object tpl;
 
     RDB_init_exec_context(&ec);
-    if (RDB_init_builtin_types(&ec) != RDB_OK) {
+    if (RDB_init_builtin(&ec) != RDB_OK) {
         fprintf(stderr, "error initializing built-in types\n");
         return 2;
     }

@@ -10,6 +10,7 @@
 #include "internal.h"
 #include "stable.h"
 #include "optimize.h"
+#include <obj/objinternal.h>
 
 static int
 enlarge_buf(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
@@ -24,6 +25,13 @@ enlarge_buf(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
         RDB_init_obj(&arrp->val.arr.elemv[i]);
     arrp->val.arr.elemc = len;
     return RDB_OK;
+}
+
+static int
+cleanup_qrarr(RDB_object *arrp, RDB_exec_context *ecp)
+{
+    return RDB_del_qresult(arrp->val.arr.qrp, ecp,
+                arrp->val.arr.txp);
 }
 
 static int
@@ -66,6 +74,7 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
         arrp->val.arr.txp = txp;
         arrp->val.arr.length = -1;
         arrp->val.arr.qrp = qrp;
+        arrp->cleanup_fp = &cleanup_qrarr;
 
         return RDB_OK;
     }

@@ -5,7 +5,8 @@
  * See the file COPYING for redistribution information.
  */
 
-#include "internal.h"
+#include "opmap.h"
+#include "type.h"
 #include <gen/hashmapit.h>
 #include <gen/strfns.h>
 
@@ -86,7 +87,7 @@ RDB_put_op(RDB_op_map *opmap, RDB_operator *op,
         opep->nextp = NULL;
         ret = RDB_hashmap_put(&opmap->map, op->name, opep);
         if (ret != RDB_OK) {
-            RDB_errcode_to_error(ret, ecp, NULL);
+            RDB_errno_to_error(ret, ecp);
             goto error;
         }
     } else {
@@ -158,71 +159,11 @@ RDB_del_ops(RDB_op_map *opmap, const char *name, RDB_exec_context *ecp)
         free_ops(op, ecp);
         ret = RDB_hashmap_put(&opmap->map, name, NULL);
         if (ret != RDB_OK) {
-            RDB_errcode_to_error(ret, ecp, NULL);
+            RDB_errno_to_error(ret, ecp);
             return RDB_ERROR;
         }
     }
     return RDB_OK;
-}
-
-RDB_operator *
-RDB_new_operator(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
-        RDB_exec_context *ecp)
-{
-    int i;
-    RDB_operator *op = RDB_alloc(sizeof (RDB_operator), ecp);
-    if (op == NULL) {
-        return NULL;
-    }
-
-    RDB_init_obj(&op->source);
-    op->name = RDB_dup_str(name);
-    if (op->name == NULL) {
-        RDB_raise_no_memory(ecp);
-        goto error;
-    }
-
-    op->paramc = argc;
-    if (argc > 0) {
-        op->paramv = RDB_alloc(sizeof (RDB_parameter) * argc, ecp);
-        if (op->paramv == NULL) {
-            goto error;
-        }
-
-        for (i = 0; i < argc; i++) {
-            op->paramv[i].typ = NULL;
-        }
-        for (i = 0; i < argc; i++) {
-            op->paramv[i].typ = RDB_dup_nonscalar_type(argtv[i], ecp);
-            if (op->paramv[i].typ == NULL) {
-                goto error;
-            }
-        }
-    } else {
-        op->paramv = NULL;
-    }
-
-    op->rtyp = rtyp;
-    op->modhdl = NULL;
-    op->u_data = NULL;
-    op->cleanup_fp = NULL;
-
-    return op;
-
-error:
-    RDB_destroy_obj(&op->source, ecp);
-    if (op->name != NULL)
-        RDB_free(op->name);
-    if (op->paramv != NULL) {
-        for (i = 0; i < op->paramc; i++) {
-            if (op->paramv[i].typ != NULL
-                   && !RDB_type_is_scalar(op->paramv[i].typ)) {
-                RDB_del_nonscalar_type(op->paramv[i].typ, ecp);
-            }
-        }
-    }
-    RDB_free(op);
-    return NULL;
 }
 
 int
@@ -257,29 +198,4 @@ error:
         RDB_free(op->name);
     RDB_free(op);
     return RDB_ERROR;
-}
-
-int
-RDB_free_op_data(RDB_operator *op, RDB_exec_context *ecp)
-{
-    int i;
-    int ret;
-
-    if (op->rtyp != NULL && !RDB_type_is_scalar(op->rtyp))
-        RDB_del_nonscalar_type(op->rtyp, ecp);
-    if (op->modhdl != NULL) {
-        /* Operator loaded from module */
-        lt_dlclose(op->modhdl);
-    }
-    for (i = 0; i < op->paramc; i++) {
-        if (!RDB_type_is_scalar(op->paramv[i].typ))
-            RDB_del_nonscalar_type(op->paramv[i].typ, ecp);
-    }
-    RDB_free(op->paramv);
-    RDB_free(op->name);
-    if (op->cleanup_fp != NULL)
-        (*op->cleanup_fp) (op);
-    ret = RDB_destroy_obj(&op->source, ecp);
-    RDB_free(op);
-    return ret;
 }

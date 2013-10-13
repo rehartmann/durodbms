@@ -8,7 +8,7 @@
  * See the file COPYING for redistribution information.
  */
 
-#include "rdb.h"
+#include "excontext.h"
 
 int
 RDB_add_io(RDB_exec_context *);

@@ -46,7 +46,7 @@ tuple_to_operator(const char *name, const RDB_object *tplp,
                 goto error;
         }
     }
-    op = RDB_new_operator(name, argc, argtv, NULL, ecp);
+    op = RDB_new_op_data(name, argc, argtv, NULL, ecp);
     if (op == NULL)
         goto error;
 

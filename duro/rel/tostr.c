@@ -9,6 +9,8 @@
 #include "internal.h"
 #include "stable.h"
 #include <gen/hashtabit.h>
+#include <obj/objinternal.h>
+
 #include <string.h>
 
 static int

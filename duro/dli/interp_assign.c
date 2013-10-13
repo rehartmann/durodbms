@@ -8,9 +8,8 @@
 #include "interp_assign.h"
 #include "interp_core.h"
 #include "exparse.h"
-#include <rel/rdb.h>
 #include <rel/tostr.h>
-#include <rel/internal.h>
+#include <obj/objinternal.h>
 
 #include <string.h>
 

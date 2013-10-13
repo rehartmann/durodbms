@@ -13,6 +13,7 @@ typedef struct {
 void
 RDB_init_hashtable_iter(RDB_hashtable_iter *hip, RDB_hashtable *hp);
 
+/* Does nothing */
 #define RDB_destroy_hashtable_iter(hp)
 
 void *

@@ -201,7 +201,7 @@ RDB_hashmap_put
 RDB_expr_to_str
 RDB_table_ref
 RDB_add_arg
-RDB_init_builtin_types
+RDB_init_builtin
 RDB_obj_irep
 RDB_irep_to_obj
 RDB_put_op
