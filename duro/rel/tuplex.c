@@ -14,7 +14,7 @@
 
 #include <string.h>
 
-/** @addtogroup tuple Tuple functions
+/** @addtogroup tuple
  * @{
  */
 

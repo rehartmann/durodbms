@@ -57,7 +57,7 @@ gensrc = ['gen/hashmap.c', 'gen/hashmapit.c',
         'gen/strfns.c', 'gen/strdump.c', 'gen/hashtable.c', 'gen/hashtabit.c',
         'gen/releaseno.c']
 
-trsrc = ['obj/object.c', 'obj/excontext.c', 'obj/type.c', 'obj/builtintypes.c', 'obj/io.c',
+objsrc = ['obj/object.c', 'obj/excontext.c', 'obj/type.c', 'obj/builtintypes.c', 'obj/io.c',
         'obj/expression.c', 'obj/key.c', 'obj/tuple.c', 'obj/operator.c']
 
 recsrc = ['rec/cursor.c', 'rec/env.c', 'rec/index.c', 'rec/recmap.c']
@@ -78,7 +78,7 @@ relsrc = ['rel/array.c', 'rel/database.c', 'rel/uoperator.c',
 interpsrc = ['dli/exparse.c', 'dli/exlex.c', 'dli/parse.c', 'dli/parsenode.c',
         'dli/iinterp.c', 'dli/interp_core.c', 'dli/interp_assign.c', 'dli/ioop.c']
 
-durosrc = gensrc + trsrc + recsrc + relsrc + interpsrc
+durosrc = gensrc + objsrc + recsrc + relsrc + interpsrc
 
 if env['PLATFORM'] == 'win32':
     duroccflags = '/DNO_DLL_IMPORT'
@@ -135,7 +135,7 @@ else:
 env.Alias('apidocs', 'docs/api/html/index.html')
 
 env.Command('docs/api/html/index.html',
-        ['Doxyfile'] + recsrc + relsrc + interpsrc + ['rel/rdb.h']
+        ['Doxyfile'] + recsrc + objsrc + relsrc + interpsrc + ['obj/type.h'] + ['rel/rdb.h']
             + ['dli/parse.c', 'dli/ioop.c', 'dli/iinterp.c', 'dli/parse.h'],
         'doxygen')
 
@@ -323,7 +323,7 @@ if env.has_key('TAR'):
             'COPYING AUTHORS CHANGES Doxyfile'))
     env.Tar(disttar, gensrc)
     env.Tar(disttar, recsrc)
-    env.Tar(disttar, trsrc)
+    env.Tar(disttar, objsrc)
     env.Tar(disttar, relsrc)
     env.Tar(disttar, interpsrc)
     env.Tar(disttar, 'dli/durodt.c')

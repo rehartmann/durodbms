@@ -20,7 +20,7 @@ struct RDB_object;
 /**
  * This struct is used to specify attribute definitions.
  */
-typedef struct RDB_attr {
+typedef struct {
     /** The name of the attribute. */
     char *name;
 
@@ -54,9 +54,25 @@ enum RDB_tp_kind {
 };
 
 typedef struct RDB_op_data RDB_operator;
-typedef struct RDB_possrep RDB_possrep;
 typedef struct RDB_expression RDB_expression;
 typedef struct RDB_exec_context RDB_exec_context;
+
+/**@addtogroup type
+ * @{
+ */
+
+/**
+ * Specifies a possible representation.
+ */
+typedef struct {
+    char *name;
+    int compc;
+    RDB_attr *compv;
+} RDB_possrep;
+
+/**
+ * @}
+ */
 
 typedef struct RDB_type {
     /* internal */
@@ -72,7 +88,7 @@ typedef struct RDB_type {
         struct RDB_type *basetyp; /* relation or array type */
         struct {
             int attrc;
-            struct RDB_attr *attrv;
+            RDB_attr *attrv;
         } tuple;
         struct {
             int repc;
@@ -94,6 +110,10 @@ typedef struct RDB_type {
     } def;
 } RDB_type;
 
+/**@addtogroup tuple
+ * @{
+ */
+
 /** @struct RDB_renaming rdb.h <rel/rdb.h>
  * Represents an attribute renaming.
  */
@@ -111,22 +131,7 @@ typedef struct {
     char *attrname;
 } RDB_wrapping;
 
-/**@addtogroup type
- * @{
- */
-
-/**
- * Specifies a possible representation.
- */
-typedef struct RDB_possrep {
-    char *name;
-    int compc;
-    struct RDB_attr *compv;
-} RDB_possrep;
-
-/**
- * @}
- */
+/*@}*/
 
 RDB_bool
 RDB_type_is_numeric(const RDB_type *);

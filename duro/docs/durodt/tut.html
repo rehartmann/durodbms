@@ -162,6 +162,9 @@ no db> var s string init 'Foo';
 no db> var bin binary init X'466f6f';
 </pre>
 
+<p>There are other built-in types used for I/O and exception handling.
+These are discussed in the respective sections.
+
 <p>For non-scalar types, see the chapters on tuples, tables, and arrays,
 respectively.
 
@@ -818,12 +821,14 @@ followed by one or more digits.
 <p>We can define a type for this purpose as follows:
 
 <pre>
-D> type empno possrep { no string } constraint no regex_like '^E[0-9]+$' or no = '' init empno('');
+D> type empno possrep { no string }
+D> constraint no regex_like '^E[0-9]+$' or no = ''
+D> init empno('');
 Type empno defined.
 D> 
 </pre>
 
-<p>We also allow the empty string if there is no value to store.
+<p>We also allow the empty string if there is no employee number to store.
 It may be a good idea to allow only values of a certain (fixed) length;
 this is omitted here to keep the example simple.
 
@@ -938,7 +943,7 @@ D>
 
 <h2 id="exception">Exception handling</h2>
 
-<p>By default, if an error occurs, execution is stopped.
+<p>By default, if an error occurs, execution stops.
 
 <p>In Duro D/T, it is possible to handle errors and to continue execution.
 It is also possible to generate errors from user code.

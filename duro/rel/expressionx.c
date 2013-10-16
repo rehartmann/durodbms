@@ -10,6 +10,10 @@
 
 #include <string.h>
 
+/** @addtogroup expr
+ * @{
+ */
+
 /**
  * Return a new expression in which all variable names for which
  * *<var>getfnp</var>() or RDB_get_table() return an RDB_object
@@ -94,7 +98,10 @@ RDB_expr_resolve_varnames(RDB_expression *exp, RDB_getobjfn *getfnp,
     abort();
 } /* RDB_expr_resolve_varnames */
 
-
+/**
+ * Compare the two expression *<var>ex1p</var> and *<var>ex2p</var>
+ * and store RDB_TRUE in *<var>resp</var> if they are equal, otherwise RDB_FALSE.
+ */
 int
 RDB_expr_equals(const RDB_expression *ex1p, const RDB_expression *ex2p,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp)
@@ -155,3 +162,5 @@ RDB_expr_equals(const RDB_expression *ex1p, const RDB_expression *ex2p,
     }
     return RDB_OK;
 }
+
+/*@}*/

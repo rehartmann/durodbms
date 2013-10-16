@@ -15,7 +15,7 @@
 #include <string.h>
 #include <assert.h>
 
-/** @defgroup expr Expression functions
+/**@defgroup expr Expression functions
  * @{
  */
 
@@ -452,26 +452,8 @@ RDB_expr_comp(RDB_expression *arg, const char *compname,
     return exp;
 }
 
-int
-RDB_drop_expr_children(RDB_expression *exp, RDB_exec_context *ecp)
-{
-    switch (exp->kind) {
-        case RDB_EX_TUPLE_ATTR:
-        case RDB_EX_GET_COMP:
-            if (RDB_del_expr(exp->def.op.args.firstp, ecp) != RDB_OK)
-                return RDB_ERROR;
-            break;
-        case RDB_EX_RO_OP:
-            if (RDB_destroy_expr_list(&exp->def.op.args, ecp) != RDB_OK)
-                return RDB_ERROR;
-            break;
-        default: ;
-    }
-    return RDB_OK;
-}
-
 /**
- * Destroys the expression specified to by <var>exp</var>
+ * Destroy the expression specified to by <var>exp</var>
 (including all subexpressions) and frees all resources associated with it.
 
 @returns
@@ -492,26 +474,6 @@ RDB_del_expr(RDB_expression *exp, RDB_exec_context *ecp)
     ret = RDB_destroy_expr(exp, ecp);
     RDB_free(exp);
     return ret;
-}
-
-/*
- * Copy type information from *srcexp to *dstexp
- * if the type info would otherwise get lost
- * (as with RELATION())
- */
-int
-RDB_copy_expr_typeinfo_if_needed(RDB_expression *dstexp, const RDB_expression *srcexp,
-        RDB_exec_context *ecp)
-{
-    if (srcexp->typ != NULL && dstexp->typ == NULL
-            && srcexp->def.op.args.firstp == NULL
-            && strcmp(srcexp->def.op.name, "relation") == 0) {
-        RDB_type *typ = RDB_dup_nonscalar_type(srcexp->typ, ecp);
-        if (typ == NULL)
-            return RDB_ERROR;
-        dstexp->typ = typ;
-    }
-    return RDB_OK;
 }
 
 static RDB_expression *
@@ -651,12 +613,85 @@ RDB_set_expr_type(RDB_expression *exp, RDB_type *typ)
     exp->typ = typ;
 }
 
-/*@}*/
-
+/**
+ * Return RDB_TRUE if *<var>exp</var> is of type string,
+ * otherwise RDB_FALSE.
+ */
 RDB_bool
 RDB_expr_is_string(const RDB_expression *exp)
 {
     return exp->kind == RDB_EX_OBJ && exp->def.obj.typ == &RDB_STRING;
+}
+
+/**
+ * Return RDB_TRUE if *<var>exp</var> is an invocation of the operator
+ * given by name <var>name</var>, otherwise RDB_FALSE.
+ */
+RDB_bool
+RDB_expr_is_op(const RDB_expression *exp, const char *name)
+{
+    return (exp->kind == RDB_EX_RO_OP) && (strcmp(exp->def.op.name, name) == 0);
+}
+
+/**
+ * If *tbp is a virtual table, return the defining expression,
+ * otherwise NULL.
+ */
+RDB_expression *
+RDB_vtable_expr(const RDB_object *tbp) {
+    if (tbp->kind != RDB_OB_TABLE)
+        return NULL;
+    return tbp->val.tb.exp;
+}
+
+/**
+ * Return RDB_TRUE if *<var>op</var> is a table reference,
+ * otherwise RDB_FALSE
+ */
+RDB_bool
+RDB_expr_is_table_ref(const RDB_expression *exp)
+{
+    return (RDB_bool) exp->kind == RDB_EX_TBP;
+}
+
+/*@}*/
+
+int
+RDB_drop_expr_children(RDB_expression *exp, RDB_exec_context *ecp)
+{
+    switch (exp->kind) {
+        case RDB_EX_TUPLE_ATTR:
+        case RDB_EX_GET_COMP:
+            if (RDB_del_expr(exp->def.op.args.firstp, ecp) != RDB_OK)
+                return RDB_ERROR;
+            break;
+        case RDB_EX_RO_OP:
+            if (RDB_destroy_expr_list(&exp->def.op.args, ecp) != RDB_OK)
+                return RDB_ERROR;
+            break;
+        default: ;
+    }
+    return RDB_OK;
+}
+
+/*
+ * Copy type information from *srcexp to *dstexp
+ * if the type info would otherwise get lost
+ * (as with RELATION())
+ */
+int
+RDB_copy_expr_typeinfo_if_needed(RDB_expression *dstexp, const RDB_expression *srcexp,
+        RDB_exec_context *ecp)
+{
+    if (srcexp->typ != NULL && dstexp->typ == NULL
+            && srcexp->def.op.args.firstp == NULL
+            && strcmp(srcexp->def.op.name, "relation") == 0) {
+        RDB_type *typ = RDB_dup_nonscalar_type(srcexp->typ, ecp);
+        if (typ == NULL)
+            return RDB_ERROR;
+        dstexp->typ = typ;
+    }
+    return RDB_OK;
 }
 
 /**
@@ -1060,15 +1095,6 @@ RDB_attr_node(RDB_expression *exp, const char *attrname, char *opname)
 }
 
 /**
- * Check if *<var>op</var> is an operator with name <var>name</var>.
- */
-RDB_bool
-RDB_expr_is_op(const RDB_expression *exp, const char *name)
-{
-    return (exp->kind == RDB_EX_RO_OP) && (strcmp(exp->def.op.name, name) == 0);
-}
-
-/**
  * Return TRUE if *srctbp depends on *dsttbp, FALSE otherwise.
  */
 RDB_bool
@@ -1083,21 +1109,4 @@ RDB_table_refers(const RDB_object *srctbp, const RDB_object *dsttbp)
     if (exp == NULL)
         return RDB_FALSE;
     return RDB_expr_refers(exp, dsttbp);
-}
-
-/**
- * If *tbp is a virtual table, return the defining expression,
- * otherwise NULL.
- */
-RDB_expression *
-RDB_vtable_expr(const RDB_object *tbp) {
-    if (tbp->kind != RDB_OB_TABLE)
-        return NULL;
-    return tbp->val.tb.exp;
-}
-
-RDB_bool
-RDB_expr_is_table_ref(const RDB_expression *exp)
-{
-    return (RDB_bool) exp->kind == RDB_EX_TBP;
 }

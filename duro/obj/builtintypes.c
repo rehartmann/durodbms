@@ -254,24 +254,13 @@ error:
     return RDB_ERROR;
 }
 
-/** @addtogroup type
- * @{
- */
-
 /**
  * Initialize built-in types.
  *
- * RDB_init_builtin_basic_types() may be called more than once.
- *
- * It is called by RDB_create_db_from_env() and RDB_get_db_from_env().
- * If neither of these functions have been called, RDB_init_builtin_basic_types()
- * must be called to make built-in types and operators available.
  */
 int
 RDB_init_builtin_basic_types(RDB_exec_context *ecp)
 {
-    static RDB_bool initialized = RDB_FALSE;
-
     static RDB_operator compare_string_op = {
         "cmp",
         &RDB_INTEGER
@@ -286,11 +275,6 @@ RDB_init_builtin_basic_types(RDB_exec_context *ecp)
         "cmp",
         &RDB_INTEGER
     };
-
-    if (initialized) {
-        return RDB_OK;
-    }
-    initialized = RDB_TRUE;
 
     RDB_BOOLEAN.kind = RDB_TP_SCALAR;
     RDB_BOOLEAN.ireplen = 1;
@@ -964,11 +948,6 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
     RDB_IDENTIFIER.def.scalar.init_val_is_valid = RDB_TRUE;
     RDB_IDENTIFIER.compare_op = NULL;
 
-    /* !!
-    if (RDB_init_builtin_ops(ecp) != RDB_OK)
-        return RDB_ERROR;
-    */
-
     if (RDB_add_type(&RDB_NO_MEMORY_ERROR, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
@@ -1064,5 +1043,3 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
 
     return RDB_OK;
 }
-
-/*@}*/

@@ -2395,12 +2395,37 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
     return RDB_OK;
 }
 
+/** @addtogroup generic
+ * @{
+ */
+
+/**
+ * Initialize built-in types and operators.
+ * May be called more than once.
+ *
+ * It is called by RDB_create_db_from_env() and RDB_get_db_from_env().
+ * If neither of these functions have been called, RDB_init_builtin()
+ * must be called to make built-in types and operators available.
+ *
+ */
 int
 RDB_init_builtin(RDB_exec_context *ecp)
 {
+    int ret;
+    static RDB_bool initialized = RDB_FALSE;
+
+    if (initialized) {
+        return RDB_OK;
+    }
+
     if (RDB_init_builtin_basic_types(ecp) != RDB_OK)
         return RDB_ERROR;
     if (RDB_init_builtin_ops(ecp) != RDB_OK)
         return RDB_ERROR;
-    return RDB_add_builtin_pr_types(ecp);
+    ret =  RDB_add_builtin_pr_types(ecp);
+
+    initialized = RDB_TRUE;
+    return ret;
 }
+
+/*@}*/

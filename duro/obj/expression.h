@@ -87,6 +87,9 @@ RDB_table_refers(const RDB_object *, const RDB_object *);
 RDB_bool
 RDB_expr_is_table_ref(const RDB_expression *);
 
+RDB_bool
+RDB_expr_is_string(const RDB_expression *);
+
 void
 RDB_init_expr_list(RDB_expr_list *explistp);
 

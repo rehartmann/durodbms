@@ -68,7 +68,7 @@ RDB_free_obj(RDB_object *objp, RDB_exec_context *ecp)
     return ret;
 }
 
-/** @defgroup generic Scalar and generic functions 
+/**@defgroup generic Scalar and generic functions
  * @{
  */
 

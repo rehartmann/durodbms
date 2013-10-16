@@ -2058,6 +2058,11 @@ RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
             != RDB_ERROR ? RDB_OK : RDB_ERROR ;
 } 
 
+/*@}*/
+
+/**@addtogroup table
+ * @{*/
+
 /**
  * RDB_insert inserts the tuple or relation specified by <var>objp</var>
 into the table specified by <var>tbp</var>.
@@ -2240,6 +2245,11 @@ RDB_delete(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
     del.condp = condp;
     return RDB_multi_assign(0, NULL, 0, NULL, 1, &del, 0, NULL, ecp, txp);
 }
+
+/*@}*/
+
+/**@addtogroup constr
+ * @{*/
 
 /**
  * Get expressions that would have been evaluated

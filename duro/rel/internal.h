@@ -157,9 +157,6 @@ RDB_set_user_tables_check(RDB_database *, RDB_exec_context *);
 int
 RDB_check_table(RDB_object *, RDB_exec_context *, RDB_transaction *);
 
-RDB_bool
-RDB_expr_is_string(const RDB_expression *);
-
 void
 RDB_expr_list_set_lastp(RDB_expr_list *);
 

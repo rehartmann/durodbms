@@ -99,6 +99,8 @@ RDB_clear_err(RDB_exec_context *ecp)
     }
 }
 
+/*@{*/
+
 /** Convenience function to raise a system-provided error.
  */
 RDB_object *
@@ -298,6 +300,8 @@ RDB_raise_syntax(const char *msg, RDB_exec_context *ecp)
 {
     return raise_msg_err(&RDB_SYNTAX_ERROR, msg, ecp);
 }
+
+/*@}*/
 
 /** <strong>RDB_ec_set_property</strong> sets the property <var>name</var>
 of the RDB_exec_context given by <var>ecp</var> to <var>val</var>.

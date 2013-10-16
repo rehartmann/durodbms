@@ -857,6 +857,8 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 
 /* @} */
 
+/* @} */
+
 typedef struct check_tc_data {
     RDB_object *objp;
     RDB_exec_context *ecp;

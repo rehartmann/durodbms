@@ -22,36 +22,6 @@
 #include <string.h>
 #include <assert.h>
 
-/**
- * RDB_obj_equals checks two RDB_object variables for equality
-and stores the result in the variable pointed to by <var>resp</var>.
-
-If an error occurs, an error value is left in *<var>ecp</var>.
-
-@returns
-
-RDB_OK on success, RDB_ERROR if an error occurred.
- */
-int
-RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p,
-        RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp)
-{
-    int ret;
-    RDB_object retval;
-    RDB_object *argv[2];
-
-    argv[0] = (RDB_object *) val1p;
-    argv[1] = (RDB_object *) val2p;
-    RDB_init_obj(&retval);
-    ret = RDB_call_ro_op_by_name("=", 2, argv, ecp, txp, &retval);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&retval, ecp);
-        return RDB_ERROR;
-    }
-    *resp = RDB_obj_bool(&retval);
-    return RDB_destroy_obj(&retval, ecp);
-}
-
 int
 RDB_obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
 {
@@ -298,130 +268,6 @@ irep_to_array(RDB_object *arrp, RDB_type *typ, const void *datap, size_t len,
     return RDB_OK;
 }
 
-/** @addtogroup typeimpl
- * @{
- */
-
-/**
- * RDB_obj_irep returns a pointer to the binary internal representation of
-the variable specified by <var>valp</var>.
-If lenp is not NULL, the size of the internal representation
-is stored at the location pointed to by <var>lenp</var>.
-
-RDB_obj_irep only works for types with a binary internal representation.
-These are built-in scalar types and user-defined types
-which use a built-in scalar type or a byte array as physical representation.
-
-@returns
-
-A pointer to the internal representation.
- */
-void *
-RDB_obj_irep(RDB_object *valp, size_t *lenp)
-{
-    if (lenp != NULL) {
-        *lenp = valp->typ->ireplen;
-        if (*lenp == RDB_VARIABLE_LEN)
-            *lenp = valp->val.bin.len;
-    }
-
-    switch (valp->kind) {
-        case RDB_OB_BOOL:
-            return &valp->val.bool_val;
-        case RDB_OB_INT:
-            return &valp->val.int_val;
-        case RDB_OB_FLOAT:
-            return &valp->val.float_val;
-        default:
-            return valp->val.bin.datap;
-    }
-}
-
-/**
- * Initialize the value pointed to by valp with the internal
- * representation given by <var>datap<var> and <var>len<var>.
- *
- * @arg len The length of the internal represenation in bytes.
- * @arg datap   A pointer to the internal representation.
- * If datap is NULL, len bytes are allocated but the internal representation
- * is undefined.
- *
- * @returns
- *
- * RDB_OK on success, RDB_ERROR on failure.
- */
-int
-RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
-        RDB_exec_context *ecp)
-{
-    int ret;
-    enum RDB_obj_kind kind;
-
-    if (valp->kind != RDB_OB_INITIAL) {
-        if (RDB_destroy_obj(valp, ecp) != RDB_OK)
-            return RDB_ERROR;
-        RDB_init_obj(valp);
-    }
-
-    /*
-     * No type information for non-scalar types
-     * (except tables, in this case irep_to_table() will set the type)
-     */
-    if (RDB_type_is_scalar(typ))
-        valp->typ = typ;
-    else
-        valp->typ = NULL;
-    kind = RDB_val_kind(typ);
-
-    switch (kind) {
-        case RDB_OB_INITIAL:
-        case RDB_OB_BOOL:
-            valp->val.bool_val = *(RDB_bool *) datap;
-            break;
-        case RDB_OB_INT:
-            memcpy(&valp->val.int_val, datap, sizeof (RDB_int));
-            break;
-        case RDB_OB_FLOAT:
-            memcpy(&valp->val.float_val, datap, sizeof (RDB_float));
-            break;
-        case RDB_OB_BIN:
-            valp->val.bin.len = len;
-            if (len > 0) {
-                valp->val.bin.datap = RDB_alloc(len, ecp);
-                if (valp->val.bin.datap == NULL) {
-                    return RDB_ERROR;
-                }
-                if (datap != NULL)
-                    memcpy(valp->val.bin.datap, datap, len);
-            }
-            break;
-        case RDB_OB_TUPLE:
-            ret = irep_to_tuple(valp, typ, datap, ecp);
-            if (ret > 0)
-                ret = RDB_OK;
-            return ret;
-        case RDB_OB_TABLE:
-        {
-            if (irep_to_table(valp, typ, datap, len, ecp) != RDB_OK)
-                return RDB_ERROR;
-            if (RDB_type_is_scalar(typ))
-                valp->typ = typ;
-            return RDB_OK;
-        }
-        case RDB_OB_ARRAY:
-            return irep_to_array(valp, typ, datap, len, ecp);
-    }
-    valp->kind = kind;
-    return RDB_OK;
-}
-
-/*@}*/
-
-typedef struct {
-    RDB_byte *bp;
-    size_t len;
-} irep_info;
-
 static void *
 obj_to_irep(void *dstp, const void *srcp, size_t len)
 {
@@ -576,6 +422,165 @@ RDB_obj_to_field(RDB_field *fvp, RDB_object *objp, RDB_exec_context *ecp)
     fvp->datap = objp;
     fvp->copyfp = obj_to_irep;
     return RDB_obj_ilen(objp, &fvp->len, ecp);
+}
+
+/** @addtogroup type
+ * @{
+ */
+
+/** @addtogroup typeimpl
+ * @{
+ */
+
+/**
+ * RDB_obj_irep returns a pointer to the binary internal representation of
+the variable specified by <var>valp</var>.
+If lenp is not NULL, the size of the internal representation
+is stored at the location pointed to by <var>lenp</var>.
+
+RDB_obj_irep only works for types with a binary internal representation.
+These are built-in scalar types and user-defined types
+which use a built-in scalar type or a byte array as physical representation.
+
+@returns
+
+A pointer to the internal representation.
+ */
+void *
+RDB_obj_irep(RDB_object *valp, size_t *lenp)
+{
+    if (lenp != NULL) {
+        *lenp = valp->typ->ireplen;
+        if (*lenp == RDB_VARIABLE_LEN)
+            *lenp = valp->val.bin.len;
+    }
+
+    switch (valp->kind) {
+        case RDB_OB_BOOL:
+            return &valp->val.bool_val;
+        case RDB_OB_INT:
+            return &valp->val.int_val;
+        case RDB_OB_FLOAT:
+            return &valp->val.float_val;
+        default:
+            return valp->val.bin.datap;
+    }
+}
+
+/**
+ * Initialize the value pointed to by valp with the internal
+ * representation given by <var>datap<var> and <var>len<var>.
+ *
+ * @arg len The length of the internal represenation in bytes.
+ * @arg datap   A pointer to the internal representation.
+ * If datap is NULL, len bytes are allocated but the internal representation
+ * is undefined.
+ *
+ * @returns
+ *
+ * RDB_OK on success, RDB_ERROR on failure.
+ */
+int
+RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
+        RDB_exec_context *ecp)
+{
+    int ret;
+    enum RDB_obj_kind kind;
+
+    if (valp->kind != RDB_OB_INITIAL) {
+        if (RDB_destroy_obj(valp, ecp) != RDB_OK)
+            return RDB_ERROR;
+        RDB_init_obj(valp);
+    }
+
+    /*
+     * No type information for non-scalar types
+     * (except tables, in this case irep_to_table() will set the type)
+     */
+    if (RDB_type_is_scalar(typ))
+        valp->typ = typ;
+    else
+        valp->typ = NULL;
+    kind = RDB_val_kind(typ);
+
+    switch (kind) {
+        case RDB_OB_INITIAL:
+        case RDB_OB_BOOL:
+            valp->val.bool_val = *(RDB_bool *) datap;
+            break;
+        case RDB_OB_INT:
+            memcpy(&valp->val.int_val, datap, sizeof (RDB_int));
+            break;
+        case RDB_OB_FLOAT:
+            memcpy(&valp->val.float_val, datap, sizeof (RDB_float));
+            break;
+        case RDB_OB_BIN:
+            valp->val.bin.len = len;
+            if (len > 0) {
+                valp->val.bin.datap = RDB_alloc(len, ecp);
+                if (valp->val.bin.datap == NULL) {
+                    return RDB_ERROR;
+                }
+                if (datap != NULL)
+                    memcpy(valp->val.bin.datap, datap, len);
+            }
+            break;
+        case RDB_OB_TUPLE:
+            ret = irep_to_tuple(valp, typ, datap, ecp);
+            if (ret > 0)
+                ret = RDB_OK;
+            return ret;
+        case RDB_OB_TABLE:
+        {
+            if (irep_to_table(valp, typ, datap, len, ecp) != RDB_OK)
+                return RDB_ERROR;
+            if (RDB_type_is_scalar(typ))
+                valp->typ = typ;
+            return RDB_OK;
+        }
+        case RDB_OB_ARRAY:
+            return irep_to_array(valp, typ, datap, len, ecp);
+    }
+    valp->kind = kind;
+    return RDB_OK;
+}
+
+/*@}*/
+
+/*@}*/
+
+/**@addtogroup generic
+ * @{
+ */
+
+/**
+ * Check two RDB_object variables for equality
+and store the result in the variable pointed to by <var>resp</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+ */
+int
+RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp)
+{
+    int ret;
+    RDB_object retval;
+    RDB_object *argv[2];
+
+    argv[0] = (RDB_object *) val1p;
+    argv[1] = (RDB_object *) val2p;
+    RDB_init_obj(&retval);
+    ret = RDB_call_ro_op_by_name("=", 2, argv, ecp, txp, &retval);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&retval, ecp);
+        return RDB_ERROR;
+    }
+    *resp = RDB_obj_bool(&retval);
+    return RDB_destroy_obj(&retval, ecp);
 }
 
 /**
@@ -880,6 +885,8 @@ RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
     }
     return RDB_OK;
 }
+
+/*@}*/
 
 RDB_bool
 array_matches_type(RDB_object *arrp, RDB_type *typ)
