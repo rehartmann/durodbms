@@ -82,19 +82,19 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     updparamv[1].typ = &RDB_FLOAT;
     updparamv[1].update = RDB_FALSE;
 
-    ret = RDB_create_update_op("POINT_set_X", 2, updparamv, SHLIB,
+    ret = RDB_create_update_op("POINT" RDB_SETTER_INFIX "X", 2, updparamv, SHLIB,
             "POINT_set_X", NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
-    ret = RDB_create_update_op("POINT_set_Y", 2, updparamv, SHLIB,
+    ret = RDB_create_update_op("POINT" RDB_SETTER_INFIX "Y", 2, updparamv, SHLIB,
             "POINT_set_Y", NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
-    ret = RDB_create_update_op("POINT_set_THETA", 2, updparamv, SHLIB,
+    ret = RDB_create_update_op("POINT" RDB_SETTER_INFIX "THETA", 2, updparamv, SHLIB,
             "POINT_set_THETA", NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
-    ret = RDB_create_update_op("POINT_set_LENGTH", 2, updparamv, SHLIB,
+    ret = RDB_create_update_op("POINT" RDB_SETTER_INFIX "LENGTH", 2, updparamv, SHLIB,
             "POINT_set_LENGTH", NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
@@ -103,20 +103,20 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
      */
     getparamv[0].typ = typ;
 
-    ret = RDB_create_ro_op("POINT_get_X", 1, getparamv, &RDB_FLOAT, SHLIB,
-            "POINT_get_X", NULL, ecp, &tx);
+    ret = RDB_create_ro_op("POINT" RDB_GETTER_INFIX "X", 1, getparamv, &RDB_FLOAT, SHLIB,
+            "POINT" RDB_GETTER_INFIX "X", NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
-    ret = RDB_create_ro_op("POINT_get_Y", 1, getparamv, &RDB_FLOAT, SHLIB,
-            "POINT_get_Y", NULL, ecp, &tx);
+    ret = RDB_create_ro_op("POINT" RDB_GETTER_INFIX "Y", 1, getparamv, &RDB_FLOAT, SHLIB,
+            "POINT" RDB_GETTER_INFIX "Y", NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
-    ret = RDB_create_ro_op("POINT_get_THETA", 1, getparamv, &RDB_FLOAT, SHLIB,
-            "POINT_get_THETA", NULL, ecp, &tx);
+    ret = RDB_create_ro_op("POINT" RDB_GETTER_INFIX "THETA", 1, getparamv, &RDB_FLOAT, SHLIB,
+            "POINT" RDB_GETTER_INFIX "THETA", NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
-    ret = RDB_create_ro_op("POINT_get_LENGTH", 1, getparamv, &RDB_FLOAT, SHLIB,
-            "POINT_get_LENGTH", NULL, ecp, &tx);
+    ret = RDB_create_ro_op("POINT" RDB_GETTER_INFIX "LENGTH", 1, getparamv, &RDB_FLOAT, SHLIB,
+            "POINT" RDB_GETTER_INFIX "LENGTH", NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
     /*
@@ -135,7 +135,7 @@ main(void)
     RDB_database *dbp;
     int ret;
     RDB_exec_context ec;
-    
+
     ret = RDB_open_env("dbenv", &envp, RDB_CREATE);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
