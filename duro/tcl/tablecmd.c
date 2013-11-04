@@ -121,11 +121,14 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
              */
             Tcl_Obj *defvalobjp;
 
-            attrv[i].defaultp = (RDB_object *) Tcl_Alloc(sizeof (RDB_object));
-            RDB_init_obj(attrv[i].defaultp);
+            attrv[i].defaultp = RDB_obj_to_expr(NULL, statep->current_ecp);
+            if (attrv[i].defaultp == NULL) {
+                ret = TCL_ERROR;
+                goto cleanup;
+            }
             Tcl_ListObjIndex(interp, attrobjp, 2, &defvalobjp);
             ret = Duro_tcl_to_duro(interp, defvalobjp, attrv[i].typ,
-                    attrv[i].defaultp, statep->current_ecp, txp);
+                    RDB_expr_obj(attrv[i].defaultp), statep->current_ecp, txp);
             if (ret != RDB_OK) {
                 goto cleanup;
             }
@@ -178,13 +181,15 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             goto cleanup;
         }
     }
-            
+    /* Keep expressions from being deleted by the cleanup code */
+    for (i = 0; i < attrc; i++)
+        attrv[i].defaultp = NULL;
+
 cleanup:
     if (attrv != NULL) {
         for (i = 0; i < attrc; i++) {
             if (attrv[i].defaultp != NULL) {
-                RDB_destroy_obj(attrv[i].defaultp, statep->current_ecp);
-                Tcl_Free((char *) attrv[i].defaultp);
+                RDB_del_expr(attrv[i].defaultp, statep->current_ecp);
             }
         }
         Tcl_Free((char *) attrv);
@@ -659,7 +664,7 @@ table_attrs_cmd(TclState *statep, Tcl_Interp *interp, int objc,
          * !! default value no longer valid */
         if (attrv[i].defaultp != NULL) {
             Tcl_Obj *defp = Duro_to_tcl(interp,
-                    attrv[i].defaultp, statep->current_ecp,
+                    RDB_expr_obj(attrv[i].defaultp), statep->current_ecp,
                     txp);
             if (defp == NULL)
                 return TCL_ERROR;

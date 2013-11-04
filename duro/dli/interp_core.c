@@ -432,6 +432,12 @@ error:
     return NULL;
 }
 
+static RDB_bool
+exp_is_serial(RDB_expression *exp) {
+    return (RDB_bool) (RDB_expr_is_op(exp, "serial")
+               && RDB_expr_op_is_noarg(exp));
+}
+
 static int
 parse_default(RDB_parse_node *defaultattrnodep,
         RDB_attr **attrvp,
@@ -461,15 +467,21 @@ parse_default(RDB_parse_node *defaultattrnodep,
         (*attrvp)[i].name = (char *) RDB_expr_var_name(RDB_parse_node_expr(
                 nodep, ecp, NULL));
 
-        (*attrvp)[i].defaultp = RDB_alloc(sizeof (RDB_object), ecp);
-        if ((*attrvp)[i].defaultp == NULL)
-            goto error;
-        RDB_init_obj((*attrvp)[i].defaultp);
         exp = RDB_parse_node_expr(nodep->nextp, ecp, NULL);
         if (exp == NULL)
             goto error;
-        if (Duro_evaluate_retry(exp, ecp, (*attrvp)[i].defaultp) != RDB_OK)
-            goto error;
+
+        /* If the default is not serial(), evaluate it */
+        if (exp_is_serial(exp)) {
+            (*attrvp)[i].defaultp = RDB_dup_expr(exp, ecp);
+        } else {
+            (*attrvp)[i].defaultp = RDB_obj_to_expr(NULL, ecp);
+            if ((*attrvp)[i].defaultp == NULL)
+                goto error;
+
+            if (Duro_evaluate_retry(exp, ecp, RDB_expr_obj((*attrvp)[i].defaultp)) != RDB_OK)
+                goto error;
+        }
 
         nodep = nodep->nextp->nextp;
         if (nodep == NULL)
@@ -485,7 +497,7 @@ parse_default(RDB_parse_node *defaultattrnodep,
 error:
     for (i = 0; i < attrc; i++) {
         if ((*attrvp)[i].defaultp != NULL) {
-            RDB_destroy_obj((*attrvp)[i].defaultp, ecp);
+            RDB_del_expr((*attrvp)[i].defaultp, ecp);
         }
     }
     RDB_free(*attrvp);
@@ -497,7 +509,7 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
     RDB_parse_node *keylistnodep;
     RDB_parse_node *defaultnodep;
-    RDB_attr *default_attrv;
+    RDB_attr *default_attrv = NULL;
     int keyc;
     RDB_string_vec *keyv;
     int default_attrc = 0;
@@ -601,8 +613,10 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
 
     if (RDB_init_table_from_type(tbp, varname, tbtyp,
             keyc, keyv, default_attrc, default_attrv, ecp) != RDB_OK) {
+        RDB_free(default_attrv);
         goto error;
     }
+    RDB_free(default_attrv);
 
     if (initexp != NULL) {
         if (Duro_evaluate_retry(initexp, ecp, tbp) != RDB_OK) {
@@ -791,7 +805,7 @@ Duro_exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
     int keyc;
     RDB_string_vec *keyv;
     const char *varname;
-    RDB_attr *default_attrv;
+    RDB_attr *default_attrv = NULL;
     RDB_bool freekeys = RDB_FALSE;
     int default_attrc = 0;
     RDB_parse_node *keylistnodep;
@@ -884,6 +898,7 @@ Duro_exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
 
     tbp = RDB_create_table_from_type(varname, tbtyp, keyc, keyv,
             default_attrc, default_attrv, ecp, &Duro_txnp->tx);
+    RDB_free(default_attrv);
     if (tbp == NULL) {
         goto error;
     }

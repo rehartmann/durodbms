@@ -88,7 +88,7 @@ RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
     if (persistent)
         tbp->val.tb.flags |= RDB_TB_PERSISTENT;
     tbp->val.tb.keyv = NULL;
-    tbp->val.tb.default_tplp = NULL;
+    tbp->val.tb.default_map = NULL;
     tbp->val.tb.stp = NULL;
 
     if (name != NULL) {
@@ -636,9 +636,9 @@ RDB_table_attrs(const RDB_object *tbp, int *attrcp)
     }
 
     attrv = RDB_type_attrs(RDB_obj_type(tbp), attrcp);
-    if (tbp->val.tb.default_tplp != NULL) {
+    if (tbp->val.tb.default_map != NULL) {
         for (i = 0; i < *attrcp; i++) {
-            attrv[i].defaultp = RDB_tuple_get(tbp->val.tb.default_tplp,
+            attrv[i].defaultp = RDB_hashmap_get(tbp->val.tb.default_map,
                     attrv[i].name);
         }
     } else {
@@ -747,17 +747,23 @@ RDB_expr_sortindex (RDB_expression *exp)
     return NULL;
 }
 
+enum {
+    RDB_DFLVALS_CAPACITY = 256
+};
+
 int
 RDB_set_defvals(RDB_object *tbp, int attrc, const RDB_attr attrv[],
         RDB_exec_context *ecp)
 {
     RDB_bool defvals = RDB_FALSE;
-    RDB_object *tplp;
+    RDB_hashmap *map;
     int i;
+    int ret;
 
-    if (tbp->val.tb.default_tplp != NULL) {
-        RDB_free_obj(tbp->val.tb.default_tplp, ecp);
-        tbp->val.tb.default_tplp = NULL;
+    if (tbp->val.tb.default_map != NULL) {
+        RDB_destroy_hashmap(tbp->val.tb.default_map);
+        RDB_free(tbp->val.tb.default_map);
+        tbp->val.tb.default_map = NULL;
     }
 
     /* Check if there are actually any default values */
@@ -770,22 +776,29 @@ RDB_set_defvals(RDB_object *tbp, int attrc, const RDB_attr attrv[],
     if (!defvals)
         return RDB_OK;
 
-    tplp = RDB_new_obj(ecp);
-    if (tplp == NULL)
+    map = RDB_alloc(sizeof(RDB_hashmap), ecp);
+    if (map == NULL)
         return RDB_ERROR;
+    RDB_init_hashmap(map, RDB_DFLVALS_CAPACITY);
 
     for (i = 0; i < attrc; i++) {
         if (attrv[i].defaultp != NULL) {
-            if (RDB_tuple_set(tplp, attrv[i].name,
-                    attrv[i].defaultp, ecp) != RDB_OK)
+            ret = RDB_hashmap_put(map, attrv[i].name,
+                    attrv[i].defaultp);
+            if (ret != RDB_OK) {
+                RDB_errcode_to_error(ret, ecp);
                 goto error;
+            }
         }
     }
-    tbp->val.tb.default_tplp = tplp;
+    tbp->val.tb.default_map = map;
     return RDB_OK;
 
 error:
-    RDB_free_obj(tplp, ecp);
+    if (map != NULL) {
+        RDB_destroy_hashmap(map);
+        RDB_free(map);
+    }
     return RDB_ERROR;;
 }
 

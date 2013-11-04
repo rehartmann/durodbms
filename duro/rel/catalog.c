@@ -20,7 +20,7 @@
 
 enum {
     MAJOR_VERSION = 0,
-    MINOR_VERSION = 19
+    MINOR_VERSION = 20
 };
 
 /*
@@ -340,14 +340,18 @@ insert_defvals(RDB_object *tbp, RDB_dbroot *dbrootp,
 
     for (i = 0; i < tuptyp->def.tuple.attrc; i++) {
         char *attrname = tuptyp->def.tuple.attrv[i].name;
-        RDB_object *defaultp = RDB_tuple_get(tbp->val.tb.default_tplp,
+        RDB_expression *defaultp = RDB_hashmap_get(tbp->val.tb.default_map,
                 attrname);
         if (defaultp != NULL) {
             RDB_object binval;
-            void *datap;
-            size_t len;
+            RDB_object *valp = RDB_expr_obj(defaultp);
 
-            if (!RDB_type_equals(defaultp->typ,
+            if (valp == NULL) {
+                RDB_raise_invalid_argument("Invalid default value", ecp);
+                goto error;
+            }
+
+            if (!RDB_type_equals(valp->typ,
                     tuptyp->def.tuple.attrv[i].typ)) {
                 RDB_raise_type_mismatch(
                         "Type of default value does not match attribute type",
@@ -363,8 +367,7 @@ insert_defvals(RDB_object *tbp, RDB_dbroot *dbrootp,
             }
 
             RDB_init_obj(&binval);
-            datap = RDB_obj_irep(defaultp, &len);
-            ret = RDB_binary_set(&binval, 0, datap, len, ecp);
+            ret = RDB_expr_to_binobj(&binval, defaultp, ecp);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&binval, ecp);
                 goto error;
@@ -463,7 +466,7 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         }
     }
 
-    if (tbp->val.tb.default_tplp != NULL) {
+    if (tbp->val.tb.default_map != NULL) {
         if (insert_defvals(tbp, dbrootp, ecp, txp) != RDB_OK)
             goto error;
     }
@@ -2199,12 +2202,11 @@ RDB_cat_get_rtable(RDB_object *tbp, RDB_exec_context *ecp,
         defvalattrv[i].defaultp = NULL;
 
     for (i = 0; i < defvalc; i++) {
-        RDB_object *binvalp;
+        int pos = 0;
 
         tplp = RDB_array_get(&arr, i, ecp);
         if (tplp == NULL)
             goto error;
-        binvalp = RDB_tuple_get(tplp, "default_value");
 
         if (RDB_obj_comp(RDB_tuple_get(tplp, "attrname"), "name",
                 &attrnameobj, NULL, ecp, txp) != RDB_OK)
@@ -2216,12 +2218,11 @@ RDB_cat_get_rtable(RDB_object *tbp, RDB_exec_context *ecp,
         if (defvalattrv[i].defaultp == NULL) {
             goto error;
         }
-        RDB_init_obj(defvalattrv[i].defaultp);
-        ret = RDB_irep_to_obj(defvalattrv[i].defaultp,
-                RDB_type_attr_type(tbtyp, defvalattrv[i].name),
-                binvalp->val.bin.datap, RDB_binary_length(binvalp), ecp);
-        if (ret != RDB_OK)
-            goto error;            
+
+        if (RDB_deserialize_expr(RDB_tuple_get(tplp, "default_value"), &pos,
+                ecp, txp, &defvalattrv[i].defaultp) != RDB_OK) {
+            goto error;
+        }
     }
 
     if (RDB_cat_get_keys(name, ecp, txp, &keyc, &keyv) != RDB_OK)
@@ -2313,10 +2314,6 @@ RDB_cat_get_rtable(RDB_object *tbp, RDB_exec_context *ecp,
     RDB_destroy_obj(&tpl, ecp);
     RDB_destroy_obj(&attrnameobj, ecp);
 
-    for (i = 0; i < defvalc; i++) {
-        RDB_destroy_obj(defvalattrv[i].defaultp, ecp);
-        RDB_free(defvalattrv[i].defaultp);
-    }
     if (defvalc > 0)
         RDB_free(defvalattrv);
 
@@ -2338,8 +2335,7 @@ error:
     if (defvalattrv != NULL) {
         for (i = 0; i < defvalc; i++)
             if (defvalattrv[i].defaultp != NULL) {
-                RDB_destroy_obj(defvalattrv[i].defaultp, ecp);
-                RDB_free(defvalattrv[i].defaultp);
+                RDB_del_expr(defvalattrv[i].defaultp, ecp);
             }
         RDB_free(defvalattrv);
     }

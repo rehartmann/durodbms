@@ -28,10 +28,10 @@ typedef struct {
     struct RDB_type *typ;
 
     /**
-     * If not NULL, this field must point to an RDB_object structure
+     * If not NULL, this field must point to an RDB_expression structure
      * that specifies the default value for the attribute.
      */
-    struct RDB_object *defaultp;
+    struct RDB_expression *defaultp;
 
     /**
      * This field is currently ignored.

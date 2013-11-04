@@ -1346,11 +1346,11 @@ exec_typeimpl(RDB_parse_node *nodep, RDB_exec_context *ecp)
                 ecp, &retinfo);
         impl_typename = NULL;
         if (ret != RDB_OK)
-            return RDB_ERROR;
+            return ret;
     }
 
     ret = RDB_implement_type(RDB_expr_var_name(nodep->exp),
-            ityp, (RDB_int) -1, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : &tmp_tx);
+            ityp, RDB_SYS_REP, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : &tmp_tx);
     if (ret != RDB_OK)
         goto error;
 

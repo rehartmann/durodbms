@@ -10,6 +10,7 @@
 #include "serialize.h"
 #include "cat_type.h"
 #include "cat_op.h"
+#include "typeimpl.h"
 #include <obj/tuple.h>
 #include <obj/objinternal.h>
 
@@ -457,14 +458,14 @@ If <var>arep</var> is not NULL, it must point to a type which is used
 as the physical representation. The getter, setter, and selector operators
 must be provided by the caller.
 
-If <var>arep</var> is NULL and <var>areplen</var> is not -1,
+If <var>arep</var> is NULL and <var>areplen</var> is not RDB_SYS_REP,
 <var>areplen</var> specifies the length, in bytes,
 of the physical representation, which then is a fixed-length array of bytes.
 The getter, setter, and selector operators must be provided by the caller.
 RDB_irep_to_obj() can be used by the selector to assign a value to an RDB_object.
 RDB_obj_irep() can be used by setters and getters to access the actual representation.
 
-If <var>arep</var> is NULL and <var>areplen</var> is -1,
+If <var>arep</var> is NULL and <var>areplen</var> is RDB_SYS_REP,
 the getter and setter operators and the selector operator are provided by Duro.
 In this case, the type must have exactly one possible representation.
 If this representation has exactly one property, the type of this representation will become
@@ -515,7 +516,7 @@ On success, RDB_OK is returned. Any other return value indicates an error.
 <dt>not_found_error
 <dd>The type has not been previously defined.
 <dt>invalid_argument_error
-<dd><var>arep</var> is NULL and <var>areplen</var> is -1,
+<dd><var>arep</var> is NULL and <var>areplen</var> is RDB_SYS_REP,
 and the type was defined with more than one possible representation.
 </dl>
 
@@ -545,7 +546,7 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
     if (typ == NULL)
         return RDB_ERROR;
 
-    typ->def.scalar.sysimpl = (arep == NULL) && (areplen == -1);
+    typ->def.scalar.sysimpl = (arep == NULL) && (areplen == RDB_SYS_REP);
 
     /* Load selector etc. to check if they have been provided */
     ret = RDB_load_type_ops(typ, ecp, txp);

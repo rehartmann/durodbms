@@ -37,23 +37,30 @@ RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
     }
     for (i = 0; i < attrcount; i++) {
         int *fnop;
+        RDB_expression *dflexp;
         RDB_object *valp;
         RDB_type *attrtyp = tuptyp->def.tuple.attrv[i].typ;
-        
+
         fnop = RDB_field_no(tbp->val.tb.stp, tuptyp->def.tuple.attrv[i].name);
         valp = RDB_tuple_get(tplp, tuptyp->def.tuple.attrv[i].name);
 
         /* If there is no value, check if there is a default */
         if (valp == NULL) {
-            if (tbp->val.tb.default_tplp == NULL) {
+            if (tbp->val.tb.default_map == NULL) {
                 RDB_raise_invalid_argument("missing value", ecp);
                 ret = RDB_ERROR;
                 goto cleanup;
             }
-            valp = RDB_tuple_get(tbp->val.tb.default_tplp,
+            dflexp = RDB_hashmap_get(tbp->val.tb.default_map,
                     tuptyp->def.tuple.attrv[i].name);
-            if (valp == NULL) {
+            if (dflexp == NULL) {
                 RDB_raise_invalid_argument("missing value", ecp);
+                ret = RDB_ERROR;
+                goto cleanup;
+            }
+            valp = RDB_expr_obj(dflexp);
+            if (valp == NULL) {
+                RDB_raise_internal("invalid default value", ecp);
                 ret = RDB_ERROR;
                 goto cleanup;
             }

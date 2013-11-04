@@ -137,11 +137,11 @@ replace_targets_real_ins(RDB_object *tbp, const RDB_ma_insert *insp,
         return NULL;
     }
     /* Temporarily attach default values */
-    if (tbp->val.tb.default_tplp != NULL) {
-        RDB_expr_obj(argp)->val.tb.default_tplp = tbp->val.tb.default_tplp;
+    if (tbp->val.tb.default_map != NULL) {
+        RDB_expr_obj(argp)->val.tb.default_map = tbp->val.tb.default_map;
     }
     ret = RDB_insert(RDB_expr_obj(argp), insp->objp, ecp, NULL);
-    RDB_expr_obj(argp)->val.tb.default_tplp = NULL;
+    RDB_expr_obj(argp)->val.tb.default_map = NULL;
     if (ret != RDB_OK) {
         RDB_del_expr(exp, ecp);
         return NULL;
@@ -1669,8 +1669,8 @@ source_table_type_matches(const RDB_object *dsttbp, const RDB_type *srctyp) {
                 return RDB_FALSE;
         } else {
             /* Attribute must appear in default attributes */
-            if (dsttbp->val.tb.default_tplp == NULL
-                    || RDB_tuple_get(dsttbp->val.tb.default_tplp,
+            if (dsttbp->val.tb.default_map == NULL
+                    || RDB_hashmap_get(dsttbp->val.tb.default_map,
                             dsttptyp->def.tuple.attrv[i].name) == NULL) {
                 return RDB_FALSE;
             }

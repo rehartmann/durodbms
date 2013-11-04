@@ -753,7 +753,7 @@ RDB_remove_to_project(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     RDB_type *chtyp;
     RDB_type *tpltyp;
 
-    if (exp->def.op.args.firstp == NULL) {
+    if (RDB_expr_op_is_noarg(exp)) {
         RDB_raise_invalid_argument("invalid number of REMOVE arguments", ecp);
         return RDB_ERROR;
     }

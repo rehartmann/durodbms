@@ -13,6 +13,7 @@
 #include "key.h"
 #include "objinternal.h"
 #include <gen/hashtabit.h>
+#include <gen/hashmapit.h>
 #include <gen/strfns.h>
 
 #include <stdlib.h>
@@ -160,6 +161,17 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
             if (objp->val.tb.exp != NULL) {
                 if (RDB_del_expr(objp->val.tb.exp, ecp) != RDB_OK)
                     return RDB_ERROR;
+            }
+            if (objp->val.tb.default_map != NULL) {
+                RDB_hashmap_iter hiter;
+                void *valp;
+
+                RDB_init_hashmap_iter(&hiter, objp->val.tb.default_map);
+                while (RDB_hashmap_next(&hiter, &valp) != NULL) {
+                    RDB_del_expr((RDB_expression *) valp, ecp);
+                }
+                RDB_destroy_hashmap(objp->val.tb.default_map);
+                RDB_free(objp->val.tb.default_map);
             }
 
             break;

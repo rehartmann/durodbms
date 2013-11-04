@@ -10,7 +10,6 @@ create_tables(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_transaction tx;
     RDB_object *tbp;
     RDB_string_vec key;
-    RDB_object defval;
     int ret;
     
     RDB_attr emp_attrs[] = {
@@ -52,13 +51,10 @@ create_tables(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Creating table EMPS2\n");
     
     /* Set default value for SALARY */
-    RDB_init_obj(&defval);
-    RDB_float_to_obj(&defval, 4000.0);
-    emp_attrs[2].defaultp = &defval;
+    emp_attrs[2].defaultp = RDB_float_to_expr((RDB_float) 4000.0, ecp);
 
     tbp = RDB_create_table("EMPS2", 4, emp_attrs, 2, emp_keyattrs,
                            ecp, &tx);
-    RDB_destroy_obj(&defval, ecp);
     if (tbp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;

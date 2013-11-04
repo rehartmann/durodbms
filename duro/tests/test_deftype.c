@@ -44,7 +44,7 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     }
 
-    ret = RDB_implement_type("TINYINT", NULL, -1, ecp, &tx);
+    ret = RDB_implement_type("TINYINT", NULL, RDB_SYS_REP, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
         return ret;

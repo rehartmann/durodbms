@@ -5,7 +5,7 @@
 
 /*
 This file is part of Duro, a relational database management system.
-Copyright (C) 2003-2012 Rene Hartmann.
+Copyright (C) 2003-2013 Rene Hartmann.
 
 Duro is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,6 +23,11 @@ along with Duro; if not, write to the Free Software Foundation, Inc.,
 */
 
 #include <rel/rdb.h>
+
+#define RDB_GETTER_INFIX "_get_"
+#define RDB_SETTER_INFIX "_set_"
+
+#define RDB_SYS_REP ((RDB_int) -1)
 
 int
 RDB_implement_type(const char *, RDB_type *, RDB_int, RDB_exec_context *,

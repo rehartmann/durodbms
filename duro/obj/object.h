@@ -11,6 +11,7 @@
 #include <gen/types.h>
 #include <gen/strfns.h>
 #include <gen/hashtable.h>
+#include <gen/hashmap.h>
 
 #include <stddef.h>
 
@@ -83,7 +84,7 @@ struct RDB_object {
             /* NULL if it's a real table */
             RDB_expression *exp;
 
-            struct RDB_object *default_tplp; /* Default values */
+            RDB_hashmap *default_map; /* Default values */
 
             struct RDB_stored_table *stp;
         } tb;

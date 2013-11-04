@@ -41,9 +41,6 @@ enum {
     RDB_UNBUFFERED = 1
 };
 
-#define RDB_GETTER_INFIX "_get_"
-#define RDB_SETTER_INFIX "_set_"
-
 #define RDB_THE_PREFIX "the_"
 
 typedef struct RDB_expression RDB_expression;

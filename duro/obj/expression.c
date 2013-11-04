@@ -633,6 +633,12 @@ RDB_expr_is_op(const RDB_expression *exp, const char *name)
     return (exp->kind == RDB_EX_RO_OP) && (strcmp(exp->def.op.name, name) == 0);
 }
 
+RDB_bool
+RDB_expr_op_is_noarg(const RDB_expression *exp)
+{
+    return (RDB_bool) (exp->def.op.args.firstp == NULL);
+}
+
 /**
  * If *tbp is a virtual table, return the defining expression,
  * otherwise NULL.
