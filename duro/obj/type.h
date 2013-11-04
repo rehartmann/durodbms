@@ -11,11 +11,14 @@
 #include <gen/types.h>
 #include "object.h"
 
+typedef struct RDB_op_data RDB_operator;
+typedef struct RDB_expression RDB_expression;
+typedef struct RDB_exec_context RDB_exec_context;
+typedef struct RDB_type RDB_type;
+
 /**@addtogroup table
  * @{
  */
-
-struct RDB_object;
 
 /**
  * This struct is used to specify attribute definitions.
@@ -25,13 +28,13 @@ typedef struct {
     char *name;
 
     /** The type of the attribute. */
-    struct RDB_type *typ;
+    RDB_type *typ;
 
     /**
      * If not NULL, this field must point to an RDB_expression structure
      * that specifies the default value for the attribute.
      */
-    struct RDB_expression *defaultp;
+    RDB_expression *defaultp;
 
     /**
      * This field is currently ignored.
@@ -52,10 +55,6 @@ enum RDB_tp_kind {
     RDB_TP_RELATION,
     RDB_TP_ARRAY
 };
-
-typedef struct RDB_op_data RDB_operator;
-typedef struct RDB_expression RDB_expression;
-typedef struct RDB_exec_context RDB_exec_context;
 
 /**@addtogroup type
  * @{
