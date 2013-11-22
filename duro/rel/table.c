@@ -15,10 +15,22 @@
 #include "internal.h"
 #include <obj/key.h>
 #include <obj/objinternal.h>
+#include <gen/hashmapit.h>
 #include <gen/strfns.h>
 
 #include <string.h>
 #include <assert.h>
+
+int
+RDB_sequence_name(const char *tbname, const char *attrname, RDB_object *resultp,
+        RDB_exec_context *ecp)
+{
+    if (RDB_string_to_obj(resultp, tbname, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_append_string(resultp, ".", ecp) != RDB_OK)
+        return RDB_ERROR;
+    return RDB_append_string(resultp, attrname, ecp);
+}
 
 static RDB_string_vec *
 dup_keyv(int keyc, const RDB_string_vec keyv[], RDB_exec_context *ecp)
@@ -638,8 +650,12 @@ RDB_table_attrs(const RDB_object *tbp, int *attrcp)
     attrv = RDB_type_attrs(RDB_obj_type(tbp), attrcp);
     if (tbp->val.tb.default_map != NULL) {
         for (i = 0; i < *attrcp; i++) {
-            attrv[i].defaultp = RDB_hashmap_get(tbp->val.tb.default_map,
+            RDB_attr_default *entryp = RDB_hashmap_get(tbp->val.tb.default_map,
                     attrv[i].name);
+            if (entryp != NULL)
+                attrv[i].defaultp = entryp->exp;
+            else
+                attrv[i].defaultp = NULL;
         }
     } else {
         for (i = 0; i < *attrcp; i++) {
@@ -757,10 +773,19 @@ RDB_set_defvals(RDB_object *tbp, int attrc, const RDB_attr attrv[],
 {
     RDB_bool defvals = RDB_FALSE;
     RDB_hashmap *map;
+    RDB_attr_default *entryp;
     int i;
     int ret;
 
     if (tbp->val.tb.default_map != NULL) {
+        RDB_hashmap_iter hiter;
+        void *valp;
+
+        RDB_init_hashmap_iter(&hiter, tbp->val.tb.default_map);
+        while (RDB_hashmap_next(&hiter, &valp) != NULL) {
+            RDB_free(valp);
+        }
+        RDB_destroy_hashmap_iter(map);
         RDB_destroy_hashmap(tbp->val.tb.default_map);
         RDB_free(tbp->val.tb.default_map);
         tbp->val.tb.default_map = NULL;
@@ -783,8 +808,18 @@ RDB_set_defvals(RDB_object *tbp, int attrc, const RDB_attr attrv[],
 
     for (i = 0; i < attrc; i++) {
         if (attrv[i].defaultp != NULL) {
+            if (attrv[i].defaultp->kind != RDB_EX_OBJ
+                    && !RDB_expr_is_serial(attrv[i].defaultp)) {
+                RDB_raise_invalid_argument("invalid default", ecp);
+                goto error;
+            }
+            entryp = RDB_alloc(sizeof(RDB_attr_default), ecp);
+            if (entryp == NULL)
+                goto error;
+            entryp->seqp = NULL;
+            entryp->exp = attrv[i].defaultp;
             ret = RDB_hashmap_put(map, attrv[i].name,
-                    attrv[i].defaultp);
+                    entryp);
             if (ret != RDB_OK) {
                 RDB_errcode_to_error(ret, ecp);
                 goto error;
@@ -796,10 +831,18 @@ RDB_set_defvals(RDB_object *tbp, int attrc, const RDB_attr attrv[],
 
 error:
     if (map != NULL) {
+        RDB_hashmap_iter hiter;
+        void *valp;
+
+        RDB_init_hashmap_iter(&hiter, map);
+        while (RDB_hashmap_next(&hiter, &valp) != NULL) {
+            RDB_free(valp);
+        }
+        RDB_destroy_hashmap_iter(map);
         RDB_destroy_hashmap(map);
         RDB_free(map);
     }
-    return RDB_ERROR;;
+    return RDB_ERROR;
 }
 
 int
@@ -1073,6 +1116,13 @@ error:
     RDB_destroy_obj(&tbname, ecp);
     RDB_destroy_obj(&tbnamestr, ecp);
     return RDB_ERROR;
+}
+
+RDB_bool
+RDB_expr_is_serial(const RDB_expression *exp)
+{
+    return (RDB_bool) (RDB_expr_is_op(exp, "serial")
+               && RDB_expr_op_is_noarg(exp));
 }
 
 /*@}*/

@@ -432,12 +432,6 @@ error:
     return NULL;
 }
 
-static RDB_bool
-exp_is_serial(RDB_expression *exp) {
-    return (RDB_bool) (RDB_expr_is_op(exp, "serial")
-               && RDB_expr_op_is_noarg(exp));
-}
-
 static int
 parse_default(RDB_parse_node *defaultattrnodep,
         RDB_attr **attrvp,
@@ -472,7 +466,7 @@ parse_default(RDB_parse_node *defaultattrnodep,
             goto error;
 
         /* If the default is not serial(), evaluate it */
-        if (exp_is_serial(exp)) {
+        if (RDB_expr_is_serial(exp)) {
             (*attrvp)[i].defaultp = RDB_dup_expr(exp, ecp);
         } else {
             (*attrvp)[i].defaultp = RDB_obj_to_expr(NULL, ecp);

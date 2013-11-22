@@ -66,8 +66,6 @@ typedef struct {
     RDB_bool dup_keys;
 } RDB_recmap;
 
-#define RDB_recmap_name(rmp) ((rmp)->namp)
-
 int
 RDB_create_recmap(const char *name, const char *filename,
         RDB_environment *, int fieldc, const int fieldlenv[], int keyfieldc,

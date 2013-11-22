@@ -436,4 +436,8 @@ int
 RDB_setter_name(const RDB_type *typ, const char *,
         RDB_object *, RDB_exec_context *);
 
+int
+RDB_sequence_name(const char *, const char *, RDB_object *,
+        RDB_exec_context *);
+
 #endif

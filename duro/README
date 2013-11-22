@@ -12,7 +12,7 @@ The following software is required for compiling and running DuroDBMS:
 - GNU Libtool
 - Tcl 8.5 or later
 - SCons 1.2.0 or later
-- GNU Readline
+- GNU Readline (not under MS Windows)
 
 DuroDBMS has been tested under Linux/x86 and Windows XP with Berkeley
 DB 5.3 and Tcl 8.5.

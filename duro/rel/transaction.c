@@ -7,6 +7,7 @@
 
 #include "rdb.h"
 #include "internal.h"
+#include <rec/env.h>
 #include <gen/strfns.h>
 
 #include <errno.h>
@@ -214,8 +215,10 @@ RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp)
      * because creation or deletion of a recmap or index may have
      * been undone
      */
-    if (txp->dbp != NULL)
-        return RDB_set_user_tables_check(txp->dbp, ecp);
+    if (txp->dbp != NULL) {
+        RDB_set_user_tables_check(txp->dbp, ecp);
+        RDB_close_seq_container(RDB_db_env(txp->dbp));
+    }
 
     return RDB_OK;
 }

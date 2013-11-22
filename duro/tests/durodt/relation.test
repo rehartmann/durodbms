@@ -1325,7 +1325,7 @@ test rollback_p1 {rollback after virtual table creation} -setup $SETUP -cleanup 
 invalid argument or not found (2)
 }
 
-test double_rtable {creating a table with the same name twice}  -setup $SETUP -cleanup $CLEANUP -body {
+test double_rtable {creating a table with the same name twice} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -1358,3 +1358,28 @@ test double_rtable {creating a table with the same name twice}  -setup $SETUP -c
 } -result {2nd creation caught
 01 Test
 }
+
+test serial {system-generated attribute values} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+        var r real relation { no int, name string } key {no} default {no serial()};
+        insert r tup{name 'Abc'};
+        commit;
+
+        begin tx;
+        insert r tup{name 'Def'};
+        var tp tup same_heading_as(r);
+        for tp in r order (no asc);
+            put(tp.no);
+            put(' ');
+            put_line(tp.name);
+        end for;
+        commit;
+    }
+} -result {1 Abc
+2 Def
+}
+ 

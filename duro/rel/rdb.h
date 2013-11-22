@@ -5,7 +5,7 @@
 $Id$
 
 This file is part of DuroDBMS, a relational database management system.
-Copyright (C) 2003-2012 Rene Hartmann.
+Copyright (C) 2003-2013 Rene Hartmann.
 
 DuroDBMS is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -340,6 +340,9 @@ RDB_expr_to_vtable(RDB_expression *, RDB_exec_context *, RDB_transaction *);
 
 RDB_attr *
 RDB_table_attrs(const RDB_object *, int *);
+
+RDB_bool
+RDB_expr_is_serial(const RDB_expression *);
 
 int
 RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,

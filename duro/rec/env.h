@@ -21,6 +21,9 @@ typedef struct RDB_environment {
     /* The Berkeley DB environment */
     DB_ENV *envp;
 
+    /* The database for sequences */
+    DB *seq_dbp;
+
     /* Function which is invoked by RDB_close_env() */
     void (*closefn)(struct RDB_environment *);
 
@@ -51,6 +54,9 @@ RDB_open_env(const char *, RDB_environment **, int);
 
 int
 RDB_close_env(RDB_environment *);
+
+int
+RDB_close_seq_container(RDB_environment *);
 
 void
 RDB_set_env_closefn(RDB_environment *, void (*)(RDB_environment *));

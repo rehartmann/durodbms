@@ -19,9 +19,6 @@
 #include <string.h>
 #include <errno.h>
 
-/* name of the file in which the tables are physically stored */
-#define RDB_DATAFILE "rdata"
-
 void
 RDB_free_tbindex(RDB_tbindex *idxp)
 {

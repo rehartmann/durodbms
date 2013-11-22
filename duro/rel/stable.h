@@ -10,6 +10,9 @@
 #include "rdb.h"
 #include <rec/index.h>
 
+/* Name of the file in which the tables are physically stored */
+#define RDB_DATAFILE "rdata"
+
 typedef struct RDB_tbindex {
     char *name;
     int attrc;

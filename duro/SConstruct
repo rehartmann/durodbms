@@ -60,7 +60,7 @@ gensrc = ['gen/hashmap.c', 'gen/hashmapit.c',
 objsrc = ['obj/object.c', 'obj/excontext.c', 'obj/type.c', 'obj/builtintypes.c', 'obj/io.c',
         'obj/expression.c', 'obj/key.c', 'obj/tuple.c', 'obj/operator.c']
 
-recsrc = ['rec/cursor.c', 'rec/env.c', 'rec/index.c', 'rec/recmap.c']
+recsrc = ['rec/cursor.c', 'rec/env.c', 'rec/index.c', 'rec/recmap.c', 'rec/sequence.c']
 
 relsrc = ['rel/array.c', 'rel/database.c', 'rel/uoperator.c',
         'rel/expressionx.c', 'rel/evaluate.c', 'rel/exprtype.c', 'rel/tuplex.c',
@@ -230,7 +230,8 @@ env.Alias('testbins', testbins)
 gen_hdrs = Split('gen/hashmap.h gen/hashmapit.h gen/hashtable.h '
         'gen/hashtabit.h gen/strfns.h gen/strdump.h gen/types.h '
         'gen/releaseno.h')
-rec_hdrs = Split('rec/cursor.h rec/env.h rec/dbdefs.h rec/index.h rec/recmap.h')
+rec_hdrs = Split('rec/cursor.h rec/env.h rec/dbdefs.h rec/index.h rec/recmap.h '
+                 'rec/sequence.h')
 obj_hdrs = Split('obj/object.h obj/excontext.h obj/type.h obj/builtintypes.h '
                 'obj/expression.h obj/operator.h obj/opmap.h obj/tuple.h')
 obj_ihdrs = Split('obj/io.h obj/key.h obj/objinternal.h')

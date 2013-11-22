@@ -57,6 +57,7 @@ RDB_open_env(const char *path, RDB_environment **envpp, int flags)
         free(envp);
         return ret;
     }
+    envp->seq_dbp = NULL;
 
     /*
      * Configure alloc, realloc, and free explicity
@@ -207,4 +208,16 @@ RDB_errcode_to_error(int errcode, RDB_exec_context *ecp)
         default:
             RDB_raise_system(db_strerror(errcode), ecp);
     }
+}
+
+int
+RDB_close_seq_container(RDB_environment *envp)
+{
+    int ret;
+    if (envp->seq_dbp != NULL) {
+        ret = envp->seq_dbp->close(envp->seq_dbp, 0);
+        envp->seq_dbp = NULL;
+        return ret;
+    }
+    return 0;
 }

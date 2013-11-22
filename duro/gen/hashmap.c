@@ -48,7 +48,7 @@ RDB_hashmap_put(RDB_hashmap *hp, const char *key, void *valp)
     int ret;
     RDB_kv_pair entry;
     RDB_kv_pair *entryp;
-    
+
     entry.key = (char *) key;
     entryp = RDB_hashtable_get(&hp->tab, &entry, NULL);
     if (entryp != NULL) {

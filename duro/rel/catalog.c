@@ -340,18 +340,18 @@ insert_defvals(RDB_object *tbp, RDB_dbroot *dbrootp,
 
     for (i = 0; i < tuptyp->def.tuple.attrc; i++) {
         char *attrname = tuptyp->def.tuple.attrv[i].name;
-        RDB_expression *defaultp = RDB_hashmap_get(tbp->val.tb.default_map,
+        RDB_attr_default *defaultp = RDB_hashmap_get(tbp->val.tb.default_map,
                 attrname);
         if (defaultp != NULL) {
             RDB_object binval;
-            RDB_object *valp = RDB_expr_obj(defaultp);
+            RDB_object *valp = RDB_expr_obj(defaultp->exp);
 
-            if (valp == NULL) {
+            if (valp == NULL && !RDB_expr_is_serial(defaultp->exp)) {
                 RDB_raise_invalid_argument("Invalid default value", ecp);
                 goto error;
             }
 
-            if (!RDB_type_equals(valp->typ,
+            if (valp != NULL && !RDB_type_equals(valp->typ,
                     tuptyp->def.tuple.attrv[i].typ)) {
                 RDB_raise_type_mismatch(
                         "Type of default value does not match attribute type",
@@ -367,7 +367,7 @@ insert_defvals(RDB_object *tbp, RDB_dbroot *dbrootp,
             }
 
             RDB_init_obj(&binval);
-            ret = RDB_expr_to_binobj(&binval, defaultp, ecp);
+            ret = RDB_expr_to_binobj(&binval, defaultp->exp, ecp);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&binval, ecp);
                 goto error;

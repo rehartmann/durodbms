@@ -14,6 +14,7 @@
 #include <gen/hashmapit.h>
 #include <gen/hashtabit.h>
 #include <gen/strfns.h>
+#include <rec/sequence.h>
 #include <string.h>
 #include <ctype.h>
 
@@ -1344,6 +1345,51 @@ cleanup:
     return ret;
 }
 
+static int
+delete_sequences(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_hashmap_iter hiter;
+    void *valp;
+    int ret;
+    const char *attrname;
+
+    if (tbp->val.tb.default_map == NULL)
+        return RDB_OK;
+
+    RDB_init_hashmap_iter(&hiter, tbp->val.tb.default_map);
+    while ((attrname = RDB_hashmap_next(&hiter, &valp)) != NULL) {
+        RDB_attr_default *dflp = valp;
+        if (RDB_expr_is_serial(dflp->exp)) {
+            RDB_sequence *seqp;
+            if (dflp->seqp != NULL) {
+                seqp = dflp->seqp;
+            } else {
+                RDB_object seqname;
+                RDB_init_obj(&seqname);
+                if (RDB_sequence_name(RDB_table_name(tbp),
+                        attrname, &seqname, ecp) != RDB_OK) {
+                    RDB_destroy_obj(&seqname, ecp);
+                    return RDB_ERROR;
+                }
+                ret = RDB_open_sequence(RDB_obj_string(&seqname), RDB_DATAFILE,
+                            RDB_db_env(RDB_tx_db(txp)), txp->txid, &seqp);
+                if (ret != 0) {
+                    RDB_handle_errcode(ret, ecp, txp);
+                    return RDB_ERROR;
+                }
+            }
+            printf("Deleting sequence\n");
+            ret = RDB_delete_sequence(seqp, txp->txid);
+            dflp->seqp = NULL;
+            if (ret != 0) {
+                RDB_handle_errcode(ret, ecp, txp);
+                return RDB_ERROR;
+            }
+        }
+    }
+    return RDB_OK;
+}
+
 /**
 RDB_drop_table deletes the table specified by <var>tbp</var>
 and releases all resources associated with that table.
@@ -1438,6 +1484,9 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             if (RDB_hashmap_put(&dbrootp->ptbmap, tbp->val.tb.name, NULL) != RDB_OK)
                 return RDB_ERROR;
         }
+
+        if (delete_sequences(tbp, ecp, txp) != RDB_OK)
+            return RDB_ERROR;
 
         /*
          * Delete recmap, if any
@@ -1686,6 +1735,23 @@ RDB_set_user_tables_check(RDB_database *dbp, RDB_exec_context *ecp)
                     tbp->val.tb.stp = NULL;
                 }
                 tbp->val.tb.flags |= RDB_TB_CHECK;
+            }
+
+            /* Close all sequences */
+            if (tbp->val.tb.default_map != NULL) {
+                RDB_hashmap_iter hiter;
+                void *valp;
+                RDB_attr_default *entryp;
+
+                RDB_init_hashmap_iter(&hiter, tbp->val.tb.default_map);
+                while (RDB_hashmap_next(&hiter, &valp) != NULL) {
+                    entryp = valp;
+                    if (entryp->seqp != NULL) {
+                        RDB_close_sequence(entryp->seqp);
+                        entryp->seqp = NULL;
+                    }
+                }
+                RDB_destroy_hashmap_iter(map);
             }
         }
     }

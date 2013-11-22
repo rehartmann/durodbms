@@ -120,6 +120,13 @@ typedef struct {
     RDB_object obj;
 } tuple_entry;
 
+typedef struct RDB_sequence RDB_sequence;
+
+typedef struct {
+    RDB_expression *exp;
+    RDB_sequence *seqp;
+} RDB_attr_default;
+
 void *
 RDB_alloc(size_t, RDB_exec_context *);
 

@@ -168,8 +168,11 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
 
                 RDB_init_hashmap_iter(&hiter, objp->val.tb.default_map);
                 while (RDB_hashmap_next(&hiter, &valp) != NULL) {
-                    RDB_del_expr((RDB_expression *) valp, ecp);
+                    RDB_attr_default *entryp = valp;
+                    RDB_del_expr(entryp->exp, ecp);
+                    RDB_free(entryp);
                 }
+                RDB_destroy_hashmap_iter(map);
                 RDB_destroy_hashmap(objp->val.tb.default_map);
                 RDB_free(objp->val.tb.default_map);
             }
