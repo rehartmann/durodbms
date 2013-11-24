@@ -865,7 +865,7 @@ mutate_unary(RDB_expression *exp, RDB_expression **tbpv, int cap,
 
     for (i = 0; i < tbc; i++) {
         RDB_expression *nexp = RDB_ro_op(exp->def.op.name, ecp);
-        if (exp == NULL)
+        if (nexp == NULL)
             return RDB_ERROR;
         RDB_add_arg(nexp, tbpv[i]);
         tbpv[i] = nexp;
@@ -1814,6 +1814,7 @@ mutate_select(RDB_expression *exp, int seqitc, const RDB_seq_item seqitv[],
     int bestn;
     int tbc;
     RDB_expression *texpv[tbpv_cap];
+    RDB_expression *bestexp = exp;
 
     bestcost = sorted_table_cost(exp, seqitc, seqitv);
 
@@ -1823,9 +1824,9 @@ mutate_select(RDB_expression *exp, int seqitc, const RDB_seq_item seqitv[],
     do {
         obestcost = bestcost;
 
-        trace_plan_cost(exp, obestcost, "original plan", ecp, txp);
+        trace_plan_cost(bestexp, obestcost, "original plan", ecp, txp);
 
-        tbc = mutate(exp, texpv, tbpv_cap, empty_exp, ecp, txp);
+        tbc = mutate(bestexp, texpv, tbpv_cap, empty_exp, ecp, txp);
         if (tbc < 0)
             return NULL;
 
@@ -1846,16 +1847,20 @@ mutate_select(RDB_expression *exp, int seqitc, const RDB_seq_item seqitv[],
                 RDB_del_expr(texpv[i], ecp);
             }
         } else {
-            exp = texpv[bestn];
+            if (bestexp != exp) {
+                RDB_del_expr(bestexp, ecp);
+            }
+            bestexp = texpv[bestn];
             for (i = 0; i < tbc; i++) {
-                if (i != bestn)
+                if (i != bestn) {
                     RDB_del_expr(texpv[i], ecp);
+                }
             }
         }
     } while (bestcost < obestcost);
-    trace_plan_cost(exp, bestcost, "winning plan", ecp, txp);
-    exp->optimized = RDB_TRUE;
-    return exp;
+    trace_plan_cost(bestexp, bestcost, "winning plan", ecp, txp);
+    bestexp->optimized = RDB_TRUE;
+    return bestexp;
 }
 
 RDB_expression *

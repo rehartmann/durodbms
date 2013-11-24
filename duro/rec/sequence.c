@@ -55,13 +55,17 @@ RDB_open_sequence(const char *name, const char *filename,
 int
 RDB_close_sequence(RDB_sequence *seqp)
 {
-    return seqp->seq->close(seqp->seq, 0);
+    int ret = seqp->seq->close(seqp->seq, 0);
+    free(seqp);
+    return ret;
 }
 
 int
 RDB_delete_sequence(RDB_sequence *seqp, DB_TXN *txn)
 {
-    return seqp->seq->remove(seqp->seq, txn, 0);
+    int ret = seqp->seq->remove(seqp->seq, txn, 0);
+    free(seqp);
+    return ret;
 }
 
 int

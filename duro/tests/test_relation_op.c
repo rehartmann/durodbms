@@ -36,7 +36,7 @@ test_relation(RDB_database *dbp, RDB_exec_context *ecp)
     vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     assert(vtbp != NULL);
 
-    assert(RDB_table_to_array(&array, vtbp, 0, NULL, RDB_UNBUFFERED, ecp, &tx) == RDB_OK);
+    assert(RDB_table_to_array(&array, vtbp, 0, NULL, 0, ecp, &tx) == RDB_OK);
 
     len = RDB_array_length(&array, ecp);
     assert(len == 0);

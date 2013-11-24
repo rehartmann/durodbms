@@ -75,10 +75,6 @@ RDB_sorter(RDB_expression *, RDB_qresult **qrespp, RDB_exec_context *,
         RDB_transaction *, int seqitc, const RDB_seq_item seqitv[]);
 
 int
-RDB_next_tuple(RDB_qresult *, RDB_object *, RDB_exec_context *,
-        RDB_transaction *);
-
-int
 RDB_duprem(RDB_qresult *, RDB_exec_context *, RDB_transaction *);
 
 int
@@ -89,9 +85,6 @@ int
 RDB_get_by_uindex(RDB_object *tbp, RDB_object *objpv[],
         struct RDB_tbindex *indexp, RDB_type *, RDB_exec_context *,
         RDB_transaction *, RDB_object *tplp);
-
-int
-RDB_del_qresult(RDB_qresult *, RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_reset_qresult(RDB_qresult *, RDB_exec_context *, RDB_transaction *);

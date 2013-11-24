@@ -1369,24 +1369,27 @@ delete_sequences(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
                 if (RDB_sequence_name(RDB_table_name(tbp),
                         attrname, &seqname, ecp) != RDB_OK) {
                     RDB_destroy_obj(&seqname, ecp);
+                    RDB_destroy_hashmap_iter(&hiter);
                     return RDB_ERROR;
                 }
                 ret = RDB_open_sequence(RDB_obj_string(&seqname), RDB_DATAFILE,
                             RDB_db_env(RDB_tx_db(txp)), txp->txid, &seqp);
                 if (ret != 0) {
+                    RDB_destroy_hashmap_iter(&hiter);
                     RDB_handle_errcode(ret, ecp, txp);
                     return RDB_ERROR;
                 }
             }
-            printf("Deleting sequence\n");
             ret = RDB_delete_sequence(seqp, txp->txid);
             dflp->seqp = NULL;
             if (ret != 0) {
+                RDB_destroy_hashmap_iter(&hiter);
                 RDB_handle_errcode(ret, ecp, txp);
                 return RDB_ERROR;
             }
         }
     }
+    RDB_destroy_hashmap_iter(&hiter);
     return RDB_OK;
 }
 
@@ -1751,7 +1754,7 @@ RDB_set_user_tables_check(RDB_database *dbp, RDB_exec_context *ecp)
                         entryp->seqp = NULL;
                     }
                 }
-                RDB_destroy_hashmap_iter(map);
+                RDB_destroy_hashmap_iter(&hiter);
             }
         }
     }

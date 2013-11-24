@@ -55,10 +55,8 @@ RDB_all(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resultp)
 {
     RDB_type *attrtyp;
-    RDB_object arr;
-    RDB_object *tplp;
-    int ret;
-    int i;
+    RDB_qresult *qrp;
+    RDB_object tpl;
 
     /* attrname may only be NULL if table is unary */
     if (attrname == NULL) {
@@ -86,25 +84,22 @@ RDB_all(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
      * Perform aggregation
      */
 
-    RDB_init_obj(&arr);
-
-    ret = RDB_table_to_array(&arr, tbp, 0, NULL, RDB_UNBUFFERED, ecp, txp);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&arr, ecp);
+    qrp = RDB_table_iterator(tbp, 0, NULL, ecp, txp);
+    if (qrp == NULL)
         return RDB_ERROR;
-    }
 
-    i = 0;
-    while ((tplp = RDB_array_get(&arr, (RDB_int) i++, ecp)) != NULL) {
-        if (!RDB_tuple_get_bool(tplp, attrname))
+    RDB_init_obj(&tpl);
+    while (RDB_next_tuple(qrp, &tpl, ecp, txp) == RDB_OK) {
+        if (!RDB_tuple_get_bool(&tpl, attrname))
             *resultp = RDB_FALSE;
     }
+    RDB_destroy_obj(&tpl, ecp);
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        RDB_destroy_obj(&arr, ecp);
+        RDB_del_table_iterator(qrp, ecp, txp);
         return RDB_ERROR;
     }
     RDB_clear_err(ecp);
-    return RDB_destroy_obj(&arr, ecp);
+    return RDB_del_table_iterator(qrp, ecp, txp);
 }
 
 /**
@@ -149,10 +144,8 @@ RDB_any(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resultp)
 {
     RDB_type *attrtyp;
-    RDB_object arr;
-    RDB_object *tplp;
-    int ret;
-    int i;
+    RDB_qresult *qrp;
+    RDB_object tpl;
 
     /* attrname may only be NULL if table is unary */
     if (attrname == NULL) {
@@ -180,25 +173,22 @@ RDB_any(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
      * Perform aggregation
      */
 
-    RDB_init_obj(&arr);
+    qrp = RDB_table_iterator(tbp, 0, NULL, ecp, txp);
+    if (qrp == NULL)
+        return RDB_ERROR;
 
-    ret = RDB_table_to_array(&arr, tbp, 0, NULL, RDB_UNBUFFERED, ecp, txp);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&arr, ecp);
-        return ret;
-    }
-
-    i = 0;
-    while ((tplp = RDB_array_get(&arr, (RDB_int) i++, ecp)) != NULL) {
-        if (RDB_tuple_get_bool(tplp, attrname))
+    RDB_init_obj(&tpl);
+    while (RDB_next_tuple(qrp, &tpl, ecp, txp) == RDB_OK) {
+        if (RDB_tuple_get_bool(&tpl, attrname))
             *resultp = RDB_TRUE;
     }
+    RDB_destroy_obj(&tpl, ecp);
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        RDB_destroy_obj(&arr, ecp);
+        RDB_del_table_iterator(qrp, ecp, txp);
         return RDB_ERROR;
     }
     RDB_clear_err(ecp);
-    return RDB_destroy_obj(&arr, ecp);
+    return RDB_del_table_iterator(qrp, ecp, txp);
 }
 
 /**
@@ -242,9 +232,8 @@ RDB_max(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
        RDB_transaction *txp, RDB_object *resultp)
 {
     RDB_type *attrtyp;
-    RDB_object arr;
-    RDB_object *tplp;
-    int i;
+    RDB_qresult *qrp;
+    RDB_object tpl;
 
     /* attrname may only be NULL if table is unary */
     if (attrname == NULL) {
@@ -276,33 +265,30 @@ RDB_max(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
      * Perform aggregation
      */
 
-    RDB_init_obj(&arr);
-
-    if (RDB_table_to_array(&arr, tbp, 0, NULL, RDB_UNBUFFERED, ecp, txp) != RDB_OK) {
-        RDB_destroy_obj(&arr, ecp);
+    qrp = RDB_table_iterator(tbp, 0, NULL, ecp, txp);
+    if (qrp == NULL)
         return RDB_ERROR;
-    }
 
-    i = 0;
-    while ((tplp = RDB_array_get(&arr, (RDB_int) i++, ecp)) != NULL) {
+    RDB_init_obj(&tpl);
+    while (RDB_next_tuple(qrp, &tpl, ecp, txp) == RDB_OK) {
         if (attrtyp == &RDB_INTEGER) {
-            RDB_int val = RDB_tuple_get_int(tplp, attrname);
+            RDB_int val = RDB_tuple_get_int(&tpl, attrname);
 
             if (val > resultp->val.int_val)
                  resultp->val.int_val = val;
         } else {
-            RDB_float val = RDB_tuple_get_float(tplp, attrname);
+            RDB_float val = RDB_tuple_get_float(&tpl, attrname);
 
             if (val > resultp->val.float_val)
                 resultp->val.float_val = val;
         }
     }
+    RDB_destroy_obj(&tpl, ecp);
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        RDB_destroy_obj(&arr, ecp);
-        return RDB_ERROR;
+        RDB_del_table_iterator(qrp, ecp, txp);
     }
     RDB_clear_err(ecp);
-    return RDB_destroy_obj(&arr, ecp);
+    return RDB_del_table_iterator(qrp, ecp, txp);
 }
 
 /**
@@ -346,10 +332,8 @@ RDB_min(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *resultp)
 {
     RDB_type *attrtyp;
-    RDB_object arr;
-    RDB_object *tplp;
-    int ret;
-    int i;
+    RDB_qresult *qrp;
+    RDB_object tpl;
 
     /* attrname may only be NULL if table is unary */
     if (attrname == NULL) {
@@ -381,34 +365,32 @@ RDB_min(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
      * Perform aggregation
      */
 
-    RDB_init_obj(&arr);
+    qrp = RDB_table_iterator(tbp, 0, NULL, ecp, txp);
+    if (qrp == NULL)
+        return RDB_ERROR;
 
-    ret = RDB_table_to_array(&arr, tbp, 0, NULL, RDB_UNBUFFERED, ecp, txp);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&arr, ecp);
-        return ret;
-    }
-
-    i = 0;
-    while ((tplp = RDB_array_get(&arr, (RDB_int) i++, ecp)) != NULL) {
+    RDB_init_obj(&tpl);
+    while (RDB_next_tuple(qrp, &tpl, ecp, txp) == RDB_OK) {
         if (attrtyp == &RDB_INTEGER) {
-            RDB_int val = RDB_tuple_get_int(tplp, attrname);
+            RDB_int val = RDB_tuple_get_int(&tpl, attrname);
 
             if (val < resultp->val.int_val)
                  resultp->val.int_val = val;
         } else {
-            RDB_float val = RDB_tuple_get_float(tplp, attrname);
+            RDB_float val = RDB_tuple_get_float(&tpl, attrname);
 
             if (val < resultp->val.float_val)
                 resultp->val.float_val = val;
         }
     }
+    RDB_destroy_obj(&tpl, ecp);
+
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        RDB_destroy_obj(&arr, ecp);
+        RDB_del_table_iterator(qrp, ecp, txp);
         return RDB_ERROR;
     }
     RDB_clear_err(ecp);
-    return RDB_destroy_obj(&arr, ecp);
+    return RDB_del_table_iterator(qrp, ecp, txp);
 }
 
 /**
@@ -452,10 +434,8 @@ RDB_sum(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *resultp)
 {
     RDB_type *attrtyp;
-    RDB_object arr;
-    RDB_object *tplp;
-    int ret;
-    int i;
+    RDB_qresult *qrp;
+    RDB_object tpl;
 
     if (attrname == NULL) {
         if (tbp->typ->def.basetyp->def.tuple.attrc != 1) {
@@ -487,29 +467,27 @@ RDB_sum(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
      * Perform aggregation
      */
 
-    RDB_init_obj(&arr);
+    qrp = RDB_table_iterator(tbp, 0, NULL, ecp, txp);
+    if (qrp == NULL)
+        return RDB_ERROR;
 
-    ret = RDB_table_to_array(&arr, tbp, 0, NULL, RDB_UNBUFFERED, ecp, txp);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&arr, ecp);
-        return ret;
-    }
-
-    i = 0;
-    while ((tplp = RDB_array_get(&arr, (RDB_int) i++, ecp)) != NULL) {
+    RDB_init_obj(&tpl);
+    while (RDB_next_tuple(qrp, &tpl, ecp, txp) == RDB_OK) {
         if (attrtyp == &RDB_INTEGER)
-            resultp->val.int_val += RDB_tuple_get_int(tplp, attrname);
+            resultp->val.int_val += RDB_tuple_get_int(&tpl, attrname);
         else
             resultp->val.float_val
-                            += RDB_tuple_get_float(tplp, attrname);
+                            += RDB_tuple_get_float(&tpl, attrname);
     }
+    RDB_destroy_obj(&tpl, ecp);
+
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        RDB_destroy_obj(&arr, ecp);
+        RDB_del_table_iterator(qrp, ecp, txp);
         return RDB_ERROR;
     }
     RDB_clear_err(ecp);
 
-    return RDB_destroy_obj(&arr, ecp);
+    return RDB_del_table_iterator(qrp, ecp, txp);
 }
 
 /**
@@ -555,10 +533,8 @@ RDB_avg(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_float *resultp)
 {
     RDB_type *attrtyp;
-    RDB_object arr;
-    RDB_object *tplp;
-    int ret;
-    int i;
+    RDB_qresult *qrp;
+    RDB_object tpl;
     unsigned long count;
 
     /* attrname may only be NULL if table is unary */
@@ -586,25 +562,22 @@ RDB_avg(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
      * Perform aggregation
      */
 
-    RDB_init_obj(&arr);
+    qrp = RDB_table_iterator(tbp, 0, NULL, ecp, txp);
+    if (qrp == NULL)
+        return RDB_ERROR;
 
-    ret = RDB_table_to_array(&arr, tbp, 0, NULL, RDB_UNBUFFERED, ecp, txp);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&arr, ecp);
-        return ret;
-    }
-
-    i = 0;
+    RDB_init_obj(&tpl);
     *resultp = 0.0;
-    while ((tplp = RDB_array_get(&arr, (RDB_int) i++, ecp)) != NULL) {
+    while (RDB_next_tuple(qrp, &tpl, ecp, txp) == RDB_OK) {
         count++;
         if (attrtyp == &RDB_INTEGER)
-            *resultp += RDB_tuple_get_int(tplp, attrname);
+            *resultp += RDB_tuple_get_int(&tpl, attrname);
         else
-            *resultp += RDB_tuple_get_float(tplp, attrname);
+            *resultp += RDB_tuple_get_float(&tpl, attrname);
     }
+    RDB_destroy_obj(&tpl, ecp);
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        RDB_destroy_obj(&arr, ecp);
+        RDB_del_table_iterator(qrp, ecp, txp);
         return RDB_ERROR;
     }
     RDB_clear_err(ecp);
@@ -615,7 +588,7 @@ RDB_avg(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
     }
     *resultp /= count;
 
-    return RDB_destroy_obj(&arr, ecp);
+    return RDB_del_table_iterator(qrp, ecp, txp);
 }
 
 /**

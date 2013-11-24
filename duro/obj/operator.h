@@ -18,13 +18,14 @@
  */
 
 typedef struct RDB_op_data RDB_operator;
+typedef struct RDB_transaction RDB_transaction;
 
 typedef int RDB_ro_op_func(int, RDB_object *[], RDB_operator *,
-        RDB_exec_context *, struct RDB_transaction *,
+        RDB_exec_context *, RDB_transaction *,
         RDB_object *);
 
 typedef int RDB_upd_op_func(int, RDB_object *[], RDB_operator *,
-    RDB_exec_context *, struct RDB_transaction *);
+    RDB_exec_context *, RDB_transaction *);
 
 typedef void RDB_op_cleanup_func(RDB_operator *);
 

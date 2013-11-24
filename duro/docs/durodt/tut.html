@@ -20,7 +20,7 @@
 <li><a href="#tables">Tables</a>
 <li><a href="#dbconstraints">Database constraints</a>
 <li><a href="#arrays">Arrays</a>
-<li><a href="#foreach">FOR .. IN</a>
+<li><a href="#for_in">FOR .. IN</a>
 <li><a href="#io">I/O</a>
 <li><a href="#user-ops">User-defined operators</a>
 <li><a href="#user-types">User-defined types</a>
@@ -46,7 +46,7 @@ for more information on <cite>TTM</cite> and Tutorial D.
 
 <pre>
 durodt
-Duro D/T library version 0.19
+Duro D/T library version 0.20
 Implicit transactions enabled.
 no db>
 </pre>
@@ -497,6 +497,23 @@ D> insert r2 tup{no 1};
 1 element affected.
 </pre>
 
+<p><em>serial()</em> can be used as a default value. In this case, the attribute value
+will be obtained automatically.</p>
+
+<p>Example:</p>
+
+<pre>
+D> var r3 real rel { no int, name string } key { no } default { no serial() };
+Table r3 created.
+D> insert r3 tup { name 'foo' };
+1 element affected.
+D> insert r3 tup { name 'bar' };
+1 element affected.
+D> put(r3); put_line('');
+RELATION {TUPLE {no 2, name 'bar'}, TUPLE {no 1, name 'foo'}}
+D> 
+</pre>
+
 <h3>Private tables</h3>
 
 <p>Private tables are transient, they do not belong to any database
@@ -686,7 +703,7 @@ D>   put(a[i]); put_line('');
 D> end for;
 </pre>
 
-<h2 id="foreach">FOR .. IN</h2>
+<h2 id="for_in">FOR .. IN</h2>
 
 <p>Duro D/T supports a second FOR statement which iterates over all tuple values of a table.
 The example below prints all tuples of table r in an unspecified order
@@ -701,7 +718,7 @@ D> end for;
 
 <h2 id="io">I/O</h2>
 
-<p>Duro D/T provides a number of operators for I/O.
+<p>Duro D/T provides several I/O operators.
 
 <h3>put_line</h3>
 
@@ -763,6 +780,7 @@ var l string;
 var lno init 0;
 while true;
     get_line(l);
+    -- Leave loop on EOF
     if eof() then
         leave;
     end if;

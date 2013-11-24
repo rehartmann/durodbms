@@ -965,7 +965,7 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
     current_foreachp = it.prevp;
 
     RDB_free(seqitv);
-    if (RDB_del_qresult(it.qrp, ecp, txp) != RDB_OK) {
+    if (RDB_del_table_iterator(it.qrp, ecp, txp) != RDB_OK) {
         RDB_destroy_obj(&tb, ecp);
         return RDB_ERROR;
     }
@@ -982,7 +982,7 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
 
 error:
     if (it.qrp != NULL) {
-        RDB_del_qresult(it.qrp, ecp, txp);
+        RDB_del_table_iterator(it.qrp, ecp, txp);
         current_foreachp = it.prevp;
     }
     RDB_destroy_obj(&tb, ecp);

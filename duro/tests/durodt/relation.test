@@ -1365,11 +1365,16 @@ test serial {system-generated attribute values} -setup $SETUP -cleanup $CLEANUP 
         current_db := 'D';
 
         begin tx;
-        var r real relation { no int, name string } key {no} default {no serial()};
+        var r real relation {no int, name string} key {no} default {no serial()};
         insert r tup{name 'Abc'};
         commit;
 
         begin tx;
+        try
+            insert r tup {no 2, name 'Tst'};
+        catch err element_exists_error;
+            put_line('insert caught');
+        end try;
         insert r tup{name 'Def'};
         var tp tup same_heading_as(r);
         for tp in r order (no asc);
@@ -1377,9 +1382,10 @@ test serial {system-generated attribute values} -setup $SETUP -cleanup $CLEANUP 
             put(' ');
             put_line(tp.name);
         end for;
+        drop var r;
         commit;
     }
-} -result {1 Abc
+} -result {insert caught
+1 Abc
 2 Def
 }
- 

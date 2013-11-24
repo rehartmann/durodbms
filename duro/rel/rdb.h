@@ -37,10 +37,6 @@ along with DuroDBMS; if not, write to the Free Software Foundation, Inc.,
 
 #include <stdlib.h>
 
-enum {
-    RDB_UNBUFFERED = 1
-};
-
 #define RDB_THE_PREFIX "the_"
 
 typedef struct RDB_expression RDB_expression;
@@ -452,6 +448,13 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len, RDB_exec_context *);
 RDB_qresult *
 RDB_table_iterator(RDB_object *, int, const RDB_seq_item[],
                    RDB_exec_context *, RDB_transaction *);
+
+int
+RDB_del_table_iterator(RDB_qresult *, RDB_exec_context *, RDB_transaction *);
+
+int
+RDB_next_tuple(RDB_qresult *, RDB_object *, RDB_exec_context *,
+        RDB_transaction *);
 
 int
 RDB_obj_comp(const RDB_object *, const char *compname,

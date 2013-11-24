@@ -90,21 +90,11 @@ struct RDB_object {
         } tb;
         RDB_hashtable tpl_tab;
         struct {
-            RDB_expression *texp;
-            struct RDB_transaction *txp;
-            struct RDB_qresult *qrp;
-
-            /* Position of next element returned by qresult */
-            RDB_int pos;
-
-            RDB_int length; /* length of array; -1 means unknown */
+            RDB_int length; /* length of array */
 
             /* Elements (buffer, if tbp is not NULl) */
             int elemc;
             struct RDB_object *elemv;
-
-            /* Buffers elements beyond elemc */
-            struct RDB_object *tplp;
         } arr;
      } val;
 

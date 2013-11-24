@@ -97,6 +97,14 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 int
 RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
 {
+    /*
+     * Do additional cleanup
+     */
+    if (objp->cleanup_fp != NULL) {
+        if (objp->cleanup_fp(objp, ecp) != RDB_OK)
+            return RDB_ERROR;
+    }
+
     switch (objp->kind) {
         case RDB_OB_INITIAL:
         case RDB_OB_BOOL:
@@ -124,8 +132,6 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
         }
         case RDB_OB_ARRAY:
         {
-            int ret = RDB_OK;
-
             if (objp->val.arr.elemv != NULL) {
                 int i;
 
@@ -134,18 +140,7 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
                 RDB_free(objp->val.arr.elemv);
             }
 
-            if (objp->val.arr.texp == NULL)
-                return RDB_OK;
-
-            if (RDB_del_expr(objp->val.arr.texp, ecp) != RDB_OK)
-                return RDB_ERROR;
-
-            if (objp->val.arr.tplp != NULL) {
-                if (RDB_destroy_obj(objp->val.arr.tplp, ecp) != RDB_OK)
-                    return RDB_ERROR;
-                RDB_free(objp->val.arr.tplp);
-            }
-            return ret;
+            return RDB_OK;
         }
         case RDB_OB_TABLE:
             if (objp->val.tb.keyv != NULL) {
@@ -178,14 +173,6 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
             }
 
             break;
-    }
-
-    /*
-     * Do additional cleanup
-     */
-    if (objp->cleanup_fp != NULL) {
-        if (objp->cleanup_fp(objp, ecp) != RDB_OK)
-            return RDB_ERROR;
     }
 
     return RDB_OK;

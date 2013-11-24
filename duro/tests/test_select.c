@@ -39,7 +39,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
     vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     assert(vtbp != NULL);
 
-    assert(RDB_table_to_array(&array, vtbp, 0, NULL, RDB_UNBUFFERED, ecp, &tx) == RDB_OK);
+    assert(RDB_table_to_array(&array, vtbp, 0, NULL, 0, ecp, &tx) == RDB_OK);
 
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         printf("EMPNO: %d\n", (int)RDB_tuple_get_int(tplp, "EMPNO"));

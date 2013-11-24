@@ -443,14 +443,6 @@ str_equals(const void *e1p, const void *e2p, void *arg)
             ((RDB_attrmap_entry *) e2p)->key) == 0;
 }
 
-static int
-cleanup_tb(RDB_object *tbp, RDB_exec_context *ecp)
-{
-    if (tbp->val.tb.stp == NULL)
-        return RDB_OK;
-    return RDB_delete_stored_table(tbp->val.tb.stp, ecp, NULL);
-}
-
 /*
  * Create the physical representation of a table.
  * (The recmap and the indexes)
@@ -488,8 +480,6 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
     if (tbp->val.tb.stp == NULL) {
         return RDB_ERROR;
     }
-
-    tbp->cleanup_fp = &cleanup_tb;
 
     tbp->val.tb.stp->recmapp = NULL;
     RDB_init_hashtable(&tbp->val.tb.stp->attrmap, RDB_DFL_MAP_CAPACITY, &hash_str,

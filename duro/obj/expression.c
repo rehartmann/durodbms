@@ -469,8 +469,9 @@ RDB_del_expr(RDB_expression *exp, RDB_exec_context *ecp)
 {
     int ret;
 
-    if (RDB_drop_expr_children(exp, ecp) != RDB_OK)
+    if (RDB_drop_expr_children(exp, ecp) != RDB_OK) {
         return RDB_ERROR;
+    }
     ret = RDB_destroy_expr(exp, ecp);
     RDB_free(exp);
     return ret;
