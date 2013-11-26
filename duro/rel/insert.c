@@ -11,6 +11,7 @@
 #include "stable.h"
 #include <gen/strfns.h>
 #include <rec/sequence.h>
+
 #include <string.h>
 
 int
@@ -40,14 +41,11 @@ RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
         goto cleanup;
     }
     for (i = 0; i < attrcount; i++) {
-        int *fnop;
-        RDB_attr_default *dflp = NULL;
-        RDB_object *valp;
-        RDB_type *attrtyp = tuptyp->def.tuple.attrv[i].typ;
         RDB_int nextval;
-
-        fnop = RDB_field_no(tbp->val.tb.stp, tuptyp->def.tuple.attrv[i].name);
-        valp = RDB_tuple_get(tplp, tuptyp->def.tuple.attrv[i].name);
+        int *fnop = RDB_field_no(tbp->val.tb.stp, tuptyp->def.tuple.attrv[i].name);
+        RDB_attr_default *dflp = NULL;
+        RDB_object *valp = RDB_tuple_get(tplp, tuptyp->def.tuple.attrv[i].name);
+        RDB_type *attrtyp = tuptyp->def.tuple.attrv[i].typ;
 
         if (tbp->val.tb.default_map != NULL) {
             dflp = RDB_hashmap_get(tbp->val.tb.default_map,
@@ -78,7 +76,7 @@ RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
                         goto cleanup;
                     }
 
-                    int ret = RDB_open_sequence(RDB_obj_string(&seqname), RDB_DATAFILE,
+                    ret = RDB_open_sequence(RDB_obj_string(&seqname), RDB_DATAFILE,
                             RDB_db_env(RDB_tx_db(txp)), txp->txid, &dflp->seqp);
                     RDB_destroy_obj(&seqname, ecp);
                     if (ret != 0) {
