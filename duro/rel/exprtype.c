@@ -8,7 +8,6 @@
 #include "rdb.h"
 #include "transform.h"
 #include "internal.h"
-#include "tostr.h"
 #include <gen/strfns.h>
 #include <obj/objinternal.h>
 
@@ -159,6 +158,18 @@ where_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     return RDB_dup_nonscalar_type(reltyp, ecp);
 }
 
+/**
+ * Return the type of the expression. Use *tpltyp to resolve refs to variables.
+ * If the type is non-scalar, it is managed by the expression.
+ */
+RDB_type *
+RDB_expr_type_tpltyp(RDB_expression *exp, const RDB_type *tpltyp,
+        RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    return RDB_expr_type(exp, tpltyp != NULL ? &get_tuple_attr_type : NULL,
+            (RDB_type *) tpltyp, envp, ecp, txp);
+}
+
 static RDB_type *
 extend_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
@@ -240,7 +251,7 @@ project_type(const RDB_expression *exp, RDB_type *argtv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
-    char **attrv;
+    const char **attrv;
     RDB_type *typ;
     RDB_expression *argp;
     int argc = RDB_expr_list_length(&exp->def.op.args);
@@ -1031,9 +1042,128 @@ var_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
     return NULL;
 }
 
+static RDB_type *
+aggr_type(const RDB_expression *exp, const RDB_type *tpltyp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    if (exp->kind != RDB_EX_RO_OP) {
+        RDB_raise_invalid_argument("invalid summarize argument", ecp);
+        return NULL;
+    }
+
+    if (strcmp(exp->def.op.name, "count") == 0) {
+        return &RDB_INTEGER;
+    } else if (strcmp(exp->def.op.name, "avg") == 0) {
+        return &RDB_FLOAT;
+    } else if (strcmp(exp->def.op.name, "sum") == 0
+            || strcmp(exp->def.op.name, "max") == 0
+            || strcmp(exp->def.op.name, "min") == 0) {
+        if (exp->def.op.args.firstp == NULL
+                || exp->def.op.args.firstp->nextp != NULL) {
+            RDB_raise_invalid_argument("invalid number of aggregate arguments", ecp);
+            return NULL;
+        }
+        return RDB_expr_type_tpltyp(exp->def.op.args.firstp, tpltyp, NULL, ecp, txp);
+    } else if (strcmp(exp->def.op.name, "any") == 0
+            || strcmp(exp->def.op.name, "all") == 0) {
+        return &RDB_BOOLEAN;
+    }
+    RDB_raise_operator_not_found(exp->def.op.name, ecp);
+    return NULL;
+}
+
+int
+RDB_check_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
+        const RDB_type *checktyp, RDB_environment *envp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_type *typ = RDB_expr_type_tpltyp(exp, tuptyp, envp, ecp, txp);
+    if (typ == NULL)
+        return RDB_ERROR;
+
+    if (!RDB_type_equals(typ, checktyp)) {
+        RDB_raise_type_mismatch("", ecp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
 /** @addtogroup expr
  * @{
  */
+
+RDB_type *
+RDB_summarize_type(RDB_expr_list *expsp,
+        int avgc, char **avgv, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int i;
+    RDB_type *newtyp;
+    int addc, attrc;
+    RDB_expression *argp;
+    RDB_attr *attrv = NULL;
+    RDB_type *tb1typ = NULL;
+    RDB_type *tb2typ = NULL;
+    int expc = RDB_expr_list_length(expsp);
+
+    if (expc < 2 || (expc % 2) != 0) {
+        RDB_raise_invalid_argument("invalid number of arguments", ecp);
+        return NULL;
+    }
+
+    addc = (expc - 2) / 2;
+    attrc = addc + avgc;
+
+    tb1typ = RDB_expr_type(expsp->firstp, NULL, NULL, NULL, ecp, txp);
+    if (tb1typ == NULL)
+        return NULL;
+    tb2typ = RDB_expr_type(expsp->firstp->nextp, NULL, NULL, NULL, ecp, txp);
+    if (tb2typ == NULL)
+        goto error;
+
+    if (tb2typ->kind != RDB_TP_RELATION) {
+        RDB_raise_invalid_argument("relation type required", ecp);
+        goto error;
+    }
+
+    attrv = RDB_alloc(sizeof (RDB_attr) * attrc, ecp);
+    if (attrv == NULL) {
+        goto error;
+    }
+
+    argp = expsp->firstp->nextp->nextp;
+    for (i = 0; i < addc; i++) {
+        attrv[i].typ = aggr_type(argp, tb1typ->def.basetyp,
+                ecp, txp);
+        if (attrv[i].typ == NULL)
+            goto error;
+        if (argp->nextp->kind != RDB_EX_OBJ) {
+            RDB_raise_invalid_argument("invalid SUMMARIZE argument", ecp);
+            goto error;
+        }
+        attrv[i].name = RDB_obj_string(&argp->nextp->def.obj);
+        if (attrv[i].name == NULL) {
+            RDB_raise_invalid_argument("invalid SUMMARIZE argument", ecp);
+            goto error;
+        }
+        argp = argp->nextp->nextp;
+    }
+    for (i = 0; i < avgc; i++) {
+        attrv[addc + i].name = avgv[i];
+        attrv[addc + i].typ = &RDB_INTEGER;
+    }
+
+    newtyp = RDB_extend_relation_type(tb2typ, attrc, attrv, ecp);
+    if (newtyp == NULL) {
+        goto error;
+    }
+
+    RDB_free(attrv);
+    return newtyp;
+
+error:
+    RDB_free(attrv);
+    return NULL;
+}
 
 /**
  * Get the type of an expression. The type is managed by the expression.
@@ -1113,134 +1243,3 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
 } /* RDB_expr_type */
 
 /*@}*/
-
-/**
- * Return the type of the expression. Use *tpltyp to resolve refs to variables.
- * If the type is non-scalar, it is managed by the expression.
- */
-RDB_type *
-RDB_expr_type_tpltyp(RDB_expression *exp, const RDB_type *tpltyp,
-        RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    return RDB_expr_type(exp, tpltyp != NULL ? &get_tuple_attr_type : NULL,
-            (RDB_type *) tpltyp, envp, ecp, txp);
-}
-
-static RDB_type *
-aggr_type(const RDB_expression *exp, const RDB_type *tpltyp,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    if (exp->kind != RDB_EX_RO_OP) {
-        RDB_raise_invalid_argument("invalid summarize argument", ecp);
-        return NULL;
-    }
-
-    if (strcmp(exp->def.op.name, "count") == 0) {
-        return &RDB_INTEGER;
-    } else if (strcmp(exp->def.op.name, "avg") == 0) {
-        return &RDB_FLOAT;
-    } else if (strcmp(exp->def.op.name, "sum") == 0
-            || strcmp(exp->def.op.name, "max") == 0
-            || strcmp(exp->def.op.name, "min") == 0) {
-        if (exp->def.op.args.firstp == NULL
-                || exp->def.op.args.firstp->nextp != NULL) {
-            RDB_raise_invalid_argument("invalid number of aggregate arguments", ecp);
-            return NULL;
-        }
-        return RDB_expr_type_tpltyp(exp->def.op.args.firstp, tpltyp, NULL, ecp, txp);
-    } else if (strcmp(exp->def.op.name, "any") == 0
-            || strcmp(exp->def.op.name, "all") == 0) {
-        return &RDB_BOOLEAN;
-    }
-    RDB_raise_operator_not_found(exp->def.op.name, ecp);
-    return NULL;
-}
-
-RDB_type *
-RDB_summarize_type(RDB_expr_list *expsp,
-        int avgc, char **avgv, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    int i;
-    RDB_type *newtyp;
-    int addc, attrc;
-    RDB_expression *argp;
-    RDB_attr *attrv = NULL;
-    RDB_type *tb1typ = NULL;
-    RDB_type *tb2typ = NULL;
-    int expc = RDB_expr_list_length(expsp);
-
-    if (expc < 2 || (expc % 2) != 0) {
-        RDB_raise_invalid_argument("invalid number of arguments", ecp);
-        return NULL;
-    }
-
-    addc = (expc - 2) / 2;
-    attrc = addc + avgc;
-
-    tb1typ = RDB_expr_type(expsp->firstp, NULL, NULL, NULL, ecp, txp);
-    if (tb1typ == NULL)
-        return NULL;
-    tb2typ = RDB_expr_type(expsp->firstp->nextp, NULL, NULL, NULL, ecp, txp);
-    if (tb2typ == NULL)
-        goto error;
-
-    if (tb2typ->kind != RDB_TP_RELATION) {
-        RDB_raise_invalid_argument("relation type required", ecp);
-        goto error;
-    }
-
-    attrv = RDB_alloc(sizeof (RDB_attr) * attrc, ecp);
-    if (attrv == NULL) {
-        goto error;
-    }
-
-    argp = expsp->firstp->nextp->nextp;
-    for (i = 0; i < addc; i++) {
-        attrv[i].typ = aggr_type(argp, tb1typ->def.basetyp,
-                ecp, txp);
-        if (attrv[i].typ == NULL)
-            goto error;
-        if (argp->nextp->kind != RDB_EX_OBJ) {
-            RDB_raise_invalid_argument("invalid SUMMARIZE argument", ecp);
-            goto error;
-        }
-        attrv[i].name = RDB_obj_string(&argp->nextp->def.obj);
-        if (attrv[i].name == NULL) {
-            RDB_raise_invalid_argument("invalid SUMMARIZE argument", ecp);
-            goto error;
-        }
-        argp = argp->nextp->nextp;
-    }
-    for (i = 0; i < avgc; i++) {
-        attrv[addc + i].name = avgv[i];
-        attrv[addc + i].typ = &RDB_INTEGER;
-    }
-
-    newtyp = RDB_extend_relation_type(tb2typ, attrc, attrv, ecp);
-    if (newtyp == NULL) {
-        goto error;
-    }
-
-    RDB_free(attrv);
-    return newtyp;
-
-error:
-    RDB_free(attrv);
-    return NULL;
-}
-
-int
-RDB_check_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
-        const RDB_type *checktyp, RDB_environment *envp,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_type *typ = RDB_expr_type_tpltyp(exp, tuptyp, envp, ecp, txp);
-    if (typ == NULL)
-        return RDB_ERROR;
-
-    if (!RDB_type_equals(typ, checktyp)) {
-        RDB_raise_type_mismatch("", ecp);
-        return RDB_ERROR;
-    }
-    return RDB_OK;
-}

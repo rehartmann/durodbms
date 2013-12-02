@@ -161,22 +161,6 @@ void
 RDB_expr_list_set_lastp(RDB_expr_list *);
 
 /*
- * Extend the tuple type pointed to by typ by the attributes given by
- * attrv and return the new tuple type.
- */
-RDB_type *
-RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
-        RDB_exec_context *);
-
-/*
- * Extend the relation type pointed to by typ by the attributes given by
- * attrv and return the new relation type.
- */
-RDB_type *
-RDB_extend_relation_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
-        RDB_exec_context *);
-
-/*
  * Join the tuple types pointed to by typ1 and typ2 and store a pointer to
  * The new type in the location pointed to by newtypp.
  * The new type has the attributes from both types.
@@ -199,58 +183,8 @@ RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
                      RDB_exec_context *);
 
 RDB_type *
-RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
-                          RDB_exec_context *ecp);
-
-/*
- * Create a type that is a projection of the relation type pointed to by typ
- * over the attributes given by attrc and attrv.
- * The new type in the location pointed to by newtypp.
- * If one of the attributes in attrv is not found in the relation type,
- * RDB_INVALID_ARGUMENT is returned.
- */
-RDB_type *
-RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
-                          RDB_exec_context *ecp);
-
-/*
- * Rename the attributes of the tuple type pointed to by typ according to renc
- * and renv return the new tuple type.
- */
-RDB_type *
-RDB_rename_tuple_type(const RDB_type *typ, int renc, const RDB_renaming renv[],
-        RDB_exec_context *);
-
-RDB_type *
-RDB_rename_relation_type(const RDB_type *typ, int renc, const RDB_renaming renv[],
-        RDB_exec_context *);
-
-RDB_type *
 RDB_summarize_type(RDB_expr_list *, int avgc, char **avgv,
         RDB_exec_context *ecp, RDB_transaction *txp);
-
-RDB_type *
-RDB_wrap_tuple_type(const RDB_type *typ, int wrapc,
-        const RDB_wrapping wrapv[], RDB_exec_context *ecp);
-
-RDB_type *
-RDB_wrap_relation_type(const RDB_type *typ, int wrapc,
-        const RDB_wrapping wrapv[], RDB_exec_context *ecp);
-
-RDB_type *
-RDB_unwrap_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
-        RDB_exec_context *);
-
-RDB_type *
-RDB_unwrap_relation_type(const RDB_type *typ, int attrc, char *attrv[],
-        RDB_exec_context *);
-
-RDB_type *
-RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
-        RDB_exec_context *);
-
-RDB_type *
-RDB_ungroup_type(RDB_type *typ, const char *attr, RDB_exec_context *);
 
 RDB_string_vec *
 RDB_dup_rename_keys(int keyc, const RDB_string_vec keyv[], RDB_expression *,
@@ -413,6 +347,14 @@ RDB_read_constraints(RDB_exec_context *, RDB_transaction *);
 int
 RDB_check_constraints(const RDB_constraint *, RDB_exec_context *,
         RDB_transaction *);
+
+int
+RDB_apply_constraints_i(int, const RDB_ma_insert[],
+        int, const RDB_ma_update[],
+        int, const RDB_ma_delete[],
+        int, const RDB_ma_copy[],
+        RDB_apply_constraint_fn *,
+        RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_add_del_recmap(RDB_transaction *, RDB_recmap *, RDB_exec_context *);

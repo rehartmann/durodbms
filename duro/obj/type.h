@@ -185,4 +185,51 @@ RDB_type_equals(const RDB_type *, const RDB_type *);
 RDB_attr *
 RDB_tuple_type_attr(const RDB_type *, const char *attrname);
 
+RDB_type *
+RDB_wrap_tuple_type(const RDB_type *typ, int wrapc,
+        const RDB_wrapping wrapv[], RDB_exec_context *ecp);
+
+RDB_type *
+RDB_wrap_relation_type(const RDB_type *typ, int wrapc,
+        const RDB_wrapping wrapv[], RDB_exec_context *ecp);
+
+RDB_type *
+RDB_unwrap_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
+        RDB_exec_context *);
+
+RDB_type *
+RDB_unwrap_relation_type(const RDB_type *typ, int attrc, char *attrv[],
+        RDB_exec_context *);
+
+RDB_type *
+RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
+        RDB_exec_context *);
+
+RDB_type *
+RDB_extend_relation_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
+        RDB_exec_context *);
+
+RDB_type *
+RDB_project_tuple_type(const RDB_type *typ, int attrc, const char *attrv[],
+                          RDB_exec_context *);
+
+RDB_type *
+RDB_project_relation_type(const RDB_type *typ, int, const char *[],
+                          RDB_exec_context *);
+
+RDB_type *
+RDB_group_type(RDB_type *, int, char *[], const char *,
+        RDB_exec_context *);
+
+RDB_type *
+RDB_ungroup_type(RDB_type *typ, const char *attr, RDB_exec_context *);
+
+RDB_type *
+RDB_rename_tuple_type(const RDB_type *, int, const RDB_renaming[],
+        RDB_exec_context *);
+
+RDB_type *
+RDB_rename_relation_type(const RDB_type *, int, const RDB_renaming[],
+        RDB_exec_context *);
+
 #endif /* TYPE_H_ */

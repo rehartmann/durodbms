@@ -531,7 +531,7 @@ MAP {
     RETURN_TOKEN(TOK_CONCAT);
 }
 
-[a-zA-Z][a-zA-Z0-9_#]* {
+[a-zA-Z][a-zA-Z0-9_#]*\'? {
     int i;
 
     if (RDB_parse_case_insensitive) {

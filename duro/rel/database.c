@@ -1567,6 +1567,8 @@ RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
                 RDB_hashmap_put(&dbp->tbmap, name, tbp);
             }
         }
+
+        /* !! rename sequences */
     }
     
     if (tbp->val.tb.name != NULL)

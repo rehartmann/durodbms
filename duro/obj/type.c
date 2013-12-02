@@ -495,6 +495,10 @@ RDB_type_attr_type(const RDB_type *typ, const char *name)
     return attrp->typ;
 }
 
+/*
+ * Extend the tuple type pointed to by typ by the attributes given by
+ * attrv and return the new tuple type.
+ */
 RDB_type *
 RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
         RDB_exec_context *ecp)
@@ -566,6 +570,10 @@ error:
     return NULL;
 }
 
+/*
+ * Extend the relation type pointed to by typ by the attributes given by
+ * attrv and return the new relation type.
+ */
 RDB_type *
 RDB_extend_relation_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
         RDB_exec_context *ecp)
@@ -714,7 +722,7 @@ RDB_tuple_type_attr(const RDB_type *tpltyp, const char *attrname)
 }
 
 RDB_type *
-RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
+RDB_project_tuple_type(const RDB_type *typ, int attrc, const char *attrv[],
                        RDB_exec_context *ecp)
 {
     RDB_type *tuptyp;
@@ -767,8 +775,15 @@ error:
     return NULL;
 }
 
+/*
+ * Create a type that is a projection of the relation type pointed to by typ
+ * over the attributes given by attrc and attrv.
+ * The new type in the location pointed to by newtypp.
+ * If one of the attributes in attrv is not found in the relation type,
+ * RDB_INVALID_ARGUMENT is returned.
+ */
 RDB_type *
-RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
+RDB_project_relation_type(const RDB_type *typ, int attrc, const char *attrv[],
                           RDB_exec_context *ecp)
 {
     RDB_type *reltyp = RDB_alloc(sizeof (RDB_type), ecp);
@@ -800,7 +815,10 @@ RDB_find_rename_from(int renc, const RDB_renaming renv[], const char *name)
     return i;
 }
 
-RDB_type *
+/*
+ * Rename the attributes of the tuple type *typ according to renc
+ * and renv and return the new tuple type.
+ */RDB_type *
 RDB_rename_tuple_type(const RDB_type *typ, int renc, const RDB_renaming renv[],
         RDB_exec_context *ecp)
 {
