@@ -217,7 +217,6 @@ RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp)
      */
     if (txp->dbp != NULL) {
         RDB_set_user_tables_check(txp->dbp, ecp);
-        RDB_close_seq_container(RDB_db_env(txp->dbp));
     }
 
     return RDB_OK;

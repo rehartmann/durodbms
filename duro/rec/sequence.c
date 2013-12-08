@@ -13,30 +13,42 @@
 #include <errno.h>
 
 int
-RDB_open_sequence(const char *name, const char *filename,
+RDB_open_sequence(const char *cname, const char *filename,
         RDB_environment *envp, DB_TXN *txn, RDB_sequence **seqpp)
 {
     DBT key;
     int ret;
+    DB *dbp;
+
     RDB_sequence *seqp = malloc(sizeof(RDB_sequence));
     if (seqp == NULL)
         return ENOMEM;
+    seqp->filenamp = RDB_dup_str(filename);
+    if (seqp->filenamp == NULL)
+        return ENOMEM;
+    seqp->cnamp = RDB_dup_str(cname);
+    if (seqp->cnamp == NULL)
+        return ENOMEM;
 
-    if (envp->seq_dbp == NULL) {
-        ret = db_create(&envp->seq_dbp, envp->envp, 0);
-        if (ret != 0)
-            return ret;
-        ret = envp->seq_dbp->open(envp->seq_dbp, txn, filename,
-                "$SEQUENCE", DB_HASH, DB_CREATE, 0664);
-        if (ret != 0)
-            return ret;
-    }
+    ret = db_create(&dbp, envp->envp, 0);
+    if (ret != 0)
+        return ret;
+
+    /*
+     * Use a database for each sequence because only databases can be renamed.
+     * The sequence key is always the same.
+     */
+
+    ret = dbp->open(dbp, txn, filename,
+            cname, DB_HASH, DB_CREATE, 0664);
+    if (ret != 0)
+        return ret;
 
     memset(&key, 0, sizeof(DBT));
-    key.data = (char *) name;
-    key.size = (u_int32_t) strlen(name);
+    key.data = "SEQ";
+    key.size = (u_int32_t) sizeof("SEQ");
 
-    ret = db_sequence_create(&seqp->seq, envp->seq_dbp, 0);
+    ret = db_sequence_create(&seqp->seq, dbp, 0);
     if (ret != 0)
         return ret;
 
@@ -55,15 +67,34 @@ RDB_open_sequence(const char *name, const char *filename,
 int
 RDB_close_sequence(RDB_sequence *seqp)
 {
-    int ret = seqp->seq->close(seqp->seq, 0);
+    DB *dbp;
+    int ret = seqp->seq->get_db(seqp->seq, &dbp);
+    if (ret != 0)
+        return ret;
+    ret = seqp->seq->close(seqp->seq, 0);
+    dbp->close(dbp, 0);
+    free(seqp->filenamp);
+    free(seqp->cnamp);
     free(seqp);
     return ret;
 }
 
+/*
+ * Delete the sequence and its BDB db.
+ */
 int
-RDB_delete_sequence(RDB_sequence *seqp, DB_TXN *txn)
+RDB_delete_sequence(RDB_sequence *seqp, RDB_environment *envp, DB_TXN *txn)
 {
-    int ret = seqp->seq->remove(seqp->seq, txn, 0);
+    DB *dbp;
+    int ret = seqp->seq->get_db(seqp->seq, &dbp);
+    if (ret != 0)
+        return ret;
+
+    ret = seqp->seq->remove(seqp->seq, txn, 0);
+    dbp->close(dbp, 0);
+    envp->envp->dbremove(envp->envp, txn, seqp->filenamp, seqp->cnamp, 0);
+    free(seqp->filenamp);
+    free(seqp->cnamp);
     free(seqp);
     return ret;
 }
@@ -77,4 +108,15 @@ RDB_sequence_next(RDB_sequence *seqp, DB_TXN *txn, RDB_int *valp)
         return ret;
     *valp = (RDB_int) seqval;
     return 0;
+}
+
+/*
+ * Rename a sequence. The sequence must not be open.
+ */
+int
+RDB_rename_sequence(const char *oldname, const char *newname,
+        const char *filename, RDB_environment *envp, DB_TXN *txn)
+{
+    /* Rename database */
+    return envp->envp->dbrename(envp->envp, txn, filename, oldname, newname, 0);
 }

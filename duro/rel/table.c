@@ -23,12 +23,12 @@
 #include <assert.h>
 
 int
-RDB_sequence_name(const char *tbname, const char *attrname, RDB_object *resultp,
+RDB_seq_container_name(const char *tbname, const char *attrname, RDB_object *resultp,
         RDB_exec_context *ecp)
 {
     if (RDB_string_to_obj(resultp, tbname, ecp) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_append_string(resultp, ".", ecp) != RDB_OK)
+    if (RDB_append_string(resultp, "$", ecp) != RDB_OK)
         return RDB_ERROR;
     return RDB_append_string(resultp, attrname, ecp);
 }
@@ -63,13 +63,12 @@ RDB_new_rtable(const char *name, RDB_bool persistent,
     return tbp;
 }
 
-static int
-cleanup_tb(RDB_object *tbp, RDB_exec_context *ecp)
+void
+RDB_close_sequences(RDB_object *tbp)
 {
-    int ret;
+    RDB_attr_default *entryp;
     RDB_hashmap_iter hiter;
     void *valp;
-    RDB_attr_default *entryp;
 
     if (tbp->val.tb.default_map != NULL) {
         RDB_init_hashmap_iter(&hiter, tbp->val.tb.default_map);
@@ -82,6 +81,14 @@ cleanup_tb(RDB_object *tbp, RDB_exec_context *ecp)
         }
         RDB_destroy_hashmap_iter(&hiter);
     }
+}
+
+static int
+cleanup_tb(RDB_object *tbp, RDB_exec_context *ecp)
+{
+    int ret;
+
+    RDB_close_sequences(tbp);
 
     if (tbp->val.tb.stp == NULL)
         return RDB_OK;

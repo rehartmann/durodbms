@@ -1370,7 +1370,7 @@ test serial {system-generated attribute values} -setup $SETUP -cleanup $CLEANUP 
         commit;
 
         begin tx;
-        try
+        try ;
             insert r tup {no 2, name 'Tst'};
         catch err element_exists_error;
             put_line('insert caught');
@@ -1388,4 +1388,41 @@ test serial {system-generated attribute values} -setup $SETUP -cleanup $CLEANUP 
 } -result {insert caught
 1 Abc
 2 Def
+}
+
+test rename {rename table with system key} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+        var r1 real relation {no int, name string} key {no} default {no serial(), name 'John Doe'};
+        insert r1 tup{};
+        commit;
+    }
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+        rename var r1 as r2;
+        commit;
+    }
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+        insert r2 tup{};
+        var tp tup same_heading_as(r2);
+        for tp in r2 order (no asc);
+            put(tp.no);
+            put(' ');
+            put_line(tp.name);
+        end for;
+        drop var r2;
+        commit;
+    }
+} -result {1 John Doe
+2 John Doe
 }

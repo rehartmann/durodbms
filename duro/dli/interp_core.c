@@ -1056,6 +1056,39 @@ Duro_exec_vardrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
 }
 
 int
+Duro_exec_rename(const RDB_parse_node *nodep, RDB_exec_context *ecp)
+{
+    RDB_object *tbp;
+    const char *srcname = RDB_expr_var_name(nodep->val.children.firstp->exp);
+    const char *dstname = RDB_expr_var_name(
+            nodep->val.children.firstp->nextp->nextp->exp);
+
+    if (Duro_txnp == NULL) {
+        RDB_raise_no_running_tx(ecp);
+        return RDB_ERROR;
+    }
+
+    /*
+     * If a foreach loop is running, check if the table
+     * depends on the foreach expression
+     */
+
+    tbp = RDB_get_table(srcname, ecp, &Duro_txnp->tx);
+    if (tbp == NULL)
+        return RDB_ERROR;
+
+    if (check_foreach_depends(tbp, ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    if (RDB_set_table_name(tbp, dstname, ecp, &Duro_txnp->tx) != RDB_OK)
+        return RDB_ERROR;
+
+    if (RDB_parse_get_interactive())
+        printf("Table %s renamed.\n", srcname);
+    return RDB_OK;
+}
+
+int
 Duro_put_var(const char *name, RDB_object *objp, RDB_exec_context *ecp)
 {
     if (RDB_hashmap_put(&current_varmapp->map, name, objp)

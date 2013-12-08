@@ -672,13 +672,6 @@ replace_targets(RDB_expression *exp,
                 return RDB_table_ref(tbp, ecp);
             }
             return RDB_var_ref(exp->def.varname, ecp);
-
-
-            if (newexp == NULL)
-                return NULL;
-
-
-            return newexp;
     }
     abort();
 }

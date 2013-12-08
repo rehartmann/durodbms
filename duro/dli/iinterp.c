@@ -2365,6 +2365,9 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
             case TOK_MAP:
                 ret = exec_map(firstchildp->nextp, ecp);
                 break;
+            case TOK_RENAME:
+                ret = Duro_exec_rename(firstchildp->nextp->nextp, ecp);
+                break;
             default:
                 RDB_raise_internal("invalid token", ecp);
                 ret = RDB_ERROR;

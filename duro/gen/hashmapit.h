@@ -13,7 +13,7 @@ typedef struct {
 void
 RDB_init_hashmap_iter(RDB_hashmap_iter *, RDB_hashmap *);
 
-#define RDB_destroy_hashmap_iter(hp)
+#define RDB_destroy_hashmap_iter(iter)
 
 const char *
 RDB_hashmap_next(RDB_hashmap_iter *, void **);

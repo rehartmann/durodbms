@@ -13,6 +13,7 @@
 #include "serialize.h"
 #include <gen/strfns.h>
 #include <gen/strdump.h>
+#include <gen/hashmapit.h>
 #include <obj/key.h>
 #include <obj/objinternal.h>
 
@@ -2126,13 +2127,13 @@ RDB_cat_get_rtable(RDB_object *tbp, RDB_exec_context *ecp,
     RDB_bool usr;
     int ret;
     RDB_int i;
-    int defvalc;
     int keyc;
-    RDB_attr *defvalattrv = NULL;
     RDB_string_vec *keyv;
     RDB_type *tbtyp;
     int indexc;
     RDB_tbindex *indexv;
+    int defvalc;
+    RDB_hashmap *defvalmap = NULL;
     char *name = tbp->val.tb.name;
     const char *recmapname = NULL;
 
@@ -2191,37 +2192,37 @@ RDB_cat_get_rtable(RDB_object *tbp, RDB_exec_context *ecp,
         goto error;
     }
 
+    /* Insert default values into map */
     defvalc = RDB_array_length(&arr, ecp);
     if (defvalc > 0) {
-        defvalattrv = RDB_alloc(sizeof (RDB_attr) * defvalc, ecp);
-        if (defvalattrv == NULL)
+        defvalmap = RDB_alloc(sizeof (RDB_hashmap), ecp);
+        if (defvalmap == NULL)
             goto error;
-    }
+        RDB_init_hashmap(defvalmap, 256);
+        for (i = 0; i < defvalc; i++) {
+            RDB_attr_default *entryp;
+            int pos = 0;
 
-    for (i = 0; i < defvalc; i++)
-        defvalattrv[i].defaultp = NULL;
+            tplp = RDB_array_get(&arr, i, ecp);
+            if (tplp == NULL)
+                goto error;
 
-    for (i = 0; i < defvalc; i++) {
-        int pos = 0;
-
-        tplp = RDB_array_get(&arr, i, ecp);
-        if (tplp == NULL)
-            goto error;
-
-        if (RDB_obj_comp(RDB_tuple_get(tplp, "attrname"), "name",
-                &attrnameobj, NULL, ecp, txp) != RDB_OK)
-            goto error;
-        defvalattrv[i].name = RDB_obj_string(&attrnameobj);
-
-        /* Set default value */
-        defvalattrv[i].defaultp = RDB_alloc(sizeof (RDB_object), ecp);
-        if (defvalattrv[i].defaultp == NULL) {
-            goto error;
-        }
-
-        if (RDB_deserialize_expr(RDB_tuple_get(tplp, "default_value"), &pos,
-                ecp, txp, &defvalattrv[i].defaultp) != RDB_OK) {
-            goto error;
+            if (RDB_obj_comp(RDB_tuple_get(tplp, "attrname"), "name",
+                    &attrnameobj, NULL, ecp, txp) != RDB_OK)
+                goto error;
+            entryp = RDB_alloc(sizeof(RDB_attr_default), ecp);
+            if (entryp == NULL)
+                goto error;
+            entryp->seqp = NULL;
+            if (RDB_deserialize_expr(RDB_tuple_get(tplp, "default_value"), &pos,
+                    ecp, txp, &entryp->exp) != RDB_OK) {
+                goto error;
+            }
+            ret = RDB_hashmap_put(defvalmap, RDB_obj_string(&attrnameobj), entryp);
+            if (ret != RDB_OK) {
+                RDB_errcode_to_error(ret, ecp);
+                goto error;
+            }
         }
     }
 
@@ -2280,10 +2281,6 @@ RDB_cat_get_rtable(RDB_object *tbp, RDB_exec_context *ecp,
     tbp->val.tb.name = name;
     RDB_free_keys(keyc, keyv);
 
-    if (RDB_set_defvals(tbp, defvalc, defvalattrv, ecp) != RDB_OK) {
-        goto error;
-    }
-
     indexc = RDB_cat_get_indexes(name, txp->dbp->dbrootp, ecp, txp, &indexv);
     if (indexc < 0) {
         ret = indexc;
@@ -2304,6 +2301,8 @@ RDB_cat_get_rtable(RDB_object *tbp, RDB_exec_context *ecp,
     if (RDB_assoc_table_db(tbp, txp->dbp, ecp) != RDB_OK)
         goto error;
 
+    tbp->val.tb.default_map = defvalmap;
+
     RDB_destroy_obj(&arr, ecp);
 
     RDB_drop_table(tmptb1p, ecp, txp);
@@ -2313,9 +2312,6 @@ RDB_cat_get_rtable(RDB_object *tbp, RDB_exec_context *ecp,
 
     RDB_destroy_obj(&tpl, ecp);
     RDB_destroy_obj(&attrnameobj, ecp);
-
-    if (defvalc > 0)
-        RDB_free(defvalattrv);
 
     return RDB_OK;
 
@@ -2332,12 +2328,18 @@ error:
     RDB_destroy_obj(&tpl, ecp);
     RDB_destroy_obj(&attrnameobj, ecp);
 
-    if (defvalattrv != NULL) {
-        for (i = 0; i < defvalc; i++)
-            if (defvalattrv[i].defaultp != NULL) {
-                RDB_del_expr(defvalattrv[i].defaultp, ecp);
-            }
-        RDB_free(defvalattrv);
+    if (defvalmap != NULL) {
+        RDB_hashmap_iter hiter;
+        void *valp;
+
+        RDB_init_hashmap_iter(&hiter, tbp->val.tb.default_map);
+        while (RDB_hashmap_next(&hiter, &valp) != NULL) {
+            RDB_free(valp);
+        }
+        RDB_destroy_hashmap_iter(&hiter);
+        RDB_destroy_hashmap(tbp->val.tb.default_map);
+        RDB_free(tbp->val.tb.default_map);
+        tbp->val.tb.default_map = NULL;
     }
 
     return RDB_ERROR;
@@ -2659,20 +2661,34 @@ RDB_cat_rename_table(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
     }
 
     if (tbp->val.tb.exp == NULL) {
-        ret = RDB_update(txp->dbp->dbrootp->rtables_tbp, condp, 1, &upd, ecp, txp);
-        if (ret == RDB_ERROR)
-            goto cleanup;
-        ret = RDB_update(txp->dbp->dbrootp->table_attr_tbp, condp, 1, &upd, ecp, txp);
-        if (ret == RDB_ERROR)
-            goto cleanup;
-        ret = RDB_update(txp->dbp->dbrootp->table_attr_defvals_tbp, condp,
-                1, &upd, ecp, txp);
-        if (ret == RDB_ERROR)
-            goto cleanup;
-        ret = RDB_update(txp->dbp->dbrootp->keys_tbp, condp, 1, &upd, ecp, txp);
-        if (ret == RDB_ERROR)
-            goto cleanup;
-        ret = RDB_update(txp->dbp->dbrootp->indexes_tbp, condp, 1, &upd, ecp, txp);
+        RDB_ma_update updv[5];
+
+        updv[0].condp = condp;
+        updv[0].tbp = txp->dbp->dbrootp->rtables_tbp;
+        updv[0].updc = 1;
+        updv[0].updv = &upd;
+
+        updv[1].condp = condp;
+        updv[1].tbp = txp->dbp->dbrootp->table_attr_tbp;
+        updv[1].updc = 1;
+        updv[1].updv = &upd;
+
+        updv[2].condp = condp;
+        updv[2].tbp = txp->dbp->dbrootp->table_attr_defvals_tbp;
+        updv[2].updc = 1;
+        updv[2].updv = &upd;
+
+        updv[3].condp = condp;
+        updv[3].tbp = txp->dbp->dbrootp->keys_tbp;
+        updv[3].updc = 1;
+        updv[3].updv = &upd;
+
+        updv[4].condp = condp;
+        updv[4].tbp = txp->dbp->dbrootp->indexes_tbp;
+        updv[4].updc = 1;
+        updv[4].updv = &upd;
+
+        ret = RDB_multi_assign(0, NULL, 5, updv, 0, NULL, 0, NULL, ecp, txp);
         if (ret == RDB_ERROR)
             goto cleanup;
     } else {

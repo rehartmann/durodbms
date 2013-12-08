@@ -69,15 +69,16 @@ RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
                     RDB_object seqname;
                     RDB_init_obj(&seqname);
 
-                    if (RDB_sequence_name(RDB_table_name(tbp),
-                            tuptyp->def.tuple.attrv[i].name, &seqname, ecp) != RDB_OK) {
+                    if (RDB_seq_container_name(RDB_table_name(tbp),
+                                tuptyp->def.tuple.attrv[i].name, &seqname,
+                                ecp) != RDB_OK) {
                         RDB_destroy_obj(&seqname, ecp);
                         ret = RDB_ERROR;
                         goto cleanup;
                     }
 
-                    ret = RDB_open_sequence(RDB_obj_string(&seqname), RDB_DATAFILE,
-                            RDB_db_env(RDB_tx_db(txp)), txp->txid, &dflp->seqp);
+                    ret = RDB_open_sequence(RDB_obj_string(&seqname),
+                            RDB_DATAFILE, RDB_db_env(RDB_tx_db(txp)), txp->txid, &dflp->seqp);
                     RDB_destroy_obj(&seqname, ecp);
                     if (ret != 0) {
                         RDB_handle_errcode(ret, ecp, txp);

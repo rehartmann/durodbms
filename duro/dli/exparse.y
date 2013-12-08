@@ -479,7 +479,21 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
-    }    
+    }
+    | TOK_RENAME TOK_VAR renaming ';' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            RDB_parse_del_node($4, RDB_parse_ecp);
+            YYABORT;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+    }
     | ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {

@@ -85,6 +85,8 @@ close_table(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp)
     RDB_dbroot *dbrootp;
     RDB_database *dbp;
 
+    RDB_close_sequences(tbp);
+
     if (tbp->val.tb.stp != NULL) {
         if (RDB_close_stored_table(tbp->val.tb.stp, ecp) != RDB_OK)
             return RDB_ERROR;
@@ -1366,21 +1368,21 @@ delete_sequences(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             } else {
                 RDB_object seqname;
                 RDB_init_obj(&seqname);
-                if (RDB_sequence_name(RDB_table_name(tbp),
-                        attrname, &seqname, ecp) != RDB_OK) {
+                if (RDB_seq_container_name(RDB_table_name(tbp), attrname, &seqname, ecp) != RDB_OK) {
                     RDB_destroy_obj(&seqname, ecp);
                     RDB_destroy_hashmap_iter(&hiter);
                     return RDB_ERROR;
                 }
                 ret = RDB_open_sequence(RDB_obj_string(&seqname), RDB_DATAFILE,
                             RDB_db_env(RDB_tx_db(txp)), txp->txid, &seqp);
+                RDB_destroy_obj(&seqname, ecp);
                 if (ret != 0) {
                     RDB_destroy_hashmap_iter(&hiter);
                     RDB_handle_errcode(ret, ecp, txp);
                     return RDB_ERROR;
                 }
             }
-            ret = RDB_delete_sequence(seqp, txp->txid);
+            ret = RDB_delete_sequence(seqp, RDB_db_env(RDB_tx_db(txp)), txp->txid);
             dflp->seqp = NULL;
             if (ret != 0) {
                 RDB_destroy_hashmap_iter(&hiter);
@@ -1568,9 +1570,53 @@ RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
             }
         }
 
-        /* !! rename sequences */
+        /* Rename sequences */
+        if (tbp->val.tb.default_map != NULL) {
+            RDB_attr_default *entryp;
+            RDB_hashmap_iter hiter;
+            void *valp;
+            const char *attrnamp;
+
+            RDB_init_hashmap_iter(&hiter, tbp->val.tb.default_map);
+            while ((attrnamp = RDB_hashmap_next(&hiter, &valp)) != NULL) {
+                entryp = valp;
+                if (entryp != NULL && RDB_expr_is_serial(entryp->exp)) {
+                    RDB_object oldname;
+                    RDB_object newname;
+
+                    RDB_init_obj(&oldname);
+                    RDB_init_obj(&newname);
+                    if (entryp->seqp != NULL) {
+                        RDB_close_sequence(entryp->seqp);
+                        entryp->seqp = NULL;
+                    }
+
+                    if (RDB_seq_container_name(tbp->val.tb.name, attrnamp,
+                            &oldname, ecp) != RDB_OK) {
+                        RDB_destroy_obj(&oldname, ecp);
+                        RDB_destroy_obj(&newname, ecp);
+                        return RDB_ERROR;
+                    }
+                    if (RDB_seq_container_name(name, attrnamp, &newname, ecp) != RDB_OK) {
+                        RDB_destroy_obj(&oldname, ecp);
+                        RDB_destroy_obj(&newname, ecp);
+                        return RDB_ERROR;
+                    }
+                    ret = RDB_rename_sequence(RDB_obj_string(&oldname),
+                            RDB_obj_string(&newname), RDB_DATAFILE,
+                            RDB_db_env(RDB_tx_db(txp)), txp->txid);
+                    RDB_destroy_obj(&oldname, ecp);
+                    RDB_destroy_obj(&newname, ecp);
+                    if (ret != 0) {
+                        RDB_handle_errcode(ret, ecp, txp);
+                        return RDB_ERROR;
+                    }
+                }
+            }
+            RDB_destroy_hashmap_iter(&hiter);
+        }
     }
-    
+
     if (tbp->val.tb.name != NULL)
         RDB_free(tbp->val.tb.name);
     tbp->val.tb.name = RDB_dup_str(name);

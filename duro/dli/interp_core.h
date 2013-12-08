@@ -125,6 +125,9 @@ Duro_exec_vardef_virtual(RDB_parse_node *, RDB_exec_context *);
 int
 Duro_exec_vardrop(const RDB_parse_node *, RDB_exec_context *);
 
+int
+Duro_exec_rename(const RDB_parse_node *, RDB_exec_context *);
+
 const char *
 Duro_type_in_use(RDB_type *);
 
