@@ -4,6 +4,12 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 0.20
 
+- Implemented transition constraints.
+
+- Fixed bugs in the handling of default values.
+
+- Implemented system keys using serial().
+
 - Refactored the code, moving functions which do not depend on persistence to
   directory obj.
 

@@ -667,9 +667,8 @@ replace_targets(RDB_expression *exp,
                 tbname[lpos] = '\0';
                 tbp = RDB_get_table(tbname, ecp, txp);
                 RDB_free(tbname);
-                if (tbp == NULL)
-                    return NULL;
-                return RDB_table_ref(tbp, ecp);
+                if (tbp != NULL)
+                    return RDB_table_ref(tbp, ecp);
             }
             return RDB_var_ref(exp->def.varname, ecp);
     }

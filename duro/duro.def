@@ -64,6 +64,7 @@ RDB_subset
 RDB_extract_tuple
 RDB_table_is_empty
 RDB_table_is_real
+RDB_table_is_stored
 RDB_table_is_persistent
 RDB_cardinality
 RDB_tuple_set

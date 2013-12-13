@@ -567,6 +567,21 @@ RDB_table_is_real(const RDB_object *tbp)
 }
 
 /**
+ * RDB_table_is_stored checks if the table *<var>tbp</var>
+is physically stored.
+
+@returns
+
+RDB_TRUE if *<var>tbp</var> is a physically stored table, RDB_FALSE if it
+is not.
+ */
+RDB_bool
+RDB_table_is_stored(const RDB_object *tbp)
+{
+    return RDB_table_is_real(tbp);
+}
+
+/**
  * Check if the table *<var>tbp</var> is a user table.
 
 @returns

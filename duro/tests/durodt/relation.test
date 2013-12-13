@@ -1001,6 +1001,30 @@ test refconstraint {referential constraint} -setup $SETUP -cleanup $CLEANUP -bod
 delete from customers caught
 }
 
+test trconstraint {Transition constraint} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt -e dbenv << {
+        current_db := 'D';
+        begin transaction;
+
+        var rs real rel { id int, name string, status int } key { id };
+
+        constraint trc is_empty(
+                (((rs' { id, status }) rename { status as status' })
+                join (rs { id, status })) where status' > status);
+
+        insert rs tup { id 1, name 'yo', status 0 };
+
+        update rs where id = 1 { status := 1 };
+
+        try
+            update rs where id = 1 { status := 0 };
+        catch err predicate_violation_error;
+            put_line('decreasing status caught');
+        end try;
+    }
+} -result {decreasing status caught
+}
+
 test matching_index {MINUS, INTERSECT, SEMIJOIN, SEMIMINUS with index on table #2} -setup $SETUP -cleanup $CLEANUP -match glob -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';

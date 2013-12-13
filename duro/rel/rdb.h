@@ -322,6 +322,9 @@ RDB_bool
 RDB_table_is_real(const RDB_object *);
 
 RDB_bool
+RDB_table_is_stored(const RDB_object *);
+
+RDB_bool
 RDB_table_is_user(const RDB_object *);
 
 int

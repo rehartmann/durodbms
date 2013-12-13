@@ -11,8 +11,8 @@
 #include "stable.h"
 #include "tostr.h"
 #include <obj/objinternal.h>
-
 #include <gen/strfns.h>
+
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
@@ -1539,18 +1539,26 @@ index_joins(RDB_expression *otexp, RDB_expression *itexp,
         RDB_expression **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_object *tbp;
     int tbc;
     int i;
+    RDB_object *tbp = itexp->def.tbref.tbp;
     RDB_type *ottyp = RDB_expr_type(otexp, NULL, NULL, NULL, ecp, txp);
     if (ottyp == NULL)
         return RDB_ERROR;
+
+    if (!RDB_table_is_stored(tbp))
+        return 0;
+
+    if (tbp->val.tb.stp == NULL) {
+        if (RDB_create_stored_table(tbp, RDB_db_env(RDB_tx_db(txp)), NULL,
+                ecp, txp) != RDB_OK)
+            return RDB_ERROR;
+    }
 
     /*
      * Use indexes of table #2 which cover table #1
      */
 
-    tbp = itexp->def.tbref.tbp;
     tbc = 0;
     for (i = 0; i < tbp->val.tb.stp->indexc && tbc < cap; i++) {
         if (table_covers_index(ottyp, &tbp->val.tb.stp->indexv[i])) {

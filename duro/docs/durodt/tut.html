@@ -690,6 +690,32 @@ Constraint orders_customers dropped.
 D>
 </pre>
 
+<h3>Transition constraints</h3>
+
+<p>A constraint may refer to the value of a table as it was prior to the update
+by adding a "'" to the name of the table.
+
+<p>For example, if we have a table defined as follows:
+
+<pre>
+D> var rs real rel { id int, status int } key { id };
+Table rs created.
+D>
+</pre>
+
+<p>The following constraint says that the value of the attribute <var>status</var> may never decrease:
+
+<pre>
+D> constraint trc is_empty(((rs' rename { status as status' }) join rs) where status' > status);
+Constraint trc created.
+D> insert rs tup { id 1, status 0 };
+1 element affected.
+D> update rs where id = 1 { status := 1 };
+1 element affected.
+D> update rs where id = 1 { status := 0 };
+predicate_violation_error: trc
+</pre>
+
 <h2 id="arrays">Arrays</h2>
 
 <p>Example: Printing all tuples of table r in an unspecified order:
