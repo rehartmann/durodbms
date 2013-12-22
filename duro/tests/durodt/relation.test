@@ -1414,7 +1414,7 @@ test serial {system-generated attribute values} -setup $SETUP -cleanup $CLEANUP 
 2 Def
 }
 
-test rename {rename table with system key} -setup $SETUP -cleanup $CLEANUP -body {
+test rename_real {rename table with system key} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -1450,3 +1450,25 @@ test rename {rename table with system key} -setup $SETUP -cleanup $CLEANUP -body
 } -result {1 John Doe
 2 John Doe
 }
+
+test rename_real {rename table with system key} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+        var r real relation {no int, name string}
+                init rel { tup { no 1, name 'yo' },  tup { no 2, name 'yoyo' } }
+                key {no};
+        var v virtual r where no = 1;
+        
+        rename var v as v2;
+        put((tuple from v2).no);
+        put(' ');
+        put_line((tuple from v2).name);
+    }
+} -result {1 yo
+}
+
+        
+                

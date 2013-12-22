@@ -180,17 +180,17 @@ no db>
 
 <h2 id="comments">Comments</h2>
 
-<p>Duro D/T supports line comments and multi-line comments.
+<p>Duro D/T supports end-of-line comments and block comments.
 
 <pre>
--- This is a single-line comment.
+var i int; -- This is an end-of-line comment.
 
 /* This is a
-multi-line
+block
 comment. */
 </pre>
 
-<p>Multi-line comments which actually span several lines are not supported in interactive mode.
+<p>Block comments which span several lines are not supported in interactive mode.
 
 <p>Lines starting with #! are ignored to allow for Unix interpreter files.</p>
 
@@ -606,6 +606,17 @@ Table r dropped.
 D> 
 </pre>
 
+<h3>Renaming a table</h3>
+
+<p>A table can be renamed using RENAME VAR:</p>
+
+<pre>
+D> rename var r2 as rn;
+D>
+</pre>
+
+<p>This works only for persisten tables.
+
 <h2 id="dbconstraints">Database constraints</h2>
 
 <p>Duro D/T supports database constraints.
@@ -748,8 +759,8 @@ D> end for;
 
 <h3>put_line</h3>
 
-<p><code>put_line</code> takes one argument of type <code>string</code>
-and prints it on standard output, followed by a newline.
+<p><code>put_line</code> is an update operator that takes one argument
+of type <code>string</code> and prints it on standard output, followed by a newline.
 
 <pre>
 no db> put_line('hello');

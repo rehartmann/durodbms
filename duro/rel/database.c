@@ -1541,6 +1541,7 @@ RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;
+    RDB_object *foundtbp;
 
     if (!RDB_legal_name(name)) {
         RDB_raise_invalid_argument("invalid table name", ecp);
@@ -1557,17 +1558,29 @@ RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         /* Update catalog */
         ret = RDB_cat_rename_table(tbp, name, ecp, txp);
         if (ret != RDB_OK) {
+            if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+                RDB_raise_internal(
+                        "table is persisten but was not found in the catalog",
+                        ecp);
+            }
             return RDB_ERROR;
         }
 
         /* Delete and reinsert tables from/to table maps */
+
         for (dbp = txp->dbp->dbrootp->first_dbp; dbp != NULL;
                 dbp = dbp->nextdbp) {
-            RDB_object *foundtbp = RDB_hashmap_get(&dbp->tbmap, tbp->val.tb.name);
+            foundtbp = RDB_hashmap_get(&dbp->tbmap, tbp->val.tb.name);
             if (foundtbp != NULL) {
                 RDB_hashmap_put(&dbp->tbmap, tbp->val.tb.name, NULL);
                 RDB_hashmap_put(&dbp->tbmap, name, tbp);
             }
+        }
+        foundtbp = RDB_hashmap_get(&txp->dbp->dbrootp->ptbmap,
+                tbp->val.tb.name);
+        if (foundtbp != NULL) {
+            RDB_hashmap_put(&txp->dbp->dbrootp->ptbmap, tbp->val.tb.name, NULL);
+            RDB_hashmap_put(&txp->dbp->dbrootp->ptbmap, name, tbp);
         }
 
         /* Rename sequences */

@@ -823,7 +823,10 @@ RDB_cat_insert_ptable(const char *name,
         goto error;
     }
 
-    /* insert entries into table sys_tableattrs */
+    /*
+     * Insert entries into table sys_tableattrs
+     */
+
     RDB_init_obj(&tpl);
     if (RDB_tuple_set(&tpl, "tablename", &tbnameobj, ecp) != RDB_OK) {
         goto error;
@@ -2648,21 +2651,29 @@ RDB_cat_rename_table(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
 {
     int ret;
     RDB_attr_update upd;
-    RDB_expression *condp = tablename_eq_expr(RDB_table_name(tbp), ecp);
-    if (condp == NULL) {
+    RDB_ma_update updv[5];
+    RDB_transaction tx;
+    RDB_expression *condp = NULL;
+
+    /* Start subtx */
+    if (RDB_begin_tx(ecp, &tx, RDB_tx_db(txp), txp) != RDB_OK)
         return RDB_ERROR;
+
+    upd.exp = NULL;
+
+    condp = tablename_eq_expr(RDB_table_name(tbp), ecp);
+    if (condp == NULL) {
+        goto error;
     }
 
     upd.name = "tablename";
     upd.exp = string_to_id_expr(name, ecp);
     if (upd.exp == NULL) {
-        ret = RDB_ERROR;
-        goto cleanup;
+        goto error;
     }
 
     if (tbp->val.tb.exp == NULL) {
-        RDB_ma_update updv[5];
-
+        /* Real table */
         updv[0].condp = condp;
         updv[0].tbp = txp->dbp->dbrootp->rtables_tbp;
         updv[0].updc = 1;
@@ -2688,24 +2699,56 @@ RDB_cat_rename_table(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         updv[4].updc = 1;
         updv[4].updv = &upd;
 
-        ret = RDB_multi_assign(0, NULL, 5, updv, 0, NULL, 0, NULL, ecp, txp);
+        ret = RDB_multi_assign(0, NULL, 5, updv, 0, NULL, 0, NULL, ecp, &tx);
         if (ret == RDB_ERROR)
-            goto cleanup;
+            goto error;
     } else {
-        ret = RDB_update(txp->dbp->dbrootp->vtables_tbp, condp, 1, &upd, ecp, txp);
+        ret = RDB_update(txp->dbp->dbrootp->vtables_tbp, condp, 1, &upd, ecp, &tx);
         if (ret == RDB_ERROR)
-            goto cleanup;
-    }
-    ret = RDB_update(txp->dbp->dbrootp->table_recmap_tbp, condp, 1, &upd, ecp, txp);
-    if (ret == RDB_ERROR)
-        goto cleanup;
-    ret = RDB_update(txp->dbp->dbrootp->dbtables_tbp, condp, 1, &upd, ecp, txp);
+            goto error;
+        if (ret == 0) {
+            /* Rename public table */
+            updv[0].condp = condp;
+            updv[0].tbp = txp->dbp->dbrootp->ptables_tbp;
+            updv[0].updc = 1;
+            updv[0].updv = &upd;
 
-cleanup:
+            updv[1].condp = condp;
+            updv[1].tbp = txp->dbp->dbrootp->table_attr_tbp;
+            updv[1].updc = 1;
+            updv[1].updv = &upd;
+
+            updv[2].condp = condp;
+            updv[2].tbp = txp->dbp->dbrootp->keys_tbp;
+            updv[2].updc = 1;
+            updv[2].updv = &upd;
+
+            ret = RDB_multi_assign(0, NULL, 3, updv, 0, NULL, 0, NULL, ecp, &tx);
+            if (ret == RDB_ERROR)
+                goto error;
+        }
+    }
+    if (ret == 0) {
+        RDB_raise_not_found("table not found in catalog", ecp);
+        goto error;
+    }
+    ret = RDB_update(txp->dbp->dbrootp->table_recmap_tbp, condp, 1, &upd, ecp, &tx);
+    if (ret == RDB_ERROR)
+        goto error;
+    ret = RDB_update(txp->dbp->dbrootp->dbtables_tbp, condp, 1, &upd, ecp, &tx);
+
     RDB_del_expr(condp, ecp);
     if (upd.exp != NULL)
         RDB_del_expr(upd.exp, ecp);
-    return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
+    return RDB_commit(ecp, &tx);
+
+error:
+    RDB_rollback(ecp, &tx);
+    if (condp != NULL)
+        RDB_del_expr(condp, ecp);
+    if (upd.exp != NULL)
+        RDB_del_expr(upd.exp, ecp);
+    return RDB_ERROR;
 }
 
 int

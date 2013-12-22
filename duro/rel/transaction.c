@@ -29,6 +29,10 @@ RDB_begin_tx_env(RDB_exec_context *ecp, RDB_transaction *txp, RDB_environment *e
     DB_TXN *partxid = parentp != NULL ? parentp->txid : NULL;
     int ret;
 
+    if (parentp != NULL && partxid == NULL) {
+        RDB_raise_no_running_tx(ecp);
+        return RDB_ERROR;
+    }
     txp->parentp = parentp;
     txp->envp = envp;
     ret = envp->envp->txn_begin(envp->envp, partxid, &txp->txid, 0);
