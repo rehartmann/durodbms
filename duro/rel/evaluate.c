@@ -292,7 +292,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     }
 
     /*
-     * Certain operators cannot be evaluated by evaluating the arguments
+     * Some operators cannot be evaluated by evaluating the arguments
      * and calling an operator function, so they get special treatment
      */
 

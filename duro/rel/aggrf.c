@@ -35,7 +35,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 
 <dl>
 <dt>no_running_tx_error
-<dd><var>txp</var> does not point to a running transaction.
+<dd>*<var>tbp</var> is persistent and *<var>txp</var> is not a running transaction.
 <dt>name_error
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>type_mismatch_error
@@ -124,7 +124,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 
 <dl>
 <dt>no_running_tx_error
-<dd><var>txp</var> does not point to a running transaction.
+<dd>*<var>tbp</var> is persistent and *<var>txp</var> is not a running transaction.
 <dt>name_error
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>type_mismatch_error
@@ -212,7 +212,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 
 <dl>
 <dt>no_running_tx_error
-<dd><var>txp</var> does not point to a running transaction.
+<dd>*<var>tbp</var> is persistent and *<var>txp</var> is not a running transaction.
 <dt>name_error
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>type_mismatch_error
@@ -312,7 +312,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 
 <dl>
 <dt>no_running_tx_error
-<dd><var>txp</var> does not point to a running transaction.
+<dd>*<var>tbp</var> is persistent and *<var>txp</var> is not a running transaction.
 <dt>name_error
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>type_mismatch_error
@@ -414,7 +414,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 
 <dl>
 <dt>no_running_tx_error
-<dd><var>txp</var> does not point to a running transaction.
+<dd>*<var>tbp</var> is persistent and *<var>txp</var> is not a running transaction.
 <dt>name_error
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>type_mismatch_error
@@ -511,7 +511,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 
 <dl>
 <dt>no_running_tx_error
-<dd><var>txp</var> does not point to a running transaction.
+<dd>*<var>tbp</var> is persistent and *<var>txp</var> is not a running transaction.
 <dt>name_error
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>type_mismatch_error
@@ -602,6 +602,21 @@ If an error occurs, an error value is left in *<var>ecp</var>.
 @returns
 
 RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>no_running_tx_error
+<dd>*<var>tbp</var> is persistent and *<var>txp</var> is not a running transaction.
+<dt>operator_not_found_error
+<dd>The definition of *<var>tbp</var> refers to a non-existing operator.
+<dt>invalid_argument_error
+<dd>The table represented by *<var>tbp</var> does not exist. (e.g. after a rollback)
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+
  */
 int
 RDB_table_is_empty(RDB_object *tbp, RDB_exec_context *ecp,
@@ -649,10 +664,9 @@ On failure, (RDB_int)RDB_ERROR is returned.
 
 <dl>
 <dt>no_running_tx_error
-<dd><var>txp</var> does not point to a running transaction.
+<dd>*<var>tbp</var> is persistent and *<var>txp</var> is not a running transaction.
 <dt>operator_not_found_error
-<dd>The definition of the table specified by <var>tbp</var>
-refers to a non-existing operator.
+<dd>The definition of *<var>tbp</var> refers to a non-existing operator.
 <dt>invalid_argument_error
 <dd>The table represented by *<var>tbp</var> does not exist. (e.g. after a rollback)
 </dl>
