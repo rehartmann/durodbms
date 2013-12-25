@@ -1226,13 +1226,7 @@ RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     if (tbp == NULL)
         return NULL;
 
-    tbp->val.tb.name = RDB_dup_str(name);
-    if (tbp->val.tb.name == NULL) {
-        RDB_destroy_obj(tbp, ecp);
-        return NULL;
-    }
-
-    if (RDB_cat_get_table(tbp, ecp, txp) == RDB_OK)
+    if (RDB_cat_get_table(tbp, name, ecp, txp) == RDB_OK)
         return tbp;
 
     if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
@@ -1240,7 +1234,7 @@ RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         RDB_raise_name(name, ecp);
     }
 
-    RDB_destroy_obj(tbp, ecp);
+    RDB_free_obj(tbp, ecp);
     return NULL;
 }
 

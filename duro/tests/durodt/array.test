@@ -69,6 +69,16 @@ test arraysel {array selectors and index_of} -body {
 	    catch type_mismatch_error;
 	        put_line('type mismatch 2');
 	    end try;
+	    
+	    -- n-th element of selector
+	    put_line(array('zero', 'one', 'two')[1]);
+
+        -- catch assignment to selector
+        try
+            array('zero', 'one', 'two')[1] := 'eins';
+        catch err syntax_error;
+            put_line('assignment: syntax error');
+        end try;
 	}
 } -result {2
 2
@@ -85,6 +95,8 @@ A
 Ilsebill
 type mismatch 1
 type mismatch 2
+one
+assignment: syntax error
 }    
 
 test ptarray {array from private table} -body {

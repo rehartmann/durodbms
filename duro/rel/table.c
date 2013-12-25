@@ -900,8 +900,19 @@ error:
 int
 RDB_check_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-     /* Re-read table from catalog */
-    if (RDB_cat_get_table(tbp, ecp, txp) != RDB_OK) {
+     /*
+      * Re-read table from catalog
+      */
+
+    /* Copy table name so it is not freed when *tbp is destroyed and recreated */
+    char *name = RDB_dup_str(RDB_table_name(tbp));
+    if (name == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+
+    if (RDB_cat_get_table(tbp, name, ecp, txp) != RDB_OK) {
+        RDB_free(name);
         assert(tbp->kind == RDB_OB_TABLE);
 
         /* Make sure the check flag is still set */
@@ -913,6 +924,7 @@ RDB_check_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         }
         return RDB_ERROR;
     }
+    RDB_free(name);
 
     /* Table was found */
     tbp->val.tb.flags &= ~RDB_TB_CHECK;

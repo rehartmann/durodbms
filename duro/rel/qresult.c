@@ -1527,11 +1527,11 @@ next_join_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     /* read first 'outer' tuple, if it's the first invocation */
     if (!qrp->val.children.tpl_valid) {
         RDB_init_obj(&qrp->val.children.tpl);
+        qrp->val.children.tpl_valid = RDB_TRUE;
         if (RDB_next_tuple(qrp->val.children.qrp, &qrp->val.children.tpl,
                 ecp, txp) != RDB_OK) {
             return RDB_ERROR;
         }
-        qrp->val.children.tpl_valid = RDB_TRUE;
     }
 
     RDB_destroy_obj(tplp, ecp);

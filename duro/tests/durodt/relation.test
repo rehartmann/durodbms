@@ -1470,5 +1470,40 @@ test rename_real {rename table with system key} -setup $SETUP -cleanup $CLEANUP 
 } -result {1 yo
 }
 
-        
-                
+test array_attr {table with array-valued attribute} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+        var r real relation { no int, name string, names array string }
+                key { no };
+/*
+        insert r rel { tup { no 1, name "Z <= 1", names array('Hydrogen') },
+                       tup { no 2, name "Z <= 2", names array('Hydrogen', 'Helium') } };
+*/
+        insert r tup { no 1, name "Z <= 1", names array('Hydrogen') };
+        insert r tup { no 2, name "Z <= 2", names array('Hydrogen', 'Helium') };
+
+        var tp tuple same_heading_as(r);
+        for tp in r where index_of(names, 'Hydrogen') >= 0 order(no asc);
+            put_line(tp.name);
+            put_line(tp.names[length(tp.names) - 1]);
+        end for;
+
+        put_line('');
+
+        for tp in r where index_of(names, 'Helium') >= 0 order(no asc);
+            put_line(tp.name);
+            put_line(tp.names[length(tp.names) - 1]);
+        end for;
+    }
+} -result {Z <= 1
+Hydrogen
+Z <= 2
+Helium
+
+Z <= 2
+Helium
+}
+         

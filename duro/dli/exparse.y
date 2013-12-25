@@ -1542,7 +1542,7 @@ id_assign: TOK_ID TOK_ASSIGN expression {
 
 assignable_expression: TOK_ID
     | ro_op_invocation /* For THE_ and LENGTH operators */
-    | assignable_expression '[' expression ']' {
+    | expression '[' expression ']' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);

@@ -2013,12 +2013,12 @@ RDB_cat_get_table_type(const char *name, RDB_exec_context *ecp,
 
     tbtyp = RDB_new_relation_type(attrc, attrv, ecp);
     if (tbtyp == NULL) {
-        RDB_del_nonscalar_type(tbtyp, ecp);
         goto error;
     }
 
     for (i = 0; i < attrc; i++) {
         RDB_free(attrv[i].name);
+        RDB_del_nonscalar_type(attrv[i].typ, ecp);
     }
     if (attrc > 0)
         RDB_free(attrv);
@@ -2036,8 +2036,11 @@ error:
         RDB_drop_table(tmptbp, ecp, txp);
 
     if (attrv != NULL) {
-        for (i = 0; i < attrc; i++)
+        for (i = 0; i < attrc; i++) {
             RDB_free(attrv[i].name);
+            if (attrv[i].typ != NULL)
+                RDB_del_nonscalar_type(attrv[i].typ, ecp);
+        }
         RDB_free(attrv);
     }
     return NULL;
@@ -2116,7 +2119,7 @@ error:
 
 /* Read a real table from the catalog */
 static int
-RDB_cat_get_rtable(RDB_object *tbp, RDB_exec_context *ecp,
+RDB_cat_get_rtable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_expression *exp, *argp;
@@ -2137,7 +2140,6 @@ RDB_cat_get_rtable(RDB_object *tbp, RDB_exec_context *ecp,
     RDB_tbindex *indexv;
     int defvalc;
     RDB_hashmap *defvalmap = NULL;
-    char *name = tbp->val.tb.name;
     const char *recmapname = NULL;
 
     RDB_init_obj(&arr);
@@ -2271,17 +2273,12 @@ RDB_cat_get_rtable(RDB_object *tbp, RDB_exec_context *ecp,
         }
     }
 
-    /* Keep name from being free'd */
-    tbp->val.tb.name = NULL;
-
-    if (RDB_init_table_i(tbp, NULL, RDB_TRUE, tbtyp, keyc, keyv,
+    if (RDB_init_table_i(tbp, name, RDB_TRUE, tbtyp, keyc, keyv,
             0, NULL, usr, NULL, ecp) != RDB_OK) {
         RDB_free_keys(keyc, keyv);
         RDB_del_nonscalar_type(tbtyp, ecp);
         goto error;
     }
-    /* Restore name */
-    tbp->val.tb.name = name;
     RDB_free_keys(keyc, keyv);
 
     indexc = RDB_cat_get_indexes(name, txp->dbp->dbrootp, ecp, txp, &indexv);
@@ -2370,7 +2367,7 @@ RDB_binobj_to_vtable(RDB_object *tbp, RDB_object *valp, RDB_exec_context *ecp,
 }
 
 static int
-RDB_cat_get_vtable(RDB_object *tbp, RDB_exec_context *ecp,
+RDB_cat_get_vtable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_expression *exp;
@@ -2380,7 +2377,6 @@ RDB_cat_get_vtable(RDB_object *tbp, RDB_exec_context *ecp,
     RDB_bool usr;
     int ret;
     RDB_object *tmptbp = NULL;
-    char *name = tbp->val.tb.name;
 
     /*
      * Read virtual table data from the catalog
@@ -2409,10 +2405,13 @@ RDB_cat_get_vtable(RDB_object *tbp, RDB_exec_context *ecp,
 
     valp = RDB_tuple_get(&tpl, "i_def");
 
-    tbp->val.tb.name = NULL;
     if (RDB_binobj_to_vtable(tbp, valp, ecp, txp) != RDB_OK)
         goto error;
-    tbp->val.tb.name = name;
+    tbp->val.tb.name = RDB_dup_str(name);
+    if (tbp->val.tb.name == NULL) {
+        RDB_raise_no_memory(ecp);
+        goto error;
+    }
 
     RDB_destroy_obj(&tpl, ecp);
     if (RDB_destroy_obj(&arr, ecp) != RDB_OK)
@@ -2482,7 +2481,7 @@ RDB_cat_get_ptable_vt(const char *name, RDB_exec_context *ecp,
 }
 
 static int
-RDB_cat_get_ptable(RDB_object *tbp, RDB_exec_context *ecp,
+RDB_cat_get_ptable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_object tpl;
@@ -2490,7 +2489,6 @@ RDB_cat_get_ptable(RDB_object *tbp, RDB_exec_context *ecp,
     RDB_object *valp;
     RDB_bool usr;
     int ret;
-    char *name = tbp->val.tb.name;
     RDB_object *tmptbp = NULL;
 
     /*
@@ -2519,10 +2517,13 @@ RDB_cat_get_ptable(RDB_object *tbp, RDB_exec_context *ecp,
         goto error;
     }
 
-    tbp->val.tb.name = NULL;
     if (RDB_binobj_to_vtable(tbp, valp, ecp, txp) != RDB_OK)
         goto error;
-    tbp->val.tb.name = name;
+    tbp->val.tb.name = RDB_dup_str(name);
+    if (tbp->val.tb.name == NULL) {
+        RDB_raise_no_memory(ecp);
+        goto error;
+    }
 
     RDB_destroy_obj(&tpl, ecp);
     ret = RDB_destroy_obj(&arr, ecp);
@@ -2559,21 +2560,21 @@ error:
 }
 
 int
-RDB_cat_get_table(RDB_object *tbp, RDB_exec_context *ecp,
+RDB_cat_get_table(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    if (RDB_cat_get_rtable(tbp, ecp, txp) == RDB_OK)
+    if (RDB_cat_get_rtable(tbp, name, ecp, txp) == RDB_OK)
         return RDB_OK;
 
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
         return RDB_ERROR;
 
-    if (RDB_cat_get_vtable(tbp, ecp, txp) == RDB_OK)
+    if (RDB_cat_get_vtable(tbp, name, ecp, txp) == RDB_OK)
         return RDB_OK;
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
         return RDB_ERROR;
 
-    return RDB_cat_get_ptable(tbp, ecp, txp);
+    return RDB_cat_get_ptable(tbp, name, ecp, txp);
 }
 
 int
