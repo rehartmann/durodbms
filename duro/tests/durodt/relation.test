@@ -1477,15 +1477,19 @@ test array_attr {table with array-valued attribute} -setup $SETUP -cleanup $CLEA
 
         begin tx;
         var r real relation { no int, name string, names array string }
-                key { no };
-/*
-        insert r rel { tup { no 1, name "Z <= 1", names array('Hydrogen') },
-                       tup { no 2, name "Z <= 2", names array('Hydrogen', 'Helium') } };
-*/
-        insert r tup { no 1, name "Z <= 1", names array('Hydrogen') };
-        insert r tup { no 2, name "Z <= 2", names array('Hydrogen', 'Helium') };
+                init rel { tup { no 1, name "Z <= 1", names array('Hydrogen') },
+                       tup { no 2, name "Z <= 2", names array('Hydrogen', 'Helium') } }
+                key { no }; 
+        insert r tup { no 3, name "Z <= 3",
+                names array('Hydrogen', 'Helium', 'Lithium') };
+        insert r rel { tup { no 4, name "Z <= 4",
+                names array('Hydrogen', 'Helium', 'Lithium', 'Beryllium') } };
+        commit;
+
+        begin tx;
 
         var tp tuple same_heading_as(r);
+
         for tp in r where index_of(names, 'Hydrogen') >= 0 order(no asc);
             put_line(tp.name);
             put_line(tp.names[length(tp.names) - 1]);
@@ -1493,17 +1497,25 @@ test array_attr {table with array-valued attribute} -setup $SETUP -cleanup $CLEA
 
         put_line('');
 
-        for tp in r where index_of(names, 'Helium') >= 0 order(no asc);
+        for tp in r where index_of(names, 'Lithium') >= 0 order(no asc);
             put_line(tp.name);
             put_line(tp.names[length(tp.names) - 1]);
         end for;
+
+        commit;
     }
 } -result {Z <= 1
 Hydrogen
 Z <= 2
 Helium
+Z <= 3
+Lithium
+Z <= 4
+Beryllium
 
-Z <= 2
-Helium
+Z <= 3
+Lithium
+Z <= 4
+Beryllium
 }
          

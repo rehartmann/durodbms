@@ -946,3 +946,48 @@ RDB_obj_matches_type(RDB_object *objp, RDB_type *typ)
     }
     abort();
 }
+
+/*
+ * If *objp is non-scalar, create a RDB_type structure for the its type,
+ * otherwise return the type of *objp.
+ */
+RDB_type *
+RDB_new_nonscalar_obj_type(RDB_object *objp, RDB_exec_context *ecp)
+{
+    RDB_type *typ;
+    RDB_type *elemtyp;
+    RDB_object *elemp;
+
+    switch (objp->kind) {
+        case RDB_OB_TUPLE:
+            return RDB_tuple_type(objp, ecp);
+        case RDB_OB_ARRAY:
+            if (RDB_array_length(objp, ecp) == 0) {
+                RDB_raise_invalid_argument("Cannot get type of empty array", ecp);
+                return NULL;
+            }
+
+            /*
+             * Get first array element and create type from it
+             */
+            elemp = RDB_array_get(objp, (RDB_int) 0, ecp);
+            if (elemp == NULL)
+                return NULL;
+            elemtyp = RDB_new_nonscalar_obj_type(elemp, ecp);
+            if (elemtyp == NULL)
+                return NULL;
+            typ = RDB_new_array_type(elemtyp, ecp);
+            if (typ == NULL) {
+                RDB_del_nonscalar_type(elemtyp, ecp);
+                return NULL;
+            }
+            return typ;
+        default:
+            typ = RDB_obj_type(objp);
+            if (typ == NULL) {
+                RDB_raise_internal("type of tuple attribute not found", ecp);
+                return NULL;
+            }
+            return RDB_dup_nonscalar_type(typ, ecp);
+    }
+}

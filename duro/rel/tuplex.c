@@ -596,15 +596,11 @@ RDB_tuple_type(const RDB_object *tplp, RDB_exec_context *ecp)
         RDB_init_hashtable_iter(&hiter, (RDB_hashtable *) &tplp->val.tpl_tab);
         i = 0;
         while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
-            if (entryp->obj.kind != RDB_OB_TUPLE) {
-                typ->def.tuple.attrv[i].typ = RDB_dup_nonscalar_type(
-                        RDB_obj_type(&entryp->obj), ecp);
-            } else {
-                typ->def.tuple.attrv[i].typ = RDB_tuple_type(&entryp->obj,
-                        ecp);
-            }
-            if (typ->def.tuple.attrv[i].typ == NULL)
+            typ->def.tuple.attrv[i].typ = RDB_new_nonscalar_obj_type(&entryp->obj, ecp);
+            if (typ->def.tuple.attrv[i].typ == NULL) {
+                RDB_destroy_hashtable_iter(&it);
                 goto error;
+            }
             typ->def.tuple.attrv[i].name = RDB_dup_str(entryp->key);
             if (typ->def.tuple.attrv[i].name == NULL) {
                 RDB_destroy_hashtable_iter(&it);

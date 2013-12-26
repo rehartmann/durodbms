@@ -186,6 +186,9 @@ RDB_type *
 RDB_summarize_type(RDB_expr_list *, int avgc, char **avgv,
         RDB_exec_context *ecp, RDB_transaction *txp);
 
+RDB_type *
+RDB_new_nonscalar_obj_type(RDB_object *, RDB_exec_context *);
+
 RDB_string_vec *
 RDB_dup_rename_keys(int keyc, const RDB_string_vec keyv[], RDB_expression *,
         RDB_exec_context *);
