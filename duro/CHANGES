@@ -6,9 +6,9 @@ DuroDBMS 0.20
 
 - Implemented transition constraints.
 
-- Fixed bugs in the handling of default values.
-
 - Implemented system keys using serial().
+
+- Fixed bugs in the handling of default values and array-valued attributes.
 
 - Refactored the code, moving functions which do not depend on persistence to
   directory obj.

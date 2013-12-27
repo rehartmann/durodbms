@@ -358,29 +358,22 @@ statement: assignment ';' {
             RDB_parse_add_child($$, $7);
         RDB_parse_add_child($$, $8);
     }
-    | TOK_VAR TOK_ID TOK_PUBLIC type opt_init key_list ';' {
+    | TOK_VAR TOK_ID TOK_PUBLIC type key_list ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
             RDB_parse_del_node($2, RDB_parse_ecp);
             RDB_parse_del_node($3, RDB_parse_ecp);
             RDB_parse_del_node($4, RDB_parse_ecp);
-            if ($5 != NULL)
-               RDB_parse_del_node($5, RDB_parse_ecp);
             RDB_parse_del_node($6, RDB_parse_ecp);
-            if ($7 != NULL)
-               RDB_parse_del_node($7, RDB_parse_ecp);
             YYABORT;
         }
         RDB_parse_add_child($$, $1);
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
-        if ($5 != NULL)
-            RDB_parse_add_child($$, $5);
+        RDB_parse_add_child($$, $5);
         RDB_parse_add_child($$, $6);
-        if ($7 != NULL)
-            RDB_parse_add_child($$, $7);
     }
     | TOK_VAR TOK_ID TOK_PRIVATE TOK_INIT expression key_list opt_default ';' {
         $$ = new_parse_inner();

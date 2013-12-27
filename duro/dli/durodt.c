@@ -119,7 +119,7 @@ main(int argc, char *argv[])
     RDB_exec_context ec;
     char *envname = NULL;
     char *dbname = "";
-    RDB_environment *envp;
+    RDB_environment *envp = NULL;
     char *infilename;
 #ifndef _WIN32
     struct sigaction sigact;
@@ -179,8 +179,6 @@ main(int argc, char *argv[])
                 return 1;
             }
         }
-    } else {
-        envp = NULL;
     }
 
 #ifdef USE_READLINE

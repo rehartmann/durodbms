@@ -668,7 +668,6 @@ Duro_exec_vardef_public(RDB_parse_node *nodep, RDB_exec_context *ecp)
     int keyc;
     RDB_string_vec *keyv;
     RDB_bool freekeys = RDB_FALSE;
-    RDB_expression *initexp = NULL;
     RDB_type *tbtyp = NULL;
     const char *varname = RDB_expr_var_name(nodep->exp);
 
@@ -677,41 +676,10 @@ Duro_exec_vardef_public(RDB_parse_node *nodep, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    /* Init value without type? */
-    if (nodep->nextp->nextp->kind == RDB_NODE_TOK
-            && nodep->nextp->nextp->val.token == TOK_INIT) {
-        /* No type - get INIT value */
-        initexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp, ecp, &Duro_txnp->tx);
-        if (initexp == NULL)
-            return RDB_ERROR;
-        keylistnodep = nodep->nextp->nextp->nextp->nextp;
-        tbtyp = Duro_expr_type_retry(initexp, ecp);
-        if (tbtyp == NULL) {
-            return RDB_ERROR;
-        }
-
-        tbtyp = RDB_dup_nonscalar_type(tbtyp, ecp);
-        if (tbtyp == NULL)
-            return RDB_ERROR;
-    } else {
-        tbtyp = Duro_parse_node_to_type_retry(nodep->nextp->nextp, ecp);
-        if (tbtyp == NULL)
-            return RDB_ERROR;
-        if (nodep->nextp->nextp->nextp->kind == RDB_NODE_INNER
-                && nodep->nextp->nextp->nextp->val.children.firstp != NULL
-                && nodep->nextp->nextp->nextp->val.children.firstp->kind == RDB_NODE_TOK
-                && nodep->nextp->nextp->nextp->val.children.firstp->val.token == TOK_INIT) {
-            /* Get INIT value */
-            initexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp->val.children.firstp->nextp,
-                    ecp, &Duro_txnp->tx);
-            if (initexp == NULL)
-                return RDB_ERROR;
-
-            keylistnodep = nodep->nextp->nextp->nextp->nextp;
-        } else {
-            keylistnodep = nodep->nextp->nextp->nextp;
-        }
-    }
+    tbtyp = Duro_parse_node_to_type_retry(nodep->nextp->nextp, ecp);
+    if (tbtyp == NULL)
+        return RDB_ERROR;
+    keylistnodep = nodep->nextp->nextp->nextp;
 
     /*
      * Check if the variable already exists
@@ -736,33 +704,14 @@ Duro_exec_vardef_public(RDB_parse_node *nodep, RDB_exec_context *ecp)
         freekeys = RDB_TRUE;
     } else {
         /*
-         * Key list is empty - if there is an INIT expression,
-         * get the keys from it, otherwise pass
-         * a keyv of NULL which means the table is all-key
+         * Key list is empty - pass a keyv of NULL which means the table is all-key
          */
-        if (initexp != NULL) {
-            keyc = RDB_infer_keys(initexp, &get_var, current_varmapp,
-                    Duro_envp, ecp, &Duro_txnp->tx, &keyv, &freekeys);
-            if (keyc == RDB_ERROR) {
-                keyv = NULL;
-                goto error;
-            }
-        } else {
-            keyv = NULL;
-        }
+        keyv = NULL;
     }
 
     if (RDB_create_public_table_from_type(varname, tbtyp, keyc, keyv, ecp, &Duro_txnp->tx) != RDB_OK) {
         goto error;
     }
-
-    /* !!
-    if (initexp != NULL) {
-        if (Duro_evaluate_retry(initexp, ecp, tbp) != RDB_OK) {
-            goto error;
-        }
-    }
-    */
 
     if (RDB_parse_get_interactive())
         printf("Public table %s created.\n", varname);

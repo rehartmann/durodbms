@@ -388,4 +388,7 @@ RDB_seq_container_name(const char *, const char *, RDB_object *,
 void
 RDB_close_sequences(RDB_object *);
 
+RDB_expression *
+RDB_attr_eq_strval(const char *, const char *, RDB_exec_context *);
+
 #endif

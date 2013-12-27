@@ -164,3 +164,30 @@ RDB_expr_equals(const RDB_expression *ex1p, const RDB_expression *ex2p,
 }
 
 /*@}*/
+
+RDB_expression *
+RDB_attr_eq_strval(const char *attrname, const char *str, RDB_exec_context *ecp)
+{
+    RDB_expression *exp;
+    RDB_expression *arg2p;
+    RDB_expression *argp = RDB_var_ref(attrname, ecp);
+    if (argp == NULL) {
+        return NULL;
+    }
+
+    arg2p = RDB_string_to_expr(str, ecp);
+    if (arg2p == NULL) {
+        RDB_del_expr(argp, ecp);
+        return NULL;
+    }
+    exp = RDB_eq(argp, arg2p, ecp);
+    if (exp == NULL) {
+        RDB_del_expr(argp, ecp);
+        RDB_del_expr(arg2p, ecp);
+        return NULL;
+    }
+
+    /* Set transformed flag to avoid infinite recursion */
+    exp->transformed = RDB_TRUE;
+    return exp;
+}

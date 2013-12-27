@@ -286,18 +286,6 @@ RDB_create_update_op(const char *name, int paramc, RDB_parameter paramv[],
     }
 
     /*
-     * Array types are not supported as argument types
-     * !!
-    for (i = 0; i < argc; i++) {
-        if (paramv[i].typ->kind == RDB_TP_ARRAY) {
-            RDB_raise_not_supported(
-                    "array type not supported as argument type", ecp);
-            return RDB_ERROR;
-         }
-    }
-    */
-
-    /*
      * Insert operator data into catalog
      */
 
@@ -801,8 +789,7 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
-    argp = RDB_eq(RDB_var_ref("name", ecp), RDB_string_to_expr(name, ecp),
-            ecp);
+    argp = RDB_attr_eq_strval("name", name, ecp);
     if (argp == NULL) {
         RDB_del_expr(exp, ecp);
         return RDB_ERROR;
@@ -832,7 +819,7 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
             return RDB_ERROR;
 
         /* Delete all versions of update operator from the database */
-        exp = RDB_eq(RDB_var_ref("name", ecp), RDB_string_to_expr(name, ecp), ecp);
+        exp = RDB_attr_eq_strval("name", name, ecp);
         if (exp == NULL) {
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
@@ -854,14 +841,13 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
             return RDB_ERROR;
 
         /* Delete all versions of update operator from the database */
-        exp = RDB_eq(RDB_var_ref("name", ecp), RDB_string_to_expr(name, ecp),
-               ecp);
+        exp = RDB_attr_eq_strval("name", name, ecp);
         if (exp == NULL) {
             return RDB_ERROR;
         }
         ret = RDB_delete(txp->dbp->dbrootp->ro_ops_tbp, exp, ecp, txp);
+        RDB_del_expr(exp, ecp);
         if (ret == RDB_ERROR) {
-            RDB_del_expr(exp, ecp);
             RDB_handle_errcode(ret, ecp, txp);
             return RDB_ERROR;
         }

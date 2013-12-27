@@ -35,6 +35,8 @@ RDB_get_db_from_env
 RDB_drop_db
 RDB_create_table
 RDB_create_table_from_type
+RDB_create_public_table
+RDB_create_public_table_from_type
 RDB_get_table
 RDB_drop_table
 RDB_table_keys

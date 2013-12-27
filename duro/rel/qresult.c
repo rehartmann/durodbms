@@ -287,7 +287,6 @@ init_stored_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_expression *exp,
         return RDB_OK;
     }
 
-    /* !! delay after first call to RDB_next_tuple()? */
     ret = RDB_recmap_cursor(&qrp->val.stored.curp, tbp->val.tb.stp->recmapp,
                     RDB_FALSE, RDB_table_is_persistent(tbp) ? txp->txid : NULL);
     if (ret != RDB_OK) {
@@ -751,7 +750,6 @@ init_index_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_tbindex *indexp,
             return RDB_ERROR;
     }
 
-    /* !! delay after first call to RDB_next_tuple()? */
     qrp->endreached = RDB_FALSE;
     qrp->exp = NULL;
     qrp->nested = RDB_FALSE;

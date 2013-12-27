@@ -674,8 +674,7 @@ RDB_cat_index_tablename(const char *name, RDB_object *tbnamep,
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
-    argp = RDB_eq(RDB_var_ref("name", ecp), RDB_string_to_expr(name, ecp),
-            ecp);
+    argp = RDB_attr_eq_strval("name", name, ecp);
     if (argp == NULL) {
         RDB_del_expr(exp, ecp);
         return RDB_ERROR;
@@ -710,8 +709,7 @@ RDB_cat_delete_index(const char *name, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;
-    RDB_expression *wherep = RDB_eq(RDB_var_ref("name", ecp),
-            RDB_string_to_expr(name, ecp), ecp);
+    RDB_expression *wherep = RDB_attr_eq_strval("name", name, ecp);
     if (wherep == NULL) {
         return RDB_ERROR;
     }
@@ -917,34 +915,6 @@ tablename_eq_expr(const char *name, RDB_exec_context *ecp)
     exp->transformed = RDB_TRUE;
     return exp;
 }
-
-static RDB_expression *
-dbname_eq_expr(const char *name, RDB_exec_context *ecp)
-{
-    RDB_expression *exp;
-    RDB_expression *arg2p;
-    RDB_expression *argp = RDB_var_ref("dbname", ecp);
-    if (argp == NULL) {
-        return NULL;
-    }
-
-    arg2p = RDB_string_to_expr(name, ecp);
-    if (arg2p == NULL) {
-        RDB_del_expr(argp, ecp);
-        return NULL;
-    }
-    exp = RDB_eq(argp, arg2p, ecp);
-    if (exp == NULL) {
-        RDB_del_expr(argp, ecp);
-        RDB_del_expr(arg2p, ecp);
-        return NULL;
-    }
-
-    /* Set transformed flag to avoid infinite recursion */
-    exp->transformed = RDB_TRUE;
-    return exp;
-}
-
 
 int
 RDB_cat_map_ptable(const char *name, RDB_expression *exp,
@@ -2060,7 +2030,7 @@ db_query(RDB_database *dbp, RDB_exec_context *ecp)
         return NULL;
     }
     RDB_add_arg(exp, argp);
-    argp = dbname_eq_expr(dbp->name, ecp);
+    argp = RDB_attr_eq_strval("dbname", dbp->name, ecp);
     if (argp == NULL) {
         RDB_del_expr(exp, ecp);
         return NULL;

@@ -1857,8 +1857,6 @@ exec_opdrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    /* !! delete from opmap */
-
     /*
      * If a transaction is not active, start transaction if a database environment
      * is available

@@ -1414,7 +1414,26 @@ test serial {system-generated attribute values} -setup $SETUP -cleanup $CLEANUP 
 2 Def
 }
 
-test rename_real {rename table with system key} -setup $SETUP -cleanup $CLEANUP -body {
+test rename_real {rename table} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+        var r real relation {no int, name string}
+                init rel { tup { no 1, name 'yo' },  tup { no 2, name 'yoyo' } }
+                key {no};
+        var v virtual r where no = 1;
+        
+        rename var v as v2;
+        put((tuple from v2).no);
+        put(' ');
+        put_line((tuple from v2).name);
+    }
+} -result {1 yo
+}
+
+test rename_real_syskey {rename table with system key} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -1451,25 +1470,6 @@ test rename_real {rename table with system key} -setup $SETUP -cleanup $CLEANUP 
 2 John Doe
 }
 
-test rename_real {rename table with system key} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
-        current_db := 'D';
-
-        begin tx;
-        var r real relation {no int, name string}
-                init rel { tup { no 1, name 'yo' },  tup { no 2, name 'yoyo' } }
-                key {no};
-        var v virtual r where no = 1;
-        
-        rename var v as v2;
-        put((tuple from v2).no);
-        put(' ');
-        put_line((tuple from v2).name);
-    }
-} -result {1 yo
-}
-
 test array_attr {table with array-valued attribute} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
@@ -1487,6 +1487,14 @@ test array_attr {table with array-valued attribute} -setup $SETUP -cleanup $CLEA
         commit;
 
         begin tx;
+        var vr virtual r where if length(names) > 2 then names[2] = 'Lithium' else false; 
+        commit;
+    }
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
 
         var tp tuple same_heading_as(r);
 
@@ -1497,7 +1505,7 @@ test array_attr {table with array-valued attribute} -setup $SETUP -cleanup $CLEA
 
         put_line('');
 
-        for tp in r where index_of(names, 'Lithium') >= 0 order(no asc);
+        for tp in vr order(no asc);
             put_line(tp.name);
             put_line(tp.names[length(tp.names) - 1]);
         end for;
@@ -1518,4 +1526,3 @@ Lithium
 Z <= 4
 Beryllium
 }
-         
