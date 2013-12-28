@@ -146,6 +146,13 @@ RDB_hashmap RDB_builtin_type_map;
 
 typedef struct RDB_transaction RDB_transaction;
 
+static RDB_type empty_tuple_type = {
+    NULL,
+    RDB_TP_TUPLE,
+    NULL,
+    RDB_VARIABLE_LEN
+};
+
 static int
 compare_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
@@ -276,6 +283,11 @@ RDB_init_builtin_basic_types(RDB_exec_context *ecp)
         &RDB_INTEGER
     };
 
+    static RDB_possrep no_memory_rep = {
+        "no_memory_error",
+        0
+    };
+
     RDB_BOOLEAN.kind = RDB_TP_SCALAR;
     RDB_BOOLEAN.ireplen = 1;
     RDB_BOOLEAN.name = "boolean";
@@ -383,6 +395,30 @@ RDB_init_builtin_basic_types(RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
+    /*
+     * Initialize RDB_NO_MEMORY_ERROR here so it can be raised
+     * during the subsequent initialization
+     */
+
+    empty_tuple_type.def.tuple.attrc = 0;
+    empty_tuple_type.def.tuple.attrv = NULL;
+
+    RDB_NO_MEMORY_ERROR.kind = RDB_TP_SCALAR;
+    RDB_NO_MEMORY_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_NO_MEMORY_ERROR.name = "no_memory_error";
+    RDB_NO_MEMORY_ERROR.def.scalar.builtin = RDB_TRUE;
+    RDB_NO_MEMORY_ERROR.def.scalar.repc = 1;
+    RDB_NO_MEMORY_ERROR.def.scalar.repv = &no_memory_rep;
+    RDB_NO_MEMORY_ERROR.def.scalar.arep = &empty_tuple_type;
+    RDB_NO_MEMORY_ERROR.def.scalar.constraintp = NULL;
+    RDB_NO_MEMORY_ERROR.def.scalar.initexp = NULL;
+    RDB_NO_MEMORY_ERROR.def.scalar.sysimpl = RDB_TRUE;
+
+    RDB_init_obj(&RDB_NO_MEMORY_ERROR.def.scalar.init_val);
+    RDB_NO_MEMORY_ERROR.def.scalar.init_val_is_valid = RDB_TRUE;
+
+    RDB_NO_MEMORY_ERROR.compare_op = NULL;
+
     return RDB_OK;
 }
 
@@ -392,11 +428,6 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
     /*
      * Add error types
      */
-
-    static RDB_possrep no_memory_rep = {
-        "no_memory_error",
-        0
-    };
 
     static RDB_possrep no_running_tx_rep = {
         "no_running_tx_error",
@@ -556,37 +587,13 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
         &id_comp
     };
 
-    RDB_NO_MEMORY_ERROR.kind = RDB_TP_SCALAR;
-    RDB_NO_MEMORY_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_NO_MEMORY_ERROR.name = "no_memory_error";
-    RDB_NO_MEMORY_ERROR.def.scalar.builtin = RDB_TRUE;
-    RDB_NO_MEMORY_ERROR.def.scalar.repc = 1;
-    RDB_NO_MEMORY_ERROR.def.scalar.repv = &no_memory_rep;
-    RDB_NO_MEMORY_ERROR.def.scalar.arep = RDB_new_tuple_type(0, NULL, ecp);
-    if (RDB_NO_MEMORY_ERROR.def.scalar.arep == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
-    RDB_NO_MEMORY_ERROR.def.scalar.constraintp = NULL;
-    RDB_NO_MEMORY_ERROR.def.scalar.initexp = NULL;
-    RDB_NO_MEMORY_ERROR.def.scalar.sysimpl = RDB_TRUE;
-
-    RDB_init_obj(&RDB_NO_MEMORY_ERROR.def.scalar.init_val);
-    RDB_NO_MEMORY_ERROR.def.scalar.init_val_is_valid = RDB_TRUE;
-
-    RDB_NO_MEMORY_ERROR.compare_op = NULL;
-
     RDB_NO_RUNNING_TX_ERROR.kind = RDB_TP_SCALAR;
     RDB_NO_RUNNING_TX_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_NO_RUNNING_TX_ERROR.name = "no_running_transaction_error";
     RDB_NO_RUNNING_TX_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_NO_RUNNING_TX_ERROR.def.scalar.repc = 1;
     RDB_NO_RUNNING_TX_ERROR.def.scalar.repv = &no_running_tx_rep;
-    RDB_NO_RUNNING_TX_ERROR.def.scalar.arep = RDB_new_tuple_type(0, NULL, ecp);
-    if (RDB_NO_RUNNING_TX_ERROR.def.scalar.arep == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
+    RDB_NO_RUNNING_TX_ERROR.def.scalar.arep = &empty_tuple_type;
     RDB_NO_RUNNING_TX_ERROR.def.scalar.arep = NULL;
     RDB_NO_RUNNING_TX_ERROR.def.scalar.constraintp = NULL;
     RDB_NO_RUNNING_TX_ERROR.def.scalar.initexp = NULL;
@@ -825,12 +832,7 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
     RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.repc = 1;
     RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.repv = &lock_not_granted_rep;
-    RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.arep =
-            RDB_new_tuple_type(0, NULL, ecp);
-    if (RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.arep == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
+    RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.arep = &empty_tuple_type;
     RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.constraintp = NULL;
     RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.initexp = NULL;
     RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.sysimpl = RDB_TRUE;
@@ -844,12 +846,7 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
     RDB_AGGREGATE_UNDEFINED_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_AGGREGATE_UNDEFINED_ERROR.def.scalar.repc = 1;
     RDB_AGGREGATE_UNDEFINED_ERROR.def.scalar.repv = &aggregate_undefined_rep;
-    RDB_AGGREGATE_UNDEFINED_ERROR.def.scalar.arep =
-            RDB_new_tuple_type(0, NULL, ecp);
-    if (RDB_AGGREGATE_UNDEFINED_ERROR.def.scalar.arep == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
+    RDB_AGGREGATE_UNDEFINED_ERROR.def.scalar.arep = &empty_tuple_type;
     RDB_AGGREGATE_UNDEFINED_ERROR.def.scalar.constraintp = NULL;
     RDB_AGGREGATE_UNDEFINED_ERROR.def.scalar.initexp = NULL;
     RDB_AGGREGATE_UNDEFINED_ERROR.def.scalar.sysimpl = RDB_TRUE;
@@ -863,12 +860,7 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
     RDB_VERSION_MISMATCH_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_VERSION_MISMATCH_ERROR.def.scalar.repc = 1;
     RDB_VERSION_MISMATCH_ERROR.def.scalar.repv = &version_mismatch_rep;
-    RDB_VERSION_MISMATCH_ERROR.def.scalar.arep =
-            RDB_new_tuple_type(0, NULL, ecp);
-    if (RDB_VERSION_MISMATCH_ERROR.def.scalar.arep == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
+    RDB_VERSION_MISMATCH_ERROR.def.scalar.arep = &empty_tuple_type;
     RDB_VERSION_MISMATCH_ERROR.def.scalar.constraintp = NULL;
     RDB_VERSION_MISMATCH_ERROR.def.scalar.initexp = NULL;
     RDB_VERSION_MISMATCH_ERROR.def.scalar.sysimpl = RDB_TRUE;
@@ -882,12 +874,7 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
     RDB_DEADLOCK_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_DEADLOCK_ERROR.def.scalar.repc = 1;
     RDB_DEADLOCK_ERROR.def.scalar.repv = &deadlock_rep;
-    RDB_DEADLOCK_ERROR.def.scalar.arep =
-            RDB_new_tuple_type(0, NULL, ecp);
-    if (RDB_DEADLOCK_ERROR.def.scalar.arep == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
+    RDB_DEADLOCK_ERROR.def.scalar.arep = &empty_tuple_type;
     RDB_DEADLOCK_ERROR.def.scalar.constraintp = NULL;
     RDB_DEADLOCK_ERROR.def.scalar.initexp = NULL;
     RDB_DEADLOCK_ERROR.def.scalar.sysimpl = RDB_TRUE;
@@ -901,12 +888,7 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
     RDB_FATAL_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_FATAL_ERROR.def.scalar.repc = 1;
     RDB_FATAL_ERROR.def.scalar.repv = &fatal_rep;
-    RDB_FATAL_ERROR.def.scalar.arep =
-            RDB_new_tuple_type(0, NULL, ecp);
-    if (RDB_FATAL_ERROR.def.scalar.arep == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
+    RDB_FATAL_ERROR.def.scalar.arep = &empty_tuple_type;
     RDB_FATAL_ERROR.def.scalar.constraintp = NULL;
     RDB_FATAL_ERROR.def.scalar.sysimpl = RDB_TRUE;
     RDB_FATAL_ERROR.def.scalar.initexp = NULL;
@@ -948,9 +930,14 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
     RDB_IDENTIFIER.def.scalar.init_val_is_valid = RDB_TRUE;
     RDB_IDENTIFIER.compare_op = NULL;
 
+    /*
+     * RDB_NO_MEMORY_ERROR was initialized by RDB_init_builtin_basic_types()
+     * so it can be raised before this point
+     */
     if (RDB_add_type(&RDB_NO_MEMORY_ERROR, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
+
     if (RDB_add_type(&RDB_NOT_FOUND_ERROR, ecp) != RDB_OK) {
         return RDB_ERROR;
     }

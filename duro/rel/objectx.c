@@ -800,6 +800,7 @@ RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
 {
     int ret;
     RDB_int rc;
+    void *datap;
 
     if (dstvalp->kind != RDB_OB_INITIAL && srcvalp->kind != dstvalp->kind) {
         RDB_raise_type_mismatch("source type does not match destination type",
@@ -867,17 +868,35 @@ RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
             return RDB_OK;
         case RDB_OB_BIN:
             if (dstvalp->kind == RDB_OB_BIN) {
-                if (dstvalp->val.bin.len > 0)
-                    RDB_free(dstvalp->val.bin.datap);
-            } else {
-                dstvalp->kind = srcvalp->kind;
-            }
-            dstvalp->val.bin.len = srcvalp->val.bin.len;
-            if (dstvalp->val.bin.len > 0) {
-                dstvalp->val.bin.datap = RDB_alloc(srcvalp->val.bin.len, ecp);
-                if (dstvalp->val.bin.datap == NULL) {
-                    return RDB_ERROR;
+                if (dstvalp->val.bin.len > 0) {
+                    if (srcvalp->val.bin.len > 0) {
+                        datap = RDB_realloc(dstvalp->val.bin.datap,
+                                srcvalp->val.bin.len, ecp);
+                        if (datap == NULL)
+                            return RDB_ERROR;
+                        dstvalp->val.bin.datap = datap;
+                        dstvalp->val.bin.len = srcvalp->val.bin.len;
+                    } else {
+                        RDB_free(dstvalp->val.bin.datap);
+                        dstvalp->val.bin.datap = NULL;
+                        dstvalp->val.bin.len = 0;
+                    }
+                } else {
+                    datap = RDB_alloc(srcvalp->val.bin.len, ecp);
+                    if (datap == NULL)
+                        return RDB_ERROR;
+                    dstvalp->val.bin.datap = datap;
+                    dstvalp->val.bin.len = srcvalp->val.bin.len;
                 }
+            } else {
+                datap = RDB_alloc(srcvalp->val.bin.len, ecp);
+                if (datap == NULL)
+                    return RDB_ERROR;
+                dstvalp->kind = RDB_OB_BIN;
+                dstvalp->val.bin.datap = datap;
+                dstvalp->val.bin.len = srcvalp->val.bin.len;
+            }
+            if (dstvalp->val.bin.datap != NULL) {
                 memcpy(dstvalp->val.bin.datap, srcvalp->val.bin.datap,
                         srcvalp->val.bin.len);
             }

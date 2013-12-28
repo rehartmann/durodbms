@@ -14,6 +14,8 @@
 #include "operator.h"
 #include <gen/hashmap.h>
 
+#define RDB_VAR_PARAMS (-1)
+
 typedef struct RDB_transaction RDB_transaction;
 
 typedef struct {

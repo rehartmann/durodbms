@@ -2645,6 +2645,7 @@ Duro_destroy_interp(void)
         if (RDB_parse_get_interactive())
             printf("Transaction rolled back.\n");
     }
+    RDB_destroy_op_map(&Duro_sys_module.upd_op_map);
 
     if (Duro_envp != NULL)
         RDB_close_env(Duro_envp);

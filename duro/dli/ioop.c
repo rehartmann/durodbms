@@ -755,7 +755,7 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    if (RDB_put_upd_op(opmapp, "www_form_to_tuple", -1, NULL,
+    if (RDB_put_upd_op(opmapp, "www_form_to_tuple", RDB_VAR_PARAMS, NULL,
             &op_www_form_to_tuple, ecp) != RDB_OK)
        return RDB_ERROR;
 

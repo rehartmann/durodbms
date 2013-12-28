@@ -1847,6 +1847,11 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
     RDB_type *paramtv[3];
     int ret;
 
+    /*
+     * No errors other than no_memory_error may be raised here because the other error
+     * types are not initialized yet.
+     */
+
     RDB_init_op_map(&RDB_builtin_ro_op_map);
 
     paramtv[0] = &RDB_FLOAT;
@@ -2411,7 +2416,6 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
 int
 RDB_init_builtin(RDB_exec_context *ecp)
 {
-    int ret;
     static RDB_bool initialized = RDB_FALSE;
 
     if (initialized) {
@@ -2422,10 +2426,11 @@ RDB_init_builtin(RDB_exec_context *ecp)
         return RDB_ERROR;
     if (RDB_init_builtin_ops(ecp) != RDB_OK)
         return RDB_ERROR;
-    ret =  RDB_add_builtin_pr_types(ecp);
+    if (RDB_add_builtin_pr_types(ecp) != RDB_OK)
+        return RDB_ERROR;
 
     initialized = RDB_TRUE;
-    return ret;
+    return RDB_OK;
 }
 
 /*@}*/

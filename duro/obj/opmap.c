@@ -131,10 +131,10 @@ RDB_get_op(const RDB_op_map *opmap, const char *name, int argc,
         opep = opep->nextp;
     }
 
-    /* If not, found, search generic operator (argc == -1) */
+    /* If not, found, search generic operator (argc == RDB_VAR_PARAMS) */
     opep = firstopep;
     while (opep != NULL) {
-        if (opep->op->paramc == -1) {
+        if (opep->op->paramc == RDB_VAR_PARAMS) {
             return opep->op;
         }
         opep = opep->nextp;
@@ -167,35 +167,16 @@ RDB_del_ops(RDB_op_map *opmap, const char *name, RDB_exec_context *ecp)
 }
 
 int
-RDB_put_upd_op(RDB_op_map *opmap, const char *name, int paramc, RDB_parameter *paramv,
+RDB_put_upd_op(RDB_op_map *opmap, const char *name, int paramc, RDB_parameter paramv[],
         RDB_upd_op_func *opfp, RDB_exec_context *ecp)
 {
-    RDB_operator *op = RDB_alloc(sizeof(RDB_operator), ecp);
+    RDB_operator *op = RDB_new_upd_op(name, paramc, paramv, opfp, ecp);
     if (op == NULL)
         return RDB_ERROR;
-    op->name = RDB_dup_str(name);
-    if (op->name == NULL) {
-        RDB_raise_no_memory(ecp);
-        goto error;
-    }
-    op->paramc = paramc;
-    op->paramv = paramv;
-
-    RDB_init_obj(&op->source);
-    op->modhdl = NULL;
-    op->opfn.upd_fp = opfp;
-    op->rtyp = NULL;
 
     if (RDB_put_op(opmap, op, ecp) != RDB_OK) {
-        RDB_destroy_obj(&op->source, ecp);
-        RDB_free(op);
+        RDB_free_op_data(op, ecp);
         return RDB_ERROR;
     }
     return RDB_OK;
-
-error:
-    if (op->name != NULL)
-        RDB_free(op->name);
-    RDB_free(op);
-    return RDB_ERROR;
 }

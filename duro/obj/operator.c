@@ -79,7 +79,7 @@ RDB_set_op_cleanup_fn(RDB_operator *op,  RDB_op_cleanup_func *fp)
 /*@}*/
 
 RDB_operator *
-RDB_new_op_data(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
+RDB_new_op_data(const char *name, int paramc, RDB_type *paramtv[], RDB_type *rtyp,
         RDB_exec_context *ecp)
 {
     int i;
@@ -95,18 +95,18 @@ RDB_new_op_data(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
         goto error;
     }
 
-    op->paramc = argc;
-    if (argc > 0) {
-        op->paramv = RDB_alloc(sizeof (RDB_parameter) * argc, ecp);
+    op->paramc = paramc;
+    if (paramc > 0) {
+        op->paramv = RDB_alloc(sizeof (RDB_parameter) * paramc, ecp);
         if (op->paramv == NULL) {
             goto error;
         }
 
-        for (i = 0; i < argc; i++) {
+        for (i = 0; i < paramc; i++) {
             op->paramv[i].typ = NULL;
         }
-        for (i = 0; i < argc; i++) {
-            op->paramv[i].typ = RDB_dup_nonscalar_type(argtv[i], ecp);
+        for (i = 0; i < paramc; i++) {
+            op->paramv[i].typ = RDB_dup_nonscalar_type(paramtv[i], ecp);
             if (op->paramv[i].typ == NULL) {
                 goto error;
             }
@@ -120,6 +120,52 @@ RDB_new_op_data(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
     op->u_data = NULL;
     op->cleanup_fp = NULL;
 
+    return op;
+
+error:
+    RDB_destroy_obj(&op->source, ecp);
+    if (op->name != NULL)
+        RDB_free(op->name);
+    if (op->paramv != NULL) {
+        for (i = 0; i < op->paramc; i++) {
+            if (op->paramv[i].typ != NULL
+                   && !RDB_type_is_scalar(op->paramv[i].typ)) {
+                RDB_del_nonscalar_type(op->paramv[i].typ, ecp);
+            }
+        }
+    }
+    RDB_free(op);
+    return NULL;
+}
+
+RDB_operator *
+RDB_new_upd_op(const char *name, int paramc, RDB_parameter paramv[],
+        RDB_upd_op_func *opfp, RDB_exec_context *ecp)
+{
+    int i;
+    RDB_operator *op = RDB_new_op_data(name, 0, NULL, NULL, ecp);
+    if (op == NULL)
+        return NULL;
+
+    op->paramc = paramc;
+    if (paramc > 0) {
+        op->paramv = RDB_alloc(sizeof (RDB_parameter) * paramc, ecp);
+        if (op->paramv == NULL) {
+            goto error;
+        }
+
+        for (i = 0; i < paramc; i++) {
+            op->paramv[i].typ = NULL;
+        }
+        for (i = 0; i < paramc; i++) {
+            op->paramv[i].typ = RDB_dup_nonscalar_type(paramv[i].typ, ecp);
+            if (op->paramv[i].typ == NULL) {
+                goto error;
+            }
+            op->paramv[i].update = paramv[i].update;
+        }
+    }
+    op->opfn.upd_fp = opfp;
     return op;
 
 error:

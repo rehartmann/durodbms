@@ -460,8 +460,9 @@ create_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
         return NULL;
     }
 
-    ret = RDB_begin_tx_env(ecp, &tx, envp, NULL);
-    if (ret != RDB_OK) {
+    RDB_init_hashmap(&sdb.tbmap, 1);
+
+    if (RDB_begin_tx_env(ecp, &tx, envp, NULL) != RDB_OK) {
         goto error;
     }
 
@@ -474,15 +475,17 @@ create_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
         goto error;
     }
 
-    ret = RDB_commit(ecp, &tx);
-    if (ret != RDB_OK)
+    if (RDB_commit(ecp, &tx) != RDB_OK)
         goto error;
 
     RDB_env_set_xdata(envp, dbrootp);
 
+    RDB_destroy_hashmap(&sdb.tbmap);
+
     return dbrootp;
 
 error:
+    RDB_destroy_hashmap(&sdb.tbmap);
     free_dbroot(dbrootp, ecp);
     return NULL;
 }

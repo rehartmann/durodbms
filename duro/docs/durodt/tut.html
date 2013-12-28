@@ -1080,7 +1080,7 @@ D> for i := 1 to 10; insert r tup{n i, s cast_as_string(i)}; end for;
 1 element affected.
 1 element affected.
 1 element affected.
-D> explain r where n=1 order();
+D> explain r where n = 1 order();
 (r INDEX r$0) where (n = 1)
 </pre>
 
@@ -1089,12 +1089,12 @@ D> explain r where n=1 order();
 <p>The output of EXPLAIN shows that Duro D/T uses the index r$0 to evaluate the expression.
 This is the index which was created to ensure that n is a key attribute of r.
 
-Now let's try other WHERE expressions:
+<p>Now let's try other WHERE expressions:
 
 <pre>
-D> explain r where n>1 order();
+D> explain r where n > 1 order();
 (r) where (n > 1)
-D> explain r where s='one' order();
+D> explain r where s = 'one' order();
 (r) where (s = 'one')
 </pre>
 
