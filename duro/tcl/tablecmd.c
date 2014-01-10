@@ -121,15 +121,11 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
              */
             Tcl_Obj *defvalobjp;
 
-            attrv[i].defaultp = RDB_obj_to_expr(NULL, statep->current_ecp);
+            Tcl_ListObjIndex(interp, attrobjp, 2, &defvalobjp);
+            attrv[i].defaultp = Duro_parse_expr_utf(interp, Tcl_GetString(defvalobjp),
+                    statep, statep->current_ecp, txp);
             if (attrv[i].defaultp == NULL) {
                 ret = TCL_ERROR;
-                goto cleanup;
-            }
-            Tcl_ListObjIndex(interp, attrobjp, 2, &defvalobjp);
-            ret = Duro_tcl_to_duro(interp, defvalobjp, attrv[i].typ,
-                    RDB_expr_obj(attrv[i].defaultp), statep->current_ecp, txp);
-            if (ret != RDB_OK) {
                 goto cleanup;
             }
         } else {
@@ -660,15 +656,26 @@ table_attrs_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         if (ret != TCL_OK)
             return ret;
 
-        /* If there is a default value, add it to sublist
-         * !! default value no longer valid */
+        /* If there is a default value, add it to sublist */
         if (attrv[i].defaultp != NULL) {
-            Tcl_Obj *defp = Duro_to_tcl(interp,
-                    RDB_expr_obj(attrv[i].defaultp), statep->current_ecp,
-                    txp);
-            if (defp == NULL)
+            RDB_object defobj;
+            Tcl_Obj *deftobjp;
+
+            RDB_init_obj(&defobj);
+            ret = RDB_expr_to_str(&defobj, attrv[i].defaultp,
+                    statep->current_ecp, txp, 0);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&defobj, statep->current_ecp);
+                Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
                 return TCL_ERROR;
-            ret = Tcl_ListObjAppendElement(interp, sublistobjp, defp);
+            }
+            deftobjp = Duro_to_tcl(interp, &defobj, statep->current_ecp, txp);
+            if (deftobjp == NULL) {
+                RDB_destroy_obj(&defobj, statep->current_ecp);
+                return TCL_ERROR;
+            }
+            ret = Tcl_ListObjAppendElement(interp, sublistobjp, deftobjp);
+            RDB_destroy_obj(&defobj, statep->current_ecp);
             if (ret != TCL_OK)
                 return ret;
         }

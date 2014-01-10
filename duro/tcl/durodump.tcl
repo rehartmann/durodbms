@@ -6,7 +6,7 @@ exec tclsh "$0" ${1+"$@"}
 # $Id$
 #
 # Durodump - tool to dump tables to a file.
-# Copyright (C) 2004-2012 Rene Hartmann.
+# Copyright (C) 2004-2014 Rene Hartmann.
 # See the file COPYING for redistribution information.
 #
 # Synopsis
@@ -28,24 +28,43 @@ exec tclsh "$0" ${1+"$@"}
 # the original environment directory is used.
 # The environment directory must exist and is expected to be empty.
 #
-# Durodump is no longer part of the distribution, but still kept in the
-# repository.
 #
 
 package require duro
 
 proc dump_rtable {out t tx cr} {
     puts $out "set tx \[duro::begin \$dbenv [duro::txdb $tx]\]"
+    set alist [duro::table attrs $t $tx]
+    set serialattrs {}
+    foreach a $alist {
+       if {([llength $a] > 2) && ([lindex $a 2] == {serial()})} {
+           lappend serialattrs [lindex $a 0]
+       }
+    }
     if {$cr} {
-        set alist [duro::table attrs $t $tx]
         puts -nonewline $out "duro::table create $t \{$alist\}"
         puts $out " \{[duro::table keys $t $tx]\} \$tx"
     }
 
-    set a [duro::array create $t $tx]
-    duro::array foreach tpl $a {
-        puts $out "duro::insert $t \{$tpl\} \$tx" 
-    } $tx
+    if {[llength $serialattrs] == 0} {
+        set a [duro::array create $t $tx]
+        duro::array foreach tpl $a {
+            puts $out "duro::insert $t \{$tpl\} \$tx"
+        } $tx
+    } else {
+        # If there are attributes with a default value of serial(),
+        # do not dump these attributes and sort by the first
+        set a [duro::array create $t [list [lindex $serialattrs 0] asc] $tx]
+        duro::array foreach tpl $a {
+            set l {}
+            foreach {name val} $tpl {
+                if {[lsearch -exact $serialattrs $name] == -1} {
+                    lappend l $name $val
+                }
+            }
+            puts $out "duro::insert $t \{$l\} \$tx"
+        } $tx
+    }
     puts $out {duro::commit $tx}
     duro::array drop $a
 }

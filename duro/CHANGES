@@ -13,6 +13,9 @@ DuroDBMS 0.20
 - Refactored the code, moving functions which do not depend on persistence to
   directory obj.
 
+- Durotcl: Default values must be passed to duro::table create as expressions
+  (e.g. strings must be quoted)
+
 DuroDBMS 0.19
 
 - Renamed Duro_exit_interp() to Duro_destroy_interp(). 

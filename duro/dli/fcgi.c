@@ -5,8 +5,8 @@
  *      Author: Rene Hartmann
  */
 
+#include <obj/opmap.h>
 #include <rel/rdb.h>
-#include <rel/opmap.h>
 
 #include <fcgi_stdio.h>
 

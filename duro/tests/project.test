@@ -18,13 +18,13 @@ test ptables {projection tables} -setup $SETUP -body {
 
     # Create Database
     duro::db create $dbenv TEST
-    
+
     set tx [duro::begin $dbenv TEST]
     
     # Create real table
     duro::table create R {
        {A integer}
-       {B string yo}
+       {B string 'yo'}
        {C string}
     } {{A}} $tx
 

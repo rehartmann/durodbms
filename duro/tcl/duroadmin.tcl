@@ -8,7 +8,7 @@ exec wish "$0" ${1+"$@"}
 
 # $Id$
 
-set duro_version 0.19
+set duro_version 0.20
 
 package require -exact duro $duro_version
 package require Tktable
@@ -20,6 +20,7 @@ package require Tktable
 # tableattrs	list of table attributes
 # tablekey      table key (attribute list)
 # tabletypes    array which maps table attributes to their types
+# tabledefvals  array which maps table attributes to their types
 # ltables	list of local tables
 # types         list of scalar types
 # keyvals	array which maps (row,key attribute) to key value
@@ -256,8 +257,14 @@ proc show_table {} {
         set tx [duro::begin $::dbenv $::db]
 
         array unset ::tabletypes
+        array unset ::tabledefvals
         foreach i [duro::table attrs $table $tx] {
             set ::tabletypes([lindex $i 0]) [lindex $i 1]
+            if {[llength $i] > 2} {
+                set ::tabledefvals([lindex $i 0]) [lindex $i 2]
+            } else {
+                set ::tabledefvals([lindex $i 0]) {}
+            }
         }
         set ::tableattrs [array names ::tabletypes]
         set ::tablekey [lindex [duro::table keys $table $tx] 0]
@@ -755,6 +762,7 @@ proc drop_table {} {
 proc insert_tuple {} {
     set table [.tables get anchor]
     set rowcount [.tableframe.table cget -rows]
+    set sysval 0
 
     .tableframe.table configure -rows [expr $rowcount + 1]
     clear_bottom_row
@@ -765,7 +773,12 @@ proc insert_tuple {} {
     set tpl ""
     set i 0
     foreach attr $::tableattrs {
-        lappend tpl $attr [.tableframe.table get [expr {$rowcount - 1}],$i]
+        # Ignore value if there is a default of serial() or similar
+        if {![string match {*()} $::tabledefvals($attr)]} {
+            lappend tpl $attr [.tableframe.table get [expr {$rowcount - 1}],$i]
+        } else {
+            set sysval 1
+        }
         incr i
     }
 
@@ -780,10 +793,14 @@ proc insert_tuple {} {
         tk_messageBox -type ok -title "Error" -message $msg -icon error
         return
     }
-    array set ta $tpl
-    foreach i $::tablekey {
-        set ::keyvals([expr {$rowcount - 2}],$i) $ta($i)
-    }
+    if {$sysval} {
+        show_table
+    } else {
+	    array set ta $tpl
+	    foreach i $::tablekey {
+	        set ::keyvals([expr {$rowcount - 2}],$i) $ta($i)
+	    }
+	}
 }
 
 proc quote_str {str} {
