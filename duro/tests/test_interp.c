@@ -20,6 +20,7 @@ main(void)
     RDB_database *dbp;
     RDB_exec_context ec;
     int ret;
+    Duro_interp interp;
 
     ret = RDB_open_env("dbenv", &dsp, RDB_CREATE);
     if (ret != 0) {
@@ -35,20 +36,20 @@ main(void)
         return 1;
     }
 
-    assert(Duro_init_interp(&ec, RDB_db_name(dbp)) == RDB_OK);
+    assert(Duro_init_interp(&interp, &ec, RDB_db_name(dbp)) == RDB_OK);
 
     if (Duro_dt_execute_str(RDB_db_env(dbp),
             "put_line ('Test');"
             "begin tx;"
             "put_line (cast_as_string(count(depts)));"
             "commit;",
-            &ec) != RDB_OK) {
+            &interp, &ec) != RDB_OK) {
         Duro_print_error(RDB_get_err(&ec));
         abort();
     }
 
     RDB_destroy_exec_context(&ec);
-    Duro_destroy_interp();
+    Duro_destroy_interp(&interp);
 
     return 0;
 }

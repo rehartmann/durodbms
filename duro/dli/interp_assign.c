@@ -14,7 +14,7 @@
 #include <string.h>
 
 static RDB_object *
-resolve_target(const RDB_expression *exp, RDB_exec_context *ecp)
+resolve_target(const RDB_expression *exp, Duro_interp *interp, RDB_exec_context *ecp)
 {
     const char *varname;
     const char *opname = RDB_expr_op_name(exp);
@@ -32,7 +32,7 @@ resolve_target(const RDB_expression *exp, RDB_exec_context *ecp)
              */
 
             /* Get first argument, which must be an array */
-            RDB_object *arrp = resolve_target(exp->def.op.args.firstp, ecp);
+            RDB_object *arrp = resolve_target(exp->def.op.args.firstp, interp, ecp);
             if (arrp == NULL)
                 return NULL;
             if (RDB_obj_type(arrp) == NULL
@@ -43,7 +43,7 @@ resolve_target(const RDB_expression *exp, RDB_exec_context *ecp)
 
             /* Get second argument, which must be INTEGER */
             RDB_init_obj(&idxobj);
-            if (Duro_evaluate_retry(exp->def.op.args.firstp->nextp, ecp,
+            if (Duro_evaluate_retry(exp->def.op.args.firstp->nextp, interp, ecp,
                     &idxobj) != RDB_OK) {
                 RDB_destroy_obj(&idxobj, ecp);
                 return NULL;
@@ -64,7 +64,7 @@ resolve_target(const RDB_expression *exp, RDB_exec_context *ecp)
     /* Resolve variable name */
     varname = RDB_expr_var_name(exp);
     if (varname != NULL) {
-        return Duro_lookup_var(varname, ecp);
+        return Duro_lookup_var(varname, interp, ecp);
     }
     RDB_raise_syntax("invalid assignment target", ecp);
     return NULL;
@@ -84,13 +84,13 @@ comp_idx(RDB_possrep *possrep, const char *name)
 static int
 comp_node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
         RDB_expression *dstexp, RDB_expression *srcexp,
-        RDB_exec_context *ecp)
+        Duro_interp *interp, RDB_exec_context *ecp)
 {
     int i;
     RDB_possrep *possrep;
     RDB_object **argpv = NULL;
     RDB_object *argv = NULL;
-    RDB_type *typ = Duro_expr_type_retry(dstexp->def.op.args.firstp, ecp);
+    RDB_type *typ = Duro_expr_type_retry(dstexp->def.op.args.firstp, interp, ecp);
     if (typ == NULL)
         return RDB_ERROR;
 
@@ -112,7 +112,7 @@ comp_node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
     }
 
     i = comp_idx(possrep, dstexp->def.op.name);
-    if (Duro_evaluate_retry(srcexp, ecp, &argv[i]) != RDB_OK)
+    if (Duro_evaluate_retry(srcexp, interp, ecp, &argv[i]) != RDB_OK)
         goto error;
     argpv[i] = &argv[i];
 
@@ -126,7 +126,7 @@ comp_node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
                 RDB_bool iseq;
                 if (RDB_expr_equals(dstexp->def.op.args.firstp,
                         fdstexp->def.op.args.firstp, ecp,
-                        Duro_txnp != NULL ? &Duro_txnp->tx : NULL, &iseq)
+                        interp->txnp != NULL ? &interp->txnp->tx : NULL, &iseq)
                         != RDB_OK) {
                     goto error;
                 }
@@ -142,11 +142,11 @@ comp_node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
                         goto error;
                     }
                     srcexp = RDB_parse_node_expr(
-                            nodep->val.children.firstp->nextp->nextp,
-                            ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
+                            nodep->val.children.firstp->nextp->nextp, ecp,
+                            interp->txnp != NULL ? &interp->txnp->tx : NULL);
                     if (srcexp == NULL)
                         goto error;
-                    if (Duro_evaluate_retry(srcexp, ecp,
+                    if (Duro_evaluate_retry(srcexp, interp, ecp,
                             &argv[i]) != RDB_OK)
                         goto error;
                     argpv[i] = &argv[i];
@@ -158,7 +158,7 @@ comp_node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
         }
     }
 
-    copyp->dstp = resolve_target(dstexp->def.op.args.firstp, ecp);
+    copyp->dstp = resolve_target(dstexp->def.op.args.firstp, interp, ecp);
     if (copyp->dstp == NULL)
         goto error;
 
@@ -167,8 +167,9 @@ comp_node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
     for (i = 0; i < possrep->compc; i++) {
         if (argpv[i] == NULL) {
             if (RDB_obj_comp(copyp->dstp, possrep->compv[i].name, &argv[i],
-                    Duro_envp, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL)
-                    != RDB_OK) {
+                    interp->envp, ecp,
+                    interp->txnp != NULL ? &interp->txnp->tx : NULL)
+                            != RDB_OK) {
                 goto error;
             }
             argpv[i] = &argv[i];
@@ -176,7 +177,7 @@ comp_node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
     }
 
     if (RDB_call_ro_op_by_name_e(possrep->name, possrep->compc, argpv,
-            Duro_envp, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL,
+            interp->envp, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL,
             copyp->srcp) != RDB_OK)
         goto error;
 
@@ -201,25 +202,26 @@ error:
 }
 
 static int
-node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep, RDB_exec_context *ecp)
+node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep, Duro_interp *interp,
+        RDB_exec_context *ecp)
 {
     RDB_expression *dstexp = nodep->xdata;
     RDB_expression *srcexp = RDB_parse_node_expr(
             nodep->val.children.firstp->nextp->nextp,
-            ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
+            ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
     if (srcexp == NULL) {
         return RDB_ERROR;
     }
 
     if (dstexp->kind == RDB_EX_GET_COMP) {
-        return comp_node_to_copy(copyp, nodep, dstexp, srcexp, ecp);
+        return comp_node_to_copy(copyp, nodep, dstexp, srcexp, interp, ecp);
     }
 
-    if (Duro_evaluate_retry(srcexp, ecp, copyp->srcp) != RDB_OK) {
+    if (Duro_evaluate_retry(srcexp, interp, ecp, copyp->srcp) != RDB_OK) {
         return RDB_ERROR;
     }
 
-    copyp->dstp = resolve_target(dstexp, ecp);
+    copyp->dstp = resolve_target(dstexp, interp, ecp);
     if (copyp->dstp == NULL) {
         return RDB_ERROR;
     }
@@ -229,7 +231,7 @@ node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep, RDB_exec_context *ecp)
 
 static int
 tuple_update_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
-        RDB_exec_context *ecp)
+        Duro_interp *interp, RDB_exec_context *ecp)
 {
     RDB_expression *srcexp;
     RDB_expression *srcvarexp;
@@ -243,7 +245,7 @@ tuple_update_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
     /*
      * Get destination
      */
-    copyp->dstp = resolve_target(nodep->exp, ecp);
+    copyp->dstp = resolve_target(nodep->exp, interp, ecp);
     if (copyp->dstp == NULL) {
         return RDB_ERROR;
     }
@@ -264,14 +266,16 @@ tuple_update_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
     for(;;) {
         RDB_expression *exp = RDB_string_to_expr(
                 RDB_expr_var_name(RDB_parse_node_expr(
-                        ap->val.children.firstp, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL)),
+                        ap->val.children.firstp, ecp,
+                        interp->txnp != NULL ? &interp->txnp->tx : NULL)),
                 ecp);
         if (exp == NULL)
             goto error;
         RDB_add_arg(srcexp, exp);
 
         exp = RDB_parse_node_expr(
-                ap->val.children.firstp->nextp->nextp, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
+                ap->val.children.firstp->nextp->nextp, ecp,
+                interp->txnp != NULL ? &interp->txnp->tx : NULL);
         if (exp == NULL)
             goto error;
         exp = RDB_dup_expr(exp, ecp);
@@ -287,7 +291,7 @@ tuple_update_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
         ap = ap->nextp;
     }
 
-    if (Duro_evaluate_retry(srcexp, ecp, copyp->srcp) != RDB_OK) {
+    if (Duro_evaluate_retry(srcexp, interp, ecp, copyp->srcp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -299,15 +303,17 @@ error:
 }
 
 static int
-node_to_insert(RDB_ma_insert *insp, RDB_parse_node *nodep, RDB_exec_context *ecp)
+node_to_insert(RDB_ma_insert *insp, RDB_parse_node *nodep, Duro_interp *interp,
+        RDB_exec_context *ecp)
 {
     RDB_expression *srcexp;
-    RDB_expression *dstexp = RDB_parse_node_expr(nodep, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
+    RDB_expression *dstexp = RDB_parse_node_expr(nodep, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL);
     if (dstexp == NULL) {
         return RDB_ERROR;
     }
 
-    insp->tbp = resolve_target(dstexp, ecp);
+    insp->tbp = resolve_target(dstexp, interp, ecp);
     if (insp->tbp == NULL) {
         return RDB_ERROR;
     }
@@ -318,12 +324,12 @@ node_to_insert(RDB_ma_insert *insp, RDB_parse_node *nodep, RDB_exec_context *ecp
         return RDB_ERROR;
     }
 
-    srcexp = RDB_parse_node_expr(nodep->nextp, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
+    srcexp = RDB_parse_node_expr(nodep->nextp, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
     if (srcexp == NULL) {
         return RDB_ERROR;
     }
 
-    if (Duro_evaluate_retry(srcexp, ecp, insp->objp) != RDB_OK) {
+    if (Duro_evaluate_retry(srcexp, interp, ecp, insp->objp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -332,7 +338,7 @@ node_to_insert(RDB_ma_insert *insp, RDB_parse_node *nodep, RDB_exec_context *ecp
 
 static int
 node_to_update(RDB_ma_update *updp, RDB_object *dstp, RDB_parse_node *nodep,
-        RDB_exec_context *ecp)
+        Duro_interp *interp, RDB_exec_context *ecp)
 {
     RDB_parse_node *np;
     RDB_parse_node *aafnp;
@@ -341,7 +347,8 @@ node_to_update(RDB_ma_update *updp, RDB_object *dstp, RDB_parse_node *nodep,
     updp->tbp = dstp;
 
     if (nodep->nextp->val.token == TOK_WHERE) {
-        updp->condp = RDB_parse_node_expr(nodep->nextp->nextp, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
+        updp->condp = RDB_parse_node_expr(nodep->nextp->nextp, ecp,
+                interp->txnp != NULL ? &interp->txnp->tx : NULL);
         if (nodep == NULL)
             return RDB_ERROR;
         np = nodep->nextp->nextp->nextp->nextp->val.children.firstp;
@@ -356,7 +363,7 @@ node_to_update(RDB_ma_update *updp, RDB_object *dstp, RDB_parse_node *nodep,
         aafnp = np->val.children.firstp;
         updp->updv[i].name = RDB_expr_var_name(aafnp->exp);
         updp->updv[i].exp = RDB_parse_node_expr(aafnp->nextp->nextp, ecp,
-                Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
+                interp->txnp != NULL ? &interp->txnp->tx : NULL);
         if (updp->updv[i].exp == NULL)
             return RDB_ERROR;
         np = np->nextp;
@@ -365,15 +372,16 @@ node_to_update(RDB_ma_update *updp, RDB_object *dstp, RDB_parse_node *nodep,
 }
 
 static int
-node_to_delete(RDB_ma_delete *delp, RDB_parse_node *nodep, RDB_exec_context *ecp)
+node_to_delete(RDB_ma_delete *delp, RDB_parse_node *nodep, Duro_interp *interp,
+        RDB_exec_context *ecp)
 {
     RDB_expression *dstexp = RDB_parse_node_expr(nodep, ecp,
-            Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
+            interp->txnp != NULL ? &interp->txnp->tx : NULL);
     if (dstexp == NULL) {
         return RDB_ERROR;
     }
 
-    delp->tbp = resolve_target(dstexp, ecp);
+    delp->tbp = resolve_target(dstexp, interp, ecp);
     if (delp->tbp == NULL) {
         return RDB_ERROR;
     }
@@ -388,7 +396,7 @@ node_to_delete(RDB_ma_delete *delp, RDB_parse_node *nodep, RDB_exec_context *ecp
         delp->condp = NULL;
     } else {
         delp->condp = RDB_parse_node_expr(nodep->nextp->nextp, ecp,
-                Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
+                interp->txnp != NULL ? &interp->txnp->tx : NULL);
         if (delp->condp == NULL)
             return RDB_ERROR;
     }
@@ -401,7 +409,7 @@ node_to_delete(RDB_ma_delete *delp, RDB_parse_node *nodep, RDB_exec_context *ecp
  * and return it as an expression if it is.
  */
 static const RDB_expression *
-op_assign(const RDB_parse_node *nodep, RDB_exec_context *ecp)
+op_assign(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
 {
     RDB_expression *exp;
     const char *opname;
@@ -409,7 +417,8 @@ op_assign(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     if (tnodep->kind == RDB_NODE_TOK)
         return NULL;
 
-    exp = RDB_parse_node_expr(tnodep, ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
+    exp = RDB_parse_node_expr(tnodep, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL);
     if (exp->kind == RDB_EX_GET_COMP)
         return exp;
     opname = RDB_expr_op_name(exp);
@@ -421,7 +430,7 @@ op_assign(const RDB_parse_node *nodep, RDB_exec_context *ecp)
 
 static int
 exec_length_assign(const RDB_parse_node *nodep, const RDB_expression *argexp,
-        RDB_exec_context *ecp)
+        Duro_interp *interp, RDB_exec_context *ecp)
 {
     RDB_type *arrtyp;
     RDB_expression *srcexp;
@@ -434,7 +443,7 @@ exec_length_assign(const RDB_parse_node *nodep, const RDB_expression *argexp,
         RDB_raise_syntax("only single assignment of array length permitted", ecp);
         return RDB_ERROR;
     }
-    arrp = resolve_target(argexp, ecp);
+    arrp = resolve_target(argexp, interp, ecp);
     if (arrp == NULL)
         return RDB_ERROR;
 
@@ -449,10 +458,10 @@ exec_length_assign(const RDB_parse_node *nodep, const RDB_expression *argexp,
 
     RDB_init_obj(&lenobj);
     srcexp = RDB_parse_node_expr(nodep->val.children.firstp->nextp->nextp, ecp,
-            Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
+            interp->txnp != NULL ? &interp->txnp->tx : NULL);
     if (srcexp == NULL)
         return RDB_ERROR;
-    if (Duro_evaluate_retry(srcexp, ecp, &lenobj) != RDB_OK) {
+    if (Duro_evaluate_retry(srcexp, interp, ecp, &lenobj) != RDB_OK) {
         RDB_destroy_obj(&lenobj, ecp);
         return RDB_ERROR;
     }
@@ -476,8 +485,8 @@ exec_length_assign(const RDB_parse_node *nodep, const RDB_expression *argexp,
             if (elemp == NULL)
                 return RDB_ERROR;
 
-            if (Duro_init_obj(elemp, basetyp, ecp,
-                    Duro_txnp != NULL ? &Duro_txnp->tx : NULL) != RDB_OK)
+            if (Duro_init_obj(elemp, basetyp, interp, ecp,
+                    interp->txnp != NULL ? &interp->txnp->tx : NULL) != RDB_OK)
                 return RDB_ERROR;
         }
     }
@@ -490,7 +499,7 @@ exec_length_assign(const RDB_parse_node *nodep, const RDB_expression *argexp,
  */
 static int
 exec_the_assign_set(const RDB_parse_node *nodep, const RDB_expression *opexp,
-        RDB_exec_context *ecp)
+        Duro_interp *interp, RDB_exec_context *ecp)
 {
     int ret;
     RDB_object *argp;
@@ -498,23 +507,24 @@ exec_the_assign_set(const RDB_parse_node *nodep, const RDB_expression *opexp,
     RDB_object srcobj;
     RDB_expression *argexp = opexp->def.op.args.firstp;
 
-    argp = resolve_target(argexp, ecp);
+    argp = resolve_target(argexp, interp, ecp);
     if (argp == NULL)
         return RDB_ERROR;
 
     srcexp = RDB_parse_node_expr(nodep->val.children.firstp->nextp->nextp, ecp,
-            Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
+            interp->txnp != NULL ? &interp->txnp->tx : NULL);
     if (srcexp == NULL)
         return RDB_ERROR;
 
     RDB_init_obj(&srcobj);
-    if (Duro_evaluate_retry(srcexp, ecp, &srcobj) != RDB_OK) {
+    if (Duro_evaluate_retry(srcexp, interp, ecp, &srcobj) != RDB_OK) {
         RDB_destroy_obj(&srcobj, ecp);
         return RDB_ERROR;
     }
 
-    ret = RDB_obj_set_comp(argp, opexp->def.op.name, &srcobj, Duro_envp, ecp,
-            Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
+    ret = RDB_obj_set_comp(argp, opexp->def.op.name, &srcobj,
+            interp->envp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL);
     RDB_destroy_obj(&srcobj, ecp);
     return ret;
 }
@@ -530,6 +540,7 @@ node_to_multi_assign(const RDB_parse_node *listnodep,
         int *delcp, RDB_ma_delete *delv,
         int *srcobjcp, RDB_object *srcobjv,
         int *attrupdcp, RDB_attr_update *attrupdv,
+        Duro_interp *interp,
         RDB_exec_context *ecp)
 {
     int i;
@@ -550,7 +561,7 @@ node_to_multi_assign(const RDB_parse_node *listnodep,
             /* First node not a token, so it's a := assignment */
             RDB_expression *dstexp = RDB_parse_node_expr(
                     nodep->val.children.firstp, ecp,
-                    Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
+                    interp->txnp != NULL ? &interp->txnp->tx : NULL);
             if (dstexp == NULL) {
                 return RDB_ERROR;
             }
@@ -580,7 +591,8 @@ node_to_multi_assign(const RDB_parse_node *listnodep,
 
                     RDB_init_obj(&srcobjv[(*srcobjcp)++]);
                     insv[(*inscp)].objp = &srcobjv[(*srcobjcp) - 1];
-                    if (node_to_insert(&insv[(*inscp)++], firstp->nextp, ecp) != RDB_OK) {
+                    if (node_to_insert(&insv[(*inscp)++], firstp->nextp,
+                            interp, ecp) != RDB_OK) {
                         goto error;
                     }
                     break;
@@ -605,12 +617,12 @@ node_to_multi_assign(const RDB_parse_node *listnodep,
                     }
 
                     dstexp = RDB_parse_node_expr(firstp->nextp, ecp,
-                            Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
+                            interp->txnp != NULL ? &interp->txnp->tx : NULL);
                     if (dstexp == NULL) {
                         goto error;
                     }
 
-                    dstp = resolve_target(dstexp, ecp);
+                    dstp = resolve_target(dstexp, interp, ecp);
                     if (dstp == NULL) {
                         return RDB_ERROR;
                     }
@@ -634,7 +646,8 @@ node_to_multi_assign(const RDB_parse_node *listnodep,
 
                         RDB_init_obj(&srcobjv[(*srcobjcp)++]);
                         copyv[(*copycp)].srcp = &srcobjv[(*srcobjcp) - 1];
-                        if (tuple_update_to_copy(&copyv[(*copycp)++], firstp->nextp, ecp) != RDB_OK) {
+                        if (tuple_update_to_copy(&copyv[(*copycp)++], firstp->nextp,
+                                interp, ecp) != RDB_OK) {
                             goto error;
                         }
                     } else {
@@ -643,8 +656,8 @@ node_to_multi_assign(const RDB_parse_node *listnodep,
                             return RDB_ERROR;
                         }
                         updv[(*updcp)].updv = &attrupdv[(*attrupdcp)];
-                        if (node_to_update(&updv[(*updcp)], dstp, firstp->nextp, ecp)
-                                != RDB_OK) {
+                        if (node_to_update(&updv[(*updcp)], dstp, firstp->nextp,
+                                interp, ecp) != RDB_OK) {
                             goto error;
                         }
                         (*attrupdcp) += updv[(*updcp)].updc;
@@ -656,7 +669,8 @@ node_to_multi_assign(const RDB_parse_node *listnodep,
                         RDB_raise_not_supported("too many deletes", ecp);
                         return RDB_ERROR;
                     }
-                    if (node_to_delete(&delv[(*delcp)++], firstp->nextp, ecp) != RDB_OK) {
+                    if (node_to_delete(&delv[(*delcp)++], firstp->nextp,
+                            interp, ecp) != RDB_OK) {
                         goto error;
                     }
                     break;
@@ -671,7 +685,7 @@ node_to_multi_assign(const RDB_parse_node *listnodep,
 
             RDB_init_obj(&srcobjv[(*srcobjcp)++]);
             copyv[(*copycp)].srcp = &srcobjv[(*srcobjcp) - 1];
-            if (node_to_copy(&copyv[(*copycp)++], nodep, ecp) != RDB_OK) {
+            if (node_to_copy(&copyv[(*copycp)++], nodep, interp, ecp) != RDB_OK) {
                 goto error;
             }
         }
@@ -691,7 +705,8 @@ node_to_multi_assign(const RDB_parse_node *listnodep,
 }
 
 int
-Duro_exec_assign(const RDB_parse_node *listnodep, RDB_exec_context *ecp)
+Duro_exec_assign(const RDB_parse_node *listnodep, Duro_interp *interp,
+        RDB_exec_context *ecp)
 {
     int i;
     int cnt;
@@ -715,22 +730,23 @@ Duro_exec_assign(const RDB_parse_node *listnodep, RDB_exec_context *ecp)
      * when there is only one assignment
      */
     if (nodep->nextp == NULL) {
-        opexp = op_assign(nodep, ecp);
+        opexp = op_assign(nodep, interp, ecp);
         if (opexp != NULL) {
             const char *opname = RDB_expr_op_name(opexp);
             if (opname != NULL) {
                 if (strcmp(opname, "length") == 0) {
-                    return exec_length_assign(nodep, opexp->def.op.args.firstp, ecp);
+                    return exec_length_assign(nodep,
+                            opexp->def.op.args.firstp, interp, ecp);
                 }
             }
             if (opexp->kind == RDB_EX_GET_COMP)
-                return exec_the_assign_set(nodep, opexp, ecp);
+                return exec_the_assign_set(nodep, opexp, interp, ecp);
         }
     }
 
     if (node_to_multi_assign(listnodep,
             &copyc, copyv, &insc, insv, &updc, updv, &delc, delv,
-            &srcobjc, srcobjv, &attrupdc, attrupdv, ecp) != RDB_OK) {
+            &srcobjc, srcobjv, &attrupdc, attrupdv, interp, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -738,7 +754,7 @@ Duro_exec_assign(const RDB_parse_node *listnodep, RDB_exec_context *ecp)
      * Execute assignments
      */
     cnt = RDB_multi_assign(insc, insv, updc, updv, delc, delv, copyc, copyv,
-            ecp, Duro_txnp != NULL ? &Duro_txnp->tx : NULL);
+            ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
     if (cnt == (RDB_int) RDB_ERROR)
         goto error;
 
@@ -786,7 +802,8 @@ error:
 }
 
 int
-Duro_exec_explain_assign(const RDB_parse_node *listnodep, RDB_exec_context *ecp)
+Duro_exec_explain_assign(const RDB_parse_node *listnodep, Duro_interp *interp,
+        RDB_exec_context *ecp)
 {
     int i;
     RDB_ma_copy copyv[DURO_MAX_LLEN];
@@ -802,14 +819,14 @@ Duro_exec_explain_assign(const RDB_parse_node *listnodep, RDB_exec_context *ecp)
     int srcobjc = 0;
     int attrupdc = 0;
 
-    if (Duro_txnp == NULL) {
+    if (interp->txnp == NULL) {
         RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
     if (node_to_multi_assign(listnodep,
             &copyc, copyv, &insc, insv, &updc, updv, &delc, delv,
-            &srcobjc, srcobjv, &attrupdc, attrupdv, ecp) != RDB_OK) {
+            &srcobjc, srcobjv, &attrupdc, attrupdv, interp, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -817,7 +834,7 @@ Duro_exec_explain_assign(const RDB_parse_node *listnodep, RDB_exec_context *ecp)
      * Print constraint expressions
      */
     if (RDB_apply_constraints(insc, insv, updc, updv, delc, delv,
-            copyc, copyv, put_constraint_expr, ecp, &Duro_txnp->tx) != RDB_OK)
+            copyc, copyv, put_constraint_expr, ecp, &interp->txnp->tx) != RDB_OK)
         goto error;
     fflush(stdout);
 

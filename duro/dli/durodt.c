@@ -28,6 +28,8 @@
 #include <stdio.h>
 #endif
 
+Duro_interp interp;
+
 static void
 usage_error(void)
 {
@@ -38,7 +40,7 @@ usage_error(void)
 static void
 handle_sigint(int sig)
 {
-    Duro_dt_interrupt();
+    Duro_dt_interrupt(&interp);
 }
 
 /*
@@ -50,7 +52,7 @@ read_line_interactive(void)
     char *line;
 #ifdef USE_READLINE
     /* Read a line using GNU readline */
-    line = readline(Duro_dt_prompt());
+    line = readline(Duro_dt_prompt(&interp));
 
     /* Store line in history if it is not empty */
     if (line != NULL && line[0] != '\0')
@@ -195,18 +197,18 @@ main(int argc, char *argv[])
         goto error;
     }
 
-    if (Duro_init_interp(&ec, dbname) != RDB_OK) {
+    if (Duro_init_interp(&interp, &ec, dbname) != RDB_OK) {
         Duro_print_error(RDB_get_err(&ec));
         goto error;
     }
 
-    if (Duro_dt_execute_path(envp, infilename, &ec) != RDB_OK) {
+    if (Duro_dt_execute_path(envp, infilename, &interp, &ec) != RDB_OK) {
         Duro_print_error(RDB_get_err(&ec));
-        Duro_destroy_interp();
+        Duro_destroy_interp(&interp);
         goto error;
     }
 
-    Duro_destroy_interp();
+    Duro_destroy_interp(&interp);
 
     RDB_destroy_exec_context(&ec);
     return 0;
