@@ -28,7 +28,7 @@
 #include <stdio.h>
 #endif
 
-Duro_interp interp;
+static Duro_interp interp;
 
 static void
 usage_error(void)
@@ -62,7 +62,7 @@ read_line_interactive(void)
 #else
     #define DURO_INPUT_LINE_LENGTH 256
 
-    fputs(Duro_dt_prompt(), stdout);
+    fputs(Duro_dt_prompt(&interp), stdout);
     line = malloc(DURO_INPUT_LINE_LENGTH);
     if (line == NULL)
         return NULL;
