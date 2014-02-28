@@ -259,5 +259,4 @@ RDB_errcode_to_error
 RDB_append_string
 RDB_binary_resize
 RDB_put_upd_op
-Duro_sys_module
 RDB_IOSTREAM_ID
