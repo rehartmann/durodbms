@@ -222,12 +222,16 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
     if (arrp->kind == RDB_OB_INITIAL) {
         arrp->kind = RDB_OB_ARRAY;
 
-        arrp->val.arr.elemv = RDB_alloc(sizeof(RDB_object) * len, ecp);
-        if (arrp->val.arr.elemv == NULL) {
-            return RDB_ERROR;
+        if (len > 0) {
+            arrp->val.arr.elemv = RDB_alloc(sizeof(RDB_object) * len, ecp);
+            if (arrp->val.arr.elemv == NULL) {
+                return RDB_ERROR;
+            }
+            for (i = 0; i < len; i++)
+                RDB_init_obj(&arrp->val.arr.elemv[i]);
+        } else {
+            arrp->val.arr.elemv = NULL;
         }
-        for (i = 0; i < len; i++)
-            RDB_init_obj(&arrp->val.arr.elemv[i]);
 
         arrp->val.arr.length = arrp->val.arr.elemc = len;
         
@@ -251,7 +255,7 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
             vp = NULL;
         }
         arrp->val.arr.elemv = vp;
-    } else if (len < arrp->val.arr.length) {
+    } else if (len > arrp->val.arr.length) {
         /* Enlarge array */
         if (enlarge_buf(arrp, len, ecp) != RDB_OK)
             return RDB_ERROR;
