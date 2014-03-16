@@ -257,7 +257,7 @@ RDB_tuple_get(const RDB_object *tplp, const char *attrname)
 /**
  * RDB_tuple_get_bool returns the value of attribute <var>name</var>
 as a RDB_bool. The attribute must exist and it must be of
-type BOOLEAN.
+type boolean.
 
 @returns
 
@@ -266,13 +266,13 @@ The attribute value.
 RDB_bool
 RDB_tuple_get_bool(const RDB_object *tplp, const char *attrname)
 {
-    return ((RDB_object *) RDB_tuple_get(tplp, attrname))->val.bool_val;
+    return RDB_tuple_get(tplp, attrname)->val.bool_val;
 }
 
 /**
  * RDB_tuple_get_int returns the value of attribute <var>name</var>
 as a RDB_int. The attribute must exist and it must be of
-type INTEGER.
+type integer.
 
 @returns
 
@@ -281,7 +281,7 @@ The attribute value.
 RDB_int
 RDB_tuple_get_int(const RDB_object *tplp, const char *attrname)
 {
-    return ((RDB_object *) RDB_tuple_get(tplp, attrname))->val.int_val;
+    return RDB_tuple_get(tplp, attrname)->val.int_val;
 }
 
 /**
@@ -296,13 +296,13 @@ The attribute value.
 RDB_float
 RDB_tuple_get_float(const RDB_object *tplp, const char *attrname)
 {
-    return ((RDB_object *) RDB_tuple_get(tplp, attrname))->val.float_val;
+    return RDB_tuple_get(tplp, attrname)->val.float_val;
 }
 
 /**
  * RDB_tuple_get_string returns a pointer to the value of attribute
 <var>name</var>. The attribute must exist and it must be of
-type STRING.
+type string.
 
 @returns
 
@@ -311,7 +311,7 @@ A pointer to the attribute value.
 char *
 RDB_tuple_get_string(const RDB_object *tplp, const char *attrname)
 {
-    return ((RDB_object *) RDB_tuple_get(tplp, attrname))->val.bin.datap;
+    return RDB_tuple_get(tplp, attrname)->val.bin.datap;
 }
 
 /**
@@ -373,7 +373,7 @@ of the original tuple.
 The call may also fail for a @ref system-errors "system error".
  */
 int
-RDB_project_tuple(const RDB_object *tplp, int attrc, char *attrv[],
+RDB_project_tuple(const RDB_object *tplp, int attrc, const char *attrv[],
                  RDB_exec_context *ecp, RDB_object *restplp)
 {
     RDB_object *attrp;
@@ -401,7 +401,7 @@ RDB_project_tuple(const RDB_object *tplp, int attrc, char *attrv[],
 }
 
 int
-RDB_remove_tuple(const RDB_object *tplp, int attrc, char *attrv[],
+RDB_remove_tuple(const RDB_object *tplp, int attrc, const char *attrv[],
                  RDB_exec_context *ecp, RDB_object *restplp)
 {
     RDB_hashtable_iter hiter;
@@ -433,6 +433,17 @@ RDB_remove_tuple(const RDB_object *tplp, int attrc, char *attrv[],
     RDB_destroy_hashtable_iter(&hiter);
 
     return RDB_OK;
+}
+
+/**
+ * Check if *objp represents a tuple.
+ * Calling it with a newly initialized object will return RDB_TRUE.
+ */
+RDB_bool
+RDB_is_tuple(const RDB_object *objp)
+{
+    return (RDB_bool) (objp->kind == RDB_OB_TUPLE
+                       || objp->kind == RDB_OB_INITIAL);
 }
 
 /*@}*/
