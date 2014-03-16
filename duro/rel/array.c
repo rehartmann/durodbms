@@ -12,6 +12,14 @@
 #include "optimize.h"
 #include <obj/objinternal.h>
 
+/*
+ * Number of entries by which the buffer will be extended
+ * when more space is needed
+ */
+enum {
+    BUF_INCREMENT = 256
+};
+
 static int
 enlarge_buf(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
 {
@@ -67,7 +75,8 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
     for(;;) {
         /* Extend elemv if necessary to make room for the next element */
         if (arrp->val.arr.elemc <= arrp->val.arr.length) {
-            if (enlarge_buf(arrp, arrp->val.arr.elemc + 256, ecp) != RDB_OK) {
+            if (enlarge_buf(arrp, arrp->val.arr.elemc + BUF_INCREMENT, ecp)
+                    != RDB_OK) {
                 goto error;
             }
         }
