@@ -123,9 +123,6 @@ RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resultp);
 
 RDB_object *
-RDB_new_obj(RDB_exec_context *ecp);
-
-RDB_object *
 RDB_new_rtable(const char *, RDB_bool,
                 RDB_type *,
                 int, const RDB_string_vec[],

@@ -436,14 +436,14 @@ RDB_table_to_array(RDB_object *arrp, RDB_object *,
                    RDB_exec_context *, RDB_transaction *);
 
 RDB_object *
-RDB_array_get(RDB_object *, RDB_int idx, RDB_exec_context *);
+RDB_array_get(const RDB_object *, RDB_int idx, RDB_exec_context *);
 
 int
 RDB_array_set(RDB_object *, RDB_int idx, const RDB_object *tplp,
         RDB_exec_context *);
 
 RDB_int
-RDB_array_length(RDB_object *, RDB_exec_context *);
+RDB_array_length(const RDB_object *, RDB_exec_context *);
 
 int
 RDB_set_array_length(RDB_object *arrp, RDB_int len, RDB_exec_context *);
