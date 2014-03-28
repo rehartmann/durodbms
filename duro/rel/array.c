@@ -177,9 +177,9 @@ operator.
 The call may also fail for a @ref system-errors "system error".
 */
 RDB_object *
-RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
+RDB_array_get(const RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
 {
-    if (idx >= arrp->val.arr.length) {
+    if (idx < 0 || idx >= arrp->val.arr.length) {
         RDB_raise_not_found("out of range", ecp);
         return NULL;
     }
@@ -203,7 +203,7 @@ operator.
 The call may also fail for a @ref system-errors "system error".
  */
 RDB_int
-RDB_array_length(RDB_object *arrp, RDB_exec_context *ecp)
+RDB_array_length(const RDB_object *arrp, RDB_exec_context *ecp)
 {
     if (arrp->kind == RDB_OB_INITIAL)
         return 0;
