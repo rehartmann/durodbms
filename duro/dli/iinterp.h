@@ -1,6 +1,8 @@
 #ifndef IINTERP_H
 #define IINTERP_H
 
+#include "interp_eval.h"
+
 #include <rel/rdb.h>
 #include <obj/opmap.h>
 #include "parse.h"
@@ -35,7 +37,7 @@ typedef struct foreach_iter {
     struct foreach_iter *prevp; /* for chaining nested FOREACHs */
 } foreach_iter;
 
-typedef struct {
+typedef struct Duro_interp {
     sig_atomic_t interrupted;
 
     RDB_environment *envp;
@@ -96,11 +98,25 @@ int
 Duro_dt_execute_str(RDB_environment *, const char *, Duro_interp *,
         RDB_exec_context *);
 
+RDB_expression *
+Duro_dt_parse_expr_str(RDB_environment *, const char *,
+        Duro_interp *, RDB_exec_context *);
+
 int
-Duro_dt_evaluate_str(RDB_environment *, const char *, RDB_object *,
-        Duro_interp *interp, RDB_exec_context *);
+Duro_dt_get_type_str(RDB_environment *, const char *, RDB_object *,
+        Duro_interp *, RDB_exec_context *);
+
+int
+Duro_dt_set_var(const char *, RDB_object *,
+        Duro_interp *, RDB_exec_context *);
 
 const char*
 Duro_dt_prompt(Duro_interp *);
+
+RDB_environment *
+Duro_dt_env(Duro_interp *);
+
+RDB_transaction *
+Duro_dt_tx(Duro_interp *);
 
 #endif /*IINTERP_H*/

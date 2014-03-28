@@ -10,6 +10,7 @@
 #include "iinterp.h"
 #include "interp_core.h"
 #include "interp_assign.h"
+#include "interp_eval.h"
 #include "ioop.h"
 #include "exparse.h"
 #include "parse.h"
@@ -1149,30 +1150,16 @@ parserep_to_rep(const RDB_parse_node *nodep, RDB_possrep *rep,
 static int
 exec_typedef(const RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context *ecp)
 {
-    int ret;
     int i, j;
     int repc;
-    RDB_transaction tmp_tx;
     RDB_possrep *repv;
     RDB_parse_node *nodep;
     RDB_expression *initexp;
     RDB_expression *constraintp = NULL;
 
     if (interp->txnp == NULL) {
-        RDB_database *dbp;
-
-        if (interp->envp == NULL) {
-            RDB_raise_resource_not_found("no connection", ecp);
-            return RDB_ERROR;
-        }
-
-        dbp = Duro_get_db(interp, ecp);
-        if (dbp == NULL)
-            return RDB_ERROR;
-
-        if (RDB_begin_tx(ecp, &tmp_tx, dbp, NULL) != RDB_OK) {
-            return RDB_ERROR;
-        }
+        RDB_raise_no_running_tx(ecp);
+        return RDB_ERROR;
     }
 
     repc = RDB_parse_nodelist_length(stmtp->nextp);
@@ -1181,30 +1168,30 @@ exec_typedef(const RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context 
         goto error;
     nodep = stmtp->nextp->val.children.firstp;
     for (i = 0; i < repc; i++) {
-        if (parserep_to_rep(nodep, &repv[i], ecp, interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx) != RDB_OK)
+        if (parserep_to_rep(nodep, &repv[i], ecp, &interp->txnp->tx) != RDB_OK)
             goto error;
         nodep = nodep->nextp;
     }
 
     if (stmtp->nextp->nextp->val.token == TOK_CONSTRAINT) {
         constraintp = RDB_parse_node_expr(stmtp->nextp->nextp->nextp, ecp,
-                interp->txnp != NULL ? &interp->txnp->tx : NULL);
+                &interp->txnp->tx);
         if (constraintp == NULL)
         	goto error;
         initexp = RDB_parse_node_expr(stmtp->nextp->nextp->nextp->nextp->nextp, ecp,
-                interp->txnp != NULL ? &interp->txnp->tx : NULL);
+                &interp->txnp->tx);
         if (initexp == NULL)
             goto error;
     } else {
         initexp = RDB_parse_node_expr(stmtp->nextp->nextp->nextp, ecp,
-                interp->txnp != NULL ? &interp->txnp->tx : NULL);
+                &interp->txnp->tx);
         if (initexp == NULL)
             goto error;
     }
 
     if (RDB_define_type(RDB_expr_var_name(stmtp->exp),
             repc, repv, constraintp, initexp, ecp,
-            interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx) != RDB_OK)
+            &interp->txnp->tx) != RDB_OK)
         goto error;
 
     for (i = 0; i < repc; i++) {
@@ -1214,18 +1201,11 @@ exec_typedef(const RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context 
         }
     }
     RDB_free(repv);
-    if (interp->txnp == NULL) {
-        ret = RDB_commit(ecp, &tmp_tx);
-    } else {
-        ret = RDB_OK;
-    }
-    if ((ret == RDB_OK) && RDB_parse_get_interactive())
+    if (RDB_parse_get_interactive())
         printf("Type %s defined.\n", RDB_expr_var_name(stmtp->exp));
-    return ret;
+    return RDB_OK;
 
 error:
-    if (interp->txnp == NULL)
-        RDB_rollback(ecp, &tmp_tx);
     for (i = 0; i < repc; i++) {
         for (j = 0; j < repv[i].compc; j++) {
             if (repv[i].compv[j].typ != NULL
@@ -1241,8 +1221,6 @@ static int
 exec_typedrop(const RDB_parse_node *nodep, Duro_interp *interp,
         RDB_exec_context *ecp)
 {
-    int ret;
-    RDB_transaction tmp_tx;
     RDB_type *typ;
 
     /*
@@ -1257,24 +1235,11 @@ exec_typedrop(const RDB_parse_node *nodep, Duro_interp *interp,
     }
 
     if (interp->txnp == NULL) {
-        RDB_database *dbp;
-
-        if (interp->envp == NULL) {
-            RDB_raise_resource_not_found("no connection", ecp);
-            return RDB_ERROR;
-        }
-
-        dbp = Duro_get_db(interp, ecp);
-        if (dbp == NULL)
-            return RDB_ERROR;
-
-        if (RDB_begin_tx(ecp, &tmp_tx, dbp, NULL) != RDB_OK) {
-            return RDB_ERROR;
-        }
+        RDB_raise_no_running_tx(ecp);
+        return RDB_ERROR;
     }
 
-    typ = RDB_get_type(RDB_expr_var_name(nodep->exp), ecp,
-            interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
+    typ = RDB_get_type(RDB_expr_var_name(nodep->exp), ecp, &interp->txnp->tx);
     if (typ == NULL)
         goto error;
 
@@ -1286,26 +1251,17 @@ exec_typedrop(const RDB_parse_node *nodep, Duro_interp *interp,
         goto error;
     }
 
-    if (RDB_drop_typeimpl_ops(typ, ecp, interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx)
-            != RDB_OK)
+    if (RDB_drop_typeimpl_ops(typ, ecp, &interp->txnp->tx) != RDB_OK)
         goto error;
 
-    if (RDB_drop_type(RDB_type_name(typ), ecp,
-            interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx) != RDB_OK)
+    if (RDB_drop_type(RDB_type_name(typ), ecp, &interp->txnp->tx) != RDB_OK)
         goto error;
 
-    if (interp->txnp == NULL) {
-        ret = RDB_commit(ecp, &tmp_tx);
-    } else {
-        ret = RDB_OK;
-    }
-    if ((ret == RDB_OK) && RDB_parse_get_interactive())
+    if (RDB_parse_get_interactive())
         printf("Type %s dropped.\n", RDB_expr_var_name(nodep->exp));
-    return ret;
+    return RDB_OK;
 
 error:
-    if (interp->txnp == NULL)
-        RDB_rollback(ecp, &tmp_tx);
     return RDB_ERROR;
 }
 
@@ -1313,24 +1269,11 @@ static int
 exec_typeimpl(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
 {
     int ret;
-    RDB_transaction tmp_tx;
     RDB_type *ityp = NULL;
 
     if (interp->txnp == NULL) {
-        RDB_database *dbp;
-
-        if (interp->envp == NULL) {
-            RDB_raise_resource_not_found("no connection", ecp);
-            return RDB_ERROR;
-        }
-
-        dbp = Duro_get_db(interp, ecp);
-        if (dbp == NULL)
-            return RDB_ERROR;
-
-        if (RDB_begin_tx(ecp, &tmp_tx, dbp, NULL) != RDB_OK) {
-            return RDB_ERROR;
-        }
+        RDB_raise_no_running_tx(ecp);
+        return RDB_ERROR;
     }
 
     if (nodep->nextp->val.token == TOK_AS) {
@@ -1348,22 +1291,15 @@ exec_typeimpl(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
     }
 
     ret = RDB_implement_type(RDB_expr_var_name(nodep->exp),
-            ityp, RDB_SYS_REP, ecp, interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
+            ityp, RDB_SYS_REP, ecp, &interp->txnp->tx);
     if (ret != RDB_OK)
         goto error;
 
-    if (interp->txnp == NULL) {
-        ret = RDB_commit(ecp, &tmp_tx);
-    } else {
-        ret = RDB_OK;
-    }
-    if ((ret == RDB_OK) && RDB_parse_get_interactive())
+    if (RDB_parse_get_interactive())
         printf("Type %s implemented.\n", RDB_expr_var_name(nodep->exp));
-    return ret;
+    return RDB_OK;
 
 error:
-    if (interp->txnp == NULL)
-        RDB_rollback(ecp, &tmp_tx);
     return RDB_ERROR;
 }
 
@@ -2665,6 +2601,18 @@ Duro_destroy_interp(Duro_interp *interp)
     RDB_destroy_exec_context(&ec);
 }
 
+RDB_environment *
+Duro_dt_env(Duro_interp *interp)
+{
+    return interp->envp;
+}
+
+RDB_transaction *
+Duro_dt_tx(Duro_interp *interp)
+{
+    return interp->txnp != NULL ? &interp->txnp->tx : NULL;
+}
+
 /**
  * Print an error to stderr.
  */
@@ -2831,20 +2779,15 @@ error:
     return RDB_ERROR;
 }
 
-int
-Duro_dt_evaluate_str(RDB_environment *envp, const char *instr, RDB_object *resultp,
+RDB_expression *
+Duro_dt_parse_expr_str(RDB_environment *envp, const char *instr,
         Duro_interp *interp, RDB_exec_context *ecp)
 {
-    RDB_expression *exp;
     RDB_parse_node *nodep = RDB_parse_expr(instr, ecp);
     if (nodep == NULL)
-        return RDB_ERROR;
+        return NULL;
 
-    exp = RDB_parse_node_expr(nodep, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
-    if (exp == NULL)
-        return RDB_ERROR;
-
-    return Duro_evaluate_retry(exp, interp, ecp, resultp);
+    return RDB_parse_node_expr(nodep, ecp, Duro_dt_tx(interp));
 }
 
 /**
@@ -2854,6 +2797,17 @@ const char*
 Duro_dt_prompt(Duro_interp *interp)
 {
     return RDB_obj_string(&interp->prompt);
+}
+
+int
+Duro_dt_set_var(const char *varname, RDB_object *srcp,
+        Duro_interp *interp, RDB_exec_context *ecp)
+{
+    RDB_object *dstp = Duro_lookup_var(varname, interp, ecp);
+    if (dstp == NULL)
+        return RDB_ERROR;
+
+    return RDB_copy_obj(dstp, srcp, ecp);
 }
 
 /**

@@ -7,6 +7,7 @@
 
 #include "interp_assign.h"
 #include "interp_core.h"
+#include "interp_eval.h"
 #include "exparse.h"
 #include <rel/tostr.h>
 #include <obj/objinternal.h>

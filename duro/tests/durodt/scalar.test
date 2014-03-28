@@ -136,11 +136,14 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
+        begin tx;
         type t
             possrep { a integer, b integer }
             init t(0, 0);
+        commit;
     }
     exec $testdir/../../dli/durodt -e dbenv -d D << {
+        begin tx;
         -- Test declaration w/ incomplete types
         try
             var vt t;
@@ -150,6 +153,7 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
 
         implement type t;
         end implement;
+        commit;
 
         -- Check selector access w/o tx
         var v init t(0, 0);
@@ -188,6 +192,7 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
 		end try;     
 
         -- Dropping t must fail because v still exists
+        begin tx;
         try
             drop type t;
 		catch ex in_use_error;
@@ -216,8 +221,6 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
 
         implement type string5;
         end implement;
-
-        begin tx;
 
         var s string5;
         
@@ -252,6 +255,7 @@ test deftypemr {user-defined type with multiple possreps} -setup $SETUP -cleanup
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
+        begin tx;
 		type fixed2
 		    possrep fixed2r { r rational }
 		    possrep fixed2i { i integer }
@@ -284,6 +288,7 @@ test deftypemr {user-defined type with multiple possreps} -setup $SETUP -cleanup
 			end operator;
 
 		end implement;
+		commit;
 
         var f1 fixed2;
         var f2 init fixed2r(1.00);
@@ -348,6 +353,7 @@ test deftypemri {user-defined type with multiple possreps and incomplete impleme
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
+        begin tx;
 		type fixed2
 		    possrep fixed2r { r rational }
 		    possrep fixed2i { i integer }
@@ -380,6 +386,7 @@ test deftypemri {user-defined type with multiple possreps and incomplete impleme
         catch err operator_not_found_error;
             put_line('operator_not_found_error');
         end try;
+        commit;
 
         try
             var f1 fixed2;

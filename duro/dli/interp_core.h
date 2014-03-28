@@ -63,12 +63,6 @@ RDB_type *
 Duro_get_var_type(const char *, void *);
 
 int
-Duro_evaluate_retry(RDB_expression *, Duro_interp *, RDB_exec_context *, RDB_object *);
-
-RDB_type *
-Duro_expr_type_retry(RDB_expression *, Duro_interp *, RDB_exec_context *);
-
-int
 Duro_exec_vardef(RDB_parse_node *, Duro_interp *, RDB_exec_context *);
 
 int
@@ -101,5 +95,8 @@ Duro_parse_node_to_type_retry(RDB_parse_node *, Duro_interp *, RDB_exec_context 
 int
 Duro_init_obj(RDB_object *, RDB_type *, Duro_interp *, RDB_exec_context *,
         RDB_transaction *);
+
+RDB_object *
+Duro_get_var(const char *, void *);
 
 #endif /* INTERP_CORE_H_ */
