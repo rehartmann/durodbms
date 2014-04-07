@@ -44,7 +44,7 @@ static int
 exit_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    Duro_interp *interp = RDB_ec_get_property(ecp, "INTERP");
+    Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
     Duro_destroy_interp(interp);
     exit(0);
 }   
@@ -56,7 +56,7 @@ static int
 exit_int_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    Duro_interp *interp = RDB_ec_get_property(ecp, "INTERP");
+    Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
     int exitcode = RDB_obj_int(argv[0]);
     Duro_destroy_interp(interp);
     exit(exitcode);
@@ -70,7 +70,7 @@ connect_op(int argc, RDB_object *argv[], RDB_operator *op,
      * Try opening the environment without RDB_CREATE first
      * to attach to existing memory pool
      */
-    Duro_interp *interp = RDB_ec_get_property(ecp, "INTERP");
+    Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
     int ret = RDB_open_env(RDB_obj_string(argv[0]), &interp->envp, 0);
     if (ret != RDB_OK) {
         /*
@@ -94,7 +94,7 @@ disconnect_op(int argc, RDB_object *argv[], RDB_operator *op,
 {
     RDB_object *dbnameobjp;
     int ret;
-    Duro_interp *interp = RDB_ec_get_property(ecp, "INTERP");
+    Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
 
     if (interp->envp == NULL) {
         RDB_raise_resource_not_found("no database environment", ecp);
@@ -138,7 +138,7 @@ static int
 create_db_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    Duro_interp *interp = RDB_ec_get_property(ecp, "INTERP");
+    Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
 
     if (interp->envp == NULL) {
         RDB_raise_resource_not_found("no environment", ecp);
@@ -155,7 +155,7 @@ create_env_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    Duro_interp *interp = RDB_ec_get_property(ecp, "INTERP");
+    Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
 
     /* Create directory if does not exist */
 #ifdef _WIN32
@@ -196,7 +196,7 @@ static int
 trace_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    Duro_interp *interp = RDB_ec_get_property(ecp, "INTERP");
+    Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
     int l = RDB_obj_int(argv[0]);
     if (interp->envp == NULL) {
         RDB_raise_resource_not_found("Missing database environment", ecp);
@@ -1341,7 +1341,7 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     int isselector;
     RDB_type *getter_utyp = NULL;
     RDB_operator *parent_op;
-    Duro_interp *interp = RDB_ec_get_property(ecp, "INTERP");
+    Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
 
     if (interp->interrupted) {
         interp->interrupted = 0;
@@ -1486,7 +1486,7 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     struct Duro_op_data *opdatap;
     RDB_operator *parent_op;
     RDB_type *setter_utyp = NULL;
-    Duro_interp *interp = RDB_ec_get_property(ecp, "INTERP");
+    Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
 
     if (interp->interrupted) {
         interp->interrupted = 0;
@@ -2636,7 +2636,7 @@ Duro_print_error_f(const RDB_object *errobjp, FILE *f)
 
     fputs(RDB_type_name(errtyp), f);
 
-    if (RDB_obj_comp(errobjp, "msg", &msgobj, NULL, &ec, NULL) == RDB_OK) {
+    if (RDB_obj_property(errobjp, "msg", &msgobj, NULL, &ec, NULL) == RDB_OK) {
         fprintf(f, ": %s", RDB_obj_string(&msgobj));
     }
 
@@ -2799,15 +2799,24 @@ Duro_dt_prompt(Duro_interp *interp)
     return RDB_obj_string(&interp->prompt);
 }
 
-int
-Duro_dt_set_var(const char *varname, RDB_object *srcp,
-        Duro_interp *interp, RDB_exec_context *ecp)
+/**
+ * Look up a variable and return a pointer to the RDB_object
+ * containing its value.
+ */
+RDB_object *
+Duro_lookup_var(const char *name, Duro_interp *interp, RDB_exec_context *ecp)
 {
-    RDB_object *dstp = Duro_lookup_var(varname, interp, ecp);
-    if (dstp == NULL)
-        return RDB_ERROR;
+    RDB_object *objp = Duro_lookup_transient_var(interp, name);
+    if (objp != NULL)
+        return objp;
 
-    return RDB_copy_obj(dstp, srcp, ecp);
+    if (interp->txnp != NULL) {
+        /* Try to get table from DB */
+        objp = RDB_get_table(name, ecp, &interp->txnp->tx);
+    }
+    if (objp == NULL)
+        RDB_raise_name(name, ecp);
+    return objp;
 }
 
 /**

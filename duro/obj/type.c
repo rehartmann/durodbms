@@ -64,6 +64,14 @@ RDB_type_is_valid(const RDB_type *typ) {
 }
 
 /**
+ * Check if a type is a scalar type with possreps.
+ */
+RDB_bool
+RDB_type_has_possreps(const RDB_type *typ) {
+    return (RDB_bool) (typ->kind == RDB_TP_SCALAR && typ->def.scalar.repc > 0);
+}
+
+/**
  * If *<var>typ</var> is non-scalar, RDB_dup_nonscalar_creates a copy of it.
 
 @returns

@@ -138,6 +138,9 @@ RDB_type_is_numeric(const RDB_type *);
 RDB_bool
 RDB_type_is_valid(const RDB_type *);
 
+RDB_bool
+RDB_type_has_possreps(const RDB_type *);
+
 char *
 RDB_type_name(const RDB_type *);
 

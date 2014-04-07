@@ -79,15 +79,15 @@ test_insert(RDB_database *dbp, RDB_exec_context *ecp)
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
     assert(ret == RDB_OK);
 
-    ret = RDB_obj_comp(&pval, "THETA", &thval, NULL, ecp, &tx);
+    ret = RDB_obj_property(&pval, "THETA", &thval, NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
-    ret = RDB_obj_comp(&pval, "LENGTH", &lenval, NULL, ecp, &tx);
+    ret = RDB_obj_property(&pval, "LENGTH", &lenval, NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
     RDB_float_to_obj(&lenval, RDB_obj_float(&lenval) * 2.0);
 
-    RDB_obj_set_comp(&pval, "LENGTH", &lenval, NULL, ecp, &tx);
+    RDB_obj_set_propery(&pval, "LENGTH", &lenval, NULL, ecp, &tx);
 
     ret = RDB_tuple_set(&tpl, "POINT", &pval, ecp);
     assert(ret == RDB_OK);
@@ -145,16 +145,16 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
 
     assert(RDB_array_length(&array, ecp) == 2);
 
-    ret = RDB_obj_comp(RDB_tuple_get(RDB_array_get(&array, 0, ecp), "POINT"),
+    ret = RDB_obj_property(RDB_tuple_get(RDB_array_get(&array, 0, ecp), "POINT"),
             "X", &xval, NULL, ecp, &tx);
     assert(ret == RDB_OK);
-    ret = RDB_obj_comp(RDB_tuple_get(RDB_array_get(&array, 0, ecp), "POINT"),
+    ret = RDB_obj_property(RDB_tuple_get(RDB_array_get(&array, 0, ecp), "POINT"),
             "Y", &yval, NULL, ecp, &tx);
     assert(ret == RDB_OK);
-    ret = RDB_obj_comp(RDB_tuple_get(RDB_array_get(&array, 1, ecp), "POINT"),
+    ret = RDB_obj_property(RDB_tuple_get(RDB_array_get(&array, 1, ecp), "POINT"),
             "X", &xval2, NULL, ecp, &tx);
     assert(ret == RDB_OK);
-    ret = RDB_obj_comp(RDB_tuple_get(RDB_array_get(&array, 1, ecp), "POINT"),
+    ret = RDB_obj_property(RDB_tuple_get(RDB_array_get(&array, 1, ecp), "POINT"),
             "Y", &yval2, NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
@@ -186,9 +186,9 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         RDB_object *pvalp = RDB_tuple_get(tplp, "POINT");
 
-        ret = RDB_obj_comp(pvalp, "X", &xval, NULL, ecp, &tx);
+        ret = RDB_obj_property(pvalp, "X", &xval, NULL, ecp, &tx);
         assert(ret == RDB_OK);
-        ret = RDB_obj_comp(pvalp, "Y", &yval, NULL, ecp, &tx);
+        ret = RDB_obj_property(pvalp, "Y", &yval, NULL, ecp, &tx);
         assert(ret == RDB_OK);
 
         printf("X=%f, Y=%f\n", (float)RDB_obj_float(&xval),
@@ -231,9 +231,9 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         RDB_object *pvalp = RDB_tuple_get(tplp, "POINT");
 
-        ret = RDB_obj_comp(pvalp, "X", &xval, NULL, ecp, &tx);
+        ret = RDB_obj_property(pvalp, "X", &xval, NULL, ecp, &tx);
         assert(ret == RDB_OK);
-        ret = RDB_obj_comp(pvalp, "Y", &yval, NULL, ecp, &tx);
+        ret = RDB_obj_property(pvalp, "Y", &yval, NULL, ecp, &tx);
         assert(ret == RDB_OK);
 
         printf("X=%f, Y=%f\n", (float)RDB_obj_float(&xval),

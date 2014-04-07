@@ -114,7 +114,7 @@ int
 RDB_ec_set_property(RDB_exec_context *, const char *, void *);
 
 void *
-RDB_ec_get_property(RDB_exec_context *, const char *);
+RDB_ec_property(RDB_exec_context *, const char *);
 
 void
 RDB_errno_to_error(int, RDB_exec_context *);

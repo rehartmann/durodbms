@@ -53,9 +53,6 @@ Duro_set_current_varmap(Duro_interp *, varmap_node *);
 RDB_object *
 Duro_lookup_transient_var(Duro_interp *, const char *);
 
-RDB_object *
-Duro_lookup_var(const char *, Duro_interp *, RDB_exec_context *);
-
 int
 Duro_put_var(const char *, RDB_object *, Duro_interp *, RDB_exec_context *);
 

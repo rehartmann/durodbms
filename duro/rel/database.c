@@ -1061,8 +1061,6 @@ A candidate key must not be a subset of another.
 If a single candidate key is specified, that key
 may be empty (not contain any attributes).
 
-The database *<var>txp</var> interacts with must be a user database.
-
 Passing a <var>keyv</var> of NULL is equivalent to specifiying a single key
 which consists of all attributes, that is, the table will be all-key.
 

@@ -150,7 +150,7 @@ append_hex_binary(RDB_object *objp, const RDB_object *binp,
 
 /*
  * Generate selector invocation and append it to *objp.
- * *txp is passed to RDB_obj_comp (may be needed to read the getter operator
+ * *txp is passed to RDB_obj_property (may be needed to read the getter operator
  * from the catalog)
  */
 static int
@@ -180,7 +180,7 @@ append_utype_obj(RDB_object *objp, const RDB_object *srcp,
         }
 
         RDB_init_obj(&compobj);
-        ret = RDB_obj_comp(srcp, possrep->compv[i].name, &compobj, envp,
+        ret = RDB_obj_property(srcp, possrep->compv[i].name, &compobj, envp,
                 ecp, txp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&compobj, ecp);

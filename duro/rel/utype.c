@@ -887,7 +887,7 @@ getcomp(const char *name, void *arg)
     }
     compobjp = RDB_tuple_get(&checkdatap->comptpl, name);
 
-    if (RDB_obj_comp(checkdatap->objp, name, compobjp,
+    if (RDB_obj_property(checkdatap->objp, name, compobjp,
             checkdatap->envp, checkdatap->ecp, checkdatap->txp) != RDB_OK) {
         return NULL;
     }

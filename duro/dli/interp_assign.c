@@ -167,7 +167,7 @@ comp_node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
 
     for (i = 0; i < possrep->compc; i++) {
         if (argpv[i] == NULL) {
-            if (RDB_obj_comp(copyp->dstp, possrep->compv[i].name, &argv[i],
+            if (RDB_obj_property(copyp->dstp, possrep->compv[i].name, &argv[i],
                     interp->envp, ecp,
                     interp->txnp != NULL ? &interp->txnp->tx : NULL)
                             != RDB_OK) {
@@ -523,7 +523,7 @@ exec_the_assign_set(const RDB_parse_node *nodep, const RDB_expression *opexp,
         return RDB_ERROR;
     }
 
-    ret = RDB_obj_set_comp(argp, opexp->def.op.name, &srcobj,
+    ret = RDB_obj_set_propery(argp, opexp->def.op.name, &srcobj,
             interp->envp, ecp,
             interp->txnp != NULL ? &interp->txnp->tx : NULL);
     RDB_destroy_obj(&srcobj, ecp);

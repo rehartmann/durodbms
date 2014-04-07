@@ -126,6 +126,9 @@ RDB_realloc(void *, size_t, RDB_exec_context *);
 void
 RDB_free(void *);
 
+RDB_object *
+RDB_new_obj(RDB_exec_context *ecp);
+
 RDB_type *
 RDB_obj_type(const RDB_object *);
 

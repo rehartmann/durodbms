@@ -321,7 +321,7 @@ RDB_ec_set_property(RDB_exec_context *ecp, const char *name, void *val)
     return RDB_OK;
 }
 
-/** <strong>RDB_ec_get_property</strong> returns the value of the property <var>name</var>
+/** Return the value of the property <var>name</var>
 of the RDB_exec_context given by <var>ecp</var>.
  * 
 @returns
@@ -329,7 +329,7 @@ of the RDB_exec_context given by <var>ecp</var>.
 The property value.
  */
 void *
-RDB_ec_get_property(RDB_exec_context *ecp, const char *name)
+RDB_ec_property(RDB_exec_context *ecp, const char *name)
 {
     return RDB_hashmap_get(&ecp->pmap, name);
 }

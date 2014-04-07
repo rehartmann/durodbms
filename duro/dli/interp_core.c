@@ -137,22 +137,6 @@ Duro_get_var(const char *name, void *arg)
     return lookup_transient_var(interp, name, interp->current_varmapp);
 }
 
-RDB_object *
-Duro_lookup_var(const char *name, Duro_interp *interp, RDB_exec_context *ecp)
-{
-    RDB_object *objp = Duro_lookup_transient_var(interp, name);
-    if (objp != NULL)
-        return objp;
-
-    if (interp->txnp != NULL) {
-        /* Try to get table from DB */
-        objp = RDB_get_table(name, ecp, &interp->txnp->tx);
-    }
-    if (objp == NULL)
-        RDB_raise_name(name, ecp);
-    return objp;
-}
-
 RDB_type *
 Duro_get_var_type(const char *name, void *arg)
 {

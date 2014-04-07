@@ -78,7 +78,7 @@ Duro_dberror(Tcl_Interp *interp, const RDB_object *errp, RDB_transaction *txp)
          * Try to get error info
          */
 
-        if (RDB_obj_comp(errp, "msg", &info, NULL, &ec, txp) == RDB_OK) {
+        if (RDB_obj_property(errp, "msg", &info, NULL, &ec, txp) == RDB_OK) {
             if (info.typ == &RDB_STRING && RDB_obj_string(&info)[0] != '\0') {
                 Tcl_AppendResult(interp, ": ", RDB_obj_string(&info),
                         (char *) NULL);

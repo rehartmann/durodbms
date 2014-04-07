@@ -584,9 +584,9 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p,
 }
 
 /**
-RDB_obj_comp copies the value of component <var>compname</var>
-of a possible representation of the variable pointed to by <var>valp</var>
-to the variable pointed to by <var>comp</var>.
+Copy the value of property <var>propname</var>
+of the variable pointed to by <var>objp</var>
+to *<var>propvalp</var>.
 
 If <var>txp</var> is NULL and <var>envp</var> is not, <var>envp</var> is used
 to look up the getter operator from memory.
@@ -603,88 +603,88 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dl>
 <dt>invalid_argument_error
 <dd>The type of *<var>valp</var> is not scalar, or it does not
-have a possible representation with a component <var>compname</var>.
+have a property <var>propname</var>.
 <dt>operator_not_found_error
-<dd>The getter method for component <var>compname</var> has not been created.
+<dd>The getter method for property <var>propname</var> has not been created.
 </dl>
 
-RDB_obj_comp may also raise an error raised by a
+RDB_obj_property may also raise an error raised by a
 user-provided getter function.
 
 The call may also fail for a @ref system-errors "system error".
  */
 int
-RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
+RDB_obj_property(const RDB_object *objp, const char *propname, RDB_object *propvalp,
         RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
-    if (!RDB_type_is_scalar(valp->typ) || valp->typ->def.scalar.repc == 0) {
+    if (!RDB_type_is_scalar(objp->typ) || objp->typ->def.scalar.repc == 0) {
         RDB_raise_invalid_argument("component not found", ecp);
         return RDB_ERROR;
     }
 
-    if (valp->typ->def.scalar.sysimpl) {
-        if (valp->typ->def.scalar.repv[0].compc == 1) {
+    if (objp->typ->def.scalar.sysimpl) {
+        if (objp->typ->def.scalar.repv[0].compc == 1) {
             RDB_type *comptyp;
 
             /* Actual rep is type of the only component - check component name */
-            if (strcmp(compname, valp->typ->def.scalar.repv[0].compv[0].name)
+            if (strcmp(propname, objp->typ->def.scalar.repv[0].compv[0].name)
                     != 0) {
                 RDB_raise_invalid_argument("component not found", ecp);
                 return RDB_ERROR;
             }
-            comptyp = valp->typ->def.scalar.repv[0].compv[0].typ;
+            comptyp = objp->typ->def.scalar.repv[0].compv[0].typ;
 
-            /* If *compvalp carries a value, it must match the type */
-            if (compvalp->kind != RDB_OB_INITIAL
-                     && (compvalp->typ == NULL
-                         || !RDB_type_equals(compvalp->typ, comptyp))) {
+            /* If *propvalp carries a value, it must match the type */
+            if (propvalp->kind != RDB_OB_INITIAL
+                     && (propvalp->typ == NULL
+                         || !RDB_type_equals(propvalp->typ, comptyp))) {
                 RDB_raise_type_mismatch("invalid component type", ecp);
                 return RDB_ERROR;
             }
-            ret = RDB_copy_obj_data(compvalp, valp, ecp, NULL);
+            ret = RDB_copy_obj_data(propvalp, objp, ecp, NULL);
             if (ret != RDB_OK)
                 return RDB_ERROR;
-            compvalp->typ = comptyp;
+            propvalp->typ = comptyp;
         } else {
             /* Actual rep is tuple */
-            RDB_object *elemp = RDB_tuple_get(valp, compname);
+            RDB_object *elemp = RDB_tuple_get(objp, propname);
             if (elemp == NULL) {
                 RDB_raise_invalid_argument("component not found", ecp);
                 return RDB_ERROR;
             }
-            ret = RDB_copy_obj(compvalp, elemp, ecp);
+            ret = RDB_copy_obj(propvalp, elemp, ecp);
         }
     } else {
         /* Getter is implemented by user */
         char *opname;
         RDB_object *argv[1];
 
-        opname = RDB_alloc(strlen(valp->typ->name) + strlen(compname)
+        opname = RDB_alloc(strlen(objp->typ->name) + strlen(propname)
                 + strlen(RDB_GETTER_INFIX) + 1, ecp);
         if (opname == NULL) {
             return RDB_ERROR;
         }
 
-        strcpy(opname, valp->typ->name);
+        strcpy(opname, objp->typ->name);
         strcat(opname, RDB_GETTER_INFIX);
-        strcat(opname, compname);
-        argv[0] = (RDB_object *) valp;
+        strcat(opname, propname);
+        argv[0] = (RDB_object *) objp;
 
-        ret = RDB_call_ro_op_by_name_e(opname, 1, argv, envp, ecp, txp, compvalp);
+        ret = RDB_call_ro_op_by_name_e(opname, 1, argv, envp, ecp, txp, propvalp);
         RDB_free(opname);
     }
     return ret;
 }
 
 /**
- * RDB_obj_set_comp sets the the value of component <var>compname</var>
-of a possible representation of the RDB_object specified to by <var>valp</var>
-to the value of the variable pointed to by <var>comp</var>.
+ * Set the the value of property <var>propname</var>
+of the RDB_object specified to by <var>objp</var>
+to the value of *<var>propvalp</var>.
 
-The RDB_object must be of a type which has a component
-<var>compname</var>.
+The RDB_object must be of a type which has a property
+<var>propname</var>.
 
 If <var>txp</var> is NULL and <var>envp</var> is not, <var>envp</var> is used
 to look up the getter operator from memory.
@@ -697,22 +697,22 @@ If an error occurs, an error value is left in *<var>ecp</var>.
 RDB_OK on success, RDB_ERROR if an error occurred.
  */
 int
-RDB_obj_set_comp(RDB_object *valp, const char *compname,
-        const RDB_object *compvalp, RDB_environment *envp,
+RDB_obj_set_propery(RDB_object *objp, const char *propname,
+        const RDB_object *propvalp, RDB_environment *envp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
-    if (valp->typ->def.scalar.sysimpl) {
+    if (objp->typ->def.scalar.sysimpl) {
         /* Setter is implemented by the system */
-        if (valp->typ->def.scalar.repv[0].compc == 1) {
-            ret = RDB_destroy_obj(valp, ecp);
+        if (objp->typ->def.scalar.repv[0].compc == 1) {
+            ret = RDB_destroy_obj(objp, ecp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
 
-            ret = RDB_copy_obj_data(valp, compvalp, ecp, NULL);
+            ret = RDB_copy_obj_data(objp, propvalp, ecp, NULL);
         } else {
-            ret = RDB_tuple_set(valp, compname, compvalp, ecp);
+            ret = RDB_tuple_set(objp, propname, propvalp, ecp);
         }
     } else {
         /* Setter is implemented by user */
@@ -721,17 +721,17 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
         RDB_type *argtv[2];
         RDB_operator *op;
 
-        opname = RDB_alloc(strlen(valp->typ->name) + strlen(compname)
+        opname = RDB_alloc(strlen(objp->typ->name) + strlen(propname)
                 + strlen(RDB_SETTER_INFIX) + 1, ecp);
         if (opname == NULL) {
             return RDB_ERROR;
         }
 
-        strcpy(opname, valp->typ->name);
+        strcpy(opname, objp->typ->name);
         strcat(opname, RDB_SETTER_INFIX);
-        strcat(opname, compname);
-        argv[0] = valp;
-        argv[1] = (RDB_object *) compvalp;
+        strcat(opname, propname);
+        argv[0] = objp;
+        argv[1] = (RDB_object *) propvalp;
         argtv[0] = RDB_obj_type(argv[0]);
         argtv[1] = RDB_obj_type(argv[1]);
 
@@ -746,11 +746,11 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
     if (ret != RDB_OK)
         return RDB_ERROR;
 
-    ret = RDB_check_type_constraint(valp, envp, ecp, txp);
+    ret = RDB_check_type_constraint(objp, envp, ecp, txp);
     if (ret != RDB_OK) {
         /* Destroy illegal value */
-        RDB_destroy_obj(valp, ecp);
-        RDB_init_obj(valp);
+        RDB_destroy_obj(objp, ecp);
+        RDB_init_obj(objp);
     }
     return ret;
 }

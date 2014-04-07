@@ -419,7 +419,7 @@ Duro_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     TclState *statep;
     RDB_exec_context *oldecp;
     RDB_bool issetter = RDB_is_setter(op);
-    Tcl_Interp *interp = RDB_ec_get_property(ecp, "TCL_INTERP");
+    Tcl_Interp *interp = RDB_ec_property(ecp, "TCL_INTERP");
     if (interp == NULL) {
         RDB_raise_resource_not_found("Tcl interpreter not found", ecp);
         return RDB_ERROR;
@@ -637,7 +637,7 @@ Duro_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     Tcl_Obj *msgobjp;
     Tcl_Obj *txtop = NULL;
     RDB_type *rtyp = RDB_return_type(op);
-    Tcl_Interp *interp = RDB_ec_get_property(ecp, "TCL_INTERP");
+    Tcl_Interp *interp = RDB_ec_property(ecp, "TCL_INTERP");
     if (interp == NULL) {
         RDB_raise_resource_not_found("Tcl interpreter not found", ecp);
         return RDB_ERROR;

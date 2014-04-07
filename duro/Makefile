@@ -6,6 +6,8 @@ testbins:
 	scons testbins
 apidocs:
 	scons apidocs
+libjduro:
+	scons libjduro
 dist:
 	scons dist
 clean:

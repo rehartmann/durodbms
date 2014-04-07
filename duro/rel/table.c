@@ -1096,7 +1096,7 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
     if (RDB_cat_index_tablename(name, &tbname, ecp, txp) != RDB_OK)
         goto error;
 
-    if (RDB_obj_comp(&tbname, "name", &tbnamestr, NULL, ecp, txp) != RDB_OK)
+    if (RDB_obj_property(&tbname, "name", &tbnamestr, NULL, ecp, txp) != RDB_OK)
         goto error;
 
     tbp = RDB_get_table(RDB_obj_string(&tbnamestr), ecp, txp);

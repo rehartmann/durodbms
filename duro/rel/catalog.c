@@ -1775,7 +1775,7 @@ get_key(RDB_object *tbp, RDB_string_vec *keyp, RDB_exec_context *ecp,
             RDB_destroy_obj(&attrarr, ecp);
             goto error;
         }
-        if (RDB_obj_comp(RDB_tuple_get(tplp, "keyattr"), "name",
+        if (RDB_obj_property(RDB_tuple_get(tplp, "keyattr"), "name",
                 &attrnameobj, NULL, ecp, txp) != RDB_OK)
             goto error;
 
@@ -1963,7 +1963,7 @@ RDB_cat_get_table_type(const char *name, RDB_exec_context *ecp,
         fno = RDB_tuple_get_int(tplp, "i_fno");
         if (fno == -1)
             fno = i;
-        if (RDB_obj_comp(RDB_tuple_get(tplp, "attrname"), "name",
+        if (RDB_obj_property(RDB_tuple_get(tplp, "attrname"), "name",
                 &attrnameobj, NULL, ecp, txp) != RDB_OK)
             goto error;
         attrv[fno].name = RDB_dup_str(RDB_obj_string(&attrnameobj));
@@ -2182,7 +2182,7 @@ RDB_cat_get_rtable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
             if (tplp == NULL)
                 goto error;
 
-            if (RDB_obj_comp(RDB_tuple_get(tplp, "attrname"), "name",
+            if (RDB_obj_property(RDB_tuple_get(tplp, "attrname"), "name",
                     &attrnameobj, NULL, ecp, txp) != RDB_OK)
                 goto error;
             entryp = RDB_alloc(sizeof(RDB_attr_default), ecp);

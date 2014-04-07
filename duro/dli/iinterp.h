@@ -106,9 +106,8 @@ int
 Duro_dt_get_type_str(RDB_environment *, const char *, RDB_object *,
         Duro_interp *, RDB_exec_context *);
 
-int
-Duro_dt_set_var(const char *, RDB_object *,
-        Duro_interp *, RDB_exec_context *);
+RDB_object *
+Duro_lookup_var(const char *, Duro_interp *, RDB_exec_context *);
 
 const char*
 Duro_dt_prompt(Duro_interp *);

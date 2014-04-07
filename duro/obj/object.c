@@ -437,7 +437,7 @@ RDB_binary_set(RDB_object *valp, size_t pos, const void *srcp, size_t len,
 
 /**
  * RDB_binary_get obtains a pointer to <var>len</var> bytes starting at position
-<var>pos</var> of the RDB_object pointed to by <var>valp</var>
+<var>pos</var> of the RDB_object pointed to by <var>objp</var>
 and stores this pointer at the location pointed to by <var>pp</var>.
 If the sum of <var>pos</var> and <var>len</var> exceeds the length of the
 object, the length of the byte block will be lower than requested.
