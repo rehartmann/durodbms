@@ -47,7 +47,7 @@ throw_exception_from_error(JNIEnv *env, jobject dInstance, const char *reason,
 }
 
 JNIEXPORT void
-JNICALL Java_net_sf_duro_DInstance_initInterp(JNIEnv *env, jobject obj)
+JNICALL Java_net_sf_duro_DuroDSession_initInterp(JNIEnv *env, jobject obj)
 {
     jclass clazz;
     jfieldID interpFieldID;
@@ -82,16 +82,20 @@ JNICALL Java_net_sf_duro_DInstance_initInterp(JNIEnv *env, jobject obj)
 static Duro_interp *
 jobj_interp(JNIEnv *env, jobject obj)
 {
+    jlong interpField;
     jclass clazz = (*env)->GetObjectClass(env, obj);
     jfieldID interpFieldID = (*env)->GetFieldID(env, clazz, "interp", "J");
-    jlong interpField = (*env)->GetLongField(env, obj, interpFieldID);
-    if (interpField == (jlong) 0)
+    if (interpFieldID == NULL)
         return NULL;
+    interpField = (*env)->GetLongField(env, obj, interpFieldID);
+    if (interpField == (jlong) 0) {
+        return NULL;
+    }
     return (Duro_interp *) (intptr_t) interpField;
 }
 
 JNIEXPORT void
-JNICALL Java_net_sf_duro_DInstance_destroyInterp(JNIEnv *env, jobject obj)
+JNICALL Java_net_sf_duro_DuroDSession_destroyInterp(JNIEnv *env, jobject obj)
 {
     Duro_interp *interp;
     jclass clazz = (*env)->GetObjectClass(env, obj);
@@ -111,7 +115,7 @@ JNICALL Java_net_sf_duro_DInstance_destroyInterp(JNIEnv *env, jobject obj)
 }
 
 JNIEXPORT void
-JNICALL Java_net_sf_duro_DInstance_executeI(JNIEnv *env, jobject jobj,
+JNICALL Java_net_sf_duro_DuroDSession_executeI(JNIEnv *env, jobject jobj,
         jstring statements)
 {
     int ret;
@@ -350,7 +354,7 @@ duro_obj_to_jobj(JNIEnv *env, const RDB_object *objp, jobject dInstance)
     if (clazz == NULL)
         goto error;
     constructorID = (*env)->GetMethodID(env, clazz, "<init>",
-            "(JLnet/sf/duro/DInstance;)V");
+            "(JLnet/sf/duro/DuroDSession;)V");
     if (constructorID == NULL) {
         goto error;
     }
@@ -369,7 +373,7 @@ error:
 }
 
 JNIEXPORT jobject
-JNICALL Java_net_sf_duro_DInstance_evaluateI(JNIEnv *env, jobject obj,
+JNICALL Java_net_sf_duro_DuroDSession_evaluateI(JNIEnv *env, jobject obj,
         jstring expression)
 {
     RDB_object result;
@@ -433,10 +437,13 @@ jtuple_to_obj(JNIEnv *env, RDB_object *dstp, jobject obj, jobject dInstance,
     jmethodID hasNextMethodID;
     jmethodID nextMethodID;
     jmethodID getAttributeMethodID;
+    jobject keyset;
     jclass tupleclazz = (*env)->GetObjectClass(env, obj);
-    jmethodID methodID = (*env)->GetMethodID(env, tupleclazz, "keySet",
+    jmethodID methodID = (*env)->GetMethodID(env, tupleclazz, "attributeNames",
             "()Ljava/util/Set;");
-    jobject keyset = (*env)->CallObjectMethod(env, obj, methodID);
+    if (methodID == NULL)
+        return -1;
+    keyset = (*env)->CallObjectMethod(env, obj, methodID);
 
     setclazz = (*env)->GetObjectClass(env, keyset);
     methodID = (*env)->GetMethodID(env, setclazz, "iterator",
@@ -636,7 +643,7 @@ jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
 }
 
 JNIEXPORT void
-JNICALL Java_net_sf_duro_DInstance_setVarI(JNIEnv *env, jobject obj,
+JNICALL Java_net_sf_duro_DuroDSession_setVarI(JNIEnv *env, jobject obj,
         jstring name, jobject value)
 {
     const char *namestr;
@@ -677,8 +684,9 @@ JNICALL Java_net_sf_duro_PossrepObject_getPropertyI(JNIEnv *env, jobject obj,
     RDB_object *objp = (RDB_object *) (intptr_t)
             (*env)->GetLongField(env, obj, refFieldID);
     interp = jobj_interp(env, dInstance);
-    if (interp == NULL)
+    if (interp == NULL) {
         return NULL;
+    }
 
     txp = Duro_dt_tx(interp);
     if (txp == NULL) {

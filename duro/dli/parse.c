@@ -14,6 +14,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <locale.h>
 #include <assert.h>
 
 int yyparse(void);
@@ -1282,8 +1283,27 @@ RDB_parse_expr(const char *txt, RDB_exec_context *ecp)
 {
     int pret;
     YY_BUFFER_STATE buf;
+    RDB_object oldlocaleobj;
+    char *oldlocale;
+
+    RDB_init_obj(&oldlocaleobj);
 
     RDB_parse_ecp = ecp;
+
+    /* Store old LC_NUMERIC locale */
+    oldlocale = setlocale(LC_NUMERIC, NULL);
+    if (oldlocale == NULL) {
+        RDB_raise_system("cannot get LC_NUMERIC locale", ecp);
+        goto error;
+    }
+    if (RDB_string_to_obj(&oldlocaleobj, oldlocale, ecp) != RDB_OK)
+        goto error;
+
+    /* Set LC_NUMERIC locale to C so atof() uses '.' as separator */
+    if (setlocale(LC_NUMERIC, "C") == NULL) {
+        RDB_raise_system("cannot set LC_NUMERIC locale", ecp);
+        goto error;
+    }
 
     buf = yy_scan_string(txt);
     RDB_parse_start_exp();
@@ -1293,10 +1313,20 @@ RDB_parse_expr(const char *txt, RDB_exec_context *ecp)
         if (RDB_get_err(ecp) == NULL) {
             RDB_raise_internal("parser error", ecp);
         }
-        return NULL;
+        goto error;
     }
 
+    if (setlocale(LC_NUMERIC, RDB_obj_string(&oldlocaleobj)) == NULL) {
+        RDB_raise_system("cannot restore LC_NUMERIC locale", ecp);
+        goto error;
+    }
+
+    RDB_destroy_obj(&oldlocaleobj, ecp);
     return RDB_parse_resultp;
+
+error:
+    RDB_destroy_obj(&oldlocaleobj, ecp);
+    return NULL;
 }
 
 /*@}*/
@@ -1397,8 +1427,27 @@ RDB_parse_node *
 RDB_parse_stmt(RDB_exec_context *ecp)
 {
     int pret;
+    RDB_object oldlocaleobj;
+    char *oldlocale;
+
+    RDB_init_obj(&oldlocaleobj);
 
     RDB_parse_ecp = ecp;
+
+    /* Store old LC_NUMERIC locale */
+    oldlocale = setlocale(LC_NUMERIC, NULL);
+    if (oldlocale == NULL) {
+        RDB_raise_system("cannot get LC_NUMERIC locale", ecp);
+        goto error;
+    }
+    if (RDB_string_to_obj(&oldlocaleobj, oldlocale, ecp) != RDB_OK)
+        goto error;
+
+    /* Set LC_NUMERIC locale to C so atof() uses '.' as separator */
+    if (setlocale(LC_NUMERIC, "C") == NULL) {
+        RDB_raise_system("cannot set LC_NUMERIC locale", ecp);
+        goto error;
+    }
 
     RDB_parse_start_stmt();
     pret = yyparse();
@@ -1406,20 +1455,50 @@ RDB_parse_stmt(RDB_exec_context *ecp)
         if (RDB_get_err(ecp) == NULL) {
             RDB_raise_internal("parser error", ecp);
         }
-        return NULL;
+        goto error;
     }
+
+    if (setlocale(LC_NUMERIC, RDB_obj_string(&oldlocaleobj)) == NULL) {
+        RDB_raise_system("cannot restore LC_NUMERIC locale", ecp);
+        goto error;
+    }
+
+    RDB_destroy_obj(&oldlocaleobj, ecp);
     return RDB_parse_resultp;
+
+error:
+    RDB_destroy_obj(&oldlocaleobj, ecp);
+    return NULL;
 }
 
 RDB_parse_node *
 RDB_parse_stmt_string(const char *txt, RDB_exec_context *ecp)
 {
     int pret;
+    RDB_object oldlocaleobj;
+    char *oldlocale;
     YY_BUFFER_STATE oldbuf = RDB_parse_buffer;
+
+    RDB_init_obj(&oldlocaleobj);
 
     RDB_parse_ecp = ecp;
 
     RDB_parse_buffer = yy_scan_string(txt);
+
+    /* Store old LC_NUMERIC locale */
+    oldlocale = setlocale(LC_NUMERIC, NULL);
+    if (oldlocale == NULL) {
+        RDB_raise_system("cannot get LC_NUMERIC locale", ecp);
+        goto error;
+    }
+    if (RDB_string_to_obj(&oldlocaleobj, oldlocale, ecp) != RDB_OK)
+        goto error;
+
+    /* Set LC_NUMERIC locale to C so atof() uses '.' as separator */
+    if (setlocale(LC_NUMERIC, "C") == NULL) {
+        RDB_raise_system("cannot set LC_NUMERIC locale", ecp);
+        goto error;
+    }
 
     RDB_parse_start_stmt();
     pret = yyparse();
@@ -1435,8 +1514,18 @@ RDB_parse_stmt_string(const char *txt, RDB_exec_context *ecp)
         if (RDB_get_err(ecp) == NULL) {
             RDB_raise_internal("parser error", ecp);
         }
-        return NULL;
+        goto error;
     }
 
+    if (setlocale(LC_NUMERIC, RDB_obj_string(&oldlocaleobj)) == NULL) {
+        RDB_raise_system("cannot restore LC_NUMERIC locale", ecp);
+        goto error;
+    }
+
+    RDB_destroy_obj(&oldlocaleobj, ecp);
     return RDB_parse_resultp;
+
+error:
+    RDB_destroy_obj(&oldlocaleobj, ecp);
+    return NULL;
 }
