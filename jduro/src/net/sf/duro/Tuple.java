@@ -13,18 +13,39 @@ public class Tuple implements Serializable {
 
     private Map<String, Object> map;
 
+    /**
+     * Constructs an empty tuple.
+     */
     public Tuple() {
 	map = new HashMap<String, Object>();
     }
 
+    /**
+     * Return the value of attribute <var>name</var>.
+     * @param name	The attribute name.
+     * @return		The attribute value.
+     */
     public Object getAttribute(String name) {
 	return map.get(name);
     }
 
+    /**
+     * Set the attribute <var>name</var>.
+     * @param name	The attribute name. Must not be null.
+     * @param value	The attribute value. Must not be null.
+     */
     public void setAttribute(String name, Object value) {
+	if (name == null || value == null) {
+	    // null is not permitted
+	    throw new NullPointerException();
+	}
 	map.put(name, value);
     }
 
+    /**
+     * Returns a Set of all attribute names of this Tuple. 
+     * @return
+     */
     public Set<String> attributeNames() {
 	return map.keySet();
     }
@@ -38,13 +59,21 @@ public class Tuple implements Serializable {
     }
 
     public String toString() {
+	Object val;
         StringBuffer buf = new StringBuffer("TUPLE { ");
         Iterator<String> it = attributeNames().iterator();
         while(it.hasNext()) {
             String key = it.next();
             buf.append(key);
             buf.append(' ');
-            buf.append(map.get(key));
+            val = map.get(key);
+            if (val instanceof String) {
+        	buf.append('\'');
+            }
+            buf.append(val);
+            if (val instanceof String) {
+        	buf.append('\'');
+            }
             buf.append(' ');
         }
         buf.append('}');

@@ -427,17 +427,13 @@ static int
 jtuple_to_obj(JNIEnv *env, RDB_object *dstp, jobject obj, jobject dInstance,
         RDB_exec_context *ecp)
 {
-    jobject iter;
-    jobject attrnameobj;
+    jstring attrnameobj;
     jobject attrvalobj;
     const char *attrname;
     RDB_object attrval;
-    jclass iterclazz;
-    jclass setclazz;
-    jmethodID hasNextMethodID;
-    jmethodID nextMethodID;
     jmethodID getAttributeMethodID;
     jobject keyset;
+    RDB_type *dsttyp = RDB_obj_type(dstp);
     jclass tupleclazz = (*env)->GetObjectClass(env, obj);
     jmethodID methodID = (*env)->GetMethodID(env, tupleclazz, "attributeNames",
             "()Ljava/util/Set;");
@@ -445,44 +441,129 @@ jtuple_to_obj(JNIEnv *env, RDB_object *dstp, jobject obj, jobject dInstance,
         return -1;
     keyset = (*env)->CallObjectMethod(env, obj, methodID);
 
-    setclazz = (*env)->GetObjectClass(env, keyset);
-    methodID = (*env)->GetMethodID(env, setclazz, "iterator",
-            "()Ljava/util/Iterator;");
-    iter = (*env)->CallObjectMethod(env, keyset, methodID);
-    if (iter == NULL)
-        return -1;
-    iterclazz = (*env)->GetObjectClass(env, iter);
-    hasNextMethodID = (*env)->GetMethodID(env, iterclazz, "hasNext",
-            "()Z");
-    nextMethodID = (*env)->GetMethodID(env, iterclazz, "next",
-            "()Ljava/lang/Object;");
     getAttributeMethodID = (*env)->GetMethodID(env, tupleclazz, "getAttribute",
             "(Ljava/lang/String;)Ljava/lang/Object;");
+    if (getAttributeMethodID == NULL)
+        return -1;
 
-    for(;;) {
-        /* Invoke hashNext() to check if there are any attributes left to read */
-        if (!(*env)->CallBooleanMethod(env, iter, hasNextMethodID))
-            break;
+    if (dsttyp != NULL) {
+        int i;
+        RDB_attr *attrv;
+        int attrc;
+        RDB_object *attrvalp;
+        jmethodID sizeMethodID = (*env)->GetMethodID(env, tupleclazz, "attributeNames",
+                "()Ljava/util/Set;");
 
-        /* Get attribute name and value */
-        attrnameobj = (*env)->CallObjectMethod(env, iter, nextMethodID);
-        attrvalobj = (*env)->CallObjectMethod(env, obj, getAttributeMethodID,
-                attrnameobj);
-        attrname = (*env)->GetStringUTFChars(env, attrnameobj, 0);
-
-        RDB_init_obj(&attrval);
-        if (jobj_to_duro_obj(env, attrvalobj, &attrval, dInstance, ecp) != 0) {
-            RDB_destroy_obj(&attrval, ecp);
+        if (!RDB_type_is_tuple(dsttyp)) {
+            (*env)->ThrowNew(env,
+                    (*env)->FindClass(env, "java/lang/IllegalArgumentException"),
+                    "destination must be tuple");
             return -1;
         }
-        if (RDB_tuple_set(dstp, attrname, &attrval, ecp) != RDB_OK) {
-            throw_exception_from_error(env, dInstance, "setting tuple attribute failed", ecp);
-            RDB_destroy_obj(&attrval, ecp);
+
+        /*
+         * Copy all attributes
+         */
+
+        /* Get attributes from type */
+        attrv = RDB_type_attrs(dsttyp, &attrc);
+
+        /* Compare size */
+        sizeMethodID = (*env)->GetMethodID(env, tupleclazz, "size", "()I");
+        if (sizeMethodID == NULL)
+            return -1;
+        if (attrc != (int) (*env)->CallIntMethod(env, obj, sizeMethodID)) {
+            (*env)->ThrowNew(env,
+                    (*env)->FindClass(env, "java/lang/IllegalArgumentException"),
+                    "tuple size differs from destination");
             return -1;
         }
-        RDB_destroy_obj(&attrval, ecp);
 
-        (*env)->ReleaseStringUTFChars(env, attrnameobj, attrname);
+        for (i = 0; i < attrc; i++) {
+            /* Get Duro tuple attribute */
+            attrvalp = RDB_tuple_get(dstp, attrv[i].name);
+            if (attrvalp == NULL) {
+                (*env)->ThrowNew(env,
+                        (*env)->FindClass(env, "java/lang/IllegalArgumentException"),
+                        "attribute not present in destination");
+                return -1;
+            }
+
+            /* Get attribute from Java tuple */
+            attrnameobj = (*env)->NewStringUTF(env, attrv[i].name);
+            if (attrnameobj == NULL) {
+                return -1;
+            }
+            attrvalobj = (*env)->CallObjectMethod(env, obj, getAttributeMethodID,
+                    attrnameobj);
+            if (attrvalobj == NULL) {
+                if ((*env)->ExceptionOccurred(env) == NULL) {
+                    (*env)->ThrowNew(env,
+                            (*env)->FindClass(env,
+                                    "java/lang/IllegalArgumentException"),
+                                    "missing attribute");
+                }
+                return -1;
+            }
+
+            /* Convert attribute value */
+            RDB_init_obj(&attrval);
+            if (jobj_to_duro_obj(env, attrvalobj, &attrval, dInstance, ecp) != 0) {
+                RDB_destroy_obj(&attrval, ecp);
+                return -1;
+            }
+
+            /* Copy attribute to tuple */
+            if (RDB_copy_obj(attrvalp, &attrval, &JDuro_ec) != RDB_OK) {
+                throw_exception_from_error(env, dInstance, "setting tuple attribute failed", ecp);
+                RDB_destroy_obj(&attrval, ecp);
+                return -1;
+            }
+            RDB_destroy_obj(&attrval, ecp);
+        }
+    } else {
+        jobject iter;
+        jclass iterclazz;
+        jclass setclazz;
+        jmethodID hasNextMethodID;
+        jmethodID nextMethodID;
+        setclazz = (*env)->GetObjectClass(env, keyset);
+        methodID = (*env)->GetMethodID(env, setclazz, "iterator",
+                "()Ljava/util/Iterator;");
+        iter = (*env)->CallObjectMethod(env, keyset, methodID);
+        if (iter == NULL)
+            return -1;
+        iterclazz = (*env)->GetObjectClass(env, iter);
+        hasNextMethodID = (*env)->GetMethodID(env, iterclazz, "hasNext",
+                "()Z");
+        nextMethodID = (*env)->GetMethodID(env, iterclazz, "next",
+                "()Ljava/lang/Object;");
+
+        for(;;) {
+            /* Invoke hashNext() to check if there are any attributes left to read */
+            if (!(*env)->CallBooleanMethod(env, iter, hasNextMethodID))
+                break;
+
+            /* Get attribute name and value */
+            attrnameobj = (*env)->CallObjectMethod(env, iter, nextMethodID);
+            attrvalobj = (*env)->CallObjectMethod(env, obj, getAttributeMethodID,
+                    attrnameobj);
+            attrname = (*env)->GetStringUTFChars(env, attrnameobj, 0);
+
+            RDB_init_obj(&attrval);
+            if (jobj_to_duro_obj(env, attrvalobj, &attrval, dInstance, ecp) != 0) {
+                RDB_destroy_obj(&attrval, ecp);
+                return -1;
+            }
+            if (RDB_tuple_set(dstp, attrname, &attrval, ecp) != RDB_OK) {
+                throw_exception_from_error(env, dInstance, "setting tuple attribute failed", ecp);
+                RDB_destroy_obj(&attrval, ecp);
+                return -1;
+            }
+            RDB_destroy_obj(&attrval, ecp);
+
+            (*env)->ReleaseStringUTFChars(env, attrnameobj, attrname);
+        }
     }
     return 0;
 }
@@ -559,6 +640,7 @@ error:
 
 /*
  * Convert a Java object to a RDB_object.
+ * *dstp must be either newly initialized or carry type information.
  * If the Java object is a java.util.Set, *dstp must be an empty table.
  */
 static int
@@ -566,9 +648,18 @@ jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
         jobject dInstance, RDB_exec_context *ecp)
 {
     jmethodID methodID;
+    RDB_type *typ = RDB_obj_type(dstp);
     jclass clazz = (*env)->FindClass(env, "java/lang/String");
     if ((*env)->IsInstanceOf(env, obj, clazz)) {
         const char *strval = (*env)->GetStringUTFChars(env, obj, 0);
+
+        if (typ != NULL && typ != &RDB_STRING) {
+            (*env)->ThrowNew(env,
+                    (*env)->FindClass(env, "java/lang/IllegalArgumentException"),
+                    "destination must be string");
+            return -1;
+        }
+
         if (RDB_string_to_obj(dstp, strval, ecp) != RDB_OK) {
             throw_exception_from_error(env, dInstance, "getting string data failed", ecp);
             return -1;
@@ -578,6 +669,12 @@ jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
 
     clazz = (*env)->FindClass(env, "java/lang/Integer");
     if ((*env)->IsInstanceOf(env, obj, clazz)) {
+        if (typ != NULL && typ != &RDB_INTEGER) {
+            (*env)->ThrowNew(env,
+                    (*env)->FindClass(env, "java/lang/IllegalArgumentException"),
+                    "destination must be integer");
+            return -1;
+        }
         methodID = (*env)->GetMethodID(env, clazz, "intValue", "()I");
         RDB_int_to_obj(dstp, (RDB_int) (*env)->CallIntMethod(env, obj, methodID));
         return 0;
@@ -585,6 +682,13 @@ jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
 
     clazz = (*env)->FindClass(env, "java/lang/Double");
     if ((*env)->IsInstanceOf(env, obj, clazz)) {
+        if (typ != NULL && typ != &RDB_FLOAT) {
+            (*env)->ThrowNew(env,
+                    (*env)->FindClass(env, "java/lang/IllegalArgumentException"),
+                    "destination must be float");
+            return -1;
+        }
+
         methodID = (*env)->GetMethodID(env, clazz, "doubleValue", "()D");
         RDB_float_to_obj(dstp, (RDB_float) (*env)->CallDoubleMethod(env, obj, methodID));
         return 0;
@@ -592,6 +696,13 @@ jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
 
     clazz = (*env)->FindClass(env, "java/lang/Boolean");
     if ((*env)->IsInstanceOf(env, obj, clazz)) {
+        if (typ != NULL && typ != &RDB_BOOLEAN) {
+            (*env)->ThrowNew(env,
+                    (*env)->FindClass(env, "java/lang/IllegalArgumentException"),
+                    "destination must be boolean");
+            return -1;
+        }
+
         methodID = (*env)->GetMethodID(env, clazz, "booleanValue", "()Z");
         RDB_bool_to_obj(dstp, (RDB_float) (*env)->CallBooleanMethod(env, obj, methodID));
         return 0;
@@ -599,6 +710,13 @@ jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
 
     clazz = (*env)->FindClass(env, "[B");
     if ((*env)->IsInstanceOf(env, obj, clazz)) {
+        if (typ != NULL && typ != &RDB_BINARY) {
+            (*env)->ThrowNew(env,
+                    (*env)->FindClass(env, "java/lang/IllegalArgumentException"),
+                    "destination must be binary");
+            return -1;
+        }
+
         jsize len = (*env)->GetArrayLength(env, obj);
         jbyte *bp = (*env)->GetByteArrayElements(env, obj, NULL);
         if (bp == NULL)

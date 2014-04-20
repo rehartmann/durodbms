@@ -52,6 +52,13 @@ public class TestExecute {
     }
 
     @Test
+    public void testBinary() throws DException {
+	session.execute("var bin binary init X'01f0';");
+	assertArrayEquals(new byte[] { (byte) 1, (byte) 0xf0 },
+		(byte[]) session.evaluate("bin"));
+    }
+
+    @Test
     public void testTuple() throws DException {
 	session.execute("var t tuple { a string };"
 		      + "t := tuple { a 'Casa blanca' };");

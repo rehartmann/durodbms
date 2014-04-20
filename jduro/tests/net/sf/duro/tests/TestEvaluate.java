@@ -49,10 +49,16 @@ public class TestEvaluate {
     }
 
     @Test
+    public void testBinary() throws DException {	
+	assertArrayEquals(new byte[] { (byte) 0, (byte) 1, (byte) 0xfc },
+		(byte[])session.evaluate("X'0001fc'"));	
+    }
+
+    @Test
     public void testTuple() throws DException {
 	Tuple t = new Tuple();
 	t.setAttribute("s", "Yo");
-	
+
 	assertEquals(t, session.evaluate("tuple { s 'Yo'}"));	
     }
     

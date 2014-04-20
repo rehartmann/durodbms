@@ -1,10 +1,10 @@
 package net.sf.duro;
 
+/**
+ * Signals that a Duro exception has occurred.
+ */
 public class DException extends Exception {
 
-    /**
-     * 
-     */
     private static final long serialVersionUID = -8161811884817880524L;
 
     private Object error = null;
@@ -39,7 +39,13 @@ public class DException extends Exception {
 		    buf.append(msg);
                 }
 	    } catch (DException ex) {
-		System.out.println("" + ex);
+		// Ignore invalid_argument_error
+		Object error = ex.getError();
+		if (!(error instanceof PossrepObject)
+			|| !((PossrepObject) error).getTypeName()
+			    .equals("invalid_argument_error")) {
+		    throw new RuntimeException(ex);
+		}
 	    }
 	}
 	return buf.toString();
