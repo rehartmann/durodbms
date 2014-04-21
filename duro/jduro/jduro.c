@@ -2,7 +2,7 @@
  * jduro.c
  *
  *  Created on: 23.02.2014
- *      Author: rene
+ *      Author: Rene Hartmann
  */
 
 #include <jni.h>
@@ -70,7 +70,7 @@ JNICALL Java_net_sf_duro_DuroDSession_initInterp(JNIEnv *env, jobject obj)
                 RDB_type_name(RDB_obj_type(RDB_get_err(&JDuro_ec))));
         return;
     }
-    if (Duro_init_interp(interp, &JDuro_ec, "") != RDB_OK) {
+    if (Duro_init_interp(interp, &JDuro_ec, NULL, "") != RDB_OK) {
         return;
     }
 
@@ -127,7 +127,7 @@ JNICALL Java_net_sf_duro_DuroDSession_executeI(JNIEnv *env, jobject jobj,
     if (str == NULL)
         return;
 
-    ret = Duro_dt_execute_str(NULL, str, interp, &JDuro_ec);
+    ret = Duro_dt_execute_str(str, interp, &JDuro_ec);
     (*env)->ReleaseStringUTFChars(env, statements, str);
     if (ret != RDB_OK) {
         throw_exception_from_error(env, jobj, "execution of statements failed",
@@ -385,7 +385,7 @@ JNICALL Java_net_sf_duro_DuroDSession_evaluateI(JNIEnv *env, jobject obj,
         return NULL;
     str = (*env)->GetStringUTFChars(env, expression, 0);
 
-    exp = Duro_dt_parse_expr_str(NULL, str, interp, &JDuro_ec);
+    exp = Duro_dt_parse_expr_str(str, interp, &JDuro_ec);
     (*env)->ReleaseStringUTFChars(env, expression, str);
     if (exp == NULL) {
         throw_exception_from_error(env, obj,

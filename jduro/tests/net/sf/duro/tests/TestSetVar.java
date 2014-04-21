@@ -2,6 +2,9 @@ package net.sf.duro.tests;
 
 import static org.junit.Assert.*;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import net.sf.duro.DException;
 import net.sf.duro.DSession;
 import net.sf.duro.DuroDSession;
@@ -126,5 +129,23 @@ public class TestSetVar {
 	t.setAttribute("a", "yoYo");
 	session.setVar("t", t);
 	assertEquals(t, session.evaluate("t"));	
+    }
+
+    @Test
+    public void testRelation() throws DException {
+	session.execute("var rt private relation { a string };");
+
+	Tuple t = new Tuple();
+	t.setAttribute("a", "Yo");
+
+	Set<Tuple> set = new HashSet<Tuple>();
+	set.add(t);
+
+	t = new Tuple();	
+	t.setAttribute("a", "Yo jo");
+        set.add(t);
+	
+	session.setVar("rt", set);
+	assertEquals(set, session.evaluate("rt"));	
     }
 }

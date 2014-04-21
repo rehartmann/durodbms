@@ -73,7 +73,7 @@ typedef struct Duro_interp {
 } Duro_interp;
 
 int
-Duro_init_interp(Duro_interp *, RDB_exec_context *, const char *);
+Duro_init_interp(Duro_interp *, RDB_exec_context *, RDB_environment *, const char *);
 
 void
 Duro_destroy_interp(Duro_interp *);
@@ -88,18 +88,18 @@ void
 Duro_dt_interrupt(Duro_interp *);
 
 int
-Duro_dt_execute(RDB_environment *, FILE *, Duro_interp *, RDB_exec_context *);
+Duro_dt_execute(FILE *, Duro_interp *, RDB_exec_context *);
 
 int
-Duro_dt_execute_path(RDB_environment *, const char *,
+Duro_dt_execute_path(const char *,
         Duro_interp *, RDB_exec_context *);
 
 int
-Duro_dt_execute_str(RDB_environment *, const char *, Duro_interp *,
+Duro_dt_execute_str(const char *, Duro_interp *,
         RDB_exec_context *);
 
 RDB_expression *
-Duro_dt_parse_expr_str(RDB_environment *, const char *,
+Duro_dt_parse_expr_str(const char *,
         Duro_interp *, RDB_exec_context *);
 
 int

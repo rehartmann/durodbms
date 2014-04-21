@@ -197,12 +197,12 @@ main(int argc, char *argv[])
         goto error;
     }
 
-    if (Duro_init_interp(&interp, &ec, dbname) != RDB_OK) {
+    if (Duro_init_interp(&interp, &ec, envp, dbname) != RDB_OK) {
         Duro_print_error(RDB_get_err(&ec));
         goto error;
     }
 
-    if (Duro_dt_execute_path(envp, infilename, &interp, &ec) != RDB_OK) {
+    if (Duro_dt_execute_path(infilename, &interp, &ec) != RDB_OK) {
         Duro_print_error(RDB_get_err(&ec));
         Duro_destroy_interp(&interp);
         goto error;

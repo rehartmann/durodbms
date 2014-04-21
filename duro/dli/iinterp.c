@@ -2473,7 +2473,7 @@ Duro_process_stmt(Duro_interp *interp, RDB_exec_context *ecp)
  */
 int
 Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
-        const char *dbname)
+        RDB_environment *envp, const char *dbname)
 {
     static RDB_parameter exit_int_params[1];
     static RDB_parameter connect_params[1];
@@ -2498,7 +2498,7 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
     trace_params[0].update = RDB_FALSE;
 
     interp->txnp = NULL;
-    interp->envp = NULL;
+    interp->envp = envp;
     interp->inner_op = NULL;
 
     interp->leave_targetname = NULL;
@@ -2663,7 +2663,7 @@ Duro_dt_interrupt(Duro_interp *interp)
  * provided using RDB_parse_set_read_line_fn().
  */
 int
-Duro_dt_execute_path(RDB_environment *dbenvp, const char *path,
+Duro_dt_execute_path(const char *path,
         Duro_interp *interp, RDB_exec_context *ecp)
 {
     int ret;
@@ -2678,7 +2678,7 @@ Duro_dt_execute_path(RDB_environment *dbenvp, const char *path,
     } else {
         fp = stdin;
     }
-    ret = Duro_dt_execute(dbenvp, fp, interp, ecp);
+    ret = Duro_dt_execute(fp, interp, ecp);
     if (path != NULL)
         fclose(fp);
     return ret;
@@ -2690,10 +2690,8 @@ Duro_dt_execute_path(RDB_environment *dbenvp, const char *path,
  * provided using RDB_parse_set_read_line_fn().
  */
 int
-Duro_dt_execute(RDB_environment *dbenvp, FILE *infp,
-        Duro_interp *interp, RDB_exec_context *ecp)
+Duro_dt_execute(FILE *infp, Duro_interp *interp, RDB_exec_context *ecp)
 {
-    interp->envp = dbenvp;
     interp->interrupted = 0;
 
     /* Initialize error line */
@@ -2751,11 +2749,10 @@ error:
  * Read statements from string instr and execute them.
  */
 int
-Duro_dt_execute_str(RDB_environment *dbenvp, const char *instr,
-        Duro_interp *interp, RDB_exec_context *ecp)
+Duro_dt_execute_str(const char *instr, Duro_interp *interp,
+        RDB_exec_context *ecp)
 {
     YY_BUFFER_STATE buf;
-    interp->envp = dbenvp;
     interp->interrupted = 0;
 
     RDB_parse_set_interactive(RDB_FALSE);
@@ -2780,7 +2777,7 @@ error:
 }
 
 RDB_expression *
-Duro_dt_parse_expr_str(RDB_environment *envp, const char *instr,
+Duro_dt_parse_expr_str(const char *instr,
         Duro_interp *interp, RDB_exec_context *ecp)
 {
     RDB_parse_node *nodep = RDB_parse_expr(instr, ecp);

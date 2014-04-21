@@ -8,6 +8,8 @@ DuroDBMS 0.21
 
 - Allowing for more than one interpreter per process.
 
+- Moved dbenv argument from Duro_dt_execute() to Duro_init_interp().
+
 - Renamed RDB_obj_comp() as RDB_obj_property() and RDB_obj_set_comp()
   as RDB_obj_set_property().
 

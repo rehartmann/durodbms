@@ -2,6 +2,9 @@ package net.sf.duro.tests;
 
 import static org.junit.Assert.*;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import net.sf.duro.DException;
 import net.sf.duro.DSession;
 import net.sf.duro.DuroDSession;
@@ -61,5 +64,15 @@ public class TestEvaluate {
 
 	assertEquals(t, session.evaluate("tuple { s 'Yo'}"));	
     }
-    
+
+    @Test
+    public void testRelation() throws DException {
+	Tuple t = new Tuple();
+	t.setAttribute("s", "Yo");
+
+	Set<Tuple> set = new HashSet<Tuple>();
+	set.add(t);
+
+	assertEquals(set, session.evaluate("relation { tuple { s 'Yo'} }"));	
+    }
 }
