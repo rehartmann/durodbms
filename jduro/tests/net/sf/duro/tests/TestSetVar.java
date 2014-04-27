@@ -8,11 +8,14 @@ import java.util.Set;
 import net.sf.duro.DException;
 import net.sf.duro.DSession;
 import net.sf.duro.DuroDSession;
+import net.sf.duro.PossrepObject;
 import net.sf.duro.Tuple;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import com.sun.org.apache.xpath.internal.operations.Bool;
 
 public class TestSetVar {
 
@@ -31,6 +34,14 @@ public class TestSetVar {
     @Test
     public void testInteger() throws DException {
 	session.execute("var n int;");
+	
+	try {
+            session.setVar("m", Double.valueOf(1.141));
+	    fail("assignment of non-existing variable was successful");
+	} catch (DException ex) {
+	    assertEquals(((PossrepObject) ex.getError()).getTypeName(), "name_error");
+	}
+	
 	try {
             session.setVar("n", Double.valueOf(1.141));
 	    fail("assignment of integer variable to float value was successful");
@@ -148,4 +159,33 @@ public class TestSetVar {
 	session.setVar("rt", set);
 	assertEquals(set, session.evaluate("rt"));	
     }
+
+    @Test
+    public void testArray() throws DException {
+	session.execute("var inta array integer;");
+	session.execute("var stra array string;");
+	session.execute("var strf array float;");
+
+	String[] sarr = new String[] { "Pech", "Schwefel" };
+	try {
+	    session.setVar("inta", sarr);
+	    fail("assignment of integer array to string array was successful");
+	} catch (IllegalArgumentException ex) {}
+
+	session.setVar("stra", sarr);
+	assertArrayEquals(sarr, (String[]) session.evaluate("stra"));
+
+	Boolean[] barr = new Boolean[] { Boolean.TRUE, Boolean.FALSE };
+
+	try {
+	    session.setVar("strf", barr);
+	    fail("assignment of integer array to string array was successful");
+	} catch (IllegalArgumentException ex) {}
+
+	Double[] dbarr = new Double[] { Double.valueOf(0.12), Double.valueOf(42.55) };
+
+	session.setVar("strf", dbarr);
+	assertArrayEquals(dbarr, (Double[]) session.evaluate("strf"));
+    }
+
 }

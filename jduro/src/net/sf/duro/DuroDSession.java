@@ -17,7 +17,7 @@ public class DuroDSession implements DSession {
 
     native private Object evaluateI(String expr) throws DException;
 
-    native private Object setVarI(String name, Object v) throws DException;
+    native private void setVarI(String name, Object v) throws DException;
 
     static public DSession createSession() throws DException {
 	DuroDSession instance = new DuroDSession();
@@ -45,10 +45,10 @@ public class DuroDSession implements DSession {
 	}
     }
 
-    public Object setVar(String name, Object v) throws DException
+    public void setVar(String name, Object v) throws DException
     {
 	synchronized(DuroDSession.class) {
-	    return setVarI(name, v);
+	    setVarI(name, v);
 	}
     }
 }

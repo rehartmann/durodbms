@@ -5,7 +5,7 @@ public interface DSession extends AutoCloseable {
 
     public Object evaluate(String expr) throws DException;
 
-    public Object setVar(String name, Object v) throws DException;
+    public void setVar(String name, Object v) throws DException;
 
     public void close() throws DException;
 }

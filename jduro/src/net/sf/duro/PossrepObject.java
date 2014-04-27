@@ -15,6 +15,9 @@ public final class PossrepObject {
     public native String getTypeName();
 
     PossrepObject(long ref, DuroDSession dInstance) {
+	if (dInstance == null)
+	    throw new NullPointerException();
+	
 	this.ref = ref;
 	this.dInstance = dInstance;
     }

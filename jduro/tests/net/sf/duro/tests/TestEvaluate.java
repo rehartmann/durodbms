@@ -75,4 +75,13 @@ public class TestEvaluate {
 
 	assertEquals(set, session.evaluate("relation { tuple { s 'Yo'} }"));	
     }
+
+    @Test
+    public void testArray() throws DException {
+	byte[][] barr = new byte[2][];
+	barr[0] = new byte[] { (byte) 0x40, (byte) 0x41 };
+	barr[1] = new byte[] { (byte) 0 };
+
+        assertArrayEquals(barr, (byte[][]) session.evaluate("array(X'4041', X'00')"));
+    }
 }

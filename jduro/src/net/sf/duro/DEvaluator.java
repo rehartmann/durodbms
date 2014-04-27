@@ -24,6 +24,7 @@ public class DEvaluator {
                     System.out.println(dInstance.evaluate(line));
                 } catch (Exception ex) {
                     System.out.println("Error: " + ex);
+                    ex.printStackTrace();
                 }
             }
         } catch (Exception ex) {
