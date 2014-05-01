@@ -1,49 +1,31 @@
 package net.sf.duro;
 
-public final class PossrepObject {
-    private long ref;
-    private DuroDSession dInstance;
+public interface PossrepObject {
+    /**
+     * Set a property of a PossrepObject 
+     * @param name The property name
+     * @param value The new property value
+     * @throws DException If a Duro error occurs
+     */
+    public void setProperty(String name, Object value) throws DException;
 
-    private native void setPropertyI(String name, DuroDSession dInstance, Object value)
-	    throws DException;
+    /**
+     * Ge the value of a property.
+     * @param name The property name.
+     * @return The property value
+     * @throws DException If a Duro error occurs
+     */
+    public Object getProperty(String name) throws DException;
 
-    private native Object getPropertyI(String name, DuroDSession dInstance)
-	    throws DException;
+    /**
+     * Get the type name of a PossrepObject
+     * @return the type name, or NULL if an error occured.
+     */
+    public String getTypeName();
 
-    private native Object disposeI(DuroDSession dInstance);
-
-    public native String getTypeName();
-
-    PossrepObject(long ref, DuroDSession dInstance) {
-	if (dInstance == null)
-	    throw new NullPointerException();
-	
-	this.ref = ref;
-	this.dInstance = dInstance;
-    }
-
-    public void setProperty(String name, Object value) throws DException {
-	synchronized(DuroDSession.class) {
-	    setPropertyI(name, dInstance, value);
-	}
-    }
-
-    public Object getProperty(String name) throws DException {
-	synchronized(DuroDSession.class) {
-	    return getPropertyI(name, dInstance);
-	}
-    }
-
-    public void dispose() {
-	synchronized(DuroDSession.class) {
-	    if (dInstance != null) {
-	        disposeI(dInstance);
-	        dInstance = null;
-	    }
-	}
-    }
-    
-    protected void finalize() {
-	dispose();
-    }
+    /**
+     * Release the resources the PossrepObject holds.
+     * @throws DException
+     */
+    public void dispose() throws DException;
 }

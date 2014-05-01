@@ -44,7 +44,7 @@ public class Tuple implements Serializable {
 
     /**
      * Returns a Set of all attribute names of this Tuple. 
-     * @return
+     * @return a Set of all attribute names of this Tuple.
      */
     public Set<String> attributeNames() {
 	return map.keySet();

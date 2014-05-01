@@ -27,21 +27,21 @@ public class TestSetVar {
     }
 
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() throws DException {
 	session.close();
     }
 
     @Test
     public void testInteger() throws DException {
 	session.execute("var n int;");
-	
+
 	try {
             session.setVar("m", Double.valueOf(1.141));
 	    fail("assignment of non-existing variable was successful");
 	} catch (DException ex) {
 	    assertEquals(((PossrepObject) ex.getError()).getTypeName(), "name_error");
 	}
-	
+
 	try {
             session.setVar("n", Double.valueOf(1.141));
 	    fail("assignment of integer variable to float value was successful");

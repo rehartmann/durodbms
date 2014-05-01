@@ -69,6 +69,9 @@ RDB_table_is_real
 RDB_table_is_stored
 RDB_table_is_persistent
 RDB_cardinality
+RDB_table_iterator
+RDB_del_table_iterator
+RDB_next_tuple
 RDB_tuple_set
 RDB_tuple_set_bool
 RDB_tuple_set_int
@@ -104,6 +107,8 @@ RDB_type_is_tuple
 RDB_type_is_relation
 RDB_type_equals
 RDB_obj_type
+RDB_new_obj
+RDB_free_obj
 RDB_type_attr_type
 RDB_obj_equals
 RDB_copy_obj
@@ -114,8 +119,8 @@ RDB_int_to_obj
 RDB_float_to_obj
 RDB_string_to_obj
 RDB_obj_to_string
-RDB_obj_comp
-RDB_obj_set_comp
+RDB_obj_property
+RDB_obj_set_property
 RDB_obj_bool
 RDB_obj_int
 RDB_obj_float
@@ -176,7 +181,7 @@ RDB_raise_aggregate_undefined
 RDB_raise_version_mismatch
 RDB_raise_syntax
 RDB_ec_set_property
-RDB_ec_get_property
+RDB_ec_property
 RDB_evaluate
 RDB_parse_expr
 RDB_obj_to_str
@@ -222,6 +227,7 @@ Duro_dt_invoke_ro_op
 Duro_dt_invoke_update_op
 Duro_dt_prompt
 RDB_type_is_array
+RDB_is_tuple
 RDB_parse_node_expr
 RDB_base_type
 RDB_del_nonscalar_type
@@ -253,6 +259,12 @@ RDB_release_number
 Duro_init_interp
 Duro_destroy_interp
 Duro_dt_execute_str
+Duro_expr_type_retry
+Duro_evaluate_retry
+Duro_dt_parse_expr_str
+Duro_lookup_var
+Duro_dt_tx
+Duro_dt_env
 RDB_www_form_to_tuple
 RDB_put_global_ro_op
 RDB_errcode_to_error

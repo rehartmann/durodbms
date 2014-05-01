@@ -91,10 +91,10 @@ else:
             LIBS = durolibs, CCFLAGS = duroccflags)
 
 libjduro = env.SharedLibrary('jduro', ['jduro/jduro.c'],
-            CPPPATH = env['CPPPATH'] + ['/usr/lib/jvm/java-6-openjdk-i386/include'],
+            CPPPATH = env['CPPPATH'] + ['/usr/lib/jvm/java-7-openjdk-i386/include'],
             LIBS = env['LIBS'] + libduro, CCFLAGS = duroccflags)
 
-env.Alias('libjduro', libjduro)
+env.Alias('jduro', [libjduro, 'jduro.jar'])
 
 #
 # Tcl interface
@@ -136,6 +136,14 @@ else:
             LIBS = env['LIBS'] + ['readline', libduro, 'fcgi'])
 
 #
+# Java interface
+#
+
+env.Java('../jduro/bin', '../jduro/src')
+
+env.Jar('jduro.jar', '../jduro/bin') 
+
+#
 # Docs
 #
 
@@ -145,6 +153,11 @@ env.Command('docs/api/html/index.html',
         ['Doxyfile'] + recsrc + objsrc + relsrc + interpsrc + ['obj/type.h'] + ['rel/rdb.h']
             + ['dli/parse.c', 'dli/ioop.c', 'dli/iinterp.c', 'dli/parse.h'],
         'doxygen')
+
+env.Alias('javadocs', '../jduro/docs/index.html')
+
+env.Command('../jduro/docs/index.html', Glob('../jduro/src/net/sf/duro/*.java'),
+        'javadoc -d ../jduro/docs -classpath ../jduro/src net.sf.duro')
 
 #
 # Defaults

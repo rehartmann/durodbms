@@ -101,7 +101,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
      * Try to set tival to illegal value by calling the setter function
      */
     RDB_int_to_obj(&ival, 200);
-    ret = RDB_obj_set_propery(&tival, "TINYINT", &ival, NULL, ecp, &tx);
+    ret = RDB_obj_set_property(&tival, "TINYINT", &ival, NULL, ecp, &tx);
     assert(ret != RDB_OK);
     assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_TYPE_CONSTRAINT_VIOLATION_ERROR);
     RDB_clear_err(ecp);
@@ -118,7 +118,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     /*
      * Call setter with valid value
      */
-    ret = RDB_obj_set_propery(&tival, "TINYINT", &ival, NULL, ecp, &tx);
+    ret = RDB_obj_set_property(&tival, "TINYINT", &ival, NULL, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
     }

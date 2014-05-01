@@ -697,7 +697,7 @@ If an error occurs, an error value is left in *<var>ecp</var>.
 RDB_OK on success, RDB_ERROR if an error occurred.
  */
 int
-RDB_obj_set_propery(RDB_object *objp, const char *propname,
+RDB_obj_set_property(RDB_object *objp, const char *propname,
         const RDB_object *propvalp, RDB_environment *envp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {

@@ -523,7 +523,7 @@ exec_the_assign_set(const RDB_parse_node *nodep, const RDB_expression *opexp,
         return RDB_ERROR;
     }
 
-    ret = RDB_obj_set_propery(argp, opexp->def.op.name, &srcobj,
+    ret = RDB_obj_set_property(argp, opexp->def.op.name, &srcobj,
             interp->envp, ecp,
             interp->txnp != NULL ? &interp->txnp->tx : NULL);
     RDB_destroy_obj(&srcobj, ecp);

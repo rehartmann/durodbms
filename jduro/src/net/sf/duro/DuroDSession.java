@@ -1,5 +1,10 @@
 package net.sf.duro;
 
+/**
+ * This class implements a DSession.
+ * @author Rene Hartmann
+ *
+ */
 public class DuroDSession implements DSession {
     private long interp = 0L; // Contains the pointer to the Duro_interp structure
 

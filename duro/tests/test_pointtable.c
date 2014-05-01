@@ -87,7 +87,7 @@ test_insert(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_float_to_obj(&lenval, RDB_obj_float(&lenval) * 2.0);
 
-    RDB_obj_set_propery(&pval, "LENGTH", &lenval, NULL, ecp, &tx);
+    RDB_obj_set_property(&pval, "LENGTH", &lenval, NULL, ecp, &tx);
 
     ret = RDB_tuple_set(&tpl, "POINT", &pval, ecp);
     assert(ret == RDB_OK);

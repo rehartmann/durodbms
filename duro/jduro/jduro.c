@@ -267,6 +267,7 @@ tuple_to_jobj(JNIEnv *env, const RDB_object *tup, JDuro_session *sessionp)
     jmethodID setAttributeID;
     jobject jobj;
     int n;
+    char **namev;
     jmethodID constructorID = (*env)->GetMethodID(env, sessionp->tupleClass,
             "<init>", "()V");
     if (constructorID == NULL)
@@ -277,7 +278,7 @@ tuple_to_jobj(JNIEnv *env, const RDB_object *tup, JDuro_session *sessionp)
         return NULL;
     jobj = (*env)->NewObject(env, sessionp->tupleClass, constructorID);
     n = RDB_tuple_size(tup);
-    char **namev = malloc(sizeof(char *) * n);
+    namev = malloc(sizeof(char *) * n);
     if (namev == NULL)
         return NULL;
     RDB_tuple_attr_names(tup, namev);
@@ -362,7 +363,7 @@ array_to_jobj(JNIEnv *env, const RDB_object *arrp, JDuro_session *sessionp)
     } else if (elemtyp == &RDB_BINARY) {
         clazz = sessionp->byteArrayClass;
     } else {
-        clazz = (*env)->FindClass(env, "net/sf/duro/PossrepObject");
+        clazz = (*env)->FindClass(env, "net/sf/duro/DuroPossrepObject");
     }
 
     jobjarr = (*env)->NewObjectArray(env, (jsize) size, clazz, NULL);
@@ -386,6 +387,7 @@ duro_obj_to_jobj(JNIEnv *env, const RDB_object *objp, JDuro_session *sessionp)
 {
     jmethodID constructorID;
     jclass clazz;
+    RDB_object *cobjp;
     jobject jobj = NULL;
     RDB_type *typ = RDB_obj_type(objp);
 
@@ -443,7 +445,7 @@ duro_obj_to_jobj(JNIEnv *env, const RDB_object *objp, JDuro_session *sessionp)
     /*
      * Create a copy of *objp which is managed by the Java object
      */
-    RDB_object *cobjp = RDB_new_obj(&JDuro_ec);
+    cobjp = RDB_new_obj(&JDuro_ec);
     if (cobjp == NULL) {
         throw_exception_from_error(env, sessionp,
                 "creating RDB_object failed", &JDuro_ec);
@@ -456,7 +458,7 @@ duro_obj_to_jobj(JNIEnv *env, const RDB_object *objp, JDuro_session *sessionp)
         goto error;
     }
 
-    clazz = (*env)->FindClass(env, "net/sf/duro/PossrepObject");
+    clazz = (*env)->FindClass(env, "net/sf/duro/DuroPossrepObject");
     if (clazz == NULL)
         goto error;
     constructorID = (*env)->GetMethodID(env, clazz, "<init>",
@@ -466,8 +468,8 @@ duro_obj_to_jobj(JNIEnv *env, const RDB_object *objp, JDuro_session *sessionp)
     }
 
     /* objp will be managed by the Java object */
-    jobj = (*env)->NewObject(env, clazz, constructorID, (jlong) (intptr_t) cobjp,
-            sessionp->sessionObj);
+    jobj = (*env)->NewObject(env, clazz, constructorID,
+            (jlong) (intptr_t) cobjp, sessionp->sessionObj);
     if (jobj == NULL)
         goto error;
     return jobj;
@@ -991,7 +993,7 @@ cleanup:
 }
 
 JNIEXPORT jobject
-JNICALL Java_net_sf_duro_PossrepObject_getPropertyI(JNIEnv *env, jobject obj,
+JNICALL Java_net_sf_duro_DuroPossrepObject_getPropertyI(JNIEnv *env, jobject obj,
         jstring name, jobject dInstance)
 {
     const char *namestr;
@@ -1039,7 +1041,7 @@ error:
 }
 
 JNIEXPORT void
-JNICALL Java_net_sf_duro_PossrepObject_setPropertyI(JNIEnv *env, jobject obj,
+JNICALL Java_net_sf_duro_DuroPossrepObject_setPropertyI(JNIEnv *env, jobject obj,
         jstring name, jobject dInstance, jobject value)
 {
     const char *namestr;
@@ -1071,14 +1073,14 @@ JNICALL Java_net_sf_duro_PossrepObject_setPropertyI(JNIEnv *env, jobject obj,
         return;
     }
 
-    if (RDB_obj_set_propery(objp, namestr, &compval, envp, &JDuro_ec, txp) != RDB_OK)
+    if (RDB_obj_set_property(objp, namestr, &compval, envp, &JDuro_ec, txp) != RDB_OK)
         throw_exception_from_error(env, sessionp, "setting property failed",
                 &JDuro_ec);
     RDB_destroy_obj(&compval, &JDuro_ec);
 }
 
 JNIEXPORT void
-JNICALL Java_net_sf_duro_PossrepObject_disposeI(JNIEnv *env, jobject obj,
+JNICALL Java_net_sf_duro_DuroPossrepObject_disposeI(JNIEnv *env, jobject obj,
         jobject dInstance)
 {
     JDuro_session *sessionp;
@@ -1097,7 +1099,7 @@ JNICALL Java_net_sf_duro_PossrepObject_disposeI(JNIEnv *env, jobject obj,
 }
 
 JNIEXPORT jstring
-JNICALL Java_net_sf_duro_PossrepObject_getTypeName(JNIEnv *env, jobject obj)
+JNICALL Java_net_sf_duro_DuroPossrepObject_getTypeName(JNIEnv *env, jobject obj)
 {
     RDB_type *typ;
     const char *typename;

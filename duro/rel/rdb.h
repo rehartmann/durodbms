@@ -465,7 +465,7 @@ RDB_obj_property(const RDB_object *, const char *compname,
                    RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_obj_set_propery(RDB_object *, const char *compname,
+RDB_obj_set_property(RDB_object *, const char *compname,
                  const RDB_object *comp, RDB_environment *,
                  RDB_exec_context *, RDB_transaction *);
 
