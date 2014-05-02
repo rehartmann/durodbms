@@ -1,6 +1,8 @@
 /*
  * jduro.c
  *
+ * Functions implementing JDuro's native methods.
+ *
  *  Created on: 23.02.2014
  *      Author: Rene Hartmann
  */
@@ -11,8 +13,13 @@
 static RDB_exec_context JDuro_ec;
 
 typedef struct {
+    /* The interpreter */
     Duro_interp interp;
+
+    /* Reference to the DuroDSession object */
     jobject sessionObj;
+
+    /* References to classes used often */
     jclass booleanClass;
     jclass integerClass;
     jclass stringClass;

@@ -18,6 +18,8 @@ release = '0.21'
 
 env = Environment(ENV = os.environ, tools = ['default', 'textfile'])
 
+java_home = os.getenv('JAVA_HOME', '/usr/lib/jvm/java-7-openjdk-i386')
+
 oshlibsuffix = env['SHLIBSUFFIX']
 
 if env['PLATFORM'] == 'win32':
@@ -29,6 +31,7 @@ else:
     env.Replace(SHLIBSUFFIX = env['SHLIBSUFFIX'] + '.' + release)
     env.Replace(LIBS = ['db', 'ltdl', 'm'])
     durolibs = ['db', 'ltdl', 'm']
+
 prefix = ARGUMENTS.get('prefix', default_prefix)
 
 installdir = prefix + '/durodbms.' + release
@@ -82,19 +85,20 @@ interpsrc = ['dli/exparse.c', 'dli/exlex.c', 'dli/parse.c', 'dli/parsenode.c',
 durosrc = gensrc + objsrc + recsrc + relsrc + interpsrc
 
 if env['PLATFORM'] == 'win32':
-    duroccflags = '/DNO_DLL_IMPORT'
     libduro = env.SharedLibrary('duro', durosrc + ['duro.def'],
-            LIBS = durolibs, CCFLAGS = duroccflags)
+            LIBS = durolibs, CCFLAGS = '/DNO_DLL_IMPORT')
+    libjduro = env.SharedLibrary('jduro', ['jduro/jduro.c'],
+            CPPPATH = env['CPPPATH'] + [java_home + '/include']
+                + [java_home + '/include/win32'],
+            LIBS = env['LIBS'] + ['duro.lib'])
 else:
-    duroccflags = env['CCFLAGS']
     libduro = env.SharedLibrary('duro', durosrc,
-            LIBS = durolibs, CCFLAGS = duroccflags)
+            LIBS = durolibs)
+    libjduro = env.SharedLibrary('jduro', ['jduro/jduro.c'],
+            CPPPATH = env['CPPPATH'] + [java_home + '/include'],
+            LIBS = env['LIBS'] + libduro)
 
-libjduro = env.SharedLibrary('jduro', ['jduro/jduro.c'],
-            CPPPATH = env['CPPPATH'] + ['/usr/lib/jvm/java-7-openjdk-i386/include'],
-            LIBS = env['LIBS'] + libduro, CCFLAGS = duroccflags)
-
-env.Alias('jduro', [libjduro, 'jduro.jar'])
+env.Alias('jni', [libjduro, 'jduro.jar'])
 
 #
 # Tcl interface

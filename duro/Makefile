@@ -6,8 +6,8 @@ testbins:
 	scons testbins
 apidocs:
 	scons apidocs
-jduro:
-	scons jduro
+jni:
+	scons jni
 dist:
 	scons dist
 clean:

@@ -15,8 +15,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
-
 public class TestSetVar {
 
     private DSession session;
