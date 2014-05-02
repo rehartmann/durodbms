@@ -250,11 +250,14 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
     if (len < arrp->val.arr.length) {
         void *vp;
         /* Shrink array */
-        for (i = len; i < arrp->val.arr.length; i++) {
+        for (i = len; i < arrp->val.arr.elemc; i++) {
             ret = RDB_destroy_obj(&arrp->val.arr.elemv[i], ecp);
-            if (ret != RDB_OK)
-                return ret;
+            if (ret != RDB_OK) {
+               arrp->val.arr.elemc = len;
+               return ret;
+            }
         }
+        arrp->val.arr.elemc = len;
         if (len > 0) {
             vp = RDB_realloc(arrp->val.arr.elemv, sizeof (RDB_object) * len, ecp);
             if (vp == NULL)

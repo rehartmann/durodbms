@@ -93,7 +93,7 @@ struct RDB_object {
             RDB_int length; /* length of array */
 
             /* Elements (buffer, if tbp is not NULl) */
-            int elemc;
+            int elemc; /* # of RDB_objects allocated, may be larger than length */
             struct RDB_object *elemv;
         } arr;
      } val;
