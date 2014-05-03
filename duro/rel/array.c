@@ -29,9 +29,9 @@ enlarge_buf(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
         return RDB_ERROR;
 
     arrp->val.arr.elemv = vp;
-    for (i = arrp->val.arr.elemc; i < len; i++)
+    for (i = arrp->val.arr.capacity; i < len; i++)
         RDB_init_obj(&arrp->val.arr.elemv[i]);
-    arrp->val.arr.elemc = len;
+    arrp->val.arr.capacity = len;
     return RDB_OK;
 }
 
@@ -70,12 +70,12 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
     arrp->val.arr.elemv = NULL;
 
     arrp->val.arr.length = 0;
-    arrp->val.arr.elemc = 0;
+    arrp->val.arr.capacity = 0;
 
     for(;;) {
         /* Extend elemv if necessary to make room for the next element */
-        if (arrp->val.arr.elemc <= arrp->val.arr.length) {
-            if (enlarge_buf(arrp, arrp->val.arr.elemc + BUF_INCREMENT, ecp)
+        if (arrp->val.arr.capacity <= arrp->val.arr.length) {
+            if (enlarge_buf(arrp, arrp->val.arr.capacity + BUF_INCREMENT, ecp)
                     != RDB_OK) {
                 goto error;
             }
@@ -242,22 +242,29 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
             arrp->val.arr.elemv = NULL;
         }
 
-        arrp->val.arr.length = arrp->val.arr.elemc = len;
+        arrp->val.arr.length = arrp->val.arr.capacity = len;
         
         return RDB_OK;
     }
 
     if (len < arrp->val.arr.length) {
         void *vp;
-        /* Shrink array */
-        for (i = len; i < arrp->val.arr.elemc; i++) {
+        /*
+         * Shrink array
+         */
+
+        /* Set array length so the array is shrinked if an error occurs,
+         * preventing the caller from accessing invalid entries */
+        arrp->val.arr.length = len;
+
+        for (i = len; i < arrp->val.arr.capacity; i++) {
             ret = RDB_destroy_obj(&arrp->val.arr.elemv[i], ecp);
             if (ret != RDB_OK) {
-               arrp->val.arr.elemc = len;
+               arrp->val.arr.capacity = len;
                return ret;
             }
         }
-        arrp->val.arr.elemc = len;
+        arrp->val.arr.capacity = len;
         if (len > 0) {
             vp = RDB_realloc(arrp->val.arr.elemv, sizeof (RDB_object) * len, ecp);
             if (vp == NULL)
@@ -271,8 +278,8 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
         /* Enlarge array */
         if (enlarge_buf(arrp, len, ecp) != RDB_OK)
             return RDB_ERROR;
+        arrp->val.arr.length = len;
     }
-    arrp->val.arr.length = len;
         
     return RDB_OK;
 }

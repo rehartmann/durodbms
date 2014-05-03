@@ -135,7 +135,7 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
             if (objp->val.arr.elemv != NULL) {
                 int i;
 
-                for (i = 0; i < objp->val.arr.elemc; i++)
+                for (i = 0; i < objp->val.arr.capacity; i++)
                     RDB_destroy_obj(&objp->val.arr.elemv[i], ecp);
                 RDB_free(objp->val.arr.elemv);
             }
