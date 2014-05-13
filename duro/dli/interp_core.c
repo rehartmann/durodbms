@@ -425,6 +425,9 @@ Duro_parse_node_to_type_retry(RDB_parse_node *nodep, Duro_interp *interp,
     return typ;
 }
 
+/*
+ * Initialize *objp and set type information, consuming typ on success.
+ */
 int
 Duro_init_obj(RDB_object *objp, RDB_type *typ, Duro_interp *interp,
         RDB_exec_context *ecp, RDB_transaction *txp)
@@ -432,22 +435,26 @@ Duro_init_obj(RDB_object *objp, RDB_type *typ, Duro_interp *interp,
     int i;
 
     if (RDB_type_is_tuple(typ)) {
+        RDB_type *attrtyp;
+
         for (i = 0; i < typ->def.tuple.attrc; i++) {
             if (RDB_tuple_set(objp, typ->def.tuple.attrv[i].name,
                     NULL, ecp) != RDB_OK)
                 return RDB_ERROR;
-            if (Duro_init_obj(RDB_tuple_get(objp, typ->def.tuple.attrv[i].name),
-                    typ->def.tuple.attrv[i].typ, interp, ecp, txp) != RDB_OK)
+            attrtyp = RDB_dup_nonscalar_type(typ->def.tuple.attrv[i].typ, ecp);
+            if (attrtyp == NULL)
                 return RDB_ERROR;
+
+            if (Duro_init_obj(RDB_tuple_get(objp, typ->def.tuple.attrv[i].name),
+                    attrtyp, interp, ecp, txp) != RDB_OK) {
+                if (!RDB_type_is_scalar(attrtyp)) {
+                    RDB_del_nonscalar_type(typ, ecp);
+                }
+                return RDB_ERROR;
+            }
         }
-        typ = RDB_dup_nonscalar_type(typ, ecp);
-        if (typ == NULL)
-            return RDB_ERROR;
         RDB_obj_set_typeinfo(objp, typ);
     } else if (RDB_type_is_array(typ)) {
-        typ = RDB_dup_nonscalar_type(typ, ecp);
-        if (typ == NULL)
-            return RDB_ERROR;
         RDB_obj_set_typeinfo(objp, typ);
         if (RDB_set_array_length(objp, (RDB_int) 0, ecp) != RDB_OK)
             return RDB_ERROR;

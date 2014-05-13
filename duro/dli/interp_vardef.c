@@ -2,7 +2,7 @@
  * interp_vardef.c
  *
  *  Created on: 16.03.2014
- *      Author: rene
+ *      Author: Rene Hartmann
  */
 
 #include "interp_core.h"

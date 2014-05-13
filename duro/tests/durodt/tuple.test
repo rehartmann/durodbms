@@ -21,7 +21,7 @@ test tuplevar {tuple variables} -body {
         put(s FROM t1); put_line('');
 
 		var t2 init tuple{};
-		var t3 init tuple{i 555};
+		var t3 tuple{i int} init tuple{i 555};
 		put(t3.i); put_line('');
 
         var t4 same_type_as(t1);
