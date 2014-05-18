@@ -142,12 +142,20 @@ typedef struct {
 } RDB_ma_update;
 
 /**
- * Represents a delete.
+ * Represents a delete with a WHERE clause.
  */
 typedef struct {
     RDB_object *tbp;
     RDB_expression *condp;
 } RDB_ma_delete;
+
+/**
+ * Represents a delete with a tuple or relation argument.
+ */
+typedef struct {
+    RDB_object *tbp;
+    RDB_object *objp;
+} RDB_ma_vdelete;
 
 typedef struct {
     RDB_object *dstp;
@@ -264,6 +272,7 @@ RDB_int
 RDB_multi_assign(int, const RDB_ma_insert[],
         int, const RDB_ma_update[],
         int, const RDB_ma_delete[],
+        int, const RDB_ma_vdelete[],
         int, const RDB_ma_copy[],
         RDB_exec_context *, RDB_transaction *);
 
@@ -271,6 +280,7 @@ int
 RDB_apply_constraints(int, const RDB_ma_insert[],
         int, const RDB_ma_update[],
         int, const RDB_ma_delete[],
+        int, const RDB_ma_vdelete[],
         int, const RDB_ma_copy[],
         RDB_apply_constraint_fn *,
         RDB_exec_context *, RDB_transaction *);

@@ -2670,7 +2670,8 @@ RDB_cat_rename_table(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         updv[4].updc = 1;
         updv[4].updv = &upd;
 
-        ret = RDB_multi_assign(0, NULL, 5, updv, 0, NULL, 0, NULL, ecp, &tx);
+        ret = RDB_multi_assign(0, NULL, 5, updv, 0, NULL, 0, NULL, 0, NULL,
+                ecp, &tx);
         if (ret == RDB_ERROR)
             goto error;
     } else {
@@ -2694,7 +2695,8 @@ RDB_cat_rename_table(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
             updv[2].updc = 1;
             updv[2].updv = &upd;
 
-            ret = RDB_multi_assign(0, NULL, 3, updv, 0, NULL, 0, NULL, ecp, &tx);
+            ret = RDB_multi_assign(0, NULL, 3, updv, 0, NULL, 0, NULL, 0, NULL,
+                    ecp, &tx);
             if (ret == RDB_ERROR)
                 goto error;
         }

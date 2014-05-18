@@ -438,11 +438,11 @@ RDB_copy_table(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *ecp,
     cpy.dstp = dstp;
     cpy.srcp = srcp;
 
-    return RDB_multi_assign(0, NULL, 0, NULL, 0, NULL, 1, &cpy, ecp, txp);
+    return RDB_multi_assign(0, NULL, 0, NULL, 0, NULL, 0, NULL, 1, &cpy, ecp, txp);
 }
 
 /**
- * RDB_extract_tuple extracts a single tuple from table *tbp
+ * Extracts a single tuple from table *tbp
  * and stores its value in *<var>tplp</var>.
  * *tbp must contain exactly one tuple.
 

@@ -914,7 +914,8 @@ test refconstraint {referential constraint} -setup $SETUP -cleanup $CLEANUP -bod
                 key {order_id} default {info ''};
         constraint o_c orders {cust_id} subset_of customers {cust_id};
 
-        insert customers rel{tup{cust_id 1, name 'James'}, tup{cust_id 2, name 'Joan'}};
+        insert customers rel{tup{cust_id 1, name 'James'},
+                tup{cust_id 2, name 'Joan'}};
 
         insert orders tup{order_id 1, cust_id 1};
 
@@ -928,6 +929,12 @@ test refconstraint {referential constraint} -setup $SETUP -cleanup $CLEANUP -bod
             delete customers where cust_id=1;
         catch err predicate_violation_error;
             put_line('delete from customers caught');
+        end try;
+
+        try
+            delete customers tup{cust_id 1, name 'James'};
+        catch err predicate_violation_error;
+            put_line('2nd delete from customers caught');
         end try;
 
         -- Must succeed
@@ -999,6 +1006,7 @@ test refconstraint {referential constraint} -setup $SETUP -cleanup $CLEANUP -bod
 
 } -output {insert into orders caught
 delete from customers caught
+2nd delete from customers caught
 }
 
 test trconstraint {Transition constraint} -setup $SETUP -body {

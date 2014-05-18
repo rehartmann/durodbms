@@ -312,8 +312,8 @@ Duro_massign_cmd(ClientData data, Tcl_Interp *interp, int objc,
         }
     }
 
-    count = RDB_multi_assign(insc, insv, updc, updv, delc, delv, copyc, copyv,
-            statep->current_ecp, txp);
+    count = RDB_multi_assign(insc, insv, updc, updv, delc, delv, 0, NULL,
+            copyc, copyv, statep->current_ecp, txp);
     if (count == RDB_ERROR) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         ret = TCL_ERROR;

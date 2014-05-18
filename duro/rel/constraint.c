@@ -327,6 +327,7 @@ expr_refers_target(const RDB_expression *exp,
         int insc, const RDB_ma_insert insv[],
         int updc, const RDB_ma_update updv[],
         int delc, const RDB_ma_delete delv[],
+        int vdelc, const RDB_ma_vdelete vdelv[],
         int copyc, const RDB_ma_copy copyv[])
 {
     int i;
@@ -343,6 +344,11 @@ expr_refers_target(const RDB_expression *exp,
 
     for (i = 0; i < delc; i++) {
         if (RDB_expr_table_depend(exp, delv[i].tbp))
+            return RDB_TRUE;
+    }
+
+    for (i = 0; i < vdelc; i++) {
+        if (RDB_expr_table_depend(exp, vdelv[i].tbp))
             return RDB_TRUE;
     }
 
@@ -515,10 +521,63 @@ error:
 }
 
 static RDB_expression *
+replace_targets_real_vdel(RDB_object *tbp, const RDB_ma_vdelete *vdelp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret;
+    RDB_expression *exp, *argp;
+    RDB_type *tbtyp;
+
+    /* Create <Dest table> MINUS <Source> */
+
+    exp = RDB_ro_op("minus", ecp);
+    if (exp == NULL) {
+        return NULL;
+    }
+    argp = RDB_table_ref(tbp, ecp);
+    if (argp == NULL) {
+        RDB_del_expr(exp, ecp);
+        return NULL;
+    }
+    RDB_add_arg(exp, argp);
+
+    argp = RDB_obj_to_expr(NULL, ecp);
+    if (argp == NULL) {
+        RDB_del_expr(exp, ecp);
+        return NULL;
+    }
+    tbtyp = RDB_dup_nonscalar_type(RDB_obj_type(tbp), ecp);
+    if (tbtyp == NULL) {
+        RDB_del_expr(exp, ecp);
+        return NULL;
+    }
+    if (RDB_init_table_from_type(RDB_expr_obj(argp), NULL,
+            tbtyp, 0, NULL, 0, NULL, ecp) != RDB_OK) {
+        RDB_del_nonscalar_type(tbtyp, ecp);
+        RDB_del_expr(exp, ecp);
+        return NULL;
+    }
+    /* Temporarily attach default values */
+    if (tbp->val.tb.default_map != NULL) {
+        RDB_expr_obj(argp)->val.tb.default_map = tbp->val.tb.default_map;
+    }
+    ret = RDB_insert(RDB_expr_obj(argp), vdelp->objp, ecp, NULL);
+    RDB_expr_obj(argp)->val.tb.default_map = NULL;
+    if (ret != RDB_OK) {
+        RDB_del_expr(exp, ecp);
+        return NULL;
+    }
+    RDB_add_arg(exp, argp);
+
+    return exp;
+}
+
+static RDB_expression *
 replace_targets_real(RDB_object *tbp,
         int insc, const RDB_ma_insert insv[],
         int updc, const RDB_ma_update updv[],
         int delc, const RDB_ma_delete delv[],
+        int vdelc, const RDB_ma_vdelete vdelv[],
         int copyc, const RDB_ma_copy copyv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -585,6 +644,12 @@ replace_targets_real(RDB_object *tbp,
         }
     }
 
+    for (i = 0; i < vdelc; i++) {
+        if (vdelv[i].tbp == tbp) {
+            return replace_targets_real_vdel(tbp, &vdelv[i], ecp, txp);
+        }
+    }
+
     for (i = 0; i < copyc; i++) {
         if (copyv[i].dstp->kind == RDB_OB_TABLE
                 && copyv[i].dstp == tbp) {
@@ -604,6 +669,7 @@ replace_targets(RDB_expression *exp,
         int insc, const RDB_ma_insert insv[],
         int updc, const RDB_ma_update updv[],
         int delc, const RDB_ma_delete delv[],
+        int vdelc, const RDB_ma_vdelete vdelv[],
         int copyc, const RDB_ma_copy copyv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -614,13 +680,13 @@ replace_targets(RDB_expression *exp,
     switch (exp->kind) {
         case RDB_EX_TUPLE_ATTR:
             newexp = replace_targets(exp->def.op.args.firstp, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, ecp, txp);
+                    updc, updv, delc, delv, vdelc, vdelv, copyc, copyv, ecp, txp);
             if (newexp == NULL)
                 return NULL;
             return RDB_tuple_attr(newexp, exp->def.op.name, ecp);
         case RDB_EX_GET_COMP:
             newexp = replace_targets(exp->def.op.args.firstp, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, ecp, txp);
+                    updc, updv, delc, delv, vdelc, vdelv, copyc, copyv, ecp, txp);
             if (newexp == NULL)
                 return NULL;
             return RDB_expr_comp(newexp, exp->def.op.name, ecp);
@@ -633,7 +699,7 @@ replace_targets(RDB_expression *exp,
             argp = exp->def.op.args.firstp;
             while (argp != NULL) {
                 hexp = replace_targets(argp,
-                        insc, insv, updc, updv, delc, delv,
+                        insc, insv, updc, updv, delc, delv, vdelc, vdelv,
                         copyc, copyv, ecp, txp);
                 if (hexp == NULL)
                     return NULL;
@@ -647,11 +713,11 @@ replace_targets(RDB_expression *exp,
         case RDB_EX_TBP:
             if (exp->def.tbref.tbp->val.tb.exp == NULL) {
                 return replace_targets_real(exp->def.tbref.tbp,
-                            insc, insv, updc, updv, delc, delv,
+                            insc, insv, updc, updv, delc, delv, vdelc, vdelv,
                             copyc, copyv, ecp, txp);
             }
             return replace_targets(exp->def.tbref.tbp->val.tb.exp, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, ecp, txp);
+                    updc, updv, delc, delv, vdelc, vdelv, copyc, copyv, ecp, txp);
         case RDB_EX_VAR:
             /*
              * Support for transition constraints:
@@ -699,6 +765,7 @@ int
 RDB_apply_constraints_i(int ninsc, const RDB_ma_insert ninsv[],
         int nupdc, const RDB_ma_update nupdv[],
         int ndelc, const RDB_ma_delete ndelv[],
+        int nvdelc, const RDB_ma_vdelete nvdelv[],
         int copyc, const RDB_ma_copy copyv[],
         RDB_apply_constraint_fn *applyfnp,
         RDB_exec_context *ecp, RDB_transaction *txp)
@@ -722,7 +789,7 @@ RDB_apply_constraints_i(int ninsc, const RDB_ma_insert ninsv[],
          * Check if the constraint refers to an assignment target
          */
         if (expr_refers_target(constrp->exp, ninsc, ninsv, nupdc, nupdv,
-                ndelc, ndelv, copyc, copyv)) {
+                ndelc, ndelv, nvdelc, nvdelv, copyc, copyv)) {
             RDB_expression *empty_tbexp;
             RDB_expression *opt_check_exp;
 
@@ -730,7 +797,7 @@ RDB_apply_constraints_i(int ninsc, const RDB_ma_insert ninsv[],
              * Replace target tables
              */
             RDB_expression *check_exp = replace_targets(constrp->exp,
-                    ninsc, ninsv, nupdc, nupdv, ndelc, ndelv,
+                    ninsc, ninsv, nupdc, nupdv, ndelc, ndelv, nvdelc, nvdelv,
                     copyc, copyv, ecp, txp);
             if (check_exp == NULL) {
                 return RDB_ERROR;

@@ -352,6 +352,7 @@ int
 RDB_apply_constraints_i(int, const RDB_ma_insert[],
         int, const RDB_ma_update[],
         int, const RDB_ma_delete[],
+        int, const RDB_ma_vdelete[],
         int, const RDB_ma_copy[],
         RDB_apply_constraint_fn *,
         RDB_exec_context *, RDB_transaction *);

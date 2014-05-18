@@ -375,3 +375,79 @@ RDB_delete_where_index(RDB_expression *texp, RDB_expression *condp,
     }
     return delete_where_nuindex(texp, condp, ecp, txp);
 }
+
+RDB_int
+RDB_delete_real_tuple(RDB_object *tbp, RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    int ret;
+    int i;
+    RDB_tbindex *indexp;
+    RDB_object **objpv;
+    RDB_type *valtyp;
+    RDB_type *attrtyp;
+
+    if (tbp->val.tb.stp == NULL) {
+        /* No stored table, so table is empty */
+        RDB_raise_not_found("tuple not found", ecp);
+        return (RDB_int) RDB_ERROR;
+    }
+
+    /* Get primary index */
+    for (i = 0;
+            i < tbp->val.tb.stp->indexc && tbp->val.tb.stp->indexv[i].idxp != NULL;
+            i++);
+    if (i == tbp->val.tb.stp->indexc) {
+        RDB_raise_internal("primary index not found", ecp);
+        return (RDB_int) RDB_ERROR;
+    }
+    indexp = &tbp->val.tb.stp->indexv[i];
+
+    /* Get attribute values of the primary index */
+    objpv = RDB_alloc(sizeof (RDB_object *) * indexp->attrc, ecp);
+    if (objpv == NULL)
+        return (RDB_int) RDB_ERROR;
+    for (i = 0; i < indexp->attrc; i++) {
+        objpv[i] = RDB_tuple_get(tplp, indexp->attrv[i].attrname);
+        if (objpv[i] == NULL) {
+            RDB_raise_invalid_argument("missing attribute", ecp);
+            goto error;
+        }
+
+        attrtyp = RDB_type_attr_type(RDB_obj_type(tbp),
+                indexp->attrv[i].attrname);
+        valtyp = RDB_obj_type(objpv[i]);
+
+        /* Typecheck */
+        if (valtyp == NULL) {
+            if (objpv[i]->kind != RDB_OB_TUPLE && objpv[i]->kind != RDB_OB_ARRAY) {
+                RDB_raise_invalid_argument("missing type information", ecp);
+                goto error;
+            }
+        } else {
+            if (!RDB_type_equals(valtyp, attrtyp)) {
+                RDB_raise_type_mismatch(
+                        "tuple attribute type does not match table attribute type",
+                        ecp);
+                goto error;
+            }
+        }
+
+        objpv[i]->store_typ = attrtyp;
+    }
+
+    /* Delete using primary index */
+    ret = delete_by_uindex(tbp, objpv, indexp, ecp, txp);
+    if (ret == 0) {
+        RDB_raise_not_found("tuple not found", ecp);
+        goto error;
+    }
+    if (ret == (RDB_int) RDB_ERROR)
+        goto error;
+    RDB_free(objpv);
+    return ret;
+
+error:
+    RDB_free(objpv);
+    return (RDB_int) RDB_ERROR;
+}

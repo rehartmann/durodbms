@@ -1469,6 +1469,18 @@ assign: assignable_expression TOK_ASSIGN expression {
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
     }
+    | TOK_DELETE TOK_ID expression {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            YYABORT;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+    }
     | TOK_UPDATE TOK_ID '{' ne_id_assign_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {

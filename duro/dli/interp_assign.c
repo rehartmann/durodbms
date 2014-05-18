@@ -405,6 +405,41 @@ node_to_delete(RDB_ma_delete *delp, RDB_parse_node *nodep, Duro_interp *interp,
     return RDB_OK;
 }
 
+static int
+node_to_vdelete(RDB_ma_vdelete *delp, RDB_parse_node *nodep, Duro_interp *interp,
+        RDB_exec_context *ecp)
+{
+    RDB_expression *srcexp;
+    RDB_expression *dstexp = RDB_parse_node_expr(nodep, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL);
+    if (dstexp == NULL) {
+        return RDB_ERROR;
+    }
+
+    delp->tbp = resolve_target(dstexp, interp, ecp);
+    if (delp->tbp == NULL) {
+        return RDB_ERROR;
+    }
+    /* Only tables are allowed as target */
+    if (delp->tbp->typ == NULL
+            || !RDB_type_is_relation(delp->tbp->typ)) {
+        RDB_raise_type_mismatch("INSERT target must be relation", ecp);
+        return RDB_ERROR;
+    }
+
+    srcexp = RDB_parse_node_expr(nodep->nextp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL);
+    if (srcexp == NULL) {
+        return RDB_ERROR;
+    }
+
+    if (Duro_evaluate_retry(srcexp, interp, ecp, delp->objp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    return RDB_OK;
+}
+
 /*
  * Check if the first child of nodep is an operator invocation with one argument
  * and return it as an expression if it is.
@@ -539,6 +574,7 @@ node_to_multi_assign(const RDB_parse_node *listnodep,
         int *inscp, RDB_ma_insert *insv,
         int *updcp, RDB_ma_update *updv,
         int *delcp, RDB_ma_delete *delv,
+        int *vdelcp, RDB_ma_vdelete *vdelv,
         int *srcobjcp, RDB_object *srcobjv,
         int *attrupdcp, RDB_attr_update *attrupdv,
         Duro_interp *interp,
@@ -666,13 +702,29 @@ node_to_multi_assign(const RDB_parse_node *listnodep,
                     }
                     break;
                 case TOK_DELETE:
-                    if ((*delcp) >= DURO_MAX_LLEN) {
-                        RDB_raise_not_supported("too many deletes", ecp);
-                        return RDB_ERROR;
-                    }
-                    if (node_to_delete(&delv[(*delcp)++], firstp->nextp,
-                            interp, ecp) != RDB_OK) {
-                        goto error;
+                    if (firstp->nextp->nextp->nextp != NULL
+                            && firstp->nextp->nextp->nextp->kind != RDB_NODE_TOK) {
+                        if ((*delcp) >= DURO_MAX_LLEN) {
+                            RDB_raise_not_supported("too many deletes", ecp);
+                            return RDB_ERROR;
+                        }
+                        if (node_to_delete(&delv[(*delcp)++], firstp->nextp,
+                                interp, ecp) != RDB_OK) {
+                            goto error;
+                        }
+                    } else {
+                        /* DELETE <exp> <exp> */
+                        if ((*srcobjcp) >= DURO_MAX_LLEN) {
+                            RDB_raise_not_supported("too many assigments", ecp);
+                            return RDB_ERROR;
+                        }
+
+                        RDB_init_obj(&srcobjv[(*srcobjcp)++]);
+                        vdelv[(*vdelcp)].objp = &srcobjv[(*srcobjcp) - 1];
+                        if (node_to_vdelete(&vdelv[(*vdelcp)++], firstp->nextp,
+                                interp, ecp) != RDB_OK) {
+                            goto error;
+                        }
                     }
                     break;
             }
@@ -716,12 +768,14 @@ Duro_exec_assign(const RDB_parse_node *listnodep, Duro_interp *interp,
     RDB_ma_insert insv[DURO_MAX_LLEN];
     RDB_ma_update updv[DURO_MAX_LLEN];
     RDB_ma_delete delv[DURO_MAX_LLEN];
+    RDB_ma_vdelete vdelv[DURO_MAX_LLEN];
     RDB_object srcobjv[DURO_MAX_LLEN];
     RDB_attr_update attrupdv[DURO_MAX_LLEN];
     int copyc = 0;
     int insc = 0;
     int updc = 0;
     int delc = 0;
+    int vdelc = 0;
     int srcobjc = 0;
     int attrupdc = 0;
     RDB_parse_node *nodep = listnodep->val.children.firstp;
@@ -746,7 +800,7 @@ Duro_exec_assign(const RDB_parse_node *listnodep, Duro_interp *interp,
     }
 
     if (node_to_multi_assign(listnodep,
-            &copyc, copyv, &insc, insv, &updc, updv, &delc, delv,
+            &copyc, copyv, &insc, insv, &updc, updv, &delc, delv, &vdelc, vdelv,
             &srcobjc, srcobjv, &attrupdc, attrupdv, interp, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
@@ -754,8 +808,8 @@ Duro_exec_assign(const RDB_parse_node *listnodep, Duro_interp *interp,
     /*
      * Execute assignments
      */
-    cnt = RDB_multi_assign(insc, insv, updc, updv, delc, delv, copyc, copyv,
-            ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
+    cnt = RDB_multi_assign(insc, insv, updc, updv, delc, delv, vdelc, vdelv,
+            copyc, copyv, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
     if (cnt == (RDB_int) RDB_ERROR)
         goto error;
 
@@ -811,12 +865,14 @@ Duro_exec_explain_assign(const RDB_parse_node *listnodep, Duro_interp *interp,
     RDB_ma_insert insv[DURO_MAX_LLEN];
     RDB_ma_update updv[DURO_MAX_LLEN];
     RDB_ma_delete delv[DURO_MAX_LLEN];
+    RDB_ma_vdelete vdelv[DURO_MAX_LLEN];
     RDB_object srcobjv[DURO_MAX_LLEN];
     RDB_attr_update attrupdv[DURO_MAX_LLEN];
     int copyc = 0;
     int insc = 0;
     int updc = 0;
     int delc = 0;
+    int vdelc = 0;
     int srcobjc = 0;
     int attrupdc = 0;
 
@@ -826,7 +882,7 @@ Duro_exec_explain_assign(const RDB_parse_node *listnodep, Duro_interp *interp,
     }
 
     if (node_to_multi_assign(listnodep,
-            &copyc, copyv, &insc, insv, &updc, updv, &delc, delv,
+            &copyc, copyv, &insc, insv, &updc, updv, &delc, delv, &vdelc, vdelv,
             &srcobjc, srcobjv, &attrupdc, attrupdv, interp, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
@@ -834,7 +890,7 @@ Duro_exec_explain_assign(const RDB_parse_node *listnodep, Duro_interp *interp,
     /*
      * Print constraint expressions
      */
-    if (RDB_apply_constraints(insc, insv, updc, updv, delc, delv,
+    if (RDB_apply_constraints(insc, insv, updc, updv, delc, delv, vdelc, vdelv,
             copyc, copyv, put_constraint_expr, ecp, &interp->txnp->tx) != RDB_OK)
         goto error;
     fflush(stdout);

@@ -20,4 +20,8 @@ RDB_int
 RDB_delete_where_index(RDB_expression *texp, RDB_expression *condp,
         RDB_exec_context *, RDB_transaction *);
 
+RDB_int
+RDB_delete_real_tuple(RDB_object *, RDB_object *, RDB_exec_context *,
+        RDB_transaction *);
+
 #endif /*DELETE_H*/
