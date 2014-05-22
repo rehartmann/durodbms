@@ -149,7 +149,7 @@ check_extend_tuple(const RDB_object *tplp, const RDB_expression *exp, RDB_exec_c
 }
 
 static insert_node *
-new_insert_node(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp)
+new_insert_node(RDB_object *tbp, const RDB_object *srcp, RDB_exec_context *ecp)
 {
     int ret;
 
@@ -162,7 +162,7 @@ new_insert_node(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp)
         return NULL;
     }
     RDB_init_obj(insnp->ins.objp);
-    ret = RDB_copy_tuple(insnp->ins.objp, tplp, ecp);
+    ret = RDB_copy_obj_data(insnp->ins.objp, srcp, ecp, NULL);
     if (ret != RDB_OK) {
         RDB_destroy_obj(insnp->ins.objp, ecp);
         RDB_free(insnp->ins.objp);
@@ -175,7 +175,7 @@ new_insert_node(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp)
 }
 
 static vdelete_node *
-new_vdelete_node(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp)
+new_vdelete_node(RDB_object *tbp, const RDB_object *srcp, RDB_exec_context *ecp)
 {
     int ret;
 
@@ -188,7 +188,7 @@ new_vdelete_node(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp)
         return NULL;
     }
     RDB_init_obj(vdelnp->del.objp);
-    ret = RDB_copy_tuple(vdelnp->del.objp, tplp, ecp);
+    ret = RDB_copy_obj_data(vdelnp->del.objp, srcp, ecp, NULL);
     if (ret != RDB_OK) {
         RDB_destroy_obj(vdelnp->del.objp, ecp);
         RDB_free(vdelnp->del.objp);
@@ -271,18 +271,60 @@ resolve_insert(RDB_object *tbp, const RDB_object *tplp, insert_node **insnpp,
                RDB_exec_context *, RDB_transaction *);
 
 static int
-resolve_insert_expr(RDB_expression *exp, const RDB_object *tplp,
+resolve_insert_expr(RDB_expression *, const RDB_object *,
+    insert_node **, RDB_exec_context *, RDB_transaction *);
+
+static int
+src_matches_condition(RDB_expression *condp, const RDB_object *srcp,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resultp)
+{
+    RDB_object tpl;
+    RDB_qresult *qrp;
+
+    if (RDB_is_tuple(srcp)) {
+        return RDB_evaluate_bool(condp, &RDB_tpl_get,
+                (void *) srcp, NULL, ecp, txp, resultp);
+    }
+    /* *srcp is a table */
+
+    qrp = RDB_table_iterator((RDB_object *) srcp, 0, NULL, ecp, NULL);
+    if (qrp == NULL)
+        return RDB_ERROR;
+
+    RDB_init_obj(&tpl);
+    while (RDB_next_tuple(qrp, &tpl, ecp, txp) == RDB_OK) {
+        if (RDB_evaluate_bool(condp, &RDB_tpl_get,
+                (void *) &tpl, NULL, ecp, txp, resultp) != RDB_OK) {
+            RDB_destroy_obj(&tpl, ecp);
+            RDB_del_table_iterator(qrp, ecp, NULL);
+            return RDB_ERROR;
+        }
+        if (!*resultp) {
+            RDB_destroy_obj(&tpl, ecp);
+            RDB_del_table_iterator(qrp, ecp, NULL);
+            return RDB_OK;
+        }
+    }
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_del_table_iterator(qrp, ecp, txp);
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int
+resolve_insert_expr(RDB_expression *exp, const RDB_object *srcp,
     insert_node **insnpp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    RDB_bool b;
     RDB_object *tbp;
 
     switch (exp->kind) {
         case RDB_EX_TBP:
-            return resolve_insert(exp->def.tbref.tbp, tplp, insnpp, ecp, txp);
+            return resolve_insert(exp->def.tbref.tbp, srcp, insnpp, ecp, txp);
         case RDB_EX_OBJ:
-            return resolve_insert(&exp->def.obj, tplp, insnpp, ecp, txp);
+            return resolve_insert(&exp->def.obj, srcp, insnpp, ecp, txp);
         case RDB_EX_RO_OP:
             break;
         case RDB_EX_VAR:
@@ -290,35 +332,35 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *tplp,
             tbp = RDB_get_table(exp->def.varname, ecp, txp);
             if (tbp == NULL)
                 return RDB_ERROR;
-            return resolve_insert(tbp, tplp, insnpp, ecp, txp);
+            return resolve_insert(tbp, srcp, insnpp, ecp, txp);
         default:
             RDB_raise_invalid_argument("invalid target table", ecp);
             return RDB_ERROR;
     }
 
     if (strcmp(exp->def.op.name, "where") == 0) {
-        ret = RDB_evaluate_bool(exp->def.op.args.firstp->nextp, &RDB_tpl_get,
-                (void *) tplp, NULL, ecp, txp, &b);
-        if (ret != RDB_OK)
+        RDB_bool b;
+        if (src_matches_condition(exp->def.op.args.firstp->nextp, srcp, ecp, txp, &b)
+                != RDB_OK)
             return RDB_ERROR;
+
         if (!b) {
-            RDB_raise_predicate_violation("where predicate violation",
-                    ecp);
-            return RDB_ERROR;
+           RDB_raise_predicate_violation("where predicate violation", ecp);
+           return RDB_ERROR;
         }
-        return resolve_insert_expr(exp->def.op.args.firstp, tplp, insnpp,
+        return resolve_insert_expr(exp->def.op.args.firstp, srcp, insnpp,
                 ecp, txp);
     }
     if (strcmp(exp->def.op.name, "project") == 0
         || strcmp(exp->def.op.name, "remove") == 0) {
-        return resolve_insert_expr(exp->def.op.args.firstp, tplp, insnpp, ecp,
+        return resolve_insert_expr(exp->def.op.args.firstp, srcp, insnpp, ecp,
                 txp);
     }
     if (strcmp(exp->def.op.name, "rename") == 0) {
         RDB_object tpl;
 
         RDB_init_obj(&tpl);
-        if (RDB_invrename_tuple(tplp, exp, ecp, &tpl) != RDB_OK) {
+        if (RDB_invrename_tuple(srcp, exp, ecp, &tpl) != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             return RDB_ERROR;
         }
@@ -327,16 +369,16 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *tplp,
         return ret;
     }
     if (strcmp(exp->def.op.name, "extend") == 0) {
-        ret = check_extend_tuple(tplp, exp, ecp, txp);
+        ret = check_extend_tuple(srcp, exp, ecp, txp);
         if (ret != RDB_OK)
             return RDB_ERROR;
-        return resolve_insert_expr(exp->def.op.args.firstp, tplp, insnpp, ecp, txp);
+        return resolve_insert_expr(exp->def.op.args.firstp, srcp, insnpp, ecp, txp);
     }
     if (strcmp(exp->def.op.name, "unwrap") == 0) {
         RDB_object tpl;
 
         RDB_init_obj(&tpl);
-        ret = RDB_invunwrap_tuple(tplp, exp, ecp, txp, &tpl);
+        ret = RDB_invunwrap_tuple(srcp, exp, ecp, txp, &tpl);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             return RDB_ERROR;
@@ -349,7 +391,7 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *tplp,
         RDB_object tpl;
 
         RDB_init_obj(&tpl);
-        ret = RDB_invwrap_tuple(tplp, exp, ecp, &tpl);
+        ret = RDB_invwrap_tuple(srcp, exp, ecp, &tpl);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             return ret;
@@ -364,17 +406,17 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *tplp,
 }
 
 static int
-resolve_insert(RDB_object *tbp, const RDB_object *tplp, insert_node **insnpp,
+resolve_insert(RDB_object *tbp, const RDB_object *srcp, insert_node **insnpp,
                RDB_exec_context *ecp, RDB_transaction *txp)
 {
   	if (tbp->val.tb.exp == NULL) {
-        *insnpp = new_insert_node(tbp, tplp, ecp);
+        *insnpp = new_insert_node(tbp, srcp, ecp);
         if (*insnpp == NULL)
             return RDB_ERROR;
         return RDB_OK;
     }
 
-    return resolve_insert_expr(tbp->val.tb.exp, tplp, insnpp, ecp, txp);
+    return resolve_insert_expr(tbp->val.tb.exp, srcp, insnpp, ecp, txp);
 }
 
 static int
@@ -476,6 +518,7 @@ resolve_delete_expr(RDB_expression *exp, RDB_expression *condp,
         delete_node **delnpp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     delete_node *delnp;
+    RDB_object *tbp;
 
     switch (exp->kind) {
         case RDB_EX_TBP:
@@ -484,6 +527,12 @@ resolve_delete_expr(RDB_expression *exp, RDB_expression *condp,
             return resolve_delete(&exp->def.obj, condp, delnpp, ecp, txp);
         case RDB_EX_RO_OP:
             break;
+        case RDB_EX_VAR:
+            /* Resolve variable */
+            tbp = RDB_get_table(exp->def.varname, ecp, txp);
+            if (tbp == NULL)
+                return RDB_ERROR;
+            return resolve_delete(tbp, condp, delnpp, ecp, txp);
         default:
             RDB_raise_invalid_argument("invalid target table", ecp);
             return RDB_ERROR;
@@ -610,18 +659,17 @@ resolve_vdelete(RDB_object *tbp, const RDB_object *srcp, vdelete_node **vdelnpp,
 }
 
 static int
-resolve_vdelete_expr(RDB_expression *exp, const RDB_object *tplp,
+resolve_vdelete_expr(RDB_expression *exp, const RDB_object *srcp,
     vdelete_node **vdelnpp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    RDB_bool b;
     RDB_object *tbp;
 
     switch (exp->kind) {
         case RDB_EX_TBP:
-            return resolve_vdelete(exp->def.tbref.tbp, tplp, vdelnpp, ecp, txp);
+            return resolve_vdelete(exp->def.tbref.tbp, srcp, vdelnpp, ecp, txp);
         case RDB_EX_OBJ:
-            return resolve_vdelete(&exp->def.obj, tplp, vdelnpp, ecp, txp);
+            return resolve_vdelete(&exp->def.obj, srcp, vdelnpp, ecp, txp);
         case RDB_EX_RO_OP:
             break;
         case RDB_EX_VAR:
@@ -629,35 +677,37 @@ resolve_vdelete_expr(RDB_expression *exp, const RDB_object *tplp,
             tbp = RDB_get_table(exp->def.varname, ecp, txp);
             if (tbp == NULL)
                 return RDB_ERROR;
-            return resolve_vdelete(tbp, tplp, vdelnpp, ecp, txp);
+            return resolve_vdelete(tbp, srcp, vdelnpp, ecp, txp);
         default:
             RDB_raise_invalid_argument("invalid target table", ecp);
             return RDB_ERROR;
     }
 
     if (strcmp(exp->def.op.name, "where") == 0) {
-        ret = RDB_evaluate_bool(exp->def.op.args.firstp->nextp, &RDB_tpl_get,
-                (void *) tplp, NULL, ecp, txp, &b);
-        if (ret != RDB_OK)
+        RDB_bool b;
+
+        if (src_matches_condition(exp->def.op.args.firstp->nextp, srcp, ecp, txp, &b)
+                != RDB_OK)
             return RDB_ERROR;
+
         if (!b) {
             /* The tuple cannot be an element of the WHERE table */
             RDB_raise_not_found("tuple not found in WHERE table", ecp);
             return RDB_ERROR;
         }
-        return resolve_vdelete_expr(exp->def.op.args.firstp, tplp, vdelnpp,
+        return resolve_vdelete_expr(exp->def.op.args.firstp, srcp, vdelnpp,
                 ecp, txp);
     }
     if (strcmp(exp->def.op.name, "project") == 0
         || strcmp(exp->def.op.name, "remove") == 0) {
-        return resolve_vdelete_expr(exp->def.op.args.firstp, tplp, vdelnpp,
+        return resolve_vdelete_expr(exp->def.op.args.firstp, srcp, vdelnpp,
                 ecp, txp);
     }
     if (strcmp(exp->def.op.name, "rename") == 0) {
         RDB_object tpl;
 
         RDB_init_obj(&tpl);
-        if (RDB_invrename_tuple(tplp, exp, ecp, &tpl) != RDB_OK) {
+        if (RDB_invrename_tuple(srcp, exp, ecp, &tpl) != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             return RDB_ERROR;
         }
@@ -666,9 +716,9 @@ resolve_vdelete_expr(RDB_expression *exp, const RDB_object *tplp,
         return ret;
     }
     if (strcmp(exp->def.op.name, "extend") == 0) {
-        if (check_extend_tuple(tplp, exp, ecp, txp) != RDB_OK)
+        if (check_extend_tuple(srcp, exp, ecp, txp) != RDB_OK)
             return RDB_ERROR;
-        return resolve_vdelete_expr(exp->def.op.args.firstp, tplp, vdelnpp,
+        return resolve_vdelete_expr(exp->def.op.args.firstp, srcp, vdelnpp,
                 ecp, txp);
     }
     RDB_raise_not_supported("insert is not supported for this kind of table",
@@ -873,7 +923,10 @@ do_vdelete(const RDB_ma_vdelete *delp, RDB_exec_context *ecp,
     }
     RDB_raise_invalid_argument(
             "DELETE requires tuple or relation argument", ecp);
+    abort();
+    /*
     return RDB_ERROR;
+    */
 }
 
 static int
@@ -885,6 +938,10 @@ copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp, RDB_exec_context *ecp,
     if (RDB_copy_obj_data(dstvalp, srcvalp, ecp, txp) != RDB_OK)
         return RDB_ERROR;
 
+    /*
+     * Copy type information so copying works even if the destination
+     * has been newly initialized usind RDB_init_obj().
+     */
     if (srctyp != NULL && RDB_type_is_scalar(srctyp)) {
         dstvalp->typ = srctyp;
     }
@@ -903,6 +960,9 @@ resolve_inserts(int insc, const RDB_ma_insert *insv, RDB_ma_insert **ninsvp,
     insert_node *geninsnp = NULL;
 
     insert_node *insnp;
+
+    if (insc == 0)
+        return 0;
 
     for (i = 0; i < insc; i++) {
         if (RDB_TB_CHECK & insv[i].tbp->val.tb.flags) {
@@ -979,6 +1039,9 @@ resolve_updates(int updc, const RDB_ma_update *updv, RDB_ma_update **nupdvp,
     update_node *genupdnp = NULL;
 
     update_node *updnp;
+
+    if (updc == 0)
+        return 0;
 
     for (i = 0; i < updc; i++) {
         if (RDB_TB_CHECK & updv[i].tbp->val.tb.flags) {
@@ -1062,6 +1125,9 @@ resolve_deletes(int delc, const RDB_ma_delete *delv, RDB_ma_delete **ndelvp,
 
     delete_node *delnp;
 
+    if (delc == 0)
+        return 0;
+
     for (i = 0; i < delc; i++) {
         if (RDB_TB_CHECK & delv[i].tbp->val.tb.flags) {
             if (RDB_check_table(delv[i].tbp, ecp, txp) != RDB_OK) {
@@ -1082,7 +1148,7 @@ resolve_deletes(int delc, const RDB_ma_delete *delv, RDB_ma_delete **ndelvp,
     }
 
     /*
-     * If inserts have been generated, allocate new list
+     * If deletes have been generated, allocate new list
      * which consists of old and new deletes
      */
 
@@ -1141,6 +1207,9 @@ resolve_vdeletes(int delc, const RDB_ma_vdelete *delv, RDB_ma_vdelete **ndelvp,
 
     vdelete_node *delnp;
 
+    if (delc == 0)
+        return 0;
+
     for (i = 0; i < delc; i++) {
         if (RDB_TB_CHECK & delv[i].tbp->val.tb.flags) {
             if (RDB_check_table(delv[i].tbp, ecp, txp) != RDB_OK) {
@@ -1161,7 +1230,7 @@ resolve_vdeletes(int delc, const RDB_ma_vdelete *delv, RDB_ma_vdelete **ndelvp,
     }
 
     /*
-     * If inserts have been generated, allocate new list
+     * If deletes have been generated, allocate new list
      * which consists of old and new deletes
      */
 
@@ -1188,6 +1257,9 @@ resolve_vdeletes(int delc, const RDB_ma_vdelete *delv, RDB_ma_vdelete **ndelvp,
         while (delnp != NULL) {
             (*ndelvp)[i].tbp = delnp->del.tbp;
             (*ndelvp)[i].objp = delnp->del.objp;
+
+            /* mark as copied */
+            delnp->del.objp = NULL;
 
             delnp = delnp->nextp;
             i++;
@@ -1733,7 +1805,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     }
 
     nvdelc = resolve_vdeletes(vdelc, vdelv, &nvdelv, ecp, txp);
-    if (ndelc == RDB_ERROR) {
+    if (nvdelc == RDB_ERROR) {
         rcount = RDB_ERROR;
         ndelv = NULL;
         goto cleanup;
@@ -1778,7 +1850,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
      * in Berkeley DB 4.5. !! and if a table is inserted
      */
     if (need_tx
-            && (ninsc + nupdc + ndelc + copyc > 1
+            && (ninsc + nupdc + ndelc + nvdelc + copyc > 1
             || (ninsc == 1 && ninsv[0].tbp->val.tb.stp != NULL
                     && ninsv[0].tbp->val.tb.stp->indexc > 1))) {
         if (RDB_begin_tx(ecp, &subtx, RDB_tx_db(txp), txp) != RDB_OK) {

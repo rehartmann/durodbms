@@ -127,4 +127,7 @@ RDB_copy_expr_typeinfo_if_needed(RDB_expression *, const RDB_expression *,
 int
 RDB_drop_expr_children(RDB_expression *, RDB_exec_context *);
 
+int
+RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *);
+
 #endif /* TRINTERNAL_H_ */

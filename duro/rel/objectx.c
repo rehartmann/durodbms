@@ -791,7 +791,7 @@ RDB_set_init_value(RDB_object *objp, RDB_type *typ, RDB_environment *envp,
 }
 
 /**
- * Copy RDB_object, but not the type information.
+ * Copy RDB_object, but not the type information, except for tables.
  * If the RDB_object wraps a table, it must be a real table.
  */
 int

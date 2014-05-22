@@ -302,6 +302,74 @@ duplicate tuple caught
 3 z
 }
 
+test where {WHERE virtual table} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+        var parts real rel { id int, colour string } key { id };
+        var green_parts virtual parts where colour = 'green';
+
+        insert parts tup { id 1, colour 'red' };
+        commit;
+
+        begin tx;
+        insert green_parts rel { tup { id 2, colour 'green' } };
+        try
+            insert green_parts rel { tup { id 3, colour 'green' },
+                    tup { id 4, colour 'red' } };
+            put_line('insert of red part into green parts succeeded');
+        catch err predicate_violation_error;
+            ;
+        end try;
+        put_line(cast_as_string(count(parts)));
+        put_line(cast_as_string(count(green_parts)));
+        put_line('');
+
+        insert green_parts rel { tup { id 3, colour 'green' },
+                    tup { id 4, colour 'green' } };
+
+        var part tuple same_heading_as(parts);
+        for part in parts order (id asc);
+            put(part.id);
+            put_line('');
+        end for;
+        commit;
+
+        put_line('');
+
+        begin tx;
+        try
+            delete green_parts rel { tup { id 1, colour 'red' },
+                    tup { id 2, colour 'green' } };
+            put_line('delete of red part from green parts succeeded');
+        catch err not_found_error;
+            ;
+        end try;
+
+        delete green_parts rel { tup { id 2, colour 'green' } };
+        
+        delete green_parts where id = 4;
+
+        for part in parts order (id asc);
+            put(part.id);
+            put_line('');
+        end for;
+        commit;
+    }
+} -result {2
+1
+
+1
+2
+3
+4
+
+1
+3
+}
+
 test ra {relational algebra} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
@@ -926,15 +994,28 @@ test refconstraint {referential constraint} -setup $SETUP -cleanup $CLEANUP -bod
         end try;
 
         try
+            insert orders rel{ tup{order_id 2, cust_id 3},
+                    tup{order_id 3, cust_id 3}};
+        catch err predicate_violation_error;
+            put_line('2nd insert into orders caught');
+        end try;
+
+        try
             delete customers where cust_id=1;
         catch err predicate_violation_error;
             put_line('delete from customers caught');
         end try;
 
         try
-            delete customers tup{cust_id 1, name 'James'};
+            delete customers tup {cust_id 1, name 'James'};
         catch err predicate_violation_error;
             put_line('2nd delete from customers caught');
+        end try;
+
+        try
+            delete customers rel { tup {cust_id 1, name 'James'} };
+        catch err predicate_violation_error;
+            put_line('3rd delete from customers caught');
         end try;
 
         -- Must succeed
@@ -1005,8 +1086,10 @@ test refconstraint {referential constraint} -setup $SETUP -cleanup $CLEANUP -bod
     }    
 
 } -output {insert into orders caught
+2nd insert into orders caught
 delete from customers caught
 2nd delete from customers caught
+3rd delete from customers caught
 }
 
 test trconstraint {Transition constraint} -setup $SETUP -body {

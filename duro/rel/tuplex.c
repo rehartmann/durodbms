@@ -472,37 +472,6 @@ RDB_invunwrap_tuple(const RDB_object *tplp, RDB_expression *exp,
     return ret;
 }
 
-/* Copy all attributes from one tuple to another. */
-int
-RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *ecp)
-{
-    RDB_hashtable_iter it;
-    tuple_entry *entryp;
-
-    if (srcp->kind == RDB_OB_INITIAL)
-        return RDB_OK;
-
-    if (srcp->kind != RDB_OB_TUPLE) {
-        RDB_raise_invalid_argument("not a tuple", ecp);
-        return RDB_ERROR;
-    }
-
-    /* Copy attributes to tup */
-    RDB_init_hashtable_iter(&it, (RDB_hashtable *)&srcp->val.tpl_tab);
-    while ((entryp = RDB_hashtable_next(&it)) != NULL) {
-        int ret = RDB_tuple_set(dstp, entryp->key, &entryp->obj, ecp);
-
-        if (ret != RDB_OK) {
-            RDB_destroy_hashtable_iter(&it);
-            return ret;
-        }
-    }
-
-    RDB_destroy_hashtable_iter(&it);
-
-    return RDB_OK;
-}
-
 static int
 set_tuple_attr_type(RDB_object *objp, RDB_type *tpltyp, const char *attrname,
         RDB_exec_context *ecp)

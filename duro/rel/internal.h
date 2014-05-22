@@ -216,12 +216,6 @@ RDB_expr_resolve_tbnames(RDB_expression *, RDB_exec_context *,
  */
 
 int
-RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *);
-
-int
-RDB_copy_array(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *);
-
-int
 RDB_array_equals(RDB_object *arr1p, RDB_object *arr2p, RDB_exec_context *,
         RDB_transaction *, RDB_bool *);
 
@@ -247,6 +241,9 @@ RDB_invunwrap_tuple(const RDB_object *, RDB_expression *,
 
 RDB_object *
 RDB_tpl_get(const char *, void *);
+
+int
+RDB_copy_array(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *);
 
 RDB_object *
 RDB_dup_vtable(RDB_object *, RDB_exec_context *);

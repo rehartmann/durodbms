@@ -557,10 +557,7 @@ replace_targets_real_vdel(RDB_object *tbp, const RDB_ma_vdelete *vdelp,
         RDB_del_expr(exp, ecp);
         return NULL;
     }
-    /* Temporarily attach default values */
-    if (tbp->val.tb.default_map != NULL) {
-        RDB_expr_obj(argp)->val.tb.default_map = tbp->val.tb.default_map;
-    }
+
     ret = RDB_insert(RDB_expr_obj(argp), vdelp->objp, ecp, NULL);
     RDB_expr_obj(argp)->val.tb.default_map = NULL;
     if (ret != RDB_OK) {
