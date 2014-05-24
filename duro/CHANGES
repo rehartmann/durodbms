@@ -4,6 +4,9 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 0.21
 
+- Added DELETE with relation or tuple as 2nd argument to RDB_multi_assign.
+  Added DELETE <table exp> <tuple or table exp> to Duro D/T.
+
 - Added Java support.
 
 - Allowing for more than one interpreter per process.

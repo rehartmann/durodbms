@@ -954,15 +954,12 @@ resolve_inserts(int insc, const RDB_ma_insert *insv, RDB_ma_insert **ninsvp,
 {
     int i;
     int ret;
-    int llen;
+    int llen = 0;
 
     /* list of generated inserts */
     insert_node *geninsnp = NULL;
 
     insert_node *insnp;
-
-    if (insc == 0)
-        return 0;
 
     for (i = 0; i < insc; i++) {
         if (RDB_TB_CHECK & insv[i].tbp->val.tb.flags) {
@@ -979,6 +976,7 @@ resolve_inserts(int insc, const RDB_ma_insert *insv, RDB_ma_insert **ninsvp,
 
             /* Add inserts to list */
             concat_inslists(&geninsnp, insnp);
+            llen++;
         }
     }
 
@@ -986,13 +984,6 @@ resolve_inserts(int insc, const RDB_ma_insert *insv, RDB_ma_insert **ninsvp,
      * If inserts have been generated, allocate new insert list
      * which consists of old and new inserts
      */
-
-    llen = 0;
-    insnp = geninsnp;
-    while (insnp != NULL) {
-        llen++;
-        insnp = insnp->nextp;
-    }
 
     if (llen > 0) {
         (*ninsvp) = RDB_alloc(sizeof (RDB_ma_insert) * (insc + llen), ecp);
@@ -1009,13 +1000,14 @@ resolve_inserts(int insc, const RDB_ma_insert *insv, RDB_ma_insert **ninsvp,
             (*ninsvp)[i].tbp = insnp->ins.tbp;
             (*ninsvp)[i].objp = insnp->ins.objp;
 
-            /* mark as copied */
+            /* mark as copied, preventing del_inslist() from freeing *objp */
             insnp->ins.objp = NULL;
 
             insnp = insnp->nextp;
             i++;
         }
     } else {
+        /* No tables have been resolved, so return existing list */
         *ninsvp = (RDB_ma_insert *) insv;
     }
     ret = insc + llen;
@@ -1033,7 +1025,7 @@ resolve_updates(int updc, const RDB_ma_update *updv, RDB_ma_update **nupdvp,
 {
     int i;
     int ret;
-    int llen;
+    int llen = 0;
 
     /* list of generated updates */
     update_node *genupdnp = NULL;
@@ -1060,6 +1052,7 @@ resolve_updates(int updc, const RDB_ma_update *updv, RDB_ma_update **nupdvp,
 
             /* Add updates to list */
             concat_updlists(&genupdnp, updnp);
+            llen++;
         }
     }
 
@@ -1067,13 +1060,6 @@ resolve_updates(int updc, const RDB_ma_update *updv, RDB_ma_update **nupdvp,
      * If inserts have been generated, allocate new list
      * which consists of old and new updates
      */
-
-    llen = 0;
-    updnp = genupdnp;
-    while (updnp != NULL) {
-        llen++;
-        updnp = updnp->nextp;
-    }
 
     if (llen > 0) {
         (*nupdvp) = RDB_alloc(sizeof (RDB_ma_update) * (updc + llen), ecp);
@@ -1118,7 +1104,7 @@ resolve_deletes(int delc, const RDB_ma_delete *delv, RDB_ma_delete **ndelvp,
 {
     int i;
     int ret;
-    int llen;
+    int llen = 0;
 
     /* list of generated deletes */
     delete_node *gendelnp = NULL;
@@ -1144,6 +1130,7 @@ resolve_deletes(int delc, const RDB_ma_delete *delv, RDB_ma_delete **ndelvp,
 
             /* Add deletes to list */
             concat_dellists(&gendelnp, delnp);
+            llen++;
         }
     }
 
@@ -1151,13 +1138,6 @@ resolve_deletes(int delc, const RDB_ma_delete *delv, RDB_ma_delete **ndelvp,
      * If deletes have been generated, allocate new list
      * which consists of old and new deletes
      */
-
-    llen = 0;
-    delnp = gendelnp;
-    while (delnp != NULL) {
-        llen++;
-        delnp = delnp->nextp;
-    }
 
     if (llen > 0) {
         (*ndelvp) = RDB_alloc(sizeof (RDB_ma_delete) * (delc + llen), ecp);
@@ -1200,7 +1180,7 @@ resolve_vdeletes(int delc, const RDB_ma_vdelete *delv, RDB_ma_vdelete **ndelvp,
 {
     int i;
     int ret;
-    int llen;
+    int llen = 0;
 
     /* list of generated deletes */
     vdelete_node *gendelnp = NULL;
@@ -1226,6 +1206,7 @@ resolve_vdeletes(int delc, const RDB_ma_vdelete *delv, RDB_ma_vdelete **ndelvp,
 
             /* Add deletes to list */
             concat_vdellists(&gendelnp, delnp);
+            llen++;
         }
     }
 
@@ -1233,13 +1214,6 @@ resolve_vdeletes(int delc, const RDB_ma_vdelete *delv, RDB_ma_vdelete **ndelvp,
      * If deletes have been generated, allocate new list
      * which consists of old and new deletes
      */
-
-    llen = 0;
-    delnp = gendelnp;
-    while (delnp != NULL) {
-        llen++;
-        delnp = delnp->nextp;
-    }
 
     if (llen > 0) {
         (*ndelvp) = RDB_alloc(sizeof (RDB_ma_vdelete) * (delc + llen), ecp);
@@ -1783,32 +1757,52 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
      * Resolve virtual table assignment
      */
 
-    ninsc = resolve_inserts(insc, insv, &ninsv, ecp, txp);
-    if (ninsc == RDB_ERROR) {
-        rcount = RDB_ERROR;
+    if (insc > 0) {
+        ninsc = resolve_inserts(insc, insv, &ninsv, ecp, txp);
+        if (ninsc == RDB_ERROR) {
+            rcount = RDB_ERROR;
+            ninsv = NULL;
+            goto cleanup;
+        }
+    } else {
+        ninsc = 0;
         ninsv = NULL;
-        goto cleanup;
     }
 
-    nupdc = resolve_updates(updc, updv, &nupdv, ecp, txp);
-    if (nupdc == RDB_ERROR) {
-        rcount = RDB_ERROR;
-        nupdv = NULL;
-        goto cleanup;
+    if (updc > 0) {
+        nupdc = resolve_updates(updc, updv, &nupdv, ecp, txp);
+        if (nupdc == RDB_ERROR) {
+            rcount = RDB_ERROR;
+            nupdv = NULL;
+            goto cleanup;
+        }
+    } else {
+            nupdc = 0;
+            nupdv = NULL;
     }
 
-    ndelc = resolve_deletes(delc, delv, &ndelv, ecp, txp);
-    if (ndelc == RDB_ERROR) {
-        rcount = RDB_ERROR;
+    if (delc > 0) {
+        ndelc = resolve_deletes(delc, delv, &ndelv, ecp, txp);
+        if (ndelc == RDB_ERROR) {
+            rcount = RDB_ERROR;
+            ndelv = NULL;
+            goto cleanup;
+        }
+    } else {
+        ndelc = 0;
         ndelv = NULL;
-        goto cleanup;
     }
 
-    nvdelc = resolve_vdeletes(vdelc, vdelv, &nvdelv, ecp, txp);
-    if (nvdelc == RDB_ERROR) {
-        rcount = RDB_ERROR;
-        ndelv = NULL;
-        goto cleanup;
+    if (vdelc > 0) {
+        nvdelc = resolve_vdeletes(vdelc, vdelv, &nvdelv, ecp, txp);
+        if (nvdelc == RDB_ERROR) {
+            rcount = RDB_ERROR;
+            ndelv = NULL;
+            goto cleanup;
+        }
+    } else {
+        nvdelc = 0;
+        nvdelv = NULL;
     }
 
     /*
@@ -2309,32 +2303,52 @@ RDB_apply_constraints(int insc, const RDB_ma_insert insv[],
      * Resolve virtual table assignments
      */
 
-    ninsc = resolve_inserts(insc, insv, &ninsv, ecp, txp);
-    if (ninsc == RDB_ERROR) {
-        ret = RDB_ERROR;
+    if (insc > 0) {
+        ninsc = resolve_inserts(insc, insv, &ninsv, ecp, txp);
+        if (ninsc == RDB_ERROR) {
+            ret = RDB_ERROR;
+            ninsv = NULL;
+            goto cleanup;
+        }
+    } else {
+        ninsc = 0;
         ninsv = NULL;
-        goto cleanup;
     }
 
-    nupdc = resolve_updates(updc, updv, &nupdv, ecp, txp);
-    if (nupdc == RDB_ERROR) {
-        ret = RDB_ERROR;
+    if (updc > 0) {
+        nupdc = resolve_updates(updc, updv, &nupdv, ecp, txp);
+        if (nupdc == RDB_ERROR) {
+            ret = RDB_ERROR;
+            nupdv = NULL;
+            goto cleanup;
+        }
+    } else {
+        nupdc = 0;
         nupdv = NULL;
-        goto cleanup;
     }
 
-    ndelc = resolve_deletes(delc, delv, &ndelv, ecp, txp);
-    if (ndelc == RDB_ERROR) {
-        ret = RDB_ERROR;
+    if (delc > 0) {
+        ndelc = resolve_deletes(delc, delv, &ndelv, ecp, txp);
+        if (ndelc == RDB_ERROR) {
+            ret = RDB_ERROR;
+            ndelv = NULL;
+            goto cleanup;
+        }
+    } else {
+        ndelc = 0;
         ndelv = NULL;
-        goto cleanup;
     }
 
-    nvdelc = resolve_vdeletes(vdelc, vdelv, &nvdelv, ecp, txp);
-    if (ndelc == RDB_ERROR) {
-        ret = RDB_ERROR;
-        ndelv = NULL;
-        goto cleanup;
+    if (vdelc > 0) {
+        nvdelc = resolve_vdeletes(vdelc, vdelv, &nvdelv, ecp, txp);
+        if (ndelc == RDB_ERROR) {
+            ret = RDB_ERROR;
+            nvdelv = NULL;
+            goto cleanup;
+        }
+    } else {
+        nvdelc = 0;
+        nvdelv = NULL;
     }
 
     ret = check_conflicts_deps(ninsc, ninsv, nupdc, nupdv,
