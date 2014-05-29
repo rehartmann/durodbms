@@ -833,9 +833,10 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
     if (!RDB_parse_interactive)
         yyterminate();
 
+    yy_delete_buffer(YY_CURRENT_BUFFER);
+
     line = (*RDB_parse_read_line_fnp) ();
     if (line == NULL) {
-        yy_delete_buffer(YY_CURRENT_BUFFER);
         yyterminate();
     }
 
