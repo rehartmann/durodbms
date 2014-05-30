@@ -1464,6 +1464,10 @@ RDB_parse_stmt(RDB_exec_context *ecp)
     }
 
     RDB_destroy_obj(&oldlocaleobj, ecp);
+
+    /* No error occured, so clear any previously raised error */
+    RDB_clear_err(ecp);
+
     return RDB_parse_resultp;
 
 error:

@@ -268,7 +268,7 @@ rel_ihdrs = Split('rel/catalog.h rel/cat_type.h rel/cat_op.h '
         'rel/pexpr.h')
 dli_hdrs = ['dli/parse.h', 'dli/parsenode.h']
 dli_ihdrs = ['dli/exparse.h', 'dli/iinterp.h', 'dli/interp_core.h',
-        'dli/interp_assign.h', 'dli/interp_eval.h', 'dli/interp_vardef.h'
+        'dli/interp_assign.h', 'dli/interp_eval.h', 'dli/interp_vardef.h',
         'dli/ioop.h', 'dli/fcgi.h']
 durotcl_hdrs = ['tcl/duro.h']
 testlib_hdrs = ['tests/point.h']
@@ -339,45 +339,58 @@ if env['PLATFORM'] != 'win32':
 #
 
 # create .tar.gz, prepend paths with durodbms-<version>
-env.Replace(TARFLAGS = '-c -z --exclude .sconsign --transform \'s,^,durodbms-'
-        + release + '/,S\'')
+env.Replace(TARFLAGS = '-c --exclude .sconsign --transform \'s,^,durodbms-'
+        + release + '/duro/,S\'')
 
 if env.has_key('TAR'):
-    disttar = 'durodbms-' + release + '-src.tar.gz'
+    disttar = 'durodbms-' + release + '-src.tar'
+    disttargz = disttar + '.gz'
 
-    env.Tar(disttar, Split('SConstruct README README.windows INSTALL '
+    env.Tar('src.tar', Split('SConstruct README README.windows INSTALL '
             'COPYING AUTHORS CHANGES Doxyfile'))
-    env.Tar(disttar, gensrc)
-    env.Tar(disttar, recsrc)
-    env.Tar(disttar, objsrc)
-    env.Tar(disttar, relsrc)
-    env.Tar(disttar, interpsrc)
-    env.Tar(disttar, 'dli/durodt.c')
-    env.Tar(disttar, 'dli/ioop.c')
-    env.Tar(disttar, 'dli/fcgi.c')
-    env.Tar(disttar, durotclsrc)
-    env.Tar(disttar, durodocs)
-    env.Tar(disttar, 'docs/durodt/tut.html')
-    env.Tar(disttar, durotcldocs)
-    env.Tar(disttar, 'docs/api/html')
-    env.Tar(disttar, ['duro.def', 'durotcl.def'])
-    env.Tar(disttar, durotcl_hdrs)
-    env.Tar(disttar, testsrc)
-    env.Tar(disttar, testlibsrc)
-    env.Tar(disttar, 'tests/lstables.c')
-    env.Tar(disttar, gen_hdrs)
-    env.Tar(disttar, rec_hdrs)
-    env.Tar(disttar, obj_hdrs)
-    env.Tar(disttar, obj_ihdrs)
-    env.Tar(disttar, rel_hdrs)
-    env.Tar(disttar, rel_ihdrs)
-    env.Tar(disttar, dli_hdrs)
-    env.Tar(disttar, dli_ihdrs)
-    env.Tar(disttar, testlib_hdrs)
-    env.Tar(disttar, test_scripts)
-    env.Tar(disttar, durodt_test_scripts)
-    env.Tar(disttar, tcltools)
-    env.Tar(disttar, ['dli/exparse.y', 'dli/exlex.l'])
-    env.Tar(disttar, 'tcl/util.tcl')
+    env.Tar('src.tar', gensrc)
+    env.Tar('src.tar', recsrc)
+    env.Tar('src.tar', objsrc)
+    env.Tar('src.tar', relsrc)
+    env.Tar('src.tar', interpsrc)
+    env.Tar('src.tar', 'dli/durodt.c')
+    env.Tar('src.tar', 'dli/ioop.c')
+    env.Tar('src.tar', 'dli/fcgi.c')
+    env.Tar('src.tar', durotclsrc)
+    env.Tar('src.tar', durodocs)
+    env.Tar('src.tar', 'docs/durodt/tut.html')
+    env.Tar('src.tar', durotcldocs)
+    env.Tar('src.tar', 'docs/api/html')
+    env.Tar('src.tar', ['duro.def', 'durotcl.def'])
+    env.Tar('src.tar', durotcl_hdrs)
+    env.Tar('src.tar', testsrc)
+    env.Tar('src.tar', testlibsrc)
+    env.Tar('src.tar', 'tests/lstables.c')
+    env.Tar('src.tar', gen_hdrs)
+    env.Tar('src.tar', rec_hdrs)
+    env.Tar('src.tar', obj_hdrs)
+    env.Tar('src.tar', obj_ihdrs)
+    env.Tar('src.tar', rel_hdrs)
+    env.Tar('src.tar', rel_ihdrs)
+    env.Tar('src.tar', dli_hdrs)
+    env.Tar('src.tar', dli_ihdrs)
+    env.Tar('src.tar', testlib_hdrs)
+    env.Tar('src.tar', test_scripts)
+    env.Tar('src.tar', durodt_test_scripts)
+    env.Tar('src.tar', tcltools)
+    env.Tar('src.tar', ['dli/exparse.y', 'dli/exlex.l'])
+    env.Tar('src.tar', 'tcl/util.tcl')
+    env.Tar('src.tar', 'jduro/jduro.c')
+
+    # Copy tarfile and add java source files
+    # Don't use env.Tar because relative paths starting with '..'
+    # would become absolute paths
+    env.Command(disttar,
+        ['src.tar'] + Glob('../jduro/src/net/sf/duro/*.java'),
+        'cd ..; mv duro/src.tar duro/' + disttar
+                + ' && tar -f duro/' + disttar
+                + ' --append jduro/src/net/sf/duro/*.java'
+                + ' --transform \'s,^,durodbms-' + release + '/,S\''
+                + ' && gzip -f duro/' + disttar)
 
     env.Alias('dist', disttar)

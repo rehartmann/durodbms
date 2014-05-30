@@ -27,7 +27,7 @@ set ::CLEANUP {
     removeDirectory dbenv
 }
 
-test insert {creating table and inserting tuples} \
+test insert_delete {creating table, insert, delete} \
             -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
@@ -88,6 +88,7 @@ test insert {creating table and inserting tuples} \
         insert r3 tup {n 1, s 'a'};
         insert r3 tup {n 1, s 'b'};
         insert r3 tup {n 2, s 'a'};
+        insert r3 tup {n 3, s 'a'};
         try
             insert r3 tup {n 1, s 'a'};
         catch err element_exists_error;
@@ -96,6 +97,21 @@ test insert {creating table and inserting tuples} \
         put(count(r3)); put_line(' tuples');
 
         commit;
+
+        begin tx;
+        delete r3 where n = 1 and s = 'a';
+        put(count(r3)); put_line(' tuples');
+        delete r3 rel { tup {n 1, s 'b'} };
+        try
+            delete r3 rel { tup {n 1, s 'b'}, tup {n 2, s 'a'} };
+        catch err not_found_error;
+            put_line('2nd delete of same tuple failed');
+        end try;
+        put(count(r3)); put_line(' tuples');
+        delete r3 tup {n 2, s 'a'};
+        put(count(r3)); put_line(' tuple');
+        delete r3;
+        put_line(if is_empty(r3) then 'empty' else 'not empty');
     }
 } -result {type mismatch caught
 4
@@ -104,7 +120,12 @@ Y
 key violation caught (1)
 key violation caught (2)
 element_exists_error
+4 tuples
 3 tuples
+2nd delete of same tuple failed
+2 tuples
+1 tuple
+empty
 }
 
 test update {creating table and updating tuples} -setup $SETUP -cleanup $CLEANUP -body {
@@ -314,11 +335,14 @@ test where {WHERE virtual table} -setup $SETUP -cleanup $CLEANUP -body {
         insert parts tup { id 1, colour 'red' };
         commit;
 
+        var pr private rel { id int };
+
         begin tx;
-        insert green_parts rel { tup { id 2, colour 'green' } };
+        insert green_parts tup { id 2, colour 'green' };
         try
             insert green_parts rel { tup { id 3, colour 'green' },
-                    tup { id 4, colour 'red' } };
+                    tup { id 4, colour 'red' } },
+                    insert pr tup { id 1 };
             put_line('insert of red part into green parts succeeded');
         catch err predicate_violation_error;
             ;
@@ -328,7 +352,8 @@ test where {WHERE virtual table} -setup $SETUP -cleanup $CLEANUP -body {
         put_line('');
 
         insert green_parts rel { tup { id 3, colour 'green' },
-                    tup { id 4, colour 'green' } };
+                    tup { id 4, colour 'green' } },
+                    insert pr tup { id 2 };
 
         var part tuple same_heading_as(parts);
         for part in parts order (id asc);
@@ -337,6 +362,9 @@ test where {WHERE virtual table} -setup $SETUP -cleanup $CLEANUP -body {
         end for;
         commit;
 
+        put_line('');
+
+        put((tuple from pr).id);
         put_line('');
 
         begin tx;
@@ -348,7 +376,8 @@ test where {WHERE virtual table} -setup $SETUP -cleanup $CLEANUP -body {
             ;
         end try;
 
-        delete green_parts rel { tup { id 2, colour 'green' } };
+        delete green_parts tup { id 2, colour 'green' },
+                delete pr tup { id 2 };
         
         delete green_parts where id = 4;
 
@@ -356,6 +385,7 @@ test where {WHERE virtual table} -setup $SETUP -cleanup $CLEANUP -body {
             put(part.id);
             put_line('');
         end for;
+        put(count(pr)); put_line('');
         commit;
     }
 } -result {2
@@ -366,8 +396,10 @@ test where {WHERE virtual table} -setup $SETUP -cleanup $CLEANUP -body {
 3
 4
 
+2
 1
 3
+0
 }
 
 test ra {relational algebra} -setup $SETUP -cleanup $CLEANUP -body {

@@ -702,8 +702,10 @@ node_to_multi_assign(const RDB_parse_node *listnodep,
                     }
                     break;
                 case TOK_DELETE:
-                    if (firstp->nextp->nextp->nextp != NULL
-                            && firstp->nextp->nextp->nextp->kind != RDB_NODE_TOK) {
+                    if (firstp->nextp->nextp == NULL
+                            || (firstp->nextp->nextp->nextp != NULL
+                                && firstp->nextp->nextp->nextp->kind
+                                        != RDB_NODE_TOK)) {
                         if ((*delcp) >= DURO_MAX_LLEN) {
                             RDB_raise_not_supported("too many deletes", ecp);
                             return RDB_ERROR;

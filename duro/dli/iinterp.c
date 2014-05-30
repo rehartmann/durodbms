@@ -2414,6 +2414,11 @@ Duro_exec_stmt_impl_tx(RDB_parse_node *stmtp, Duro_interp *interp,
     return RDB_OK;
 }
 
+/*
+ * Parse next statement and execute it.
+ * Returning RDB_ERROR with no error in *ecp means that the end of input
+ * has been reached.
+ */
 int
 Duro_process_stmt(Duro_interp *interp, RDB_exec_context *ecp)
 {
