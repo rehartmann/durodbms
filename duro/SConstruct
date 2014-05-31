@@ -90,15 +90,21 @@ if env['PLATFORM'] == 'win32':
     libjduro = env.SharedLibrary('jduro', ['jduro/jduro.c'],
             CPPPATH = env['CPPPATH'] + [java_home + '/include']
                 + [java_home + '/include/win32'],
-            LIBS = env['LIBS'] + ['duro.lib'])
+            LIBS = env['LIBS'] + ['duro.lib'],
+            )
 else:
     libduro = env.SharedLibrary('duro', durosrc,
             LIBS = durolibs)
+    # Name of JNI lib gets no version number because System.loadLibrary()
+    # does not support it
     libjduro = env.SharedLibrary('jduro', ['jduro/jduro.c'],
             CPPPATH = env['CPPPATH'] + [java_home + '/include'],
-            LIBS = env['LIBS'] + libduro)
+            LIBS = env['LIBS'] + libduro,
+            SHLIBSUFFIX = DefaultEnvironment()["SHLIBSUFFIX"])
 
-env.Alias('jni', [libjduro, 'jduro.jar'])
+jdurolibs = [libjduro, 'jduro.jar']
+
+env.Alias('jni', jdurolibs)
 
 #
 # Tcl interface
@@ -145,7 +151,7 @@ else:
 
 env.Java('../jduro/bin', '../jduro/src')
 
-env.Jar('jduro.jar', '../jduro/bin') 
+env.Jar('jduro.jar', '../jduro/bin', JARCHDIR='$SOURCE') 
 
 #
 # Docs
@@ -303,6 +309,10 @@ env.Install(installdir + '/bin', durodt)
 # Install fcgi_durodt only if it has been built
 if os.path.exists(str(fcgi_durodt[0])):
     env.Install(installdir + '/bin', fcgi_durodt)
+
+# Install java libs if they have been built
+if os.path.exists(str(libjduro[0])):
+    env.Install(installdir + '/lib', jdurolibs)
 
 def mkIndex(env, target, source):
     import os

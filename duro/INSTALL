@@ -1,7 +1,7 @@
 Installation procedure for DuroDBMS
 ===================================
 
-DuroDBMS uses SCons to build itself. Go to subdirectory 'duro' and type:
+DuroDBMS uses SCons to build itself. Type:
 
 scons
 scons test    (optional)
