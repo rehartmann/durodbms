@@ -1243,11 +1243,12 @@ resolve_vdeletes(int delc, const RDB_ma_vdelete *delv, RDB_ma_vdelete **ndelvp,
 
     ndelc += llen;
 
-    (*ndelvp) = RDB_alloc(sizeof (RDB_ma_vdelete) * (delc + llen), ecp);
+    (*ndelvp) = RDB_alloc(sizeof (RDB_ma_vdelete) * ndelc, ecp);
     if (*ndelvp == NULL) {
         goto error;
     }
 
+    j = 0;
     for (i = 0; i < delc; i++) {
         if (delv[i].tbp->val.tb.exp == NULL) {
             (*ndelvp)[j].tbp = delv[i].tbp;
@@ -1264,6 +1265,7 @@ resolve_vdeletes(int delc, const RDB_ma_vdelete *delv, RDB_ma_vdelete **ndelvp,
         j++;
     }
 
+    assert(j == ndelc);
     *gendelpp = gendelp;
     return ndelc;
 
