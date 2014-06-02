@@ -164,10 +164,10 @@ env.Command('docs/api/html/index.html',
             + ['dli/parse.c', 'dli/ioop.c', 'dli/iinterp.c', 'dli/parse.h'],
         'doxygen')
 
-env.Alias('javadocs', '../jduro/docs/index.html')
+env.Alias('javadocs', 'docs/javadoc/index.html')
 
-env.Command('../jduro/docs/index.html', Glob('../jduro/src/net/sf/duro/*.java'),
-        'javadoc -d ../jduro/docs -classpath ../jduro/src net.sf.duro')
+env.Command('docs/javadoc/index.html', Glob('../jduro/src/net/sf/duro/*.java'),
+        'javadoc -d docs/javadoc -classpath ../jduro/src net.sf.duro')
 
 #
 # Defaults
@@ -304,6 +304,7 @@ env.Install(installdir + '/docs', durodocs)
 env.Install(installdir + '/docs/durodt', 'docs/durodt/tut.html')
 # 'scons install' does not rebuild api docs
 env.Command(installdir + '/docs/api/html', [], Copy("$TARGET", 'docs/api/html'))
+env.Command(installdir + '/docs/javadoc', [], Copy("$TARGET", 'docs/javadoc'))
 env.Install(installdir + '/bin', durodt)
 
 # Install fcgi_durodt only if it has been built
@@ -371,6 +372,7 @@ if env.has_key('TAR'):
     env.Tar('src.tar', 'docs/durodt/tut.html')
     env.Tar('src.tar', durotcldocs)
     env.Tar('src.tar', 'docs/api/html')
+    env.Tar('src.tar', 'docs/javadoc')
     env.Tar('src.tar', ['duro.def', 'durotcl.def'])
     env.Tar('src.tar', durotcl_hdrs)
     env.Tar('src.tar', testsrc)

@@ -890,6 +890,12 @@ RDB_parse_init_buf(FILE *f)
 	}
 }
 
+void
+RDB_parse_flush_buf(void)
+{
+    yy_flush_buffer(YY_CURRENT_BUFFER);
+}
+
 /*
  * Free the flex buffer
  */

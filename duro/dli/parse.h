@@ -18,6 +18,9 @@ void
 RDB_parse_init_buf(FILE *);
 
 void
+RDB_parse_flush_buf(void);
+
+void
 RDB_parse_destroy_buf(void);
 
 RDB_expression *

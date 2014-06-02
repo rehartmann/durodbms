@@ -2730,7 +2730,7 @@ Duro_dt_execute(FILE *infp, Duro_interp *interp, RDB_exec_context *ecp)
             if (errobjp != NULL) {
                 if (RDB_parse_get_interactive()) {
                     Duro_print_error(errobjp);
-                    RDB_parse_init_buf(NULL);
+                    RDB_parse_flush_buf();
                 } else {
                     fprintf(stderr, "error in statement at or near line %d: ", interp->err_line);
                     goto error;
