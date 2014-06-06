@@ -13,7 +13,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 /*
  * Check if *exp1 == NOT(*exp2) or *exp2 == NOT(*exp1)
@@ -59,7 +58,10 @@ transform_union(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 {
     RDB_bool compl, teq;
 
-    assert(strcmp(exp->def.op.name, "union") == 0);
+    if (strcmp(exp->def.op.name, "union") != 0) {
+        RDB_raise_invalid_argument("union expected", ecp);
+        return RDB_ERROR;
+    }
     if (RDB_expr_is_op(exp->def.op.args.firstp, "project")
             && RDB_expr_is_op(exp->def.op.args.firstp->nextp, "project") == 0) {
         RDB_expression *wex1p = exp->def.op.args.firstp->def.op.args.firstp;
@@ -359,8 +361,11 @@ swap_project_union(RDB_expression *exp,
     char *hname;
     RDB_expression *chexp = exp->def.op.args.firstp;
 
-    assert(strcmp(exp->def.op.name, "project") == 0);
-    assert(strcmp(chexp->def.op.name, "union") == 0);
+    if (strcmp(exp->def.op.name, "project") != 0
+        || strcmp(chexp->def.op.name, "union") != 0) {
+        RDB_raise_invalid_argument("project(union expected", ecp);
+        return RDB_ERROR;
+    }
 
     /*
      * Create new project table for child #2
@@ -715,7 +720,6 @@ transform_project(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             if (swap_project_rename(exp, getfnp, arg, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
             exp = exp->def.op.args.firstp;
-            assert(exp->kind <= RDB_EX_RO_OP);
         } else if (strcmp(chexp->def.op.name, "extend") == 0) {
             return transform_project_extend(exp, getfnp, arg, ecp, txp);
         } else {

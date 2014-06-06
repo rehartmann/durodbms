@@ -17,7 +17,6 @@
 #include <obj/objinternal.h>
 
 #include <string.h>
-#include <assert.h>
 
 /*
  * Turn *tbp into a virtual table defined by exp.
@@ -389,7 +388,7 @@ RDB_dup_rename_keys(int keyc, const RDB_string_vec keyv[], RDB_expression *texp,
             nkeyv[i].strv[j] = NULL;
         for (j = 0; j < keyv[i].strc; j++) {
             char *nattrname = NULL;
-            
+
             if (texp != NULL) {
                 /* If exp is not NULL, rename attributes */
                 nattrname = RDB_rename_attr(keyv[i].strv[j], texp);

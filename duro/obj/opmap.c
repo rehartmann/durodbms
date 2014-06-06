@@ -10,8 +10,6 @@
 #include <gen/hashmapit.h>
 #include <gen/strfns.h>
 
-#include <assert.h>
-
 void
 RDB_init_op_map(RDB_op_map *opmap)
 {

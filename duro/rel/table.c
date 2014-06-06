@@ -20,7 +20,6 @@
 #include <rec/sequence.h>
 
 #include <string.h>
-#include <assert.h>
 
 int
 RDB_seq_container_name(const char *tbname, const char *attrname, RDB_object *resultp,
@@ -209,7 +208,7 @@ RDB_table_ilen(const RDB_object *tbp, size_t *lenp, RDB_exec_context *ecp)
         ret = RDB_obj_ilen(&tpl, &len, ecp);
         if (ret != RDB_OK) {
              RDB_destroy_obj(&tpl, ecp);
-            RDB_del_table_iterator(qrp, ecp, NULL);
+            RDB_del_qresult(qrp, ecp, NULL);
             return RDB_ERROR;
         }
         *lenp += len;
@@ -218,10 +217,10 @@ RDB_table_ilen(const RDB_object *tbp, size_t *lenp, RDB_exec_context *ecp)
     if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
         RDB_clear_err(ecp);
     } else {
-        RDB_del_table_iterator(qrp, ecp, NULL);
+        RDB_del_qresult(qrp, ecp, NULL);
         return RDB_ERROR;
     }
-    return RDB_del_table_iterator(qrp, ecp, NULL);
+    return RDB_del_qresult(qrp, ecp, NULL);
 }
 
 /** @addtogroup table
@@ -275,7 +274,7 @@ RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *ecp,
 
 cleanup:
     if (qrp != NULL)
-        RDB_del_table_iterator(qrp, ecp, txp);
+        RDB_del_qresult(qrp, ecp, txp);
     RDB_del_expr(texp, ecp);
     RDB_destroy_obj(&tpl, ecp);
     return ret;
@@ -369,7 +368,7 @@ RDB_table_keys(RDB_object *tbp, RDB_exec_context *ecp, RDB_string_vec **keyvp)
         if (keyc == RDB_ERROR)
             return RDB_ERROR;
         if (freekey) {
-            tbp->val.tb.keyv = keyv;
+            tbp->val.tb.keyv = keyv; /* !! strings wurden nicht gedup't */
         } else {
             tbp->val.tb.keyv = dup_keyv(keyc, keyv, ecp);
             if (tbp->val.tb.keyv == NULL) {
@@ -529,7 +528,7 @@ RDB_extract_tuple(RDB_object *tbp, RDB_exec_context *ecp,
 cleanup:
     RDB_destroy_obj(&tpl, ecp);
 
-    RDB_del_table_iterator(qrp, ecp, txp);
+    RDB_del_qresult(qrp, ecp, txp);
     RDB_del_expr(texp, ecp);
     return RDB_get_err(ecp) == NULL ? RDB_OK : RDB_ERROR;
 }
@@ -653,7 +652,7 @@ RDB_subset(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *ecp,
         ret = RDB_table_contains(tb2p, &tpl, ecp, txp, resultp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
-            RDB_del_table_iterator(qrp, ecp, txp);
+            RDB_del_qresult(qrp, ecp, txp);
             goto error;
         }
         if (!*resultp) {
@@ -664,12 +663,12 @@ RDB_subset(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *ecp,
     RDB_destroy_obj(&tpl, ecp);
     if (ret != RDB_OK) {
         if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-            RDB_del_table_iterator(qrp, ecp, txp);
+            RDB_del_qresult(qrp, ecp, txp);
             goto error;
         }
         RDB_clear_err(ecp);
     }
-    ret = RDB_del_table_iterator(qrp, ecp, txp);
+    ret = RDB_del_qresult(qrp, ecp, txp);
     if (ret != RDB_OK)
         goto error;
     return RDB_OK;
@@ -766,18 +765,18 @@ RDB_table_equals(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *ecp,
         }
         if (!*resp) {
             RDB_destroy_obj(&tpl, ecp);
-            return RDB_del_table_iterator(qrp, ecp, txp);
+            return RDB_del_qresult(qrp, ecp, txp);
         }
     }
     RDB_clear_err(ecp);
 
     *resp = RDB_TRUE;
     RDB_destroy_obj(&tpl, ecp);
-    return RDB_del_table_iterator(qrp, ecp, txp);
+    return RDB_del_qresult(qrp, ecp, txp);
 
 error:
     RDB_destroy_obj(&tpl, ecp);
-    RDB_del_table_iterator(qrp, ecp, txp);
+    RDB_del_qresult(qrp, ecp, txp);
     return ret;
 }
 
@@ -913,7 +912,10 @@ RDB_check_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     if (RDB_cat_get_table(tbp, name, ecp, txp) != RDB_OK) {
         RDB_free(name);
-        assert(tbp->kind == RDB_OB_TABLE);
+        if (tbp->kind != RDB_OB_TABLE) {
+            RDB_raise_internal("RDB_check_table(): table expected", ecp);
+            return RDB_ERROR;
+        }
 
         /* Make sure the check flag is still set */
         tbp->val.tb.flags |= RDB_TB_CHECK;

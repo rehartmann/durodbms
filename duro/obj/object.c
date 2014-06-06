@@ -399,7 +399,10 @@ int
 RDB_binary_set(RDB_object *valp, size_t pos, const void *srcp, size_t len,
         RDB_exec_context *ecp)
 {
-    assert(valp->kind == RDB_OB_INITIAL || valp->typ == &RDB_BINARY);
+    if (valp->kind != RDB_OB_INITIAL && valp->typ != &RDB_BINARY) {
+        RDB_raise_invalid_argument("cannot turn RDB_object into binary", ecp);
+        return RDB_ERROR;
+    }
 
     /* If the value is newly initialized, allocate memory */
     if (valp->kind == RDB_OB_INITIAL) {

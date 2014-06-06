@@ -151,7 +151,7 @@ tclose_step(RDB_qresult *qrp, RDB_object *tplp,
         goto error;
     RDB_clear_err(ecp);
 
-    RDB_del_table_iterator(wqrp, ecp, txp);
+    RDB_del_qresult(wqrp, ecp, txp);
     wqrp = NULL;
 
     /* Set where condition */
@@ -183,12 +183,12 @@ tclose_step(RDB_qresult *qrp, RDB_object *tplp,
         goto error;
     RDB_clear_err(ecp);
     RDB_destroy_obj(&tpl, ecp);
-    return RDB_del_table_iterator(wqrp, ecp, txp);
+    return RDB_del_qresult(wqrp, ecp, txp);
 
 error:
     RDB_destroy_obj(&tpl, ecp);
     if (wqrp != NULL)
-        RDB_del_table_iterator(wqrp, ecp, txp);
+        RDB_del_qresult(wqrp, ecp, txp);
     return RDB_ERROR;
 }
 
@@ -293,7 +293,7 @@ RDB_next_tclose_tuple(RDB_qresult *qrp, RDB_object *tplp,
             goto error;
         RDB_clear_err(ecp);
 
-        if (RDB_del_table_iterator(lqrp, ecp, txp) != RDB_OK) {
+        if (RDB_del_qresult(lqrp, ecp, txp) != RDB_OK) {
             qrp = NULL;
             goto error;
         }
@@ -315,7 +315,7 @@ RDB_next_tclose_tuple(RDB_qresult *qrp, RDB_object *tplp,
                 inserted = RDB_TRUE;
         }
 
-        RDB_del_table_iterator(lqrp, ecp, txp);
+        RDB_del_qresult(lqrp, ecp, txp);
         lqrp = NULL;
     } while (inserted);
 
@@ -324,7 +324,7 @@ RDB_next_tclose_tuple(RDB_qresult *qrp, RDB_object *tplp,
      * temporary table
      */
 
-    if (RDB_del_table_iterator(qrp->val.children.qrp, ecp, txp) != RDB_OK) {
+    if (RDB_del_qresult(qrp->val.children.qrp, ecp, txp) != RDB_OK) {
         qrp->val.children.qrp = NULL;
         goto error;
     }
@@ -339,7 +339,7 @@ RDB_next_tclose_tuple(RDB_qresult *qrp, RDB_object *tplp,
 
 error:
     if (lqrp != NULL)
-        RDB_del_table_iterator(lqrp, ecp, txp);
+        RDB_del_qresult(lqrp, ecp, txp);
     if (chtbp != NULL)
         RDB_drop_table(chtbp, ecp, txp);
     if (wherechp != NULL)

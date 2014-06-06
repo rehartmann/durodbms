@@ -13,7 +13,6 @@
 #include <gen/strfns.h>
 
 #include <string.h>
-#include <assert.h>
 
 /**@defgroup expr Expression functions
  * @{

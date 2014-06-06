@@ -14,7 +14,6 @@
 #include <obj/objinternal.h>
 
 #include <string.h>
-#include <assert.h>
 
 /*
  * Check if the *tplp matches one of the tuples in *qrp.
@@ -123,10 +122,10 @@ stored_matching(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
 
     ret = qr_matching_tuple(qrp, tplp, ecp, txp, resultp);
     if (ret != RDB_OK) {
-        RDB_del_table_iterator(qrp, ecp, txp);
+        RDB_del_qresult(qrp, ecp, txp);
         return ret;
     }
-    return RDB_del_table_iterator(qrp, ecp, txp);
+    return RDB_del_qresult(qrp, ecp, txp);
 }
 
 static int
@@ -206,11 +205,11 @@ stored_matching_nuindex(RDB_object *tbp, const RDB_object *tplp, RDB_tbindex *in
         goto error;
 
     RDB_destroy_obj(&tpl, ecp);
-    return RDB_del_table_iterator(qrp, ecp, txp);
+    return RDB_del_qresult(qrp, ecp, txp);
 
 error:
     RDB_destroy_obj(&tpl, ecp);
-    RDB_del_table_iterator(qrp, ecp, txp);
+    RDB_del_qresult(qrp, ecp, txp);
     return RDB_ERROR;
 }
 
@@ -292,11 +291,11 @@ RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
     if (ret != RDB_OK) {
         goto error;
     }
-    return RDB_del_table_iterator(qrp, ecp, txp);
+    return RDB_del_qresult(qrp, ecp, txp);
 
 error:
     if (qrp != NULL)
-        RDB_del_table_iterator(qrp, ecp, txp);
+        RDB_del_qresult(qrp, ecp, txp);
     return RDB_ERROR;
 }
 

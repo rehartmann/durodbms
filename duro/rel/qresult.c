@@ -53,7 +53,7 @@ join_qresult(RDB_qresult *qrp, RDB_expression *exp,
             || !arg2p->def.tbref.indexp->unique) {
         qrp->val.children.qr2p = RDB_expr_qresult(arg2p, ecp, txp);
         if (qrp->val.children.qr2p == NULL) {
-            RDB_del_table_iterator(qrp->val.children.qrp, ecp, txp);
+            RDB_del_qresult(qrp->val.children.qrp, ecp, txp);
             return RDB_ERROR;
         }
     } else {
@@ -261,7 +261,7 @@ cleanup:
     RDB_destroy_obj(&tpl, ecp);
     for (i = 0; i < addc; i++)
         RDB_destroy_obj(&svalv[i].val, ecp);
-    RDB_del_table_iterator(lqrp, ecp, txp);
+    RDB_del_qresult(lqrp, ecp, txp);
     RDB_free(keyfv);
     RDB_free(nonkeyfv);
     RDB_free(svalv);
@@ -404,11 +404,11 @@ init_summ_table(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg, RDB_exec_co
     }
 
     RDB_destroy_obj(&tpl, ecp);
-    return RDB_del_table_iterator(lqrp, ecp, txp);
+    return RDB_del_qresult(lqrp, ecp, txp);
 
 error:
     RDB_destroy_obj(&tpl, ecp);
-    RDB_del_table_iterator(lqrp, ecp, txp);
+    RDB_del_qresult(lqrp, ecp, txp);
 
     return RDB_ERROR;
 }
@@ -535,7 +535,7 @@ sdivide_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     qrp->val.children.qr2p = RDB_expr_qresult(
             qrp->exp->def.op.args.firstp->nextp->nextp, ecp, txp);
     if (qrp->val.children.qr2p == NULL) {
-        RDB_del_table_iterator(qrp->val.children.qrp, ecp, txp);
+        RDB_del_qresult(qrp->val.children.qrp, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -675,7 +675,7 @@ do_group(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
 cleanup:
     RDB_destroy_obj(&tpl, ecp);
     RDB_destroy_obj(&gval, ecp);
-    RDB_del_table_iterator(newqrp, ecp, txp);
+    RDB_del_qresult(newqrp, ecp, txp);
     RDB_free(keyfv);
 
     return ret;
@@ -869,7 +869,7 @@ error:
 }
 
 /*
- * Initialize qresult from expression
+ * Initialize qresult from expression.
  */
 static int
 init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
@@ -1237,9 +1237,12 @@ RDB_table_iterator(RDB_object *tbp,
             return NULL;
         }
         /* Add duplicate remover, if necessary */
-        if (RDB_duprem(qrp, ecp, txp) != RDB_OK)
+        if (RDB_duprem(qrp, ecp, txp) != RDB_OK) {
+            RDB_del_qresult(qrp, ecp, txp);
             return NULL;
+        }
     }
+    qrp->opt_exp = texp;
     return qrp;
 }
 
@@ -1335,7 +1338,7 @@ RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
     }
     RDB_clear_err(ecp);
 
-    ret = RDB_del_table_iterator(tmpqrp, ecp, txp);
+    ret = RDB_del_qresult(tmpqrp, ecp, txp);
     if (ret != RDB_OK)
         goto error;
 
@@ -1472,7 +1475,7 @@ next_ungroup_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
             && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
         RDB_clear_err(ecp);
         /* Destroy qresult over relation-valued attribute */
-        ret = RDB_del_table_iterator(qrp->val.children.qr2p, ecp, txp);
+        ret = RDB_del_qresult(qrp->val.children.qr2p, ecp, txp);
         qrp->val.children.qr2p = NULL;
         if (ret != RDB_OK) {
             return RDB_ERROR;
@@ -2208,11 +2211,11 @@ destroy_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
         int ret2;
 
         if (qrp->val.children.qrp != NULL)
-            ret = RDB_del_table_iterator(qrp->val.children.qrp, ecp, txp);
+            ret = RDB_del_qresult(qrp->val.children.qrp, ecp, txp);
         else
             ret = RDB_OK;
         if (qrp->val.children.qr2p != NULL) {
-            ret2 = RDB_del_table_iterator(qrp->val.children.qr2p, ecp, txp);
+            ret2 = RDB_del_qresult(qrp->val.children.qr2p, ecp, txp);
             if (ret2 != RDB_OK)
                 ret = ret2;
         }
@@ -2754,12 +2757,22 @@ RDB_reset_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
 }
 
 int
-RDB_del_table_iterator(RDB_qresult *qrp, RDB_exec_context *ecp,
+RDB_del_qresult(RDB_qresult *qrp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret = destroy_qresult(qrp, ecp, txp);
 
     RDB_free(qrp);
 
+    return ret;
+}
+
+int
+RDB_del_table_iterator(RDB_qresult *qrp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_expression *texp = qrp->opt_exp;
+    int ret = RDB_del_qresult(qrp, ecp, txp);
+    RDB_del_expr(texp, ecp);
     return ret;
 }

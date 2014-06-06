@@ -20,7 +20,6 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
-#include <assert.h>
 
 int
 RDB_obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
@@ -330,11 +329,11 @@ table_to_irep(void *dstp, RDB_object *tbp, size_t len)
     }
     RDB_destroy_obj(&tpl, &ec);
     if (RDB_obj_type(RDB_get_err(&ec)) != &RDB_NOT_FOUND_ERROR) {
-        RDB_del_table_iterator(qrp, &ec, NULL);
+        RDB_del_qresult(qrp, &ec, NULL);
         RDB_destroy_exec_context(&ec);
         return;
     }
-    RDB_del_table_iterator(qrp, &ec, NULL);
+    RDB_del_qresult(qrp, &ec, NULL);
     RDB_destroy_exec_context(&ec);
 }
 

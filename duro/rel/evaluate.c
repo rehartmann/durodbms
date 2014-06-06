@@ -106,12 +106,12 @@ evaluate_is_empty(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     }
 
     RDB_destroy_obj(&tpl, ecp);
-    return RDB_del_table_iterator(qrp, ecp, txp);
+    return RDB_del_qresult(qrp, ecp, txp);
 
 error:
     RDB_destroy_obj(&tpl, ecp);
     if (qrp != NULL)
-        RDB_del_table_iterator(qrp, ecp, txp);
+        RDB_del_qresult(qrp, ecp, txp);
     return RDB_ERROR;
 }
 
@@ -140,7 +140,7 @@ evaluate_count(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
 
     /* Duplicates must be removed */
     if (RDB_duprem(qrp, ecp, txp) != RDB_OK) {
-        RDB_del_table_iterator(qrp, ecp, txp);
+        RDB_del_qresult(qrp, ecp, txp);
         return RDB_ERROR;
     }
 
@@ -152,12 +152,12 @@ evaluate_count(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     }
     RDB_destroy_obj(&tpl, ecp);
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        RDB_del_table_iterator(qrp, ecp, txp);
+        RDB_del_qresult(qrp, ecp, txp);
         return RDB_ERROR;
     }
     RDB_clear_err(ecp);
 
-    if (RDB_del_table_iterator(qrp, ecp, txp) != RDB_OK)
+    if (RDB_del_qresult(qrp, ecp, txp) != RDB_OK)
         return RDB_ERROR;
 
     if (exp->kind == RDB_EX_TBP

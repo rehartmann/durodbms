@@ -12,7 +12,6 @@
 #include <gen/hashtabit.h>
 #include <obj/objinternal.h>
 #include <string.h>
-#include <assert.h>
 
 /*
  * Functions for serializing/deserializing - needed for
@@ -171,7 +170,10 @@ serialize_trobj(RDB_object *valp, int *posp, const RDB_object *argvalp,
     }
 
     if (typ == NULL) {
-        assert(argvalp->kind == RDB_OB_TUPLE);
+        if (argvalp->kind != RDB_OB_TUPLE) {
+            RDB_raise_invalid_argument("type is missing for non-tuple", ecp);
+            return RDB_ERROR;
+        }
 
         typ = RDB_tuple_type(argvalp, ecp);
         if (typ == NULL)

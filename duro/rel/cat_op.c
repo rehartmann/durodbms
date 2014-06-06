@@ -187,7 +187,7 @@ RDB_cat_load_ro_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp
     }
     RDB_clear_err(ecp);
 
-    ret = RDB_del_table_iterator(qrp, ecp, txp);
+    ret = RDB_del_qresult(qrp, ecp, txp);
     qrp = NULL;
     if (ret != RDB_OK)
         goto error;
@@ -202,7 +202,7 @@ RDB_cat_load_ro_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp
 
 error:
     if (qrp != NULL)
-        RDB_del_table_iterator(qrp, ecp, txp);
+        RDB_del_qresult(qrp, ecp, txp);
     if (vtbp != NULL)
         RDB_drop_table(vtbp, ecp, txp);
     RDB_destroy_obj(&tpl, ecp);

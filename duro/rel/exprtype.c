@@ -12,7 +12,6 @@
 #include <obj/objinternal.h>
 
 #include <string.h>
-#include <assert.h>
 
 struct chained_type_map {
     void *arg1;
@@ -338,7 +337,11 @@ unwrap_type(const RDB_expression *exp, RDB_type *argtv[],
     argp = exp->def.op.args.firstp->nextp;
     i = 0;
     while (argp != NULL) {
-        assert(RDB_expr_is_string(argp));
+        if (!RDB_expr_is_string(argp)) {
+            RDB_raise_invalid_argument("string expression expected by UNWRAP",
+                    ecp);
+            return NULL;
+        }
         attrv[i++] = RDB_obj_string(&argp->def.obj);
         argp = argp->nextp;
     }

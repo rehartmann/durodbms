@@ -16,7 +16,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
-#include <assert.h>
 
 RDB_bool
 RDB_index_sorts(struct RDB_tbindex *indexp, int seqitc,
@@ -598,7 +597,10 @@ split_by_index(RDB_expression *texp, RDB_tbindex *indexp,
         RDB_add_arg(sitexp, texp->def.op.args.firstp);
         RDB_add_arg(sitexp, ixexp);
 
-        assert(sitexp->def.op.optinfo.objc == 0);
+        if (sitexp->def.op.optinfo.objc != 0) {
+            RDB_raise_internal("sitexp->def.op.optinfo.objc != 0", ecp);
+            return RDB_ERROR;
+        }
         sitexp->def.op.optinfo.objc = objpc;
         sitexp->def.op.optinfo.objpv = objpv;
         sitexp->def.op.optinfo.objv = NULL;
@@ -614,7 +616,11 @@ split_by_index(RDB_expression *texp, RDB_tbindex *indexp,
          */
         texp->def.op.args.firstp->nextp = ixexp;
         ixexp->nextp = NULL;
-        assert(texp->def.op.optinfo.objc == 0);
+        if (texp->def.op.optinfo.objc != 0) {
+            RDB_raise_internal("texp->def.op.optinfo.objc != 0", ecp);
+            return RDB_ERROR;
+        }
+
         texp->def.op.optinfo.objc = objpc;
         texp->def.op.optinfo.objpv = objpv;
         texp->def.op.optinfo.objv = NULL;

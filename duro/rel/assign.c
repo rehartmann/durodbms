@@ -20,7 +20,6 @@
 #include <obj/objinternal.h>
 
 #include <string.h>
-#include <assert.h>
 
 typedef struct insert_node {
     RDB_ma_insert ins;
@@ -1018,7 +1017,6 @@ resolve_inserts(int insc, const RDB_ma_insert *insv, RDB_ma_insert **ninsvp,
         insnp = insnp->nextp;
         j++;
     }
-    assert(j == ninsc);
     *geninspp = geninsp;
     return ninsc;
 
@@ -1103,7 +1101,6 @@ resolve_updates(int updc, const RDB_ma_update *updv, RDB_ma_update **nupdvp,
         updnp = updnp->nextp;
         j++;
     }
-    assert (j == nupdc);
     *genupdpp = genupdp;
     return nupdc;
 
@@ -1265,7 +1262,6 @@ resolve_vdeletes(int delc, const RDB_ma_vdelete *delv, RDB_ma_vdelete **ndelvp,
         j++;
     }
 
-    assert(j == ndelc);
     *gendelpp = gendelp;
     return ndelc;
 

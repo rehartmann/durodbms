@@ -50,6 +50,11 @@ typedef struct RDB_qresult {
      * Destroyed when the qresult is destroyed.
      */
     RDB_object *matp;
+
+    /*
+     * Otimized expression created by RDB_table_iterator().
+     */
+    RDB_expression *opt_exp;
 } RDB_qresult;
 
 /*
@@ -65,6 +70,9 @@ RDB_expr_qresult(RDB_expression *, RDB_exec_context *, RDB_transaction *);
 RDB_qresult *
 RDB_index_qresult(RDB_object *, struct RDB_tbindex *,
         RDB_exec_context *, RDB_transaction *);
+
+int
+RDB_del_qresult(RDB_qresult *, RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_seek_index_qresult(RDB_qresult *, struct RDB_tbindex *,

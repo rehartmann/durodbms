@@ -16,8 +16,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include <assert.h>
-
 /*
  * Convert paramv to an array of binary type representations
  */

@@ -7,6 +7,7 @@
 
 #include "interp_core.h"
 #include "interp_eval.h"
+#include <obj/key.h>
 #include "exparse.h"
 
 int
@@ -179,17 +180,23 @@ static int
 node_to_key(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_string_vec *vp)
 {
     RDB_parse_node *np;
+    int i;
 
     vp->strc = (RDB_parse_nodelist_length(nodep) + 1) / 2;
     vp->strv = RDB_alloc(sizeof (char *) * vp->strc, ecp);
     if (vp->strv == NULL)
         return RDB_ERROR;
+    for (i = 0; i < vp->strc; i++)
+        vp->strv[i] = NULL;
 
     np = nodep->val.children.firstp;
     if (np != NULL) {
-        int i = 0;
+        i = 0;
         for(;;) {
-            vp->strv[i++] = (char *) RDB_parse_node_ID(np);
+            vp->strv[i] = RDB_dup_str((char *) RDB_parse_node_ID(np));
+            if (vp->strv[i] == NULL)
+                return RDB_ERROR;
+            i++;
             np = np->nextp;
             if (np == NULL)
                 break;
@@ -229,10 +236,8 @@ keylist_to_keyv(RDB_parse_node *nodep, int *keycp, RDB_exec_context *ecp)
     return keyv;
 
 error:
-    for (i = 0; i < *keycp; i++) {
-        RDB_free(keyv[i].strv);
-    }
-    RDB_free(keyv);
+    if (keyv == NULL)
+        RDB_free_keys(*keycp, keyv);
     return NULL;
 }
 
@@ -372,13 +377,8 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, Duro_interp *interp,
     if (RDB_parse_get_interactive())
         printf("Local table %s created.\n", varname);
 
-    if (freekeys) {
-        int i;
-
-        for (i = 0; i < keyc; i++) {
-            RDB_free(keyv[i].strv);
-        }
-        RDB_free(keyv);
+    if (freekeys && keyv != NULL) {
+        RDB_free_keys(keyc, keyv);
     }
 
     return RDB_OK;
@@ -389,13 +389,8 @@ error:
     } else if (tbtyp != NULL && !RDB_type_is_scalar(tbtyp)) {
         RDB_del_nonscalar_type(tbtyp, ecp);
     }
-    if (freekeys) {
-        int i;
-
-        for (i = 0; i < keyc; i++) {
-            RDB_free(keyv[i].strv);
-        }
-        RDB_free(keyv);
+    if (freekeys && keyv != NULL) {
+        RDB_free_keys(keyc, keyv);
     }
     return RDB_ERROR;
 }

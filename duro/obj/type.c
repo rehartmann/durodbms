@@ -16,7 +16,6 @@
 
 #include <string.h>
 #include <locale.h>
-#include <assert.h>
 
 /** @defgroup type Type functions
  * @{
