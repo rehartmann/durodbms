@@ -83,6 +83,13 @@ test insert_delete {creating table, insert, delete} \
 
         insert r2 tup{no 2, id '2', str 'xxx'};
 
+        try
+            delete r2 tup { no 1, id '2', str 'yyy' };
+            put_line('delete of tuple where only key matched succeeded');
+        catch err not_found_error;
+            ;
+        end try;
+
         -- Table without KEY (implicit all-key)
         var r3 real rel {n int, s string};
         insert r3 tup {n 1, s 'a'};
@@ -108,6 +115,7 @@ test insert_delete {creating table, insert, delete} \
             put_line('2nd delete of same tuple failed');
         end try;
         put(count(r3)); put_line(' tuples');
+
         delete r3 tup {n 2, s 'a'};
         put(count(r3)); put_line(' tuple');
         delete r3;
@@ -208,6 +216,74 @@ test invalid_type {invalid (scalar) type for table} -setup $SETUP -cleanup $CLEA
     	var ir real int key {};
     }
 }  -returnCodes {1} -result {*type_mismatch_error*}
+
+test extend {EXTEND}  -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+
+        var t1 real relation { a int, b string, c int }
+        		init relation { tuple {a 1, b 'x', c 1},
+        		        tuple {a 2, b 'yo', c 10} } key { a };
+
+        var t2x virtual extend t1: { bx := b || b, cx := c + 100 };
+
+        var tpx tup { a int, bx string, cx int };
+        for tpx in t2x { a, bx, cx } order (a asc);
+            put(tpx.a); put(' ');
+            put(tpx.bx); put(' ');
+            put(tpx.cx); put_line('');
+        end for;
+
+        commit;
+
+        -- Test insert, update, delete
+        begin tx;
+
+        insert t2x rel { tup { a 3, b 'u', c 1, bx 'uu', cx 101 } };
+
+        insert t2x tup { a 4, b 't ', c 1000, bx 't t ', cx 1100 };
+
+        try
+            insert t2x rel { tup { a 5, b 'x', c 1, bx 'x', cx 101 } };
+            put_line('INSERT succeeded where b and bx do not match');
+        catch err predicate_violation_error;
+            ;
+        end try;
+
+        try
+            insert t2x tup { a 5, b 'x', c 1, bx 'xx', cx 102 };
+            put_line('Tuple INSERT succeeded where b and bx do not match');
+        catch err predicate_violation_error;
+            ;
+        end try;
+
+        try
+            delete t2x rel { tup { a 1, b 'x', c 1, bx 'xxx', cx 101 } };
+            put_line('DELETE succeeded where b and bx do not match');
+        catch err not_found_error;
+            ;
+        end try;
+
+        delete t2x rel { tup { a 1, b 'x', c 1, bx 'xx', cx 101 } };
+
+        delete t2x tup { a 3, b 'u', c 1, bx 'uu', cx 101 };
+
+        for tpx in t2x { a, bx, cx } order (a asc);
+            put(tpx.a); put(' ');
+            put(tpx.bx); put(' ');
+            put(tpx.cx); put_line('');
+        end for;
+
+        commit;
+    }
+} -result {1 xx 101
+2 yoyo 110
+2 yoyo 110
+4 t t  1100
+}
 
 test join_extend {Natural JOIN/EXTEND}  -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {

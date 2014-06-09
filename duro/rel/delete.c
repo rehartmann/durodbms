@@ -383,12 +383,21 @@ RDB_delete_real_tuple(RDB_object *tbp, RDB_object *tplp, RDB_exec_context *ecp,
     int ret;
     int i;
     RDB_tbindex *indexp;
-    RDB_object **objpv;
     RDB_type *valtyp;
     RDB_type *attrtyp;
+    RDB_bool contains;
+    RDB_object **objpv;
 
     if (tbp->val.tb.stp == NULL) {
         /* No stored table, so table is empty */
+        RDB_raise_not_found("tuple not found", ecp);
+        return (RDB_int) RDB_ERROR;
+    }
+
+    /* Check if the table contains the tuple */
+    if (RDB_table_contains(tbp, tplp, ecp, txp, &contains) != RDB_OK)
+        return (RDB_int) RDB_ERROR;
+    if (!contains) {
         RDB_raise_not_found("tuple not found", ecp);
         return (RDB_int) RDB_ERROR;
     }

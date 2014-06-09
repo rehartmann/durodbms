@@ -109,6 +109,12 @@ concat_vdellists(vdelete_node **dstpp, vdelete_node *srcp)
     }
 }
 
+/*
+ * Compute the attribute values added by EXTEND of tuple *tplp
+ * and compare them with the actual values
+ * If they don't match, raise not_found_error.
+ *
+ */
 static int
 check_extend_tuple(const RDB_object *tplp, const RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp)
@@ -121,7 +127,7 @@ check_extend_tuple(const RDB_object *tplp, const RDB_expression *exp, RDB_exec_c
         RDB_object val;
         RDB_object *valp;
         RDB_bool iseq;
-        
+
         valp = RDB_tuple_get(tplp, RDB_obj_string(&argp->nextp->def.obj));
         if (valp == NULL) {
             RDB_raise_invalid_argument("invalid EXTEND attribute", ecp);
@@ -145,6 +151,40 @@ check_extend_tuple(const RDB_object *tplp, const RDB_expression *exp, RDB_exec_c
         argp = argp->nextp->nextp;
     }
     return RDB_OK;
+}
+
+static int
+check_extend(const RDB_object *objp, const RDB_expression *exp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_qresult *qrp;
+    RDB_object tpl;
+
+    if (RDB_is_tuple(objp))
+        return check_extend_tuple(objp, exp, ecp, txp);
+
+    /*
+     * Check tuples in *objp
+     */
+
+    qrp = RDB_table_iterator((RDB_object *) objp, 0, NULL, ecp, NULL);
+    if (qrp == NULL)
+        return RDB_ERROR;
+
+    RDB_init_obj(&tpl);
+    while (RDB_next_tuple(qrp, &tpl, ecp, txp) == RDB_OK) {
+        if (check_extend_tuple (&tpl, exp, ecp, txp) != RDB_OK)
+            goto error;
+    }
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
+        goto error;
+    RDB_destroy_obj(&tpl, ecp);
+    return RDB_del_table_iterator(qrp, ecp, txp);
+
+error:
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_del_table_iterator(qrp, ecp, txp);
+    return RDB_ERROR;
 }
 
 static insert_node *
@@ -366,7 +406,7 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *srcp,
         return ret;
     }
     if (strcmp(exp->def.op.name, "extend") == 0) {
-        ret = check_extend_tuple(srcp, exp, ecp, txp);
+        ret = check_extend(srcp, exp, ecp, txp);
         if (ret != RDB_OK)
             return RDB_ERROR;
         return resolve_insert_expr(exp->def.op.args.firstp, srcp, insnpp, ecp, txp);
@@ -695,11 +735,6 @@ resolve_vdelete_expr(RDB_expression *exp, const RDB_object *srcp,
         return resolve_vdelete_expr(exp->def.op.args.firstp, srcp, vdelnpp,
                 ecp, txp);
     }
-    if (strcmp(exp->def.op.name, "project") == 0
-        || strcmp(exp->def.op.name, "remove") == 0) {
-        return resolve_vdelete_expr(exp->def.op.args.firstp, srcp, vdelnpp,
-                ecp, txp);
-    }
     if (strcmp(exp->def.op.name, "rename") == 0) {
         RDB_object tpl;
 
@@ -713,8 +748,13 @@ resolve_vdelete_expr(RDB_expression *exp, const RDB_object *srcp,
         return ret;
     }
     if (strcmp(exp->def.op.name, "extend") == 0) {
-        if (check_extend_tuple(srcp, exp, ecp, txp) != RDB_OK)
+        if (check_extend(srcp, exp, ecp, txp) != RDB_OK) {
+            /* Convert predicate_violation_error to not_found_error */
+            if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_PREDICATE_VIOLATION_ERROR) {
+                RDB_raise_not_found("tuple does not match EXTEND definition", ecp);
+            }
             return RDB_ERROR;
+        }
         return resolve_vdelete_expr(exp->def.op.args.firstp, srcp, vdelnpp,
                 ecp, txp);
     }
@@ -722,7 +762,6 @@ resolve_vdelete_expr(RDB_expression *exp, const RDB_object *srcp,
             ecp);
     return RDB_ERROR;
 }
-
 
 /*
  * Perform update. *updp->tbp must be a real table.
@@ -909,7 +948,6 @@ static RDB_int
 do_vdelete(const RDB_ma_vdelete *delp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-
     switch (delp->objp->kind) {
         case RDB_OB_INITIAL:
         case RDB_OB_TUPLE:
@@ -947,7 +985,7 @@ copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp, RDB_exec_context *ecp,
 
 /*
  * Convert inserts into virtual tables to inserts into real tables.
- * *geninspp will contains a pointer list of generated table inserts or
+ * *geninspp will contain a pointer to the list of generated table inserts or
  * NULL if there were no virtual tables to be resolved.
  */
 static int
@@ -1027,6 +1065,12 @@ error:
     return RDB_ERROR;
 }
 
+/*
+ * Convert updates into virtual tables to updates of real tables.
+ *
+ * *genupdpp will contain a pointer to the list of generated table updates or
+ * NULL if there were no virtual tables to be resolved.
+ */
 static int
 resolve_updates(int updc, const RDB_ma_update *updv, RDB_ma_update **nupdvp,
         update_node **genupdpp, RDB_exec_context *ecp, RDB_transaction *txp)
@@ -1111,6 +1155,13 @@ error:
     return RDB_ERROR;
 }
 
+/*
+ * Convert deletes of the form DELETE <table> [WHERE expr]
+ * of virtual tables to deletes of real tables.
+ *
+ * *gendelpp will contain a pointer to the list of generated table deletes or
+ * NULL if there were no virtual tables to be resolved.
+ */
 static int
 resolve_deletes(int delc, const RDB_ma_delete *delv, RDB_ma_delete **ndelvp,
         delete_node **gendelpp, RDB_exec_context *ecp, RDB_transaction *txp)
@@ -1191,6 +1242,13 @@ error:
     return RDB_ERROR;
 }
 
+/*
+ * Convert deletes of the form DELETE <table> <tuple or table>
+ * of virtual tables to deletes of real tables.
+ *
+ * *gendelpp will contain a pointer to the list of generated table deletes
+ * or NULL if there were no virtual tables to be resolved.
+ */
 static int
 resolve_vdeletes(int delc, const RDB_ma_vdelete *delv, RDB_ma_vdelete **ndelvp,
         vdelete_node **gendelpp, RDB_exec_context *ecp, RDB_transaction *txp)
