@@ -8,7 +8,7 @@ exec wish "$0" ${1+"$@"}
 
 # $Id$
 
-set duro_version 0.20
+set duro_version 0.21
 
 package require -exact duro $duro_version
 package require Tktable
