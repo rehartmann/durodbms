@@ -24,6 +24,11 @@ public class DuroDSession implements DSession {
 
     native private void setVarI(String name, Object v) throws DException;
 
+    /**
+     * Creates a DSession.
+     * @return the DSession created.
+     * @throws DException	if a Duro error occurs
+     */
     static public DSession createSession() throws DException {
 	DuroDSession instance = new DuroDSession();
 	synchronized(DuroDSession.class) {

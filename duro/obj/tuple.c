@@ -442,6 +442,9 @@ RDB_remove_tuple(const RDB_object *tplp, int attrc, const char *attrv[],
 RDB_bool
 RDB_is_tuple(const RDB_object *objp)
 {
+    if (objp->typ != NULL) {
+        return RDB_type_is_tuple(objp->typ);
+    }
     return (RDB_bool) (objp->kind == RDB_OB_TUPLE
                        || objp->kind == RDB_OB_INITIAL);
 }

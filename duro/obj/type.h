@@ -141,6 +141,9 @@ RDB_type_is_valid(const RDB_type *);
 RDB_bool
 RDB_type_has_possreps(const RDB_type *);
 
+RDB_possrep *
+RDB_type_possreps(const RDB_type *, int *);
+
 char *
 RDB_type_name(const RDB_type *);
 

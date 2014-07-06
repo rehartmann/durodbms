@@ -7,33 +7,12 @@
  *      Author: Rene Hartmann
  */
 
-#include <jni.h>
-#include <dli/iinterp.h>
+#include "jduro.h"
 
-static RDB_exec_context JDuro_ec;
+RDB_exec_context JDuro_ec;
 
-typedef struct {
-    /* The interpreter */
-    Duro_interp interp;
-
-    /* Reference to the DuroDSession object */
-    jobject sessionObj;
-
-    /* References to classes used often */
-    jclass booleanClass;
-    jclass integerClass;
-    jclass stringClass;
-    jclass doubleClass;
-    jclass tupleClass;
-    jclass byteArrayClass;
-    jclass hashSetClass;
-} JDuro_session;
-
-static jobject
-duro_obj_to_jobj(JNIEnv *, const RDB_object *, JDuro_session *);
-
-static int
-throw_exception_from_error(JNIEnv *env, JDuro_session *sessionp, const char *reason,
+int
+JDuro_throw_exception_from_error(JNIEnv *env, JDuro_session *sessionp, const char *reason,
         RDB_exec_context *ecp)
 {
     jobject errobj;
@@ -50,7 +29,7 @@ throw_exception_from_error(JNIEnv *env, JDuro_session *sessionp, const char *rea
     if (constructorID == NULL)
         return -1;
 
-    errobj = duro_obj_to_jobj(env, RDB_get_err(ecp), sessionp);
+    errobj = JDuro_duro_obj_to_jobj(env, RDB_get_err(ecp), sessionp);
     if (errobj == NULL)
         return -1;
 
@@ -108,7 +87,7 @@ JNICALL Java_net_sf_duro_DuroDSession_initInterp(JNIEnv *env, jobject obj)
 
     if (RDB_init_builtin(&JDuro_ec) != RDB_OK) {
         /*
-         * Don't use throw_exception_from_error() because that requires
+         * Don't use JDuro_throw_exception_from_error() because that requires
          * an interpreter
          */
         clazz = (*env)->FindClass(env, "net/sf/duro/DException");
@@ -212,8 +191,8 @@ JNICALL Java_net_sf_duro_DuroDSession_initInterp(JNIEnv *env, jobject obj)
     (*env)->SetLongField(env, obj, interpFieldID, (intptr_t) sessionp);
 }
 
-static JDuro_session *
-jobj_session(JNIEnv *env, jobject obj)
+JDuro_session *
+JDuro_jobj_session(JNIEnv *env, jobject obj)
 {
     jlong interpField;
     jclass clazz = (*env)->GetObjectClass(env, obj);
@@ -262,7 +241,7 @@ JNICALL Java_net_sf_duro_DuroDSession_executeI(JNIEnv *env, jobject jobj,
     ret = Duro_dt_execute_str(str, &sessionp->interp, &JDuro_ec);
     (*env)->ReleaseStringUTFChars(env, statements, str);
     if (ret != RDB_OK) {
-        throw_exception_from_error(env, sessionp, "execution of statements failed",
+        JDuro_throw_exception_from_error(env, sessionp, "execution of statements failed",
                 &JDuro_ec);
     }
 }
@@ -294,7 +273,7 @@ tuple_to_jobj(JNIEnv *env, const RDB_object *tup, JDuro_session *sessionp)
         RDB_object *attrp = RDB_tuple_get(tup, namev[i]);
         jstring jstr = (*env)->NewStringUTF(env, namev[i]);
         (*env)->CallVoidMethod(env, jobj, setAttributeID,
-                jstr, duro_obj_to_jobj(env, attrp, sessionp));
+                jstr, JDuro_duro_obj_to_jobj(env, attrp, sessionp));
     }
     free(namev);
     return jobj;
@@ -323,13 +302,13 @@ table_to_jobj(JNIEnv *env, const RDB_object *tbp, JDuro_session *sessionp)
 
     qrp = RDB_table_iterator((RDB_object *) tbp, 0, NULL, &JDuro_ec, NULL);
     if (qrp == NULL) {
-        throw_exception_from_error(env, sessionp,
+        JDuro_throw_exception_from_error(env, sessionp,
                 "cannot create table iterator", &JDuro_ec);
         return NULL;
     }
     RDB_init_obj(&tpl);
     while (RDB_next_tuple(qrp, &tpl, &JDuro_ec, NULL) == RDB_OK) {
-        elem = duro_obj_to_jobj(env, &tpl, sessionp);
+        elem = JDuro_duro_obj_to_jobj(env, &tpl, sessionp);
         if (elem == NULL)
             goto error;
         (*env)->CallObjectMethod(env, jtable, addID, elem);
@@ -377,7 +356,7 @@ array_to_jobj(JNIEnv *env, const RDB_object *arrp, JDuro_session *sessionp)
     if (jobjarr == NULL)
         return NULL;
     for (i = 0; i < size; i++) {
-         objval = duro_obj_to_jobj(env, RDB_array_get(arrp,
+         objval = JDuro_duro_obj_to_jobj(env, RDB_array_get(arrp,
                  (RDB_int) i, &JDuro_ec), sessionp);
          if (objval == NULL)
              return NULL;
@@ -389,8 +368,8 @@ array_to_jobj(JNIEnv *env, const RDB_object *arrp, JDuro_session *sessionp)
 /*
  * Convert *objp to a Java object.
  */
-static jobject
-duro_obj_to_jobj(JNIEnv *env, const RDB_object *objp, JDuro_session *sessionp)
+jobject
+JDuro_duro_obj_to_jobj(JNIEnv *env, const RDB_object *objp, JDuro_session *sessionp)
 {
     jmethodID constructorID;
     jclass clazz;
@@ -434,7 +413,7 @@ duro_obj_to_jobj(JNIEnv *env, const RDB_object *objp, JDuro_session *sessionp)
         if (jobj == NULL)
             return NULL;
         if (RDB_binary_get(objp, 0, (size_t) len, &JDuro_ec, &bp, NULL) != RDB_OK) {
-            throw_exception_from_error(env, sessionp,
+            JDuro_throw_exception_from_error(env, sessionp,
                     "getting byte array failed", &JDuro_ec);
             return NULL;
         }
@@ -454,13 +433,13 @@ duro_obj_to_jobj(JNIEnv *env, const RDB_object *objp, JDuro_session *sessionp)
      */
     cobjp = RDB_new_obj(&JDuro_ec);
     if (cobjp == NULL) {
-        throw_exception_from_error(env, sessionp,
+        JDuro_throw_exception_from_error(env, sessionp,
                 "creating RDB_object failed", &JDuro_ec);
         goto error;
     }
 
     if (RDB_copy_obj(cobjp, objp, &JDuro_ec) == RDB_ERROR) {
-        throw_exception_from_error(env, sessionp,
+        JDuro_throw_exception_from_error(env, sessionp,
                 "copying RDB_object failed", &JDuro_ec);
         goto error;
     }
@@ -475,6 +454,7 @@ duro_obj_to_jobj(JNIEnv *env, const RDB_object *objp, JDuro_session *sessionp)
     }
 
     /* objp will be managed by the Java object */
+
     jobj = (*env)->NewObject(env, clazz, constructorID,
             (jlong) (intptr_t) cobjp, sessionp->sessionObj);
     if (jobj == NULL)
@@ -495,7 +475,7 @@ JNICALL Java_net_sf_duro_DuroDSession_evaluateI(JNIEnv *env, jobject obj,
     jobject jresult;
     RDB_expression *exp;
     const char *str;
-    JDuro_session *sessionp = jobj_session(env, obj);
+    JDuro_session *sessionp = JDuro_jobj_session(env, obj);
     if (sessionp == NULL)
         return NULL;
     str = (*env)->GetStringUTFChars(env, expression, 0);
@@ -503,7 +483,7 @@ JNICALL Java_net_sf_duro_DuroDSession_evaluateI(JNIEnv *env, jobject obj,
     exp = Duro_dt_parse_expr_str(str, &sessionp->interp, &JDuro_ec);
     (*env)->ReleaseStringUTFChars(env, expression, str);
     if (exp == NULL) {
-        throw_exception_from_error(env, sessionp,
+        JDuro_throw_exception_from_error(env, sessionp,
                 "evaluating expression failed", &JDuro_ec);
         return NULL;
     }
@@ -511,7 +491,7 @@ JNICALL Java_net_sf_duro_DuroDSession_evaluateI(JNIEnv *env, jobject obj,
     RDB_init_obj(&result);
     if (Duro_evaluate_retry(exp, &sessionp->interp, &JDuro_ec,
             &result) != RDB_OK) {
-        throw_exception_from_error(env, sessionp,
+        JDuro_throw_exception_from_error(env, sessionp,
                 "expression evaluation failed", &JDuro_ec);
         goto error;
     }
@@ -521,13 +501,13 @@ JNICALL Java_net_sf_duro_DuroDSession_evaluateI(JNIEnv *env, jobject obj,
             && !RDB_is_tuple(&result)) {
         RDB_type *typ = Duro_expr_type_retry(exp, &sessionp->interp, &JDuro_ec);
         if (typ == NULL) {
-            throw_exception_from_error(env, sessionp,
+            JDuro_throw_exception_from_error(env, sessionp,
                     "getting expression type failed", &JDuro_ec);
             goto error;
         }
         RDB_obj_set_typeinfo(&result, typ);
     }
-    jresult = duro_obj_to_jobj(env, &result, sessionp);
+    jresult = JDuro_duro_obj_to_jobj(env, &result, sessionp);
     RDB_destroy_obj(&result, &JDuro_ec);
     RDB_del_expr(exp, &JDuro_ec);
     return jresult;
@@ -537,10 +517,6 @@ error:
     RDB_del_expr(exp, &JDuro_ec);
     return NULL;
 }
-
-static int
-jobj_to_duro_obj(JNIEnv *, jobject, RDB_object *, JDuro_session *,
-        RDB_exec_context *);
 
 static int
 jtuple_to_obj(JNIEnv *env, RDB_object *dstp, jobject obj, JDuro_session *sessionp,
@@ -627,14 +603,14 @@ jtuple_to_obj(JNIEnv *env, RDB_object *dstp, jobject obj, JDuro_session *session
 
             /* Convert attribute value */
             RDB_init_obj(&attrval);
-            if (jobj_to_duro_obj(env, attrvalobj, &attrval, sessionp, ecp) != 0) {
+            if (JDuro_jobj_to_duro_obj(env, attrvalobj, &attrval, sessionp, ecp) != 0) {
                 RDB_destroy_obj(&attrval, ecp);
                 return -1;
             }
 
             /* Copy attribute to tuple */
             if (RDB_copy_obj(attrvalp, &attrval, &JDuro_ec) != RDB_OK) {
-                throw_exception_from_error(env, sessionp, "setting tuple attribute failed", ecp);
+                JDuro_throw_exception_from_error(env, sessionp, "setting tuple attribute failed", ecp);
                 RDB_destroy_obj(&attrval, ecp);
                 return -1;
             }
@@ -670,12 +646,12 @@ jtuple_to_obj(JNIEnv *env, RDB_object *dstp, jobject obj, JDuro_session *session
             attrname = (*env)->GetStringUTFChars(env, attrnameobj, 0);
 
             RDB_init_obj(&attrval);
-            if (jobj_to_duro_obj(env, attrvalobj, &attrval, sessionp, ecp) != 0) {
+            if (JDuro_jobj_to_duro_obj(env, attrvalobj, &attrval, sessionp, ecp) != 0) {
                 RDB_destroy_obj(&attrval, ecp);
                 return -1;
             }
             if (RDB_tuple_set(dstp, attrname, &attrval, ecp) != RDB_OK) {
-                throw_exception_from_error(env, sessionp,
+                JDuro_throw_exception_from_error(env, sessionp,
                         "setting tuple attribute failed", ecp);
                 RDB_destroy_obj(&attrval, ecp);
                 return -1;
@@ -701,7 +677,7 @@ jobj_to_table(JNIEnv *env, jobject obj, RDB_object *dstp,
     if (RDB_obj_type(dstp) == NULL
             || !RDB_type_is_relation(RDB_obj_type(dstp))) {
         RDB_raise_type_mismatch("not a table", &JDuro_ec);
-        throw_exception_from_error(env, sessionp,
+        JDuro_throw_exception_from_error(env, sessionp,
                 "destination is not a table", &JDuro_ec);
         return -1;
     }
@@ -722,7 +698,7 @@ jobj_to_table(JNIEnv *env, jobject obj, RDB_object *dstp,
      * Clear table
      */
     if (RDB_delete(dstp, NULL, &JDuro_ec, Duro_dt_tx(&sessionp->interp)) != RDB_OK) {
-        throw_exception_from_error(env, sessionp, "delete failed", &JDuro_ec);
+        JDuro_throw_exception_from_error(env, sessionp, "delete failed", &JDuro_ec);
         return -1;
     }
 
@@ -738,13 +714,13 @@ jobj_to_table(JNIEnv *env, jobject obj, RDB_object *dstp,
             goto error;
 
         /* Convert it to a Duro tuple */
-        if (jobj_to_duro_obj(env, elem, &tpl, sessionp, &JDuro_ec) == -1)
+        if (JDuro_jobj_to_duro_obj(env, elem, &tpl, sessionp, &JDuro_ec) == -1)
             goto error;
 
         /* Insert tuple into table */
         if (RDB_insert(dstp, &tpl, &JDuro_ec,
                 Duro_dt_tx(&sessionp->interp)) != RDB_OK) {
-            throw_exception_from_error(env, sessionp, "insert failed", &JDuro_ec);
+            JDuro_throw_exception_from_error(env, sessionp, "insert failed", &JDuro_ec);
             goto error;
         }
     }
@@ -761,8 +737,8 @@ error:
  * *dstp must be either newly initialized or carry type information.
  * If the Java object is a java.util.Set, *dstp must be an empty table.
  */
-static int
-jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
+int
+JDuro_jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
         JDuro_session *sessionp, RDB_exec_context *ecp)
 {
     jsize len;
@@ -780,7 +756,7 @@ jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
         }
 
         if (RDB_string_to_obj(dstp, strval, ecp) != RDB_OK) {
-            throw_exception_from_error(env, sessionp,
+            JDuro_throw_exception_from_error(env, sessionp,
                     "getting string data failed", ecp);
             return -1;
         }
@@ -843,7 +819,7 @@ jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
         if (bp == NULL)
             return -1;
         if (RDB_binary_set (dstp, 0, bp, (size_t) len, &JDuro_ec) != RDB_OK) {
-            throw_exception_from_error(env, sessionp, "setting binary data failed",
+            JDuro_throw_exception_from_error(env, sessionp, "setting binary data failed",
                     &JDuro_ec);
             return -1;
         }
@@ -927,14 +903,14 @@ jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
         }
 
         if (RDB_set_array_length(dstp, (RDB_int) len, &JDuro_ec) != RDB_OK) {
-            throw_exception_from_error(env, sessionp, "setting binary data failed",
+            JDuro_throw_exception_from_error(env, sessionp, "setting binary data failed",
                     &JDuro_ec);
             return -1;
         }
         for (i = 0; i < len; i++) {
             dstelemp = RDB_array_get(dstp, (RDB_int) i, &JDuro_ec);
 
-            if (jobj_to_duro_obj(env, (*env)->GetObjectArrayElement(env,
+            if (JDuro_jobj_to_duro_obj(env, (*env)->GetObjectArrayElement(env,
                                        obj, (jsize) i),
                                  dstelemp, sessionp, &JDuro_ec) != 0) {
                 return -1;
@@ -956,7 +932,7 @@ jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
             return -1;
 
         if (RDB_copy_obj(dstp, objp, ecp) != RDB_OK) {
-            throw_exception_from_error(env, sessionp, "copy failed", ecp);
+            JDuro_throw_exception_from_error(env, sessionp, "copy failed", ecp);
             return -1;
         }
         return 0;
@@ -978,7 +954,7 @@ JNICALL Java_net_sf_duro_DuroDSession_setVarI(JNIEnv *env, jobject obj,
 {
     const char *namestr;
     RDB_object *dstp;
-    JDuro_session *sessionp = jobj_session(env, obj);
+    JDuro_session *sessionp = JDuro_jobj_session(env, obj);
     if (sessionp == NULL)
         return;
     namestr = (*env)->GetStringUTFChars(env, name, 0);
@@ -987,143 +963,14 @@ JNICALL Java_net_sf_duro_DuroDSession_setVarI(JNIEnv *env, jobject obj,
 
     dstp = Duro_lookup_var(namestr, &sessionp->interp, &JDuro_ec);
     if (dstp == NULL) {
-        throw_exception_from_error(env, sessionp, "variable lookup failed", &JDuro_ec);
+        JDuro_throw_exception_from_error(env, sessionp, "variable lookup failed", &JDuro_ec);
         goto cleanup;
     }
 
-    if (jobj_to_duro_obj(env, value, dstp, sessionp, &JDuro_ec) != 0) {
+    if (JDuro_jobj_to_duro_obj(env, value, dstp, sessionp, &JDuro_ec) != 0) {
         goto cleanup;
     }
 
 cleanup:
     (*env)->ReleaseStringUTFChars(env, name, namestr);
-}
-
-JNIEXPORT jobject
-JNICALL Java_net_sf_duro_DuroPossrepObject_getPropertyI(JNIEnv *env, jobject obj,
-        jstring name, jobject dInstance)
-{
-    const char *namestr;
-    RDB_transaction *txp;
-    RDB_object compval;
-    JDuro_session *sessionp;
-    RDB_environment *envp;
-    jobject result;
-    jclass clazz = (*env)->GetObjectClass(env, obj);
-    jfieldID refFieldID = (*env)->GetFieldID(env, clazz, "ref", "J");
-    RDB_object *objp = (RDB_object *) (intptr_t)
-            (*env)->GetLongField(env, obj, refFieldID);
-    sessionp = jobj_session(env, dInstance);
-    if (sessionp == NULL) {
-        return NULL;
-    }
-
-    txp = Duro_dt_tx(&sessionp->interp);
-    if (txp == NULL) {
-        envp = Duro_dt_env(&sessionp->interp);
-    }
-
-    namestr = (*env)->GetStringUTFChars(env, name, 0);
-    if (namestr == NULL)
-        return NULL;
-
-    /* Get property */
-    RDB_init_obj(&compval);
-    if (RDB_obj_property(objp, namestr, &compval, envp, &JDuro_ec, txp) != RDB_OK) {
-        throw_exception_from_error(env, sessionp, "getting property failed", &JDuro_ec);
-        goto error;
-    }
-    result = duro_obj_to_jobj(env, &compval, sessionp);
-    if (result == NULL)
-        goto error;
-
-    RDB_destroy_obj(&compval, &JDuro_ec);
-    (*env)->ReleaseStringUTFChars(env, name, namestr);
-    return result;
-
-error:
-    RDB_destroy_obj(&compval, &JDuro_ec);
-    (*env)->ReleaseStringUTFChars(env, name, namestr);
-    return NULL;
-}
-
-JNIEXPORT void
-JNICALL Java_net_sf_duro_DuroPossrepObject_setPropertyI(JNIEnv *env, jobject obj,
-        jstring name, jobject dInstance, jobject value)
-{
-    const char *namestr;
-    RDB_transaction *txp;
-    RDB_object compval;
-    JDuro_session *sessionp;
-    RDB_environment *envp;
-    jclass clazz = (*env)->GetObjectClass(env, obj);
-    jfieldID refFieldID = (*env)->GetFieldID(env, clazz, "ref", "J");
-    RDB_object *objp = (RDB_object *) (intptr_t)
-            (*env)->GetLongField(env, obj, refFieldID);
-    sessionp = jobj_session(env, dInstance);
-    if (sessionp == NULL)
-        return;
-
-    txp = Duro_dt_tx(&sessionp->interp);
-    if (txp == NULL) {
-        envp = Duro_dt_env(&sessionp->interp);
-    }
-
-    namestr = (*env)->GetStringUTFChars(env, name, 0);
-    if (namestr == NULL)
-        return;
-
-    RDB_init_obj(&compval);
-
-    if (jobj_to_duro_obj(env, value, &compval, sessionp, &JDuro_ec) != 0) {
-        RDB_destroy_obj(&compval, &JDuro_ec);
-        return;
-    }
-
-    if (RDB_obj_set_property(objp, namestr, &compval, envp, &JDuro_ec, txp) != RDB_OK)
-        throw_exception_from_error(env, sessionp, "setting property failed",
-                &JDuro_ec);
-    RDB_destroy_obj(&compval, &JDuro_ec);
-}
-
-JNIEXPORT void
-JNICALL Java_net_sf_duro_DuroPossrepObject_disposeI(JNIEnv *env, jobject obj,
-        jobject dInstance)
-{
-    JDuro_session *sessionp;
-    jclass clazz = (*env)->GetObjectClass(env, obj);
-    jfieldID refFieldID = (*env)->GetFieldID(env, clazz, "ref", "J");
-    RDB_object *objp = (RDB_object *) (intptr_t)
-            (*env)->GetLongField(env, obj, refFieldID);
-    if (objp == NULL)
-        return;
-    sessionp = jobj_session(env, dInstance);
-    if (sessionp == NULL)
-        return;
-    if (RDB_free_obj(objp, &JDuro_ec) != RDB_OK)
-        throw_exception_from_error(env, sessionp, "freeing RDB_object failed",
-                &JDuro_ec);
-}
-
-JNIEXPORT jstring
-JNICALL Java_net_sf_duro_DuroPossrepObject_getTypeName(JNIEnv *env, jobject obj)
-{
-    RDB_type *typ;
-    const char *typename;
-    jclass clazz = (*env)->GetObjectClass(env, obj);
-    jfieldID refFieldID = (*env)->GetFieldID(env, clazz, "ref", "J");
-    RDB_object *objp = (RDB_object *) (intptr_t)
-            (*env)->GetLongField(env, obj, refFieldID);
-    if (objp == NULL)
-        return NULL;
-
-    typ = RDB_obj_type(objp);
-    if (typ == NULL)
-        return NULL;
-
-    typename = RDB_type_name(typ);
-    if (typename == NULL)
-        return NULL;
-
-    return (*env)->NewStringUTF(env, typename);
 }

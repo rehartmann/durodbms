@@ -28,13 +28,21 @@ scripts is to add this subdirectory to TCLLIBPATH, e.g.:
     TCLLIBPATH=/usr/local/durodbms.0.21/lib
     export TCLLIBPATH
 
+Tips
+
+If a DuroDBMS process crashes when a transaction is active, it may leave
+the database environment in an inconsistent state, making it impossible to
+access the environment again. In this case, run the Berkeley DB utility
+db_recover to bring the environment back to a consistent state.
+
+
 DuroDBMS is still under development. Report bugs to
 rhartmann@users.sourceforge.net. 
 
 -----
 
 This file is part of DuroDBMS, a relational management system.
-Copyright (C) 2003-2013 Rene Hartmann.
+Copyright (C) 2003-2014 Rene Hartmann.
 
 DuroDBMS is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

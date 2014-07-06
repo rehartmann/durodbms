@@ -217,7 +217,7 @@ test invalid_type {invalid (scalar) type for table} -setup $SETUP -cleanup $CLEA
     }
 }  -returnCodes {1} -result {*type_mismatch_error*}
 
-test extend {EXTEND}  -setup $SETUP -cleanup $CLEANUP -body {
+test extend {EXTEND} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -239,7 +239,7 @@ test extend {EXTEND}  -setup $SETUP -cleanup $CLEANUP -body {
 
         commit;
 
-        -- Test insert, update, delete
+        -- Test insert, delete
         begin tx;
 
         insert t2x rel { tup { a 3, b 'u', c 1, bx 'uu', cx 101 } };
@@ -267,6 +267,8 @@ test extend {EXTEND}  -setup $SETUP -cleanup $CLEANUP -body {
             ;
         end try;
 
+        delete t2x where cx = 110;
+
         delete t2x rel { tup { a 1, b 'x', c 1, bx 'xx', cx 101 } };
 
         delete t2x tup { a 3, b 'u', c 1, bx 'uu', cx 101 };
@@ -281,8 +283,59 @@ test extend {EXTEND}  -setup $SETUP -cleanup $CLEANUP -body {
     }
 } -result {1 xx 101
 2 yoyo 110
-2 yoyo 110
 4 t t  1100
+}
+
+test project {project} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+
+        var t1 real relation { a int, b string, c int }
+        		init relation { tuple {a 1, b 'x', c 1},
+        		        tuple {a 2, b 'yo', c 10} } key { a } default { c 0 };
+
+        var t1p virtual t1 { a, b };
+
+        var tp tup { a int, b string };
+        for tp in t1p order (a asc);
+            put(tp.a); put(' ');
+            put(tp.b); put_line('');
+        end for;
+
+        commit;
+
+        -- Test insert, (update, delete)
+        begin tx;
+
+        insert t1p rel { tup { a 3, b 'u' } };
+
+        insert t1p tup { a 4, b ' t' };
+
+        update t1p where a = 2 { b := 'ui io' };
+
+        try
+            update t1p where a = 2 { c := 7 };
+            put_line('update of attribute not present in virtual table succeeded');
+        catch err name_error;
+            ;
+        end try;
+
+        for tp in t1p order (a asc);
+            put(tp.a); put(' ');
+            put(tp.b); put_line('');
+        end for;
+
+        commit;
+    }
+} -result {1 x
+2 yo
+1 x
+2 ui io
+3 u
+4  t
 }
 
 test join_extend {Natural JOIN/EXTEND}  -setup $SETUP -cleanup $CLEANUP -body {

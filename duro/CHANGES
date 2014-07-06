@@ -18,6 +18,8 @@ DuroDBMS 0.21
 
 - Renamed RDB_ec_get_property as RDB_ec_property().
 
+- Added RDB_type_possreps().
+
 DuroDBMS 0.20
 
 - Implemented transition constraints.

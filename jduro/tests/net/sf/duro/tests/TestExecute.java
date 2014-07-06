@@ -40,14 +40,14 @@ public class TestExecute {
     @Test
     public void testBoolean() throws DException {
 	session.execute("var b boolean;"
-		      + "b:= true;");
+		+ "b:= true;");
 	assertEquals(Boolean.TRUE, session.evaluate("b"));
     }
 
     @Test
     public void testFloat() throws DException {
 	session.execute("var f float;"
-		      + "f := 7.8;");
+		+ "f := 7.8;");
 	assertEquals(Double.valueOf(7.8), session.evaluate("f"));
     }
 
@@ -61,7 +61,7 @@ public class TestExecute {
     @Test
     public void testTuple() throws DException {
 	session.execute("var t tuple { a string };"
-		      + "t := tuple { a 'Casa blanca' };");
+		+ "t := tuple { a 'Casa blanca' };");
 
 	Tuple t = new Tuple();
 	t.setAttribute("a", "Casa blanca");

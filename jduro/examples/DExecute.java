@@ -1,9 +1,10 @@
-package net.sf.duro;
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
-public class DEvaluator {
+import net.sf.duro.DSession;
+import net.sf.duro.DuroDSession;
+
+public class DExecute {
 
     /**
      * @param args
@@ -14,6 +15,8 @@ public class DEvaluator {
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
             dInstance = DuroDSession.createSession();
 
+            System.out.println("Input in Parentheses will be evaluated, other input is executed");
+            
             for (;;) {
                 System.out.print("> ");
                 String line = reader.readLine();
@@ -21,7 +24,11 @@ public class DEvaluator {
                     break;
                 }
                 try {
-                    System.out.println(dInstance.evaluate(line));
+                    if (line.startsWith("(")) {
+                	System.out.println(dInstance.evaluate(line));
+                    } else {
+                        dInstance.execute(line);
+                    }
                 } catch (Exception ex) {
                     System.out.println("Error: " + ex);
                     ex.printStackTrace();

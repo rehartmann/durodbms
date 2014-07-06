@@ -10,7 +10,7 @@ public interface PossrepObject {
     public void setProperty(String name, Object value) throws DException;
 
     /**
-     * Ge the value of a property.
+     * Get the value of a property.
      * @param name The property name.
      * @return The property value
      * @throws DException If a Duro error occurs
@@ -18,10 +18,16 @@ public interface PossrepObject {
     public Object getProperty(String name) throws DException;
 
     /**
-     * Get the type name of a PossrepObject
-     * @return the type name, or NULL if an error occured.
+     * Return the type name of a PossrepObject
+     * @return the type name, or NULL if no type information is available.
      */
     public String getTypeName();
+
+    /**
+     * Return the type of a PossrepObject
+     * @return the type, or NULL if no type information is available.
+     */
+    public ScalarType getType();
 
     /**
      * Release the resources the PossrepObject holds.

@@ -71,6 +71,18 @@ RDB_type_has_possreps(const RDB_type *typ) {
 }
 
 /**
+ * Returns a pointer to the possible represenations of a scalar type.
+ */
+RDB_possrep *
+RDB_type_possreps(const RDB_type *typ, int *possrepcp) {
+    if (typ->kind != RDB_TP_SCALAR || typ->def.scalar.repc == 0)
+        return NULL;
+
+    *possrepcp = typ->def.scalar.repc;
+    return typ->def.scalar.repv;
+}
+
+/**
  * If *<var>typ</var> is non-scalar, RDB_dup_nonscalar_creates a copy of it.
 
 @returns
