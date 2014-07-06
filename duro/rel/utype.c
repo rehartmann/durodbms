@@ -468,9 +468,9 @@ RDB_obj_irep() can be used by setters and getters to access the actual represent
 If <var>arep</var> is NULL and <var>areplen</var> is RDB_SYS_REP,
 the getter and setter operators and the selector operator are provided by Duro.
 In this case, the type must have exactly one possible representation.
-If this representation has exactly one property, the type of this representation will become
+If this representation has exactly one component, the type of this component will become
 the physical representation. Otherwise the type will be represented by a tuple type with
-one attribute for each property.
+one attribute for each component.
 
 For user-provided setters, getters, and selectors,
 the following conventions apply:
@@ -747,6 +747,8 @@ error:
     return RDB_ERROR;
 }
 
+/* @} */
+
 /**
 Return a pointer to RDB_type structure which
 represents the type with the name <var>name</var>.
@@ -855,8 +857,6 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 
     return typ;
 }
-
-/* @} */
 
 /* @} */
 
