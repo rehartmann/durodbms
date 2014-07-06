@@ -304,10 +304,11 @@ test project {project} -setup $SETUP -cleanup $CLEANUP -body {
             put(tp.a); put(' ');
             put(tp.b); put_line('');
         end for;
+        put_line('');
 
         commit;
 
-        -- Test insert, (update, delete)
+        -- Test insert, update, delete
         begin tx;
 
         insert t1p rel { tup { a 3, b 'u' } };
@@ -327,14 +328,34 @@ test project {project} -setup $SETUP -cleanup $CLEANUP -body {
             put(tp.a); put(' ');
             put(tp.b); put_line('');
         end for;
+        put_line('');
+
+        try
+            delete t1p where c = 10;
+            put_line('delete with ref to attribute not present in virtual table succeeded');
+        catch err name_error;
+            ;
+        end try;
+
+        delete t1p where a = 2;
+        delete t1p where b = 'u';
+
+        for tp in t1p order (a asc);
+            put(tp.a); put(' ');
+            put(tp.b); put_line('');
+        end for;
 
         commit;
     }
 } -result {1 x
 2 yo
+
 1 x
 2 ui io
 3 u
+4  t
+
+1 x
 4  t
 }
 
