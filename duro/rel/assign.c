@@ -489,14 +489,26 @@ resolve_update_expr(RDB_expression *texp, RDB_expression *condp,
     int updc, RDB_attr_update *updv, update_node **updnpp,
     RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    if (texp->kind == RDB_EX_TBP) {
-        return resolve_update(texp->def.tbref.tbp, condp, updc, updv,
-                updnpp, ecp, txp);
-    }
+    RDB_object *tbp;
 
-    if (texp->kind != RDB_EX_RO_OP) {
-        RDB_raise_not_supported("tried to update invalid virtual table", ecp);
-        return RDB_ERROR;
+    switch (texp->kind) {
+        case RDB_EX_TBP:
+            return resolve_update(texp->def.tbref.tbp, condp, updc, updv,
+                    updnpp, ecp, txp);
+        case RDB_EX_OBJ:
+            return resolve_update(&texp->def.obj, condp, updc, updv, updnpp,
+                    ecp, txp);
+        case RDB_EX_VAR:
+            /* Resolve variable */
+            tbp = RDB_get_table(texp->def.varname, ecp, txp);
+            if (tbp == NULL)
+                return RDB_ERROR;
+            return resolve_update(tbp, condp, updc, updv, updnpp, ecp, txp);
+        case RDB_EX_RO_OP:
+            break;
+        default:
+            RDB_raise_invalid_argument("invalid target table", ecp);
+            return RDB_ERROR;
     }
 
     if (strcmp(texp->def.op.name, "project") == 0
