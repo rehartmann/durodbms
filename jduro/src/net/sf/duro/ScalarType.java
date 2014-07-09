@@ -13,7 +13,7 @@ public class ScalarType extends Type {
     public static ScalarType STRING = new ScalarType("string", null);
     public static ScalarType FLOAT = new ScalarType("float", null);
     public static ScalarType BINARY = new ScalarType("binary", null);
-    
+
     static {
 	typeMap.put("boolean", BOOLEAN);
 	typeMap.put("integer", INTEGER);
@@ -44,11 +44,10 @@ public class ScalarType extends Type {
 	return possreps;
     }
 
-    public ScalarType fromString(String typename, DuroDSession session) {
-	
+    public static ScalarType fromString(String typename, DSession session) {
 	ScalarType type = typeMap.get(typename);
 	if (type == null) {
-	    Possrep[] possreps = typePossreps(typename, session);
+	    Possrep[] possreps = typePossreps(typename, (DuroDSession) session);
 	    if (possreps == null)
 		return null;
 	    

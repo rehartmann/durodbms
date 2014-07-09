@@ -837,6 +837,9 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
 
     line = (*RDB_parse_read_line_fnp) ();
     if (line == NULL) {
+        /* provide valid input in case yylex() is called again */
+        RDB_parse_buffer = yy_scan_string("");
+
         yyterminate();
     }
 

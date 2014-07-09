@@ -4,11 +4,15 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 
+import net.sf.duro.ArrayType;
 import net.sf.duro.DException;
 import net.sf.duro.DSession;
 import net.sf.duro.DuroDSession;
+import net.sf.duro.Possrep;
 import net.sf.duro.PossrepObject;
+import net.sf.duro.RelationType;
 import net.sf.duro.ScalarType;
+import net.sf.duro.TupleType;
 
 import org.junit.After;
 import org.junit.Before;
@@ -40,7 +44,7 @@ public class TestUserDefType {
     }
 
     @Test
-    public void test() throws DException {
+    public void testScalarProp() throws DException {
         session.execute("begin tx;");
         session.execute("type len possrep { l int } constraint l >= 0 init len(0);");
 	session.execute("implement type len; end implement;");
@@ -67,4 +71,20 @@ public class TestUserDefType {
         session.execute("commit;");
     }
 
+    @Test
+    public void testNonscalarProp() throws DException {
+        session.execute("begin tx;");
+        session.execute("type t possrep { a array int, b tup { attr int }, c rel { attr int } }"
+        	+ " init t (array int(), tup { attr 0 }, rel { tup { attr 0 } });");
+	session.execute("implement type t; end implement;");
+
+	ScalarType t = ScalarType.fromString("t", session);
+
+	Possrep pr = t.getPossreps()[0];
+	assertEquals(pr.getComponent(0).getType().getClass(), ArrayType.class);
+	assertEquals(pr.getComponent(1).getType().getClass(), TupleType.class);
+	assertEquals(pr.getComponent(2).getType().getClass(), RelationType.class);
+
+	session.execute("commit;");
+    }
 }

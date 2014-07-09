@@ -689,9 +689,14 @@ int
 RDB_copy_expr_typeinfo_if_needed(RDB_expression *dstexp, const RDB_expression *srcexp,
         RDB_exec_context *ecp)
 {
+    /*
+     * RELATION() and ARRAY() need the type information, because othewise
+     * the result type will be unknown
+     */
     if (srcexp->typ != NULL && dstexp->typ == NULL
             && srcexp->def.op.args.firstp == NULL
-            && strcmp(srcexp->def.op.name, "relation") == 0) {
+            && (strcmp(srcexp->def.op.name, "relation") == 0
+             || strcmp(srcexp->def.op.name, "array") == 0)) {
         RDB_type *typ = RDB_dup_nonscalar_type(srcexp->typ, ecp);
         if (typ == NULL)
             return RDB_ERROR;

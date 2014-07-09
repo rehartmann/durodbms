@@ -106,6 +106,7 @@ RDB_type_is_scalar
 RDB_type_is_tuple
 RDB_type_is_relation
 RDB_type_equals
+RDB_type_possreps
 RDB_obj_type
 RDB_new_obj
 RDB_free_obj

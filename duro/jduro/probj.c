@@ -173,8 +173,8 @@ duro_scalar_type_to_jobj(JNIEnv *env, const RDB_type *typ, jobject session)
     if (scalarTypeClass == NULL)
         return NULL;
 
-    fromStringID = (*env)->GetMethodID(env, scalarTypeClass, "fromString",
-            "(Ljava/lang/String;Lnet/sf/duro/DuroDSession;)Lnet/sf/duro/ScalarType;");
+    fromStringID = (*env)->GetStaticMethodID(env, scalarTypeClass, "fromString",
+            "(Ljava/lang/String;Lnet/sf/duro/DSession;)Lnet/sf/duro/ScalarType;");
     if (fromStringID == NULL)
         return NULL;
 
@@ -183,11 +183,102 @@ duro_scalar_type_to_jobj(JNIEnv *env, const RDB_type *typ, jobject session)
 }
 
 static jobject
-duro_type_to_jobj(JNIEnv *env, const RDB_type *typ, jobject session)
+duro_type_to_jobj(JNIEnv *, RDB_type *, jobject);
+
+static jobjectArray
+attributes_to_vardefs(JNIEnv *env, RDB_type *typ, jobject session)
 {
+    int i;
+    jclass vardefClass;
+    jobject attrObject;
+    jstring attrName;
+    jobject attrTyp;
+    jobjectArray attrArray;
+    jmethodID vardefConstructorID;
+    int attrc;
+    RDB_attr *attrv = RDB_type_attrs(typ, &attrc);
+    if (attrv == NULL)
+        return NULL;
+
+    vardefClass =(*env)->FindClass(env, "net/sf/duro/VarDef");
+    if (vardefClass == NULL)
+        return NULL;
+
+    attrArray = (*env)->NewObjectArray(env, (jsize) attrc, vardefClass, NULL);
+    if (attrArray == NULL)
+        return NULL;
+
+    vardefConstructorID = (*env)->GetMethodID(env, vardefClass, "<init>",
+            "(Ljava/lang/String;Lnet/sf/duro/Type;)V");
+    if (vardefConstructorID == NULL)
+        return NULL;
+
+    for(i = 0; i < attrc; i++) {
+        attrName = (*env)->NewStringUTF(env, attrv[i].name);
+        if (attrName == NULL)
+            return NULL;
+        attrTyp = duro_type_to_jobj(env, attrv[i].typ, session);
+        if (attrTyp == NULL)
+            return NULL;
+
+        attrObject = (*env)->NewObject(env, vardefClass, vardefConstructorID,
+                attrName, attrTyp);
+        if (attrObject == NULL)
+            return NULL;
+        (*env)->SetObjectArrayElement(env, attrArray, (jsize) i, attrObject);
+        if ((*env)->ExceptionOccurred(env) != NULL)
+            return NULL;
+    }
+    return attrArray;
+}
+
+static jobject
+duro_type_to_jobj(JNIEnv *env, RDB_type *typ, jobject session)
+{
+    jclass typeClass;
+    jmethodID constructorId;
+    jobject baseTypeObj;
+
     if (RDB_type_is_scalar(typ)) {
         return duro_scalar_type_to_jobj(env, typ, session);
     }
+    if (RDB_type_is_relation(typ) || RDB_type_is_tuple(typ)) {
+        jobjectArray attributes = attributes_to_vardefs(env, typ, session);
+        if (attributes == NULL)
+            return NULL;
+
+        if (RDB_type_is_relation(typ)) {
+            typeClass = (*env)->FindClass(env, "net/sf/duro/RelationType");
+            if (typeClass == NULL)
+                return NULL;
+            constructorId = (*env)->GetMethodID(env, typeClass, "<init>",
+                    "([Lnet/sf/duro/VarDef;)V");
+        } else {
+            typeClass = (*env)->FindClass(env, "net/sf/duro/TupleType");
+            if (typeClass == NULL)
+                return NULL;
+            constructorId = (*env)->GetMethodID(env, typeClass, "<init>",
+                    "([Lnet/sf/duro/VarDef;)V");
+        }
+        if (constructorId == NULL)
+            return NULL;
+        return (*env)->NewObject(env, typeClass, constructorId, attributes);
+    } else if (RDB_type_is_array(typ)) {
+        baseTypeObj = duro_type_to_jobj(env, RDB_base_type(typ),
+                    session);
+        if (baseTypeObj == NULL)
+            return NULL;
+
+        typeClass = (*env)->FindClass(env, "net/sf/duro/ArrayType");
+        if (typeClass == NULL)
+            return NULL;
+        constructorId = (*env)->GetMethodID(env, typeClass, "<init>",
+                "(Lnet/sf/duro/Type;)V");
+        if (constructorId == NULL)
+            return NULL;
+        return (*env)->NewObject(env, typeClass, constructorId, baseTypeObj);
+    }
+    /* Should never be reached */
     return NULL;
 }
 
@@ -229,7 +320,7 @@ possrep_to_jobj(JNIEnv *env, const RDB_possrep *possrep, jobject session)
     /* Fill array */
     for (i = 0; i < possrep->compc; i++) {
         compname = (*env)->NewStringUTF(env, possrep->compv[i].name);
-        comptype = duro_type_to_jobj(env, possrep->compv[i].typ, prClass);
+        comptype = duro_type_to_jobj(env, possrep->compv[i].typ, session);
 
         comp = (*env)->NewObject(env, vardefClass, vardefConstructorID,
                 compname, comptype);
@@ -245,7 +336,8 @@ possrep_to_jobj(JNIEnv *env, const RDB_possrep *possrep, jobject session)
     return (*env)->NewObject(env, prClass, prConstructorID, compArray);
 }
 
-static jobjectArray typePossreps(JNIEnv *env, RDB_type *typ, jobject session) {
+static jobjectArray
+typePossreps(JNIEnv *env, RDB_type *typ, jobject session) {
     int repc;
     int i;
     jobjectArray prArray;
