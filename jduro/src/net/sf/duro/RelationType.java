@@ -20,7 +20,7 @@ public class RelationType extends Type {
 	return false;
     }
 
-    public Set attributeNames() {
+    public Set<String> attributeNames() {
 	return baseType.attributeNames();
     }
 }
