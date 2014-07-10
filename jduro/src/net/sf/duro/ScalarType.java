@@ -3,7 +3,14 @@ package net.sf.duro;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Instances of this class represent a DuroDBMS scalar type.
+ * @author Rene Hartmann
+ *
+ */
 public class ScalarType extends Type {
+    private static final long serialVersionUID = 1L;
+
     private String name;
     private Possrep[] possreps;
     private static Map<String, ScalarType> typeMap = new HashMap<String, ScalarType>();

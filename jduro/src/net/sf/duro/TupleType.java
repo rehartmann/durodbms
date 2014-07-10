@@ -4,7 +4,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Instances of this class represent a DuroDBMS tuple type.
+ * @author Rene Hartmann
+ *
+ */
 public class TupleType extends Type {
+
+    private static final long serialVersionUID = 1L;
 
     private Map<String, Type> attributeMap;
 

@@ -2,7 +2,13 @@ package net.sf.duro;
 
 import java.util.Set;
 
+/**
+ * Instances of this class represent a DuroDBMS relation type.
+ * @author Rene Hartmann
+ *
+ */
 public class RelationType extends Type {
+    private static final long serialVersionUID = 1L;
 
     private TupleType baseType;
 

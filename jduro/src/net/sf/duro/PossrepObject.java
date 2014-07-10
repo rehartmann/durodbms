@@ -1,5 +1,10 @@
 package net.sf.duro;
 
+/**
+ * A duro object of a scalar type with possible represenations. 
+ * @author Rene Hartmann
+ *
+ */
 public interface PossrepObject {
     /**
      * Set a property of a PossrepObject 

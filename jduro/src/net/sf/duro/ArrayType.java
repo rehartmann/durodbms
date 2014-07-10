@@ -1,6 +1,12 @@
 package net.sf.duro;
 
+/**
+ * Instances of this class represent a DuroDBMS array type.
+ * @author Rene Hartmann
+ *
+ */
 public class ArrayType extends Type {
+    private static final long serialVersionUID = 1L;
 
     private Type baseType;
     

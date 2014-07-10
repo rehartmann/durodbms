@@ -57,6 +57,10 @@ public class DuroPossrepObject implements PossrepObject {
 	}
     }
 
+    /**
+     * Determines if two PossrepObjects are equal using
+     * the DuroDBMS library function RDB_obj_equals().
+     */
     public boolean equals(Object obj) {
 	DuroPossrepObject probj;
 	try {
@@ -70,6 +74,10 @@ public class DuroPossrepObject implements PossrepObject {
 	}
     }
 
+    /**
+     * Returns a hash code for this PossrepObject, based on its property values.
+     * @see java.lang.Object#hashCode()
+     */
     public int hashCode() {
 	Possrep[] possreps = getPossreps(ref, session);
 	if (possreps == null)
