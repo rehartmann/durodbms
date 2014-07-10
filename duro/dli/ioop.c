@@ -598,10 +598,6 @@ op_www_form_to_tuple(int argc, RDB_object *argv[], RDB_operator *op,
 int
 RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
 {
-#ifdef DURO_FCGI
-    Duro_interp *interp = NULL;
-#endif
-
     static RDB_parameter put_string_params[1];
     static RDB_parameter put_binary_params[1];
     static RDB_parameter put_int_params[1];
@@ -780,8 +776,7 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     iostreams[STDERR_FILENO] = stderr;
 
 #ifdef DURO_FCGI
-    /* !! */
-    if (RDB_add_fcgi_ops(&interp->sys_module.upd_op_map, ecp) != RDB_OK) {
+    if (RDB_add_fcgi_ops(opmapp, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 #endif
