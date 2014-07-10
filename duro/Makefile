@@ -8,6 +8,8 @@ apidocs:
 	scons apidocs
 jni:
 	scons jni
+javadocs:
+	scons javadocs
 dist:
 	scons dist
 clean:
