@@ -404,6 +404,7 @@ if env.has_key('TAR'):
         'cd ..; mv duro/src.tar duro/' + disttar
                 + ' && tar -f duro/' + disttar
                 + ' --append jduro/src/net/sf/duro/*.java'
+                + ' jduro/tests/net/sf/duro/tests/*.java' + ' jduro/examples/*.java'
                 + ' --transform \'s,^,durodbms-' + release + '/,S\''
                 + ' && gzip -f duro/' + disttar)
 
