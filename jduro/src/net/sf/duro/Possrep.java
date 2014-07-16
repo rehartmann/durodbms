@@ -1,8 +1,8 @@
 package net.sf.duro;
 
 /**
- * A possible representation.
- * Unlike with tuples, the order of the properties is important.
+ * Instances of this class represent a possible representation.
+ * Unlike tuple attributes, the order of the properties is important.
  */
 public class Possrep {
     private VarDef[] components;

@@ -1,5 +1,11 @@
 package net.sf.duro;
 
+/**
+ * The main runtime interface between a Java application and DuroDBMS.
+ *
+ * @author Rene Hartmann
+ *
+ */
 public interface DSession extends AutoCloseable {
 
     /**
@@ -20,9 +26,9 @@ public interface DSession extends AutoCloseable {
      * <dt><code>integer</code> <dd><code>java.lang.Integer</code>
      * <dt><code>float</code> <dd><code>java.lang.Double</code>
      * <dt><code>binary</code> <dd><code>byte[]</code>
-     * <dt><code>tuple</code> { ... } <dd>net.sf.duro.Tuple</dd>
-     * <dt>types with declared possible representaions
-     * <dd><code>net.sf.duro.PossrepObject</code>
+     * <dt><code>tuple</code> { ... } <dd>{@link net.sf.duro.Tuple}</dd>
+     * <dt>types with declared possible representations
+     * <dd><code>{@link net.sf.duro.PossrepObject}</code>
      * </dl>
      * 
      * Duro arrays map to Java arrays.

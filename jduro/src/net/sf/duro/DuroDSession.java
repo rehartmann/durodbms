@@ -1,7 +1,7 @@
 package net.sf.duro;
 
 /**
- * This class implements a DSession.
+ * This class implements the DSession interface.
  * @author Rene Hartmann
  *
  */

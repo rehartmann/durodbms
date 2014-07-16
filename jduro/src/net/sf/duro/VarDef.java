@@ -1,5 +1,8 @@
 package net.sf.duro;
 
+/**
+ * Instances of this class represent a name/value pair.
+ */
 public class VarDef {
     private String name;
 

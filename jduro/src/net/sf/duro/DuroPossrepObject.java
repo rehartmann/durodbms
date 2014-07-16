@@ -1,7 +1,7 @@
 package net.sf.duro;
 
 /**
- * This class implements a PossrepObject.
+ * This class implements the PossrepObject interface.
  * @author Rene Hartmann
  *
  */

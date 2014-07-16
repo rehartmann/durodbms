@@ -24,13 +24,13 @@ public interface PossrepObject {
 
     /**
      * Return the type name of a PossrepObject
-     * @return the type name, or NULL if no type information is available.
+     * @return the type name.
      */
     public String getTypeName();
 
     /**
      * Return the type of a PossrepObject
-     * @return the type, or NULL if no type information is available.
+     * @return the type.
      */
     public ScalarType getType();
 
