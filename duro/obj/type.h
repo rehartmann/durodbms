@@ -160,7 +160,7 @@ RDB_bool
 RDB_type_is_array(const RDB_type *);
 
 RDB_type *
-RDB_base_type(RDB_type *typ);
+RDB_base_type(const RDB_type *typ);
 
 RDB_attr *
 RDB_type_attrs(RDB_type *, int *);

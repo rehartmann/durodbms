@@ -26,6 +26,12 @@ typedef struct Duro_module {
     RDB_op_map upd_op_map;
 } Duro_module;
 
+typedef struct {
+    char *libname;
+    char *ro_op_symname;
+    char *update_op_symname;
+} Duro_uop_info;
+
 typedef struct Duro_varmap_node {
     RDB_hashmap map;
     struct Duro_varmap_node *parentp;
@@ -38,7 +44,7 @@ typedef struct foreach_iter {
 } foreach_iter;
 
 typedef struct Duro_interp {
-    sig_atomic_t interrupted;
+    volatile sig_atomic_t interrupted;
 
     RDB_environment *envp;
 
@@ -70,6 +76,11 @@ typedef struct Duro_interp {
 
     RDB_object current_db_obj;
     RDB_object implicit_tx_obj;
+
+    /* Data needed for user-defined operators */
+    RDB_hashmap uop_info_map;
+
+    void *user_data;
 } Duro_interp;
 
 int
@@ -117,5 +128,12 @@ Duro_dt_env(Duro_interp *);
 
 RDB_transaction *
 Duro_dt_tx(Duro_interp *);
+
+int
+Duro_dt_put_creop_info(Duro_interp *, const char *, Duro_uop_info *,
+        RDB_exec_context *);
+
+Duro_uop_info *
+Duro_dt_get_creop_info(const Duro_interp *, const char *);
 
 #endif /*IINTERP_H*/

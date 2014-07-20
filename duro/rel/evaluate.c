@@ -484,7 +484,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
      * Check ARRAY arguments
      */
     if (strcmp(exp->def.op.name, "array") == 0) {
-        RDB_type *typ;
+        const RDB_type *typ;
 
         if (exp->typ != NULL) {
             /* Expression type is available - get array element type */

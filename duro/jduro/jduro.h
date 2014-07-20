@@ -15,6 +15,9 @@ typedef struct {
     /* The interpreter */
     Duro_interp interp;
 
+    /* The Java environment */
+    JNIEnv *env;
+
     /* Reference to the DuroDSession object */
     jobject sessionObj;
 

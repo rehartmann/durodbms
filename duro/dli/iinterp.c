@@ -1588,6 +1588,25 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
+opdef_extern(const char *opname, RDB_type *rtyp,
+        int paramc, RDB_parameter *paramv,
+        const char *lang,
+        const char *extname, Duro_interp *interp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    Duro_uop_info *creop_infop = Duro_dt_get_creop_info(interp, lang);
+    if (creop_infop == NULL) {
+        RDB_raise_not_supported("language not supported", ecp);
+        return RDB_ERROR;
+    }
+
+    return RDB_create_ro_op(opname, paramc, paramv, rtyp,
+            creop_infop->libname,
+            creop_infop->ro_op_symname,
+            extname, ecp, txp);
+}
+
+static int
 exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
 {
     RDB_bool ro;
@@ -1601,7 +1620,7 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     RDB_object opnameobj; /* Only used when the name is modified */
     RDB_parse_node *stmtp = parentp->val.children.firstp->nextp;
     RDB_parameter *paramv = NULL;
-    int paramc = (int) RDB_parse_nodelist_length(stmtp->nextp->nextp) / 2;
+    int paramc = ((int) RDB_parse_nodelist_length(stmtp->nextp->nextp) + 1) / 3;
 
     RDB_init_obj(&opnameobj);
     opname = RDB_expr_var_name(stmtp->exp);
@@ -1628,10 +1647,6 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
 
     /* Convert defining code back */
     RDB_init_obj(&code);
-    if (Duro_parse_node_to_obj_string(&code, parentp, ecp,
-            interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx) != RDB_OK) {
-        goto error;
-    }
 
     paramv = RDB_alloc(paramc * sizeof(RDB_parameter), ecp);
     if (paramv == NULL) {
@@ -1655,12 +1670,37 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     ro = (RDB_bool)
             (stmtp->nextp->nextp->nextp->nextp->val.token == TOK_RETURNS);
 
+    if (Duro_parse_node_to_obj_string(&code, parentp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx) != RDB_OK) {
+        goto error;
+    }
+
     if (ro) {
         rtyp = RDB_parse_node_to_type(stmtp->nextp->nextp->nextp->nextp->nextp,
                 &Duro_get_var_type, NULL, ecp,
                 interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
         if (rtyp == NULL)
             goto error;
+
+        /* Check for EXTERN ... */
+        if (stmtp->nextp->nextp->nextp->nextp->nextp->nextp->val.token == TOK_EXTERN) {
+            RDB_expression *langexp, *extnamexp;
+            langexp = RDB_parse_node_expr(
+                    stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp,
+                    ecp, interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
+            if (langexp == NULL)
+                goto error;
+            extnamexp = RDB_parse_node_expr(
+                    stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp,
+                    ecp, interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
+            if (extnamexp == NULL)
+                goto error;
+
+            return opdef_extern(opname, rtyp, paramc, paramv,
+                    RDB_obj_string(RDB_expr_obj(langexp)),
+                    RDB_obj_string(RDB_expr_obj(extnamexp)),
+                    interp, ecp, interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
+        }
 
         if (interp->impl_typename != NULL) {
             /*
@@ -2565,6 +2605,8 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
         goto error;
     }
 
+    RDB_init_hashmap(&interp->uop_info_map, 5);
+
     return RDB_OK;
 
 error:
@@ -2599,6 +2641,8 @@ Duro_destroy_interp(Duro_interp *interp)
             printf("Transaction rolled back.\n");
     }
     RDB_destroy_op_map(&interp->sys_module.upd_op_map);
+
+    RDB_destroy_hashmap(&interp->uop_info_map);
 
     if (interp->envp != NULL)
         RDB_close_env(interp->envp);
@@ -2819,6 +2863,30 @@ Duro_lookup_var(const char *name, Duro_interp *interp, RDB_exec_context *ecp)
     if (objp == NULL)
         RDB_raise_name(name, ecp);
     return objp;
+}
+
+/**
+ * Provide information for operator creation
+ */
+int
+Duro_dt_put_creop_info(Duro_interp *interp, const char *lang,
+        Duro_uop_info *infop, RDB_exec_context *ecp)
+{
+    int ret = RDB_hashmap_put(&interp->uop_info_map, lang, infop);
+    if (ret != RDB_OK) {
+        RDB_errno_to_error(ret, ecp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+/**
+ * Get information for operator creation
+ */
+Duro_uop_info *
+Duro_dt_get_creop_info(const Duro_interp *interp, const char *lang)
+{
+    return RDB_hashmap_get(&interp->uop_info_map, lang);
 }
 
 /**

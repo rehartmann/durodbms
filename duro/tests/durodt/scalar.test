@@ -478,12 +478,20 @@ test defroop {read-only user-defined operators} -setup $SETUP -cleanup $CLEANUP 
         put(sgn(0)); put_line('');
 
         drop operator testop;
+
+        operator test4params(a int, b string, c int, d boolean) returns string;
+            return cast_as_string(a) || b || cast_as_string(c)
+                    || (if d then 'y' else 'n');
+        end operator;
+        
+        put_line(test4params(1, 'x', 5, true));
     }
 } -result {a = 1, b = 1, c = 8, d = 15
 .madA m'I ,madaM
 8
 1
 0
+1x5y
 }
 
 test defupdop {user-defined update operators} -setup $SETUP -cleanup $CLEANUP -body {
@@ -536,10 +544,21 @@ test defupdop {user-defined update operators} -setup $SETUP -cleanup $CLEANUP -b
             put_line('invalid updates caught');
         end try;
 
+        operator test5paramsu(a int, b string, c int, d boolean, e string)
+                updates { e };
+            e := cast_as_string(a) || b || cast_as_string(c)
+                    || (if d then 'y' else 'n');
+        end operator;
+
+        var e string;
+        test5paramsu(1, 'x', 5, true, e);
+        put_line(e);
+
         commit;
     }
 } -result {a = 1yz
 invalid updates caught
+1x5y
 }
 
 test typeinf {type inference} -setup $SETUP -cleanup $CLEANUP -body {

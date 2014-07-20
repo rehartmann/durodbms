@@ -33,7 +33,17 @@ RDB_operator_name(const RDB_operator *op)
 }
 
 /**
+ * Return number of parameters of opeator *<var>op</var>.
+ */
+int
+RDB_operator_param_count(const RDB_operator *op)
+{
+    return op->paramc;
+}
+
+/**
  * Return the return type of *<var>op</var> if it's a read-only operator.
+ * Return NULL if it's an update operator.
  */
 RDB_type *
 RDB_return_type(const RDB_operator *op)

@@ -63,11 +63,11 @@ struct RDB_op_data {
 RDB_parameter *
 RDB_get_parameter(const RDB_operator *, int);
 
-/**
- * Return the name of *<var>op</var>
- */
 const char *
 RDB_operator_name(const RDB_operator *);
+
+int
+RDB_operator_param_count(const RDB_operator *);
 
 /**
  * Return the return type of *<var>op</var> if it's a read-only operator.

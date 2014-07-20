@@ -26,13 +26,17 @@ public interface DSession extends AutoCloseable {
      * <dt><code>integer</code> <dd><code>java.lang.Integer</code>
      * <dt><code>float</code> <dd><code>java.lang.Double</code>
      * <dt><code>binary</code> <dd><code>byte[]</code>
-     * <dt><code>tuple</code> { ... } <dd>{@link net.sf.duro.Tuple}</dd>
+     * <dt><code>tuple { ... }</code> <dd>{@link net.sf.duro.Tuple}</dd>
+     * <dt><code>relation { ... }</code> <dd><code>java.util.Set</code>
+     * <dt><code>array</code>
+     * <dd>Duro arrays map to Java arrays.
+     * For example, <code>array integer</code> is converted to
+     * <code>java.lang.Integer[]</code>.</dd>
      * <dt>types with declared possible representations
      * <dd><code>{@link net.sf.duro.PossrepObject}</code>
      * </dl>
      * 
-     * Duro arrays map to Java arrays.
-     * For example, <code>array integer</code> is converted to <code>java.lang.Integer[]</code>.
+     * 
      * 
      * @param	expr		The code to execute
      * @throws	DException	If a Duro error occurs

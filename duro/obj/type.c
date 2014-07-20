@@ -350,7 +350,7 @@ RDB_type_is_array(const RDB_type *typ)
  * NULL otherwise.
  */
 RDB_type *
-RDB_base_type(RDB_type *typ)
+RDB_base_type(const RDB_type *typ)
 {
     return typ->kind == RDB_TP_ARRAY || typ->kind == RDB_TP_RELATION
             ? typ->def.basetyp : NULL;

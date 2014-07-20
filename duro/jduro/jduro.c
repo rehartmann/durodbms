@@ -8,6 +8,7 @@
  */
 
 #include "jduro.h"
+#include <string.h>
 
 RDB_exec_context JDuro_ec;
 
@@ -67,6 +68,199 @@ del_session(JNIEnv *env, JDuro_session *sessionp)
     free(sessionp);
 }
 
+static int
+type_to_sig(RDB_object *objp, const RDB_type *typ, RDB_exec_context *ecp) {
+    if (RDB_type_is_scalar(typ)) {
+        if (typ == &RDB_STRING) {
+            if (RDB_string_to_obj(objp, "Ljava/lang/String;", ecp) != RDB_OK)
+                return RDB_ERROR;
+        } else if (typ == &RDB_INTEGER) {
+            if (RDB_string_to_obj(objp, "Ljava/lang/Integer;", ecp) != RDB_OK)
+                return RDB_ERROR;
+        } else if (typ == &RDB_BOOLEAN) {
+            if (RDB_string_to_obj(objp, "Ljava/lang/Boolean;", ecp) != RDB_OK)
+                return RDB_ERROR;
+        } else if (typ == &RDB_FLOAT) {
+            if (RDB_string_to_obj(objp, "Ljava/lang/Double;", ecp) != RDB_OK)
+                return RDB_ERROR;
+        } else if (typ == &RDB_BINARY) {
+            if (RDB_string_to_obj(objp, "[B", ecp) != RDB_OK)
+                return RDB_ERROR;
+        } else {
+            if (RDB_string_to_obj(objp, "Lnet/sf/duro/PossrepObject;", ecp) != RDB_OK)
+                return RDB_ERROR;
+        }
+    } else if (RDB_type_is_tuple(typ)) {
+        if (RDB_string_to_obj(objp, "Lnet/sf/duro/Tuple;", ecp) != RDB_OK)
+            return RDB_ERROR;
+    } else if (RDB_type_is_relation(typ)) {
+        if (RDB_string_to_obj(objp, "L/java/util/Set;", ecp) != RDB_OK)
+            return RDB_ERROR;
+    } else if (RDB_type_is_array(typ)) {
+        RDB_object subtypestrobj;
+
+        if (RDB_string_to_obj(objp, "[", ecp) != RDB_OK)
+            return RDB_ERROR;
+
+        RDB_init_obj(&subtypestrobj);
+        if (type_to_sig(&subtypestrobj, RDB_base_type(typ), ecp) != RDB_OK) {
+            RDB_destroy_obj(&subtypestrobj, ecp);
+            return RDB_ERROR;
+        }
+        if (RDB_append_string(objp, RDB_obj_string(&subtypestrobj), ecp) != RDB_OK) {
+            RDB_destroy_obj(&subtypestrobj, ecp);
+            return RDB_ERROR;
+        }
+
+        RDB_destroy_obj(&subtypestrobj, ecp);
+    }
+    return RDB_OK;
+}
+
+/*
+ * Create the signature of the Java method implementing operator *op
+ * and store it in *sigobjp.
+ */
+static int
+java_signature(RDB_operator *op, RDB_object *sigobjp, RDB_exec_context *ecp) {
+    RDB_object jtypesigobj;
+    RDB_type *rtyp;
+    RDB_parameter *paramp;
+    int i;
+
+    RDB_init_obj(&jtypesigobj);
+
+    if (RDB_string_to_obj(sigobjp, "(", ecp) != RDB_OK)
+        goto error;
+
+    for (i = 0; (paramp = RDB_get_parameter(op, i)) != NULL; i++) {
+        if (type_to_sig(&jtypesigobj, paramp->typ, ecp) != RDB_OK)
+            goto error;
+        if (RDB_append_string(sigobjp, RDB_obj_string(&jtypesigobj), ecp)
+                != RDB_OK)
+            goto error;
+    }
+    RDB_append_string(sigobjp, ")", ecp);
+
+    rtyp = RDB_return_type(op);
+    if (rtyp == NULL) {
+        if (RDB_append_string(sigobjp, "V", ecp) != RDB_OK)
+            goto error;
+    } else {
+        if (type_to_sig(&jtypesigobj, rtyp, ecp) != RDB_OK)
+            goto error;
+        if (RDB_append_string(sigobjp, RDB_obj_string(&jtypesigobj), ecp) != RDB_OK)
+            goto error;
+    }
+
+    RDB_destroy_obj(&jtypesigobj, ecp);
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&jtypesigobj, ecp);
+    return RDB_ERROR;
+}
+
+int
+JDuro_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    jclass clazz;
+    jmethodID methodID;
+    char *nameBuf;
+    char *methodName;
+    jobject result;
+    char *chp;
+    RDB_object signature;
+    int i;
+    jvalue *jargv = NULL;
+    JDuro_session *sessionp = RDB_ec_property(ecp, "JDuro_Session");
+    if (sessionp == NULL) {
+        RDB_raise_internal("JDuro_invoke_ro_op(): session not available", ecp);
+        return RDB_ERROR;
+    }
+
+    nameBuf = RDB_dup_str(RDB_operator_source(op));
+    if (nameBuf == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+
+    RDB_init_obj(&signature);
+
+    methodName = strrchr(nameBuf, '.');
+    if (methodName == NULL) {
+        RDB_raise_operator_not_found(nameBuf, ecp);
+        goto error;
+    }
+
+    /* Separate method and class name */
+    *methodName = '\0';
+    methodName++;
+
+    /* Replace '.' by '/' */
+    for (chp = nameBuf; *chp != '\0'; chp++) {
+        if (*chp == '.')
+            *chp = '/';
+    }
+
+    clazz = (*sessionp->env)->FindClass(sessionp->env, nameBuf);
+    if (clazz == NULL) {
+        /* Convert Java exception to Duro error ...*/
+        RDB_raise_operator_not_found("class not found", ecp);
+        goto error;
+    }
+
+    if (java_signature(op, &signature, ecp) != RDB_OK)
+        goto error;
+
+    methodID = (*sessionp->env)->GetStaticMethodID(sessionp->env, clazz,
+            methodName, RDB_obj_string(&signature));
+    if (methodID == NULL) {
+        RDB_raise_operator_not_found("method not found", ecp);
+        goto error;
+    }
+
+    jargv = RDB_alloc(sizeof(jvalue) * argc, ecp);
+    if (jargv == NULL)
+        goto error;
+
+    for (i = 0; i < argc; i++) {
+        jargv[i].l = JDuro_duro_obj_to_jobj(sessionp->env, argv[i], sessionp);
+        if (jargv[i].l == NULL)
+            goto error;
+    }
+
+    result = (*sessionp->env)->CallStaticObjectMethodA(sessionp->env, clazz,
+            methodID, jargv);
+    if ((*sessionp->env)->ExceptionOccurred(sessionp->env) != NULL) {
+        RDB_raise_system("exception occurred during Java method call", ecp);
+        goto error;
+    }
+
+    if (JDuro_jobj_to_duro_obj(sessionp->env, result, retvalp, sessionp, ecp)
+            != RDB_OK)
+        goto error;
+
+    free(nameBuf);
+    RDB_free(jargv);
+    RDB_destroy_obj(&signature, ecp);
+    return RDB_OK;
+
+error:
+    free(nameBuf);
+    RDB_free(jargv);
+    RDB_destroy_obj(&signature, ecp);
+    return RDB_ERROR;
+}
+
+static Duro_uop_info op_info = {
+   "libjduro",
+   "JDuro_invoke_ro_op",
+   "JDuro_invoke_update_op"
+};
+
 JNIEXPORT void
 JNICALL Java_net_sf_duro_DuroDSession_initInterp(JNIEnv *env, jobject obj)
 {
@@ -97,9 +291,33 @@ JNICALL Java_net_sf_duro_DuroDSession_initInterp(JNIEnv *env, jobject obj)
         return;
     }
     if (Duro_init_interp(&sessionp->interp, &JDuro_ec, NULL, "") != RDB_OK) {
+        clazz = (*env)->FindClass(env, "net/sf/duro/DException");
+        (*env)->ThrowNew(env, clazz,
+                RDB_type_name(RDB_obj_type(RDB_get_err(&JDuro_ec))));
         free(sessionp);
         return;
     }
+
+    sessionp->env = env;
+
+    /*
+     * Set session so it can be found when an operator implemented in Java
+     * is called
+     */
+    RDB_ec_set_property(&JDuro_ec, "JDuro_Session", sessionp);
+
+    if (Duro_dt_put_creop_info(&sessionp->interp, "Java", &op_info, &JDuro_ec)
+            != RDB_OK) {
+        clazz = (*env)->FindClass(env, "net/sf/duro/DException");
+        (*env)->ThrowNew(env, clazz,
+                RDB_type_name(RDB_obj_type(RDB_get_err(&JDuro_ec))));
+        free(sessionp);
+        return;
+    }
+
+    /*
+     * Get frequently used classes
+     */
 
     sessionp->booleanClass = NULL;
     sessionp->integerClass = NULL;
