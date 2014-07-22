@@ -23,12 +23,26 @@ typedef struct {
 
     /* References to classes used often */
     jclass booleanClass;
+    jclass updatableBooleanClass;
     jclass integerClass;
+    jclass updatableIntegerClass;
     jclass stringClass;
+    jclass updatableStringClass;
     jclass doubleClass;
+    jclass updatableDoubleClass;
     jclass tupleClass;
     jclass byteArrayClass;
     jclass hashSetClass;
+
+    jmethodID booleanConstructorID;
+    jmethodID updatableBooleanConstructorID;
+    jmethodID integerConstructorID;
+    jmethodID updatableIntegerConstructorID;
+    jmethodID updatableStringConstructorID;
+    jmethodID doubleConstructorID;
+    jmethodID updatableDoubleConstructorID;
+    jmethodID tupleConstructorID;
+    jmethodID hashSetConstructorID;
 } JDuro_session;
 
 JDuro_session *
@@ -39,7 +53,7 @@ JDuro_throw_exception_from_error(JNIEnv *, JDuro_session *, const char *,
         RDB_exec_context *);
 
 jobject
-JDuro_duro_obj_to_jobj(JNIEnv *, const RDB_object *, JDuro_session *);
+JDuro_duro_obj_to_jobj(JNIEnv *, const RDB_object *, RDB_bool, JDuro_session *);
 
 int
 JDuro_jobj_to_duro_obj(JNIEnv *, jobject, RDB_object *,

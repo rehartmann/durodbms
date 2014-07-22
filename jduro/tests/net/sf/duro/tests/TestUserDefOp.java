@@ -8,6 +8,9 @@ import net.sf.duro.DException;
 import net.sf.duro.DSession;
 import net.sf.duro.DuroDSession;
 import net.sf.duro.Tuple;
+import net.sf.duro.UpdatableBoolean;
+import net.sf.duro.UpdatableDouble;
+import net.sf.duro.UpdatableInteger;
 
 import org.junit.After;
 import org.junit.Before;
@@ -16,19 +19,6 @@ import org.junit.Test;
 public class TestUserDefOp {
 
     private DSession session;
-
-    // Implements the user-defined operator test1
-    @SuppressWarnings("unused")
-    private static String test1() {
-	return "Hello";
-    }
-
-    // Implements the user-defined operator test2
-    @SuppressWarnings("unused")
-    private static String test2(String arg1, Integer arg2, Double arg3,
-	    Tuple arg4) {
-	return arg1 + arg2 + arg3 + arg4.getAttribute("a");
-    }
 
     @Before
     public void setUp() throws Exception {
@@ -51,6 +41,12 @@ public class TestUserDefOp {
 	envdir.delete();
     }
 
+    // Implements the user-defined operator test1
+    @SuppressWarnings("unused")
+    private static String test1() {
+	return "Hello";
+    }
+
     @Test
     public void testReadonlyOp0Params() throws DException {
         session.execute("begin tx;");
@@ -61,6 +57,13 @@ public class TestUserDefOp {
         assertEquals("Hello", session.evaluate("test1()"));
 
         session.execute("commit;");
+    }
+
+    // Implements the user-defined operator test2
+    @SuppressWarnings("unused")
+    private static String test2(String arg1, Integer arg2, Double arg3,
+	    Tuple arg4) {
+	return arg1 + arg2 + arg3 + arg4.getAttribute("a");
     }
 
     @Test
@@ -74,6 +77,44 @@ public class TestUserDefOp {
         	+ " end operator;");
         assertEquals("yo24.2x",
         	session.evaluate("test2('yo', 2, 4.2, tuple { a 'x' })"));
+
+        session.execute("commit;");
+    }
+
+    // Implements the user-defined operator test4u
+    @SuppressWarnings("unused")
+    private static void test8u(StringBuilder au, String a,
+	    UpdatableInteger bu, Integer b, UpdatableBoolean cu, Boolean c,
+	    UpdatableDouble du, Double d) {
+	au.append(a);
+	bu.setValue(bu.intValue() + b.intValue());
+	cu.setValue(c.booleanValue());
+	du.setValue(du.doubleValue() + d.doubleValue());
+    }
+
+    @Test
+    public void testUpdateOp8Params() throws DException {
+        session.execute("begin tx;");
+
+        session.execute("operator test8u "
+                + "(au string, a string, bu int, b int, cu bool, c bool, du float, d float)"
+        	+ " updates { au, bu, cu, du }"
+        	+ " extern 'Java' 'net.sf.duro.tests.TestUserDefOp.test8u';"
+        	+ " end operator;");
+        try {
+            session.execute("var au init 'Hello';"
+        	    + "var bu init 5;"
+        	    + "var cu init false;"
+        	    + "var du init 2.0;"
+        	    + "test8u(au, 'Goodbye', bu, 14, cu, true, du, 3.0);");
+        } catch (DException ex) {
+            ex.printStackTrace();
+            throw ex;
+        }
+        assertEquals("HelloGoodbye", session.evaluate("au"));
+        assertEquals(19, session.evaluate("bu"));
+        assertEquals(true, session.evaluate("cu"));
+        assertEquals(5.0, session.evaluate("du"));
 
         session.execute("commit;");
     }

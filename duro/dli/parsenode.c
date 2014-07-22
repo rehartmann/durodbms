@@ -257,6 +257,8 @@ RDB_token_name(int tok)
             return "RENAME";
         case TOK_EXTEND:
             return "EXTEND";
+        case TOK_EXTERN:
+            return "EXTERN";
         case TOK_SUMMARIZE:
             return "SUMMARIZE";
         case TOK_DIVIDEBY:

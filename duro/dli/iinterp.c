@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2007-2013 Rene Hartmann.
+ * Copyright (C) 2007-2014 Rene Hartmann.
  * See the file COPYING for redistribution information.
  *
  * Statement execution functions.
@@ -1588,7 +1588,7 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-opdef_extern(const char *opname, RDB_type *rtyp,
+ro_opdef_extern(const char *opname, RDB_type *rtyp,
         int paramc, RDB_parameter *paramv,
         const char *lang,
         const char *extname, Duro_interp *interp, RDB_exec_context *ecp,
@@ -1603,6 +1603,25 @@ opdef_extern(const char *opname, RDB_type *rtyp,
     return RDB_create_ro_op(opname, paramc, paramv, rtyp,
             creop_infop->libname,
             creop_infop->ro_op_symname,
+            extname, ecp, txp);
+}
+
+static int
+update_opdef_extern(const char *opname,
+        int paramc, RDB_parameter *paramv,
+        const char *lang,
+        const char *extname, Duro_interp *interp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    Duro_uop_info *creop_infop = Duro_dt_get_creop_info(interp, lang);
+    if (creop_infop == NULL) {
+        RDB_raise_not_supported("extern: language not supported", ecp);
+        return RDB_ERROR;
+    }
+
+    return RDB_create_update_op(opname, paramc, paramv,
+            creop_infop->libname,
+            creop_infop->update_op_symname,
             extname, ecp, txp);
 }
 
@@ -1682,26 +1701,6 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
         if (rtyp == NULL)
             goto error;
 
-        /* Check for EXTERN ... */
-        if (stmtp->nextp->nextp->nextp->nextp->nextp->nextp->val.token == TOK_EXTERN) {
-            RDB_expression *langexp, *extnamexp;
-            langexp = RDB_parse_node_expr(
-                    stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp,
-                    ecp, interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
-            if (langexp == NULL)
-                goto error;
-            extnamexp = RDB_parse_node_expr(
-                    stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp,
-                    ecp, interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
-            if (extnamexp == NULL)
-                goto error;
-
-            return opdef_extern(opname, rtyp, paramc, paramv,
-                    RDB_obj_string(RDB_expr_obj(langexp)),
-                    RDB_obj_string(RDB_expr_obj(extnamexp)),
-                    interp, ecp, interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
-        }
-
         if (interp->impl_typename != NULL) {
             /*
              * We're inside a IMPLEMENT TYPE; ... END IMPLEMENT block.
@@ -1724,15 +1723,36 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
             }
         }
 
-        ret = RDB_create_ro_op(opname, paramc, paramv, rtyp,
+        /* Check for EXTERN ... */
+        if (stmtp->nextp->nextp->nextp->nextp->nextp->nextp->val.token == TOK_EXTERN) {
+            RDB_expression *langexp, *extnamexp;
+            langexp = RDB_parse_node_expr(
+                    stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp,
+                    ecp, interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
+            if (langexp == NULL)
+                goto error;
+            extnamexp = RDB_parse_node_expr(
+                    stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp,
+                    ecp, interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
+            if (extnamexp == NULL)
+                goto error;
+
+            ret = ro_opdef_extern(opname, rtyp, paramc, paramv,
+                    RDB_obj_string(RDB_expr_obj(langexp)),
+                    RDB_obj_string(RDB_expr_obj(extnamexp)),
+                    interp, ecp,
+                    interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
+        } else {
+            ret = RDB_create_ro_op(opname, paramc, paramv, rtyp,
 #ifdef _WIN32
-                "duro",
+                    "duro",
 #else
-                "libduro",
+                    "libduro",
 #endif
-                "Duro_dt_invoke_ro_op",
-                RDB_obj_string(&code), ecp,
-                interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
+                    "Duro_dt_invoke_ro_op",
+                    RDB_obj_string(&code), ecp,
+                    interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
+        }
         if (ret != RDB_OK)
             goto error;
     } else {
@@ -1782,16 +1802,38 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
                 attrnodep = attrnodep->nextp;
         }
 
-        ret = RDB_create_update_op(opname,
-                paramc, paramv,
+        /* Check for EXTERN ... */
+        if (stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->val.token
+                == TOK_EXTERN) {
+            RDB_expression *langexp, *extnamexp;
+            langexp = RDB_parse_node_expr(
+                    stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp,
+                    ecp, interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
+            if (langexp == NULL)
+                goto error;
+            extnamexp = RDB_parse_node_expr(
+                    stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp,
+                    ecp, interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
+            if (extnamexp == NULL)
+                goto error;
+
+            ret = update_opdef_extern(opname, paramc, paramv,
+                    RDB_obj_string(RDB_expr_obj(langexp)),
+                    RDB_obj_string(RDB_expr_obj(extnamexp)),
+                    interp, ecp,
+                    interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
+        } else {
+            ret = RDB_create_update_op(opname,
+                    paramc, paramv,
 #ifdef _WIN32
-                "duro",
+                    "duro",
 #else
-                "libduro",
+                    "libduro",
 #endif
-                "Duro_dt_invoke_update_op",
-                RDB_obj_string(&code), ecp,
-                interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
+                    "Duro_dt_invoke_update_op",
+                    RDB_obj_string(&code), ecp,
+                    interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
+        }
         if (ret != RDB_OK)
             goto error;
     }

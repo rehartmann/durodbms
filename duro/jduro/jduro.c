@@ -30,7 +30,7 @@ JDuro_throw_exception_from_error(JNIEnv *env, JDuro_session *sessionp, const cha
     if (constructorID == NULL)
         return -1;
 
-    errobj = JDuro_duro_obj_to_jobj(env, RDB_get_err(ecp), sessionp);
+    errobj = JDuro_duro_obj_to_jobj(env, RDB_get_err(ecp), RDB_FALSE, sessionp);
     if (errobj == NULL)
         return -1;
 
@@ -69,19 +69,28 @@ del_session(JNIEnv *env, JDuro_session *sessionp)
 }
 
 static int
-type_to_sig(RDB_object *objp, const RDB_type *typ, RDB_exec_context *ecp) {
+type_to_sig(RDB_object *objp, const RDB_type *typ, RDB_bool update,
+        RDB_exec_context *ecp) {
     if (RDB_type_is_scalar(typ)) {
         if (typ == &RDB_STRING) {
-            if (RDB_string_to_obj(objp, "Ljava/lang/String;", ecp) != RDB_OK)
+            if (RDB_string_to_obj(objp,
+                    update ? "Ljava/lang/StringBuilder;" : "Ljava/lang/String;",
+                    ecp) != RDB_OK)
                 return RDB_ERROR;
         } else if (typ == &RDB_INTEGER) {
-            if (RDB_string_to_obj(objp, "Ljava/lang/Integer;", ecp) != RDB_OK)
+            if (RDB_string_to_obj(objp,
+                    update ? "Lnet/sf/duro/UpdatableInteger;" : "Ljava/lang/Integer;",
+                    ecp) != RDB_OK)
                 return RDB_ERROR;
         } else if (typ == &RDB_BOOLEAN) {
-            if (RDB_string_to_obj(objp, "Ljava/lang/Boolean;", ecp) != RDB_OK)
+            if (RDB_string_to_obj(objp,
+                    update ? "Lnet/sf/duro/UpdatableBoolean;" : "Ljava/lang/Boolean;",
+                    ecp) != RDB_OK)
                 return RDB_ERROR;
         } else if (typ == &RDB_FLOAT) {
-            if (RDB_string_to_obj(objp, "Ljava/lang/Double;", ecp) != RDB_OK)
+            if (RDB_string_to_obj(objp,
+                    update ? "Lnet/sf/duro/UpdatableDouble;" : "Ljava/lang/Double;",
+                    ecp) != RDB_OK)
                 return RDB_ERROR;
         } else if (typ == &RDB_BINARY) {
             if (RDB_string_to_obj(objp, "[B", ecp) != RDB_OK)
@@ -103,7 +112,7 @@ type_to_sig(RDB_object *objp, const RDB_type *typ, RDB_exec_context *ecp) {
             return RDB_ERROR;
 
         RDB_init_obj(&subtypestrobj);
-        if (type_to_sig(&subtypestrobj, RDB_base_type(typ), ecp) != RDB_OK) {
+        if (type_to_sig(&subtypestrobj, RDB_base_type(typ), RDB_FALSE, ecp) != RDB_OK) {
             RDB_destroy_obj(&subtypestrobj, ecp);
             return RDB_ERROR;
         }
@@ -133,8 +142,11 @@ java_signature(RDB_operator *op, RDB_object *sigobjp, RDB_exec_context *ecp) {
     if (RDB_string_to_obj(sigobjp, "(", ecp) != RDB_OK)
         goto error;
 
+    rtyp = RDB_return_type(op);
+
     for (i = 0; (paramp = RDB_get_parameter(op, i)) != NULL; i++) {
-        if (type_to_sig(&jtypesigobj, paramp->typ, ecp) != RDB_OK)
+        if (type_to_sig(&jtypesigobj, paramp->typ,
+                (RDB_bool) (rtyp == NULL && paramp->update), ecp) != RDB_OK)
             goto error;
         if (RDB_append_string(sigobjp, RDB_obj_string(&jtypesigobj), ecp)
                 != RDB_OK)
@@ -142,12 +154,11 @@ java_signature(RDB_operator *op, RDB_object *sigobjp, RDB_exec_context *ecp) {
     }
     RDB_append_string(sigobjp, ")", ecp);
 
-    rtyp = RDB_return_type(op);
     if (rtyp == NULL) {
         if (RDB_append_string(sigobjp, "V", ecp) != RDB_OK)
             goto error;
     } else {
-        if (type_to_sig(&jtypesigobj, rtyp, ecp) != RDB_OK)
+        if (type_to_sig(&jtypesigobj, rtyp, RDB_FALSE, ecp) != RDB_OK)
             goto error;
         if (RDB_append_string(sigobjp, RDB_obj_string(&jtypesigobj), ecp) != RDB_OK)
             goto error;
@@ -161,6 +172,31 @@ error:
     return RDB_ERROR;
 }
 
+/*
+ * Replace the last '.' with a null character and return a pointer to the
+ * following character.
+ * Replace other '.'. by '/'.
+ */
+static char *
+separate_method(char *qmethod) {
+    char *chp;
+    char *methodName = strrchr(qmethod, '.');
+    if (methodName == NULL) {
+        return NULL;
+    }
+
+    /* Separate method and class name */
+    *methodName = '\0';
+    methodName++;
+
+    /* Replace '.' by '/' */
+    for (chp = qmethod; *chp != '\0'; chp++) {
+        if (*chp == '.')
+            *chp = '/';
+    }
+    return methodName;
+}
+
 int
 JDuro_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp,
@@ -171,7 +207,6 @@ JDuro_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     char *nameBuf;
     char *methodName;
     jobject result;
-    char *chp;
     RDB_object signature;
     int i;
     jvalue *jargv = NULL;
@@ -189,25 +224,15 @@ JDuro_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     RDB_init_obj(&signature);
 
-    methodName = strrchr(nameBuf, '.');
+    methodName = separate_method(nameBuf);
     if (methodName == NULL) {
         RDB_raise_operator_not_found(nameBuf, ecp);
         goto error;
     }
 
-    /* Separate method and class name */
-    *methodName = '\0';
-    methodName++;
-
-    /* Replace '.' by '/' */
-    for (chp = nameBuf; *chp != '\0'; chp++) {
-        if (*chp == '.')
-            *chp = '/';
-    }
-
     clazz = (*sessionp->env)->FindClass(sessionp->env, nameBuf);
     if (clazz == NULL) {
-        /* Convert Java exception to Duro error ...*/
+        /* Convert Java exception to Duro error !! ...*/
         RDB_raise_operator_not_found("class not found", ecp);
         goto error;
     }
@@ -227,7 +252,8 @@ JDuro_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
         goto error;
 
     for (i = 0; i < argc; i++) {
-        jargv[i].l = JDuro_duro_obj_to_jobj(sessionp->env, argv[i], sessionp);
+        jargv[i].l = JDuro_duro_obj_to_jobj(sessionp->env, argv[i], RDB_FALSE,
+                sessionp);
         if (jargv[i].l == NULL)
             goto error;
     }
@@ -242,6 +268,96 @@ JDuro_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     if (JDuro_jobj_to_duro_obj(sessionp->env, result, retvalp, sessionp, ecp)
             != RDB_OK)
         goto error;
+
+    free(nameBuf);
+    RDB_free(jargv);
+    RDB_destroy_obj(&signature, ecp);
+    return RDB_OK;
+
+error:
+    free(nameBuf);
+    RDB_free(jargv);
+    RDB_destroy_obj(&signature, ecp);
+    return RDB_ERROR;
+}
+
+int
+JDuro_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    jclass clazz;
+    jmethodID methodID;
+    char *nameBuf;
+    char *methodName;
+    RDB_object signature;
+    int i;
+    jvalue *jargv = NULL;
+    JDuro_session *sessionp = RDB_ec_property(ecp, "JDuro_Session");
+    if (sessionp == NULL) {
+        RDB_raise_internal("JDuro_invoke_ro_op(): session not available", ecp);
+        return RDB_ERROR;
+    }
+
+    nameBuf = RDB_dup_str(RDB_operator_source(op));
+    if (nameBuf == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+
+    RDB_init_obj(&signature);
+
+    methodName = separate_method(nameBuf);
+    if (methodName == NULL) {
+        RDB_raise_operator_not_found(nameBuf, ecp);
+        goto error;
+    }
+
+    clazz = (*sessionp->env)->FindClass(sessionp->env, nameBuf);
+    if (clazz == NULL) {
+        /* Convert Java exception to Duro error !! ...*/
+        RDB_raise_operator_not_found("class not found", ecp);
+        goto error;
+    }
+
+    if (java_signature(op, &signature, ecp) != RDB_OK)
+        goto error;
+
+    methodID = (*sessionp->env)->GetStaticMethodID(sessionp->env, clazz,
+            methodName, RDB_obj_string(&signature));
+    if (methodID == NULL) {
+        RDB_raise_operator_not_found("method not found", ecp);
+        goto error;
+    }
+
+    jargv = RDB_alloc(sizeof(jvalue) * argc, ecp);
+    if (jargv == NULL)
+        goto error;
+
+    for (i = 0; i < argc; i++) {
+        jargv[i].l = JDuro_duro_obj_to_jobj(sessionp->env, argv[i],
+                RDB_get_parameter(op, i)->update, sessionp);
+        if (jargv[i].l == NULL)
+            goto error;
+    }
+
+    (*sessionp->env)->CallStaticVoidMethodA(sessionp->env, clazz,
+            methodID, jargv);
+    if ((*sessionp->env)->ExceptionOccurred(sessionp->env) != NULL) {
+        RDB_raise_system("exception occurred during Java method call", ecp);
+        goto error;
+    }
+
+    /* Convert updated arguments back */
+    for (i = 0; i < argc; i++) {
+        if (RDB_get_parameter(op, i)->update) {
+            if (JDuro_jobj_to_duro_obj(sessionp->env, jargv[i].l,
+                    argv[i], sessionp, &JDuro_ec) != 0) {
+                JDuro_throw_exception_from_error(sessionp->env, sessionp,
+                        "conversion of updated argument failed", &JDuro_ec);
+                goto error;
+            }
+        }
+    }
 
     free(nameBuf);
     RDB_free(jargv);
@@ -320,93 +436,172 @@ JNICALL Java_net_sf_duro_DuroDSession_initInterp(JNIEnv *env, jobject obj)
      */
 
     sessionp->booleanClass = NULL;
+    sessionp->updatableBooleanClass = NULL;
     sessionp->integerClass = NULL;
+    sessionp->updatableIntegerClass = NULL;
     sessionp->stringClass = NULL;
+    sessionp->updatableStringClass = NULL;
     sessionp->doubleClass = NULL;
+    sessionp->updatableDoubleClass = NULL;
     sessionp->tupleClass = NULL;
     sessionp->byteArrayClass = NULL;
     sessionp->hashSetClass = NULL;
 
     clazz = (*env)->FindClass(env, "java/lang/Boolean");
     if (clazz == NULL) {
-        del_session(env, sessionp);
-        return;
+        goto error;
     }
     sessionp->booleanClass = (jclass) (*env)->NewGlobalRef(env, clazz);
     if (sessionp->booleanClass == NULL) {
-        del_session(env, sessionp);
-        return;
+        goto error;
+    }
+
+    clazz = (*env)->FindClass(env, "net/sf/duro/UpdatableBoolean");
+    if (clazz == NULL) {
+        goto error;
+    }
+    sessionp->updatableBooleanClass = (jclass) (*env)->NewGlobalRef(env, clazz);
+    if (sessionp->updatableBooleanClass == NULL) {
+        goto error;
     }
 
     clazz = (*env)->FindClass(env, "java/lang/Integer");
     if (clazz == NULL) {
-        del_session(env, sessionp);
-        return;
+        goto error;
     }
     sessionp->integerClass = (jclass) (*env)->NewGlobalRef(env, clazz);
     if (sessionp->integerClass == NULL) {
-        del_session(env, sessionp);
-        return;
+        goto error;
+    }
+
+    clazz = (*env)->FindClass(env, "net/sf/duro/UpdatableInteger");
+    if (clazz == NULL) {
+        goto error;
+    }
+    sessionp->updatableIntegerClass = (jclass) (*env)->NewGlobalRef(env, clazz);
+    if (sessionp->updatableIntegerClass == NULL) {
+        goto error;
     }
 
     clazz = (*env)->FindClass(env, "java/lang/String");
     if (clazz == NULL) {
-        del_session(env, sessionp);
-        return;
+        goto error;
     }
     sessionp->stringClass = (jclass) (*env)->NewGlobalRef(env, clazz);
     if (sessionp->stringClass == NULL) {
-        del_session(env, sessionp);
-        return;
+        goto error;
+    }
+
+    clazz = (*env)->FindClass(env, "java/lang/StringBuilder");
+    if (clazz == NULL) {
+        goto error;
+    }
+    sessionp->updatableStringClass = (jclass) (*env)->NewGlobalRef(env, clazz);
+    if (sessionp->updatableStringClass == NULL) {
+        goto error;
     }
 
     clazz = (*env)->FindClass(env, "java/lang/Double");
     if (clazz == NULL) {
-        del_session(env, sessionp);
-        return;
+        goto error;
     }
     sessionp->doubleClass = (jclass) (*env)->NewGlobalRef(env, clazz);
     if (sessionp->doubleClass == NULL) {
-        del_session(env, sessionp);
-        return;
+        goto error;
+    }
+
+    clazz = (*env)->FindClass(env, "net/sf/duro/UpdatableDouble");
+    if (clazz == NULL) {
+        goto error;
+    }
+    sessionp->updatableDoubleClass = (jclass) (*env)->NewGlobalRef(env, clazz);
+    if (sessionp->updatableDoubleClass == NULL) {
+        goto error;
     }
 
     clazz = (*env)->FindClass(env, "net/sf/duro/Tuple");
     if (clazz == NULL) {
-        del_session(env, sessionp);
-        return;
+        goto error;
     }
     sessionp->tupleClass = (jclass) (*env)->NewGlobalRef(env, clazz);
     if (sessionp->tupleClass == NULL) {
-        del_session(env, sessionp);
-        return;
+        goto error;
     }
 
     clazz = (*env)->FindClass(env, "[B");
     if (clazz == NULL) {
-        del_session(env, sessionp);
-        return;
+        goto error;
     }
     sessionp->byteArrayClass = (jclass) (*env)->NewGlobalRef(env, clazz);
     if (sessionp->byteArrayClass == NULL) {
-        del_session(env, sessionp);
-        return;
+        goto error;
     }
 
     clazz = (*env)->FindClass(env, "java/util/HashSet");
     if (clazz == NULL) {
-        del_session(env, sessionp);
-        return;
+        goto error;
     }
     sessionp->hashSetClass = (jclass) (*env)->NewGlobalRef(env, clazz);
     if (sessionp->hashSetClass == NULL) {
-        del_session(env, sessionp);
-        return;
+        goto error;
     }
+
+    sessionp->updatableStringConstructorID = (*env)->GetMethodID(env,
+            sessionp->updatableStringClass,
+            "<init>", "(Ljava/lang/String;)V");
+    if (sessionp->updatableStringConstructorID == NULL) {
+        goto error;
+    }
+
+    sessionp->booleanConstructorID = (*env)->GetMethodID(env, sessionp->booleanClass,
+            "<init>", "(Z)V");
+    if (sessionp->booleanConstructorID == NULL)
+        goto error;
+
+    sessionp->updatableBooleanConstructorID = (*env)->GetMethodID(env, sessionp->booleanClass,
+                "<init>", "(Z)V");
+    if (sessionp->updatableBooleanConstructorID == NULL)
+        goto error;
+
+    sessionp->integerConstructorID = (*env)->GetMethodID(env, sessionp->integerClass,
+            "<init>", "(I)V");
+    if (sessionp->integerConstructorID == NULL)
+        goto error;
+
+    sessionp->updatableIntegerConstructorID = (*env)->GetMethodID(env,
+            sessionp->updatableIntegerClass,
+            "<init>", "(I)V");
+    if (sessionp->updatableIntegerConstructorID == NULL)
+        goto error;
+
+    sessionp->doubleConstructorID = (*env)->GetMethodID(env, sessionp->doubleClass,
+            "<init>", "(D)V");
+    if (sessionp->doubleConstructorID == NULL)
+        goto error;
+
+    sessionp->updatableDoubleConstructorID = (*env)->GetMethodID(env,
+            sessionp->updatableDoubleClass,
+            "<init>", "(D)V");
+    if (sessionp->updatableDoubleConstructorID == NULL)
+        goto error;
+
+    sessionp->tupleConstructorID = (*env)->GetMethodID(env, sessionp->tupleClass,
+            "<init>", "()V");
+    if (sessionp->tupleConstructorID == NULL)
+        goto error;
+
+    sessionp->hashSetConstructorID = (*env)->GetMethodID(env, sessionp->hashSetClass,
+            "<init>", "()V");
+    if (sessionp->hashSetConstructorID == NULL)
+        goto error;
 
     clazz = (*env)->GetObjectClass(env, obj);
     interpFieldID = (*env)->GetFieldID(env, clazz, "interp", "J");
     (*env)->SetLongField(env, obj, interpFieldID, (intptr_t) sessionp);
+    return;
+
+error:
+    del_session(env, sessionp);
 }
 
 JDuro_session *
@@ -472,15 +667,12 @@ tuple_to_jobj(JNIEnv *env, const RDB_object *tup, JDuro_session *sessionp)
     jobject jobj;
     int n;
     char **namev;
-    jmethodID constructorID = (*env)->GetMethodID(env, sessionp->tupleClass,
-            "<init>", "()V");
-    if (constructorID == NULL)
-        return NULL;
     setAttributeID = (*env)->GetMethodID(env, sessionp->tupleClass,
             "setAttribute", "(Ljava/lang/String;Ljava/lang/Object;)V");
     if (setAttributeID == NULL)
         return NULL;
-    jobj = (*env)->NewObject(env, sessionp->tupleClass, constructorID);
+    jobj = (*env)->NewObject(env, sessionp->tupleClass,
+            sessionp->tupleConstructorID);
     n = RDB_tuple_size(tup);
     namev = malloc(sizeof(char *) * n);
     if (namev == NULL)
@@ -491,7 +683,7 @@ tuple_to_jobj(JNIEnv *env, const RDB_object *tup, JDuro_session *sessionp)
         RDB_object *attrp = RDB_tuple_get(tup, namev[i]);
         jstring jstr = (*env)->NewStringUTF(env, namev[i]);
         (*env)->CallVoidMethod(env, jobj, setAttributeID,
-                jstr, JDuro_duro_obj_to_jobj(env, attrp, sessionp));
+                jstr, JDuro_duro_obj_to_jobj(env, attrp, RDB_FALSE, sessionp));
     }
     free(namev);
     return jobj;
@@ -503,18 +695,14 @@ table_to_jobj(JNIEnv *env, const RDB_object *tbp, JDuro_session *sessionp)
     RDB_object tpl;
     RDB_qresult *qrp;
     jobject elem;
-    jmethodID constructorId;
     jmethodID addID;
     jobject jtable;
-    constructorId = (*env)->GetMethodID(env, sessionp->hashSetClass,
-            "<init>", "()V");
-    if (constructorId == NULL)
-        return NULL;
     addID = (*env)->GetMethodID( env, sessionp->hashSetClass, "add",
             "(Ljava/lang/Object;)Z");
     if (addID == NULL)
         return NULL;
-    jtable = (*env)->NewObject(env, sessionp->hashSetClass, constructorId);
+    jtable = (*env)->NewObject(env, sessionp->hashSetClass,
+            sessionp->hashSetConstructorID);
     if (jtable == NULL)
         return NULL;
 
@@ -526,7 +714,7 @@ table_to_jobj(JNIEnv *env, const RDB_object *tbp, JDuro_session *sessionp)
     }
     RDB_init_obj(&tpl);
     while (RDB_next_tuple(qrp, &tpl, &JDuro_ec, NULL) == RDB_OK) {
-        elem = JDuro_duro_obj_to_jobj(env, &tpl, sessionp);
+        elem = JDuro_duro_obj_to_jobj(env, &tpl, RDB_FALSE, sessionp);
         if (elem == NULL)
             goto error;
         (*env)->CallObjectMethod(env, jtable, addID, elem);
@@ -575,7 +763,7 @@ array_to_jobj(JNIEnv *env, const RDB_object *arrp, JDuro_session *sessionp)
         return NULL;
     for (i = 0; i < size; i++) {
          objval = JDuro_duro_obj_to_jobj(env, RDB_array_get(arrp,
-                 (RDB_int) i, &JDuro_ec), sessionp);
+                 (RDB_int) i, &JDuro_ec), RDB_FALSE, sessionp);
          if (objval == NULL)
              return NULL;
          (*env)->SetObjectArrayElement(env, jobjarr, (jsize) i, objval);
@@ -587,7 +775,8 @@ array_to_jobj(JNIEnv *env, const RDB_object *arrp, JDuro_session *sessionp)
  * Convert *objp to a Java object.
  */
 jobject
-JDuro_duro_obj_to_jobj(JNIEnv *env, const RDB_object *objp, JDuro_session *sessionp)
+JDuro_duro_obj_to_jobj(JNIEnv *env, const RDB_object *objp, RDB_bool updatable,
+        JDuro_session *sessionp)
 {
     jmethodID constructorID;
     jclass clazz;
@@ -604,25 +793,32 @@ JDuro_duro_obj_to_jobj(JNIEnv *env, const RDB_object *objp, JDuro_session *sessi
         return NULL;
     }
     if (typ == &RDB_STRING) {
-        return (jobject) (*env)->NewStringUTF(env, RDB_obj_string(objp));
+        jobj = (jobject) (*env)->NewStringUTF(env, RDB_obj_string(objp));
+        if (jobj == NULL)
+            return NULL;
+        if (updatable) {
+            jobj = (*env)->NewObject(env, sessionp->updatableStringClass,
+                    sessionp->updatableStringConstructorID, jobj);
+        }
+        return jobj;
     }
     if (typ == &RDB_INTEGER) {
-        constructorID = (*env)->GetMethodID(env, sessionp->integerClass,
-                "<init>", "(I)V");
-        return (*env)->NewObject(env, sessionp->integerClass, constructorID,
+        return (*env)->NewObject(env,
+                updatable ? sessionp->updatableIntegerClass : sessionp->integerClass,
+                updatable ? sessionp->updatableIntegerConstructorID : sessionp->integerConstructorID,
                 (jint) RDB_obj_int(objp));
     }
     if (typ == &RDB_FLOAT) {
-        constructorID = (*env)->GetMethodID(env, sessionp->doubleClass,
-                "<init>", "(D)V");
-        return (*env)->NewObject(env, sessionp->doubleClass, constructorID,
+        return (*env)->NewObject(env,
+                updatable ? sessionp->updatableDoubleClass : sessionp->doubleClass,
+                updatable ? sessionp->updatableDoubleConstructorID : sessionp->doubleConstructorID,
                 (jdouble) RDB_obj_float(objp));
     }
     if (typ == &RDB_BOOLEAN) {
-        constructorID = (*env)->GetMethodID(env, sessionp->booleanClass,
-                "<init>", "(Z)V");
-        return (*env)->NewObject(env, sessionp->booleanClass,
-                constructorID, (jboolean) RDB_obj_bool(objp));
+        return (*env)->NewObject(env,
+                updatable ? sessionp->updatableBooleanClass : sessionp->booleanClass,
+                updatable ? sessionp->updatableBooleanConstructorID : sessionp->booleanConstructorID,
+                (jboolean) RDB_obj_bool(objp));
     }
     if (typ == &RDB_BINARY) {
         void *bp;
@@ -725,7 +921,7 @@ JNICALL Java_net_sf_duro_DuroDSession_evaluateI(JNIEnv *env, jobject obj,
         }
         RDB_obj_set_typeinfo(&result, typ);
     }
-    jresult = JDuro_duro_obj_to_jobj(env, &result, sessionp);
+    jresult = JDuro_duro_obj_to_jobj(env, &result, RDB_FALSE, sessionp);
     RDB_destroy_obj(&result, &JDuro_ec);
     RDB_del_expr(exp, &JDuro_ec);
     return jresult;
@@ -980,6 +1176,29 @@ JDuro_jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
         }
         return 0;
     }
+    if ((*env)->IsInstanceOf(env, obj, sessionp->updatableStringClass)) {
+        methodID = (*env)->GetMethodID(env, sessionp->updatableStringClass,
+                "toString", "()Ljava/lang/String;");
+        obj = (*env)->CallObjectMethod(env, obj, methodID);
+        if (obj == NULL)
+            return -1;
+
+        const char *strval = (*env)->GetStringUTFChars(env, obj, 0);
+
+        if (typ != NULL && typ != &RDB_STRING) {
+            (*env)->ThrowNew(env,
+                    (*env)->FindClass(env, "java/lang/IllegalArgumentException"),
+                    "destination must be string");
+            return -1;
+        }
+
+        if (RDB_string_to_obj(dstp, strval, ecp) != RDB_OK) {
+            JDuro_throw_exception_from_error(env, sessionp,
+                    "getting string data failed", ecp);
+            return -1;
+        }
+        return 0;
+    }
 
     if ((*env)->IsInstanceOf(env, obj, sessionp->integerClass)) {
         if (typ != NULL && typ != &RDB_INTEGER) {
@@ -994,8 +1213,20 @@ JDuro_jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
         return 0;
     }
 
-    clazz = (*env)->FindClass(env, "java/lang/Double");
-    if ((*env)->IsInstanceOf(env, obj, clazz)) {
+    if ((*env)->IsInstanceOf(env, obj, sessionp->updatableIntegerClass)) {
+        if (typ != NULL && typ != &RDB_INTEGER) {
+            (*env)->ThrowNew(env,
+                    (*env)->FindClass(env, "java/lang/IllegalArgumentException"),
+                    "destination must be integer");
+            return -1;
+        }
+        methodID = (*env)->GetMethodID(env, sessionp->integerClass,
+                "intValue", "()I");
+        RDB_int_to_obj(dstp, (RDB_int) (*env)->CallIntMethod(env, obj, methodID));
+        return 0;
+    }
+
+    if ((*env)->IsInstanceOf(env, obj, sessionp->doubleClass)) {
         if (typ != NULL && typ != &RDB_FLOAT) {
             (*env)->ThrowNew(env,
                     (*env)->FindClass(env, "java/lang/IllegalArgumentException"),
@@ -1003,7 +1234,22 @@ JDuro_jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
             return -1;
         }
 
-        methodID = (*env)->GetMethodID(env, clazz, "doubleValue", "()D");
+        methodID = (*env)->GetMethodID(env, sessionp->doubleClass, "doubleValue",
+                "()D");
+        RDB_float_to_obj(dstp, (RDB_float) (*env)->CallDoubleMethod(env, obj, methodID));
+        return 0;
+    }
+
+    if ((*env)->IsInstanceOf(env, obj, sessionp->updatableDoubleClass)) {
+        if (typ != NULL && typ != &RDB_FLOAT) {
+            (*env)->ThrowNew(env,
+                    (*env)->FindClass(env, "java/lang/IllegalArgumentException"),
+                    "destination must be float");
+            return -1;
+        }
+
+        methodID = (*env)->GetMethodID(env, sessionp->updatableDoubleClass,
+                "doubleValue", "()D");
         RDB_float_to_obj(dstp, (RDB_float) (*env)->CallDoubleMethod(env, obj, methodID));
         return 0;
     }
@@ -1017,6 +1263,20 @@ JDuro_jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
         }
 
         methodID = (*env)->GetMethodID(env, sessionp->booleanClass,
+                "booleanValue", "()Z");
+        RDB_bool_to_obj(dstp, (RDB_float) (*env)->CallBooleanMethod(env, obj, methodID));
+        return 0;
+    }
+
+    if ((*env)->IsInstanceOf(env, obj, sessionp->updatableBooleanClass)) {
+        if (typ != NULL && typ != &RDB_BOOLEAN) {
+            (*env)->ThrowNew(env,
+                    (*env)->FindClass(env, "java/lang/IllegalArgumentException"),
+                    "destination must be boolean");
+            return -1;
+        }
+
+        methodID = (*env)->GetMethodID(env, sessionp->updatableBooleanClass,
                 "booleanValue", "()Z");
         RDB_bool_to_obj(dstp, (RDB_float) (*env)->CallBooleanMethod(env, obj, methodID));
         return 0;

@@ -38,7 +38,7 @@ JNICALL Java_net_sf_duro_DuroPossrepObject_getProperty(JNIEnv *env, jclass clazz
         JDuro_throw_exception_from_error(env, sessionp, "getting property failed", &JDuro_ec);
         goto error;
     }
-    result = JDuro_duro_obj_to_jobj(env, &compval, sessionp);
+    result = JDuro_duro_obj_to_jobj(env, &compval, RDB_FALSE, sessionp);
     if (result == NULL)
         goto error;
 
