@@ -3,6 +3,7 @@ package net.sf.duro.tests;
 import static org.junit.Assert.*;
 
 import java.io.File;
+import java.util.Set;
 
 import net.sf.duro.DException;
 import net.sf.duro.DSession;
@@ -62,22 +63,31 @@ public class TestUserDefOp {
     // Implements the user-defined operator test2
     @SuppressWarnings("unused")
     private static String test2(String arg1, Integer arg2, Double arg3,
-	    Tuple arg4) {
-	return arg1 + arg2 + arg3 + arg4.getAttribute("a");
+	    Boolean arg4, byte[] arg5, Tuple arg6, Set arg7, String[] arg8) {
+	return arg1 + arg2 + arg3 + arg4 + (int) arg5[0] + (int) arg5[1]
+		+ arg6.getAttribute("s")
+		+ ((Tuple) arg7.toArray()[0]).getAttribute("n")
+		+ arg8[0];
     }
 
     @Test
-    public void testReadonlyOp4Params() throws DException {
+    public void testReadonlyOp8Params() throws DException {
         session.execute("begin tx;");
 
-        session.execute("operator test2(p1 string, p2 int, p3 float," +
-        		"p4 tuple { a string })"
-        	+ "returns string extern 'Java'"
+        session.execute("operator test2(p1 string, p2 int, p3 float,"
+        		+ "p4 boolean, p5 binary, p6 tuple { s string }, "
+        		+ "p7 rel { n int }, p8 array string)"
+        	+ " returns string extern 'Java'"
         	+ " 'net.sf.duro.tests.TestUserDefOp.test2';"
         	+ " end operator;");
-        assertEquals("yo24.2x",
-        	session.evaluate("test2('yo', 2, 4.2, tuple { a 'x' })"));
-
+        try {
+        assertEquals("yo24.2true15x33tt",
+        	session.evaluate("test2('yo', 2, 4.2, true, X'0105',"
+        		+ " tuple { s 'x' }, rel { tup { n 33 } }, array('tt'))"));
+        } catch (DException ex) {
+            ex.printStackTrace();
+            throw ex;
+        }
         session.execute("commit;");
     }
 

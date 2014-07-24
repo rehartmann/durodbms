@@ -103,7 +103,7 @@ type_to_sig(RDB_object *objp, const RDB_type *typ, RDB_bool update,
         if (RDB_string_to_obj(objp, "Lnet/sf/duro/Tuple;", ecp) != RDB_OK)
             return RDB_ERROR;
     } else if (RDB_type_is_relation(typ)) {
-        if (RDB_string_to_obj(objp, "L/java/util/Set;", ecp) != RDB_OK)
+        if (RDB_string_to_obj(objp, "Ljava/util/Set;", ecp) != RDB_OK)
             return RDB_ERROR;
     } else if (RDB_type_is_array(typ)) {
         RDB_object subtypestrobj;
