@@ -18,9 +18,11 @@ public class DuroDSession implements DSession {
 
     native private void destroyInterp() throws DException;
 
-    native private void executeI(String s) throws DException;
+    native private void executeI(String s) throws DException,
+            ClassNotFoundException, NoSuchMethodException;
 
-    native private Object evaluateI(String expr) throws DException;
+    native private Object evaluateI(String expr) throws DException,
+            ClassNotFoundException, NoSuchMethodException;
 
     native private void setVarI(String name, Object v) throws DException;
 
@@ -44,14 +46,26 @@ public class DuroDSession implements DSession {
     }
 
     public void execute(String s) throws DException {
-	synchronized(DuroDSession.class) {
-	    executeI(s);
+	try {
+	    synchronized(DuroDSession.class) {
+		executeI(s);
+	    }
+	} catch (ClassNotFoundException ex) {
+	    throw new IllegalStateException(ex);
+	} catch (NoSuchMethodException ex) {
+	    throw new IllegalStateException(ex);
 	}
     }
 
     public Object evaluate(String expr) throws DException {
-	synchronized(DuroDSession.class) {
-	    return evaluateI(expr);
+	try {
+	    synchronized(DuroDSession.class) {
+		return evaluateI(expr);
+	    }
+	} catch (ClassNotFoundException ex) {
+	    throw new IllegalStateException(ex);
+	} catch (NoSuchMethodException ex) {
+	    throw new IllegalStateException(ex);
 	}
     }
 

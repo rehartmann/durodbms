@@ -401,6 +401,7 @@ found.
 <dd>A read-only operator that matches <var>name</var> could be found,
 but it does not match the argument types.
 <dt>invalid_argument_error
+<dd>An invalid argument was passed to the operator.
 <dd>One or more of the arguments is a table that does not exist.
 (e.g. after a rollback)
 </dl>

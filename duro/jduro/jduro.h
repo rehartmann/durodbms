@@ -32,7 +32,9 @@ typedef struct {
     jclass updatableDoubleClass;
     jclass tupleClass;
     jclass byteArrayClass;
+    jclass updatableByteArrayClass;
     jclass hashSetClass;
+    jclass updatableArrayClass;
 
     jmethodID booleanConstructorID;
     jmethodID updatableBooleanConstructorID;
@@ -42,7 +44,10 @@ typedef struct {
     jmethodID doubleConstructorID;
     jmethodID updatableDoubleConstructorID;
     jmethodID tupleConstructorID;
+    jmethodID updatableByteArrayConstructorID;
     jmethodID hashSetConstructorID;
+    jmethodID updatableArrayConstructorID;
+
 } JDuro_session;
 
 JDuro_session *

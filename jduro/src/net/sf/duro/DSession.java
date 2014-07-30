@@ -12,6 +12,7 @@ public interface DSession extends AutoCloseable {
      * Executes Duro D/T code.
      * @param code		The code to execute
      * @throws DException	If a Duro error occurs
+     * @throws	IllegalStateException	If the code could not be executed
      */
     public void execute(String code) throws DException;
 
@@ -40,6 +41,7 @@ public interface DSession extends AutoCloseable {
      * 
      * @param	expr		The code to execute
      * @throws	DException	If a Duro error occurs
+     * @throws	IllegalStateException	If the code could not be executed
      */
     public Object evaluate(String expr) throws DException;
 

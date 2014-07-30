@@ -563,6 +563,32 @@ cleanup:
  * Evaluate *exp and store the result in *valp.
  * If *exp is the invocation of a relational operator,
  * *valp will become a transient virtual table.
+ *
+ * @par Errors:
+<dl>
+<dt>no_running_tx_error
+<dd><var>txp</var> is not NULL and *<var>txp</var> is not a running transaction.
+<dt>name_error
+<dd>A variable reference could not be resolved.
+<dt>operator_not_found_error
+<dd>A read-only operator that matches the name and argument types could not be
+found.
+<dt>type_mismatch_error
+<dd>A read-only operator that matches the name could be found,
+but it does not match the argument types.
+<dt>invalid_argument_error
+<dd>An invalid argument was passed to the operator.
+<dd>Evaluating the expression involved accessing a table that does not exist.
+(e.g. after a rollback)
+</dl>
+
+If <var>txp</var> is NULL, only built-in operators can be found.
+
+If evaluating the expression involves calling a user-defined operator
+which raises an error, this error is returned in *ecp.
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
  */
 int
 RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
