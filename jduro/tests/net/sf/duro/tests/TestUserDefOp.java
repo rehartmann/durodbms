@@ -12,6 +12,8 @@ import net.sf.duro.ByteArray;
 import net.sf.duro.DException;
 import net.sf.duro.DSession;
 import net.sf.duro.DuroDSession;
+import net.sf.duro.DuroPossrepObject;
+import net.sf.duro.PossrepObject;
 import net.sf.duro.Tuple;
 import net.sf.duro.UpdatableBoolean;
 import net.sf.duro.UpdatableDouble;
@@ -79,6 +81,7 @@ public class TestUserDefOp {
 
         session.execute("commit;");
     }
+
     // Implements the user-defined operator test2
     @SuppressWarnings("unused")
     private static String test2(String arg1, Integer arg2, Double arg3,
@@ -99,13 +102,37 @@ public class TestUserDefOp {
         	+ " returns string extern 'Java'"
         	+ " 'net.sf.duro.tests.TestUserDefOp.test2';"
         	+ " end operator;");
-        try {
         assertEquals("yo24.2true15x33tt",
         	session.evaluate("test2('yo', 2, 4.2, true, X'0105',"
         		+ " tuple { s 'x' }, rel { tup { n 33 } }, array('tt'))"));
+        session.execute("commit;");
+    }
+
+    @SuppressWarnings("unused")
+    private static String testDException() throws DException {
+	DSession session = DuroDSession.createSession();
+	try {
+	    throw new DException(session.evaluate("system_error('bar')"));
+	} finally {
+	    session.close();
+	}
+    }
+
+    @Test
+    public void testReadonlyDExc() throws DException {
+        session.execute("begin tx;");
+
+        session.execute("operator test_dex()"
+        	+ " returns string extern 'Java'"
+        	+ " 'net.sf.duro.tests.TestUserDefOp.testDException';"
+        	+ " end operator;");
+        try {
+            session.evaluate("test_dex()");
+            fail("no exception");
         } catch (DException ex) {
-            ex.printStackTrace();
-            throw ex;
+            PossrepObject errobj = (PossrepObject) ex.getError();
+            assertEquals("system_error", errobj.getTypeName());
+            assertEquals("bar", errobj.getProperty("msg"));
         }
         session.execute("commit;");
     }
@@ -211,4 +238,34 @@ public class TestUserDefOp {
 
         session.execute("commit;");
     }
+
+    @SuppressWarnings("unused")
+    private static void testUpdateDException(StringBuilder buf) throws DException {
+	DSession session = DuroDSession.createSession();
+	try {
+	    throw new DException(session.evaluate("system_error('bar')"));
+	} finally {
+	    session.close();
+	}
+    }
+
+    @Test
+    public void testUpdateDExc() throws DException {
+        session.execute("begin tx;");
+
+        session.execute("operator test_udex(s string) updates { s }"
+        	+ " extern 'Java' 'net.sf.duro.tests.TestUserDefOp.testUpdateDException';"
+        	+ " end operator;"
+        	+ "var s string;");
+        try {
+            session.execute("test_udex(s);");
+            fail("no exception");
+        } catch (DException ex) {
+            PossrepObject errobj = (PossrepObject) ex.getError();
+            assertEquals("system_error", errobj.getTypeName());
+            assertEquals("bar", errobj.getProperty("msg"));
+        }
+        session.execute("commit;");
+    }
+
 }

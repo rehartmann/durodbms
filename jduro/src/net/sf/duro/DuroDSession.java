@@ -6,7 +6,7 @@ package net.sf.duro;
  *
  */
 public class DuroDSession implements DSession {
-    private long interp = 0L; // Contains the pointer to the Duro_interp structure
+    public long interp = 0L; // Contains the pointer to the Duro_interp structure
 
     static { 
         System.loadLibrary("jduro"); 

@@ -15,6 +15,9 @@ typedef struct {
     /* The interpreter */
     Duro_interp interp;
 
+    /* The execution context */
+    RDB_exec_context ec;
+
     /* The Java environment */
     JNIEnv *env;
 
@@ -22,6 +25,7 @@ typedef struct {
     jobject sessionObj;
 
     /* References to classes used often */
+    jclass dExceptionClass;
     jclass booleanClass;
     jclass updatableBooleanClass;
     jclass integerClass;
@@ -63,7 +67,5 @@ JDuro_duro_obj_to_jobj(JNIEnv *, const RDB_object *, RDB_bool, JDuro_session *);
 int
 JDuro_jobj_to_duro_obj(JNIEnv *, jobject, RDB_object *,
         JDuro_session *, RDB_exec_context *);
-
-extern RDB_exec_context JDuro_ec;
 
 #endif /* JDURO_H_ */

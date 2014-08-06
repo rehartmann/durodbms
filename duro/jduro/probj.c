@@ -18,6 +18,7 @@ JNICALL Java_net_sf_duro_DuroPossrepObject_getProperty(JNIEnv *env, jclass clazz
     RDB_environment *envp;
     jobject result;
     RDB_object *objp = (RDB_object *) (intptr_t) ref;
+
     sessionp = JDuro_jobj_session(env, dInstance);
     if (sessionp == NULL) {
         return NULL;
@@ -34,20 +35,20 @@ JNICALL Java_net_sf_duro_DuroPossrepObject_getProperty(JNIEnv *env, jclass clazz
 
     /* Get property */
     RDB_init_obj(&compval);
-    if (RDB_obj_property(objp, namestr, &compval, envp, &JDuro_ec, txp) != RDB_OK) {
-        JDuro_throw_exception_from_error(env, sessionp, "getting property failed", &JDuro_ec);
+    if (RDB_obj_property(objp, namestr, &compval, envp, &sessionp->ec, txp) != RDB_OK) {
+        JDuro_throw_exception_from_error(env, sessionp, "getting property failed", &sessionp->ec);
         goto error;
     }
     result = JDuro_duro_obj_to_jobj(env, &compval, RDB_FALSE, sessionp);
     if (result == NULL)
         goto error;
 
-    RDB_destroy_obj(&compval, &JDuro_ec);
+    RDB_destroy_obj(&compval, &sessionp->ec);
     (*env)->ReleaseStringUTFChars(env, name, namestr);
     return result;
 
 error:
-    RDB_destroy_obj(&compval, &JDuro_ec);
+    RDB_destroy_obj(&compval, &sessionp->ec);
     (*env)->ReleaseStringUTFChars(env, name, namestr);
     return NULL;
 }
@@ -77,15 +78,15 @@ JNICALL Java_net_sf_duro_DuroPossrepObject_setProperty(JNIEnv *env, jclass clazz
 
     RDB_init_obj(&compval);
 
-    if (JDuro_jobj_to_duro_obj(env, value, &compval, sessionp, &JDuro_ec) != 0) {
-        RDB_destroy_obj(&compval, &JDuro_ec);
+    if (JDuro_jobj_to_duro_obj(env, value, &compval, sessionp, &sessionp->ec) != 0) {
+        RDB_destroy_obj(&compval, &sessionp->ec);
         return;
     }
 
-    if (RDB_obj_set_property(objp, namestr, &compval, envp, &JDuro_ec, txp) != RDB_OK)
+    if (RDB_obj_set_property(objp, namestr, &compval, envp, &sessionp->ec, txp) != RDB_OK)
         JDuro_throw_exception_from_error(env, sessionp, "setting property failed",
-                &JDuro_ec);
-    RDB_destroy_obj(&compval, &JDuro_ec);
+                &sessionp->ec);
+    RDB_destroy_obj(&compval, &sessionp->ec);
 }
 
 JNIEXPORT void
@@ -99,9 +100,9 @@ JNICALL Java_net_sf_duro_DuroPossrepObject_dispose(JNIEnv *env, jclass clazz,
     sessionp = JDuro_jobj_session(env, dInstance);
     if (sessionp == NULL)
         return;
-    if (RDB_free_obj(objp, &JDuro_ec) != RDB_OK)
+    if (RDB_free_obj(objp, &sessionp->ec) != RDB_OK)
         JDuro_throw_exception_from_error(env, sessionp, "freeing RDB_object failed",
-                &JDuro_ec);
+                &sessionp->ec);
 }
 
 JNIEXPORT jstring
@@ -145,14 +146,14 @@ JNICALL Java_net_sf_duro_DuroPossrepObject_equals(JNIEnv *env, jclass clazz,
     if (obj2p == NULL)
         return (jboolean) RDB_FALSE;
 
-    if (RDB_obj_equals(obj1p, obj2p, &JDuro_ec, txp, &result) != RDB_OK) {
+    if (RDB_obj_equals(obj1p, obj2p, &sessionp->ec, txp, &result) != RDB_OK) {
         /* If the types differ, return FALSE */
-        if (RDB_obj_type(RDB_get_err(&JDuro_ec)) == &RDB_TYPE_MISMATCH_ERROR) {
+        if (RDB_obj_type(RDB_get_err(&sessionp->ec)) == &RDB_TYPE_MISMATCH_ERROR) {
             return (jboolean) RDB_FALSE;
         }
 
         JDuro_throw_exception_from_error(env, sessionp, "RDB_obj_equals() failed",
-                &JDuro_ec);
+                &sessionp->ec);
         return (jboolean) RDB_FALSE;
     }
     return (jboolean) result;
@@ -395,11 +396,11 @@ JNICALL Java_net_sf_duro_ScalarType_typePossreps(JNIEnv *env, jclass clazz,
     namestr = (*env)->GetStringUTFChars(env, jtypename, NULL);
     if (namestr == NULL)
         return NULL;
-    typ = RDB_get_type(namestr, &JDuro_ec, txp);
+    typ = RDB_get_type(namestr, &sessionp->ec, txp);
     (*env)->ReleaseStringUTFChars(env, jtypename, namestr);
     if (typ == NULL) {
         JDuro_throw_exception_from_error(env, sessionp, "getting type failed",
-                &JDuro_ec);
+                &sessionp->ec);
         return NULL;
     }
 

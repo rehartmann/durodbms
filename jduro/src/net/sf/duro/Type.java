@@ -9,6 +9,8 @@ import java.io.Serializable;
  *
  */
 public abstract class Type implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     /**
      * Returns the name of a type.
      * @return the type name, or null if the type has no name.

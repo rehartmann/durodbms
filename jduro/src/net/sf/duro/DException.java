@@ -7,15 +7,15 @@ public class DException extends Exception {
 
     private static final long serialVersionUID = -8161811884817880524L;
 
-    private Object error = null;
+    private Object error;
 
-    DException() {}
+    public DException() {}
 
-    DException(String message) {
-	super(message);
+    public DException(Object error) {
+	this.error = error;
     }
 
-    DException(String message, Object error) {
+    public DException(String message, Object error) {
 	super(message);
 	this.error = error;
     }
@@ -44,7 +44,7 @@ public class DException extends Exception {
 		if (!(error instanceof PossrepObject)
 			|| !((PossrepObject) error).getTypeName()
 			    .equals("invalid_argument_error")) {
-		    throw new RuntimeException(ex);
+		    buf.append(": [error reading msg property]");
 		}
 	    }
 	}
