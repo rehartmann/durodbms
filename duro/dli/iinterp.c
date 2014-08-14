@@ -2908,7 +2908,28 @@ Duro_lookup_var(const char *name, Duro_interp *interp, RDB_exec_context *ecp)
 }
 
 /**
- * Provide information for operator creation
+ * Specifies how to create a user-defined operator implemented
+ * in the language given by argument <var>lang</var>.
+ *
+ * If the interpreter encounters a statement of the form
+ *
+ * <code>
+ * OPERATOR &lt;opname&gt; ( &lt;parameters&gt; ) RETURNS &lt;type&gt;
+ * EXTERN '&lt;lang&gt;' '&lt;external_ref&gt;'; END OPERATOR;
+ * </code>
+ *
+ * it will call RDB_create_ro_op() with arguments libname and symname
+ * set to infop->libname and info->ro_op_symname, respectively.
+ *
+ * If the interpreter encounters a statement of the form
+ *
+ * <code>
+ * OPERATOR &lt;opname&gt; ( &lt;parameters&gt; ) UPDATES { &lt;update parameters&gt; }
+ * EXTERN '&lt;lang&gt;' '&lt;external_ref&gt;'; END OPERATOR;
+ * </code>
+ *
+ * it will call RDB_create_update_op() with arguments libname and symname
+ * set to infop->libname and info->update_op_symname, respectively.
  */
 int
 Duro_dt_put_creop_info(Duro_interp *interp, const char *lang,
@@ -2923,7 +2944,8 @@ Duro_dt_put_creop_info(Duro_interp *interp, const char *lang,
 }
 
 /**
- * Get information for operator creation
+ * Return the information about operator creation that was
+ * previously pass to Duro_dt_put_creop_info().
  */
 Duro_uop_info *
 Duro_dt_get_creop_info(const Duro_interp *interp, const char *lang)

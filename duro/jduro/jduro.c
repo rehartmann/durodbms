@@ -1285,9 +1285,10 @@ JDuro_jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
     jsize len;
     jmethodID methodID;
     jclass clazz;
+    const char *strval;
     RDB_type *typ = RDB_obj_type(dstp);
     if ((*env)->IsInstanceOf(env, obj, sessionp->stringClass)) {
-        const char *strval = (*env)->GetStringUTFChars(env, obj, 0);
+        strval = (*env)->GetStringUTFChars(env, obj, 0);
 
         if (typ != NULL && typ != &RDB_STRING) {
             (*env)->ThrowNew(env,
@@ -1310,7 +1311,7 @@ JDuro_jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
         if (obj == NULL)
             return -1;
 
-        const char *strval = (*env)->GetStringUTFChars(env, obj, 0);
+        strval = (*env)->GetStringUTFChars(env, obj, 0);
 
         if (typ != NULL && typ != &RDB_STRING) {
             (*env)->ThrowNew(env,

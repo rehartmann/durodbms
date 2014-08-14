@@ -42,7 +42,7 @@ A value of FALSE indicates that an error occured and the program should exit.
 <p>A tiny example program:
 
 <pre>
-#!/usr/local/durodbms.0.21/bin/fcgi_durodt
+#!/usr/local/durodbms.0.22/bin/fcgi_durodt
 
 var request_accepted boolean;
 var counter init 0;
@@ -74,8 +74,12 @@ The programm accesses the database <var>D</var>
 stored in the database environment <var>/var/db/dbenv</var>.
 
 <pre>
-#!/usr/local/durodbms.0.21/bin/fcgi_durodt
+#!/usr/local/durodbms.0.22/bin/fcgi_durodt
 
+/*
+ * Connect to the database environment befor the loop
+ * so it has to be done only once
+ */
 connect('/var/db/dbenv');
 current_db := 'D';
 
@@ -112,7 +116,13 @@ while true;
 
         var tablenames array tuple{tablename string};
 
+        -- Start a transaction before accessing the catalog tables
         begin tx;
+        
+        /*
+         * Read the names of real and virtual tables and convert
+         * the result to an array
+         */
         load tablenames from (sys_rtables { tablename } union sys_vtables { tablename })
                 where the_name(tablename) like request_tp.pattern
                 order (tablename asc);

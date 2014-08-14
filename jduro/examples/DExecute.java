@@ -4,10 +4,18 @@ import java.io.InputStreamReader;
 import net.sf.duro.DSession;
 import net.sf.duro.DuroDSession;
 
+/**
+ * Command line interface for JDuro.
+ * Input in parentheses is passed to DSession.evaluate(),
+ * other input is passed to DSession.execute().
+ * 
+ * @author rene
+ *
+ */
 public class DExecute {
 
     /**
-     * @param args
+     * The main function. Command-line arguments are ignored.
      */
     public static void main(String[] args) {
 	DSession dInstance = null;

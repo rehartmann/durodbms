@@ -12,7 +12,6 @@ import net.sf.duro.ByteArray;
 import net.sf.duro.DException;
 import net.sf.duro.DSession;
 import net.sf.duro.DuroDSession;
-import net.sf.duro.DuroPossrepObject;
 import net.sf.duro.PossrepObject;
 import net.sf.duro.Tuple;
 import net.sf.duro.UpdatableBoolean;

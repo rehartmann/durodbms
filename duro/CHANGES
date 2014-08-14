@@ -4,6 +4,8 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 0.22
 
+- Added support for user-defined operators implemented in Java.
+
 - Argument of RDB_base_type() is now const.
 
 - Added function RDB_operator_param_count().

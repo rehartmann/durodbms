@@ -10,16 +10,53 @@ public interface DSession extends AutoCloseable {
 
     /**
      * Executes Duro D/T code.
+     * 
+     * <p>User-defined operators implemented in Java can be created by
+     * using the OPERATOR statment with the EXTERN keyword.
+     * 
+     * <p>Creating a user-defined read-only operator implemented by a Java method:
+     * 
+     * <p><code>OPERATOR &lt;opname&gt;(&lt;parameter_list&gt;) RETURNS &lt;type&gt;<br />
+     * EXTERN 'Java' '&lt;classname&gt;.&lt;methodname&gt;';<br />
+     * END OPERATOR;</code> 
+     *
+     * <p>The method must be static. Parameter types and return type map to
+     * Java types as described in DSession.evaluate().
+     * 
+     * <p>Creating an user-defined update operator implemented by a Java method:
+     * 
+     * <p><code>OPERATOR &lt;opname&gt;(&lt;parameter_list&gt;) UPDATES { &lt;update_param_list&gt; }<br />
+     * EXTERN 'Java' '&lt;classname&gt;.&lt;methodname&gt;';<br />
+     * END OPERATOR;</code> 
+     *
+     * <p>The method must be static. Non-update parameter types map to
+     * Java types as described in DSession.evaluate().
+     * Update parameter types map to Java classes as follows:
+     * 
+     * <dl>
+     * <dt><code>boolean</code> <dd><code>net.sf.duro.UpdatableBoolean</code>
+     * <dt><code>string</code> <dd><code>java.lang.StringBuilder</code>
+     * <dt><code>integer</code> <dd><code>net.sf.duro.UpdatableInteger</code>
+     * <dt><code>float</code> <dd><code>net.sf.duro.UpdatableDouble</code>
+     * <dt><code>binary</code> <dd><code>net.sf.duro.ByteArray</code>
+     * <dt><code>tuple { ... }</code> <dd>{@link net.sf.duro.Tuple}</dd>
+     * <dt><code>relation { ... }</code> <dd><code>java.util.Set</code></dd>
+     * <dt><code>array</code> <dd><code>java.util.ArrayList</code></dd>
+     * <dt>types with declared possible representations
+     * <dd><code>{@link net.sf.duro.PossrepObject}</code>
+     * </dl>
+     * 
      * @param code		The code to execute
      * @throws DException	If a Duro error occurs
      * @throws	IllegalStateException	If the code could not be executed
+     * 
      */
     public void execute(String code) throws DException;
 
     /**
      * Evaluates a Duro D/T expression.
      * 
-     * Duro types map to Java classes as follows:
+     * <p>Duro types map to Java classes as follows:
      * 
      * <dl>
      * <dt><code>boolean</code> <dd><code>java.lang.Boolean</code>
@@ -37,11 +74,10 @@ public interface DSession extends AutoCloseable {
      * <dd><code>{@link net.sf.duro.PossrepObject}</code>
      * </dl>
      * 
-     * 
-     * 
      * @param	expr		The code to execute
      * @throws	DException	If a Duro error occurs
      * @throws	IllegalStateException	If the code could not be executed
+     * 
      */
     public Object evaluate(String expr) throws DException;
 
