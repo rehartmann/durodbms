@@ -40,7 +40,7 @@ test transform {real tables} -setup $SETUP -body {
 
     duro::table expr t {(T1 WHERE A=0 {A}) UNION (T1 WHERE NOT(A=0) {A})} $tx
     set plan [duro::table getplan t $tx]
-    if {[string match UNION [lindex $::errorCode 1]]} {
+    if {[string first UNION $plan] != -1} {
         error "UNION was nor elmininated: $plan"
     }
 
