@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2013 Rene Hartmann.
+ * Copyright (C) 2003-2014 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -368,7 +368,7 @@ RDB_table_keys(RDB_object *tbp, RDB_exec_context *ecp, RDB_string_vec **keyvp)
         if (keyc == RDB_ERROR)
             return RDB_ERROR;
         if (freekey) {
-            tbp->val.tb.keyv = keyv; /* !! strings wurden nicht gedup't */
+            tbp->val.tb.keyv = keyv;
         } else {
             tbp->val.tb.keyv = dup_keyv(keyc, keyv, ecp);
             if (tbp->val.tb.keyv == NULL) {
