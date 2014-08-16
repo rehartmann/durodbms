@@ -419,6 +419,9 @@ error:
 
 /*
  * Infers keys from a relational expression.
+ *
+ * If *caller_must_freep is RDB_TRUE, the caller is responsible
+ * for freeing the inferred keys.
  */
 int
 RDB_infer_keys(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
