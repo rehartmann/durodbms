@@ -104,6 +104,13 @@ public class TestUserDefOp {
         assertEquals("yo24.2true15x33tt",
         	session.evaluate("test2('yo', 2, 4.2, true, X'0105',"
         		+ " tuple { s 'x' }, rel { tup { n 33 } }, array('tt'))"));
+
+        // Create a virtual table that uses the operator
+        session.execute("var r real relation { n int } init rel { tup { n 1 }, tup { n 2 }};");
+        session.execute("var v virtual"
+        	+ " r where test2('', n, 1.1, true, X'0909', tup { s '' }, rel { tup { n 7 } }, array('')) = '21.1true997';");
+        assertEquals(Integer.valueOf(2), session.evaluate("(tuple from v).n"));
+
         session.execute("commit;");
     }
 
