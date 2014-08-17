@@ -10,6 +10,8 @@ DuroDBMS 0.22
 
 - Added function RDB_operator_param_count().
 
+- Fixed bug in processing of OPERATOR statement with more than 2 parameters.
+
 DuroDBMS 0.21
 
 - Added DELETE with relation or tuple as 2nd argument to RDB_multi_assign.

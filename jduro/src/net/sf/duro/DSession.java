@@ -34,16 +34,16 @@ public interface DSession extends AutoCloseable {
      * Update parameter types map to Java classes as follows:
      * 
      * <dl>
-     * <dt><code>boolean</code> <dd><code>net.sf.duro.UpdatableBoolean</code>
-     * <dt><code>string</code> <dd><code>java.lang.StringBuilder</code>
-     * <dt><code>integer</code> <dd><code>net.sf.duro.UpdatableInteger</code>
-     * <dt><code>float</code> <dd><code>net.sf.duro.UpdatableDouble</code>
-     * <dt><code>binary</code> <dd><code>net.sf.duro.ByteArray</code>
+     * <dt><code>boolean</code> <dd>{@link net.sf.duro.UpdatableBoolean}</dd>
+     * <dt><code>string</code> <dd>java.lang.StringBuilder</dd>
+     * <dt><code>integer</code> <dd>{@link net.sf.duro.UpdatableInteger}</dd>
+     * <dt><code>float</code> <dd>{@link net.sf.duro.UpdatableDouble}</dd>
+     * <dt><code>binary</code> <dd>{@link net.sf.duro.ByteArray}</dd>
      * <dt><code>tuple { ... }</code> <dd>{@link net.sf.duro.Tuple}</dd>
-     * <dt><code>relation { ... }</code> <dd><code>java.util.Set</code></dd>
-     * <dt><code>array</code> <dd><code>java.util.ArrayList</code></dd>
+     * <dt><code>relation { ... }</code> <dd>java.util.Set</dd>
+     * <dt><code>array</code> <dd>java.util.ArrayList</dd>
      * <dt>types with declared possible representations
-     * <dd><code>{@link net.sf.duro.PossrepObject}</code>
+     * <dd>{@link net.sf.duro.PossrepObject}</dd>
      * </dl>
      * 
      * @param code		The code to execute

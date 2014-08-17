@@ -243,7 +243,7 @@ JDuro_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     jvalue *jargv = NULL;
     JDuro_session *sessionp = RDB_ec_property(ecp, "JDuro_Session");
     if (sessionp == NULL) {
-        RDB_raise_internal("JDuro_invoke_ro_op(): session not available", ecp);
+        RDB_raise_resource_not_found("JDuro_invoke_ro_op(): session not available", ecp);
         return RDB_ERROR;
     }
 
@@ -333,7 +333,7 @@ JDuro_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     jvalue *jargv = NULL;
     JDuro_session *sessionp = RDB_ec_property(ecp, "JDuro_Session");
     if (sessionp == NULL) {
-        RDB_raise_internal("JDuro_invoke_ro_op(): session not available", ecp);
+        RDB_raise_resource_not_found("JDuro_invoke_ro_op(): session not available", ecp);
         return RDB_ERROR;
     }
 
