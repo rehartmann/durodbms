@@ -2,6 +2,8 @@ $Id$
 
 Summary of Changes to DuroDBMS
 
+ - Upgrade to BerkeleyDB 6.1.
+
 DuroDBMS 0.22
 
 - Added support for user-defined operators implemented in Java.

@@ -9,7 +9,7 @@ Complete source code is available from http://sourceforge.net/projects/duro.
 
 The following software is required for running this version of DuroDBMS:
 
-- Berkeley DB Transactional Data Store (release 5.3 recommended)
+- Berkeley DB Transactional Data Store (release 6.1 or later)
 - POSIX.2 regular expressions (e.g., GNU Regex)
 - GNU Libtool
 - Tcl 8.1 or later (optional)

@@ -61,11 +61,10 @@ RDB_close_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp)
     int i;
     int ret;
 
-    if (stp->indexc > 0) {
-        /* Close secondary indexes */
-        for (i = 0; i < stp->indexc; i++) {
-            if (stp->indexv[i].idxp != NULL)
-                RDB_close_index(stp->indexv[i].idxp);
+    /* Close secondary indexes */
+    for (i = 0; i < stp->indexc; i++) {
+        if (stp->indexv[i].idxp != NULL) {
+            RDB_close_index(stp->indexv[i].idxp);
         }
     }
 
