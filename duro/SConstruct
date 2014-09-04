@@ -14,7 +14,7 @@ import os
 bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.6.1')
 with_durotcl = int(ARGUMENTS.get('with_durotcl', 1))
 
-release = '0.22'
+release = '0.23'
 
 env = Environment(ENV = os.environ, tools = ['default', 'textfile'])
 
@@ -24,8 +24,8 @@ oshlibsuffix = env['SHLIBSUFFIX']
 
 if env['PLATFORM'] == 'win32':
     default_prefix = 'C:'
-    env.Replace(LIBS = ['libdb53', 'ltdl', 'shlwapi'])
-    durolibs = ['libdb53', 'ltdl', 'regex', 'shlwapi']
+    env.Replace(LIBS = ['libdb61', 'ltdl', 'shlwapi'])
+    durolibs = ['libdb61', 'ltdl', 'regex', 'shlwapi']
 else:
     default_prefix = '/usr/local'
     env.Replace(SHLIBSUFFIX = env['SHLIBSUFFIX'] + '.' + release)
@@ -119,7 +119,7 @@ durotclsrc = ['tcl/duro.c', 'tcl/envcmd.c',
 libdurotcllibs = ['duro']
 
 if env['PLATFORM'] == 'win32':
-    libdurotcllibs += ['tcl85', 'libdb53']
+    libdurotcllibs += ['tcl85', 'libdb61']
     libdurotcl = env.SharedLibrary('durotcl', durotclsrc + ['durotcl.def'],
             LIBS = libdurotcllibs)
 else:
