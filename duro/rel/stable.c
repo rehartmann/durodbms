@@ -153,13 +153,36 @@ compare_field(const void *data1p, size_t len1, const void *data2p, size_t len2,
     return ret;
 }
 
+static RDB_compare_field *
+cmpvec(RDB_object *tbp, RDB_tbindex *indexp, RDB_exec_context *ecp)
+{
+    int i;
+    RDB_compare_field *cmpv = RDB_alloc(sizeof (RDB_compare_field) * indexp->attrc, ecp);
+    if (cmpv == NULL)
+        return NULL;
+    for (i = 0; i < indexp->attrc; i++) {
+        RDB_type *attrtyp = RDB_type_attr_type(tbp->typ,
+                indexp->attrv[i].attrname);
+
+        if (attrtyp->compare_op != NULL) {
+            cmpv[i].comparep = &compare_field;
+            cmpv[i].arg = attrtyp;
+        } else {
+            cmpv[i].comparep = NULL;
+        }
+        cmpv[i].asc = indexp->attrv[i].asc;
+    }
+    return cmpv;
+}
+
 int
-RDB_create_tbindex(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_tbindex *indexp, int flags)
+RDB_create_tbindex(RDB_object *tbp, RDB_tbindex *indexp, RDB_environment *envp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     int i;
-    RDB_compare_field *cmpv = 0;
+    int flags;
+    RDB_compare_field *cmpv = NULL;
     int *fieldv = RDB_alloc(sizeof(int *) * indexp->attrc, ecp);
 
     if (fieldv == NULL) {
@@ -167,23 +190,11 @@ RDB_create_tbindex(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp
         goto cleanup;
     }
 
-    if (RDB_ORDERED & flags) {
-        cmpv = RDB_alloc(sizeof (RDB_compare_field) * indexp->attrc, ecp);
+    if (indexp->ordered) {
+        cmpv = cmpvec(tbp, indexp, ecp);
         if (cmpv == NULL) {
             ret = RDB_ERROR;
             goto cleanup;
-        }
-        for (i = 0; i < indexp->attrc; i++) {
-            RDB_type *attrtyp = RDB_type_attr_type(tbp->typ,
-                    indexp->attrv[i].attrname);
-
-            if (attrtyp->compare_op != NULL) {
-                cmpv[i].comparep = &compare_field;
-                cmpv[i].arg = attrtyp;
-            } else {
-                cmpv[i].comparep = NULL;
-            }
-            cmpv[i].asc = indexp->attrv[i].asc;
         }
     }
 
@@ -196,6 +207,12 @@ RDB_create_tbindex(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp
         }
         fieldv[i] = *np;
     }
+
+    flags = 0;
+    if (indexp->unique)
+        flags = RDB_UNIQUE;
+    if (indexp->ordered)
+        flags |= RDB_ORDERED;
 
     /* Create record-layer index */
     ret = RDB_create_index(tbp->val.tb.stp->recmapp,
@@ -299,16 +316,10 @@ create_indexes(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp,
     for (i = 0; i < tbp->val.tb.stp->indexc; i++) {
         /* Create a BDB secondary index if it's not the primary index */
         if ((!RDB_table_is_persistent(tbp) && i > 0)
-                || (RDB_table_is_persistent(tbp) && !index_is_primary(tbp->val.tb.stp->indexv[i].name))) {
-            int flags = 0;
-
-            if (tbp->val.tb.stp->indexv[i].unique)
-                flags = RDB_UNIQUE;
-            if (tbp->val.tb.stp->indexv[i].ordered)
-                flags |= RDB_ORDERED;
-
-            if (RDB_create_tbindex(tbp, envp, ecp, txp,
-                    &tbp->val.tb.stp->indexv[i], flags) != RDB_OK)
+                || (RDB_table_is_persistent(tbp)
+                    && !index_is_primary(tbp->val.tb.stp->indexv[i].name))) {
+            if (RDB_create_tbindex(tbp, &tbp->val.tb.stp->indexv[i], envp,
+                    ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         }
     }
@@ -691,7 +702,7 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
     for (i = 0; i < indexc; i++) {
         char *p = strchr(indexv[i].name, '$');
         if (p == NULL || strcmp (p, "$0") != 0) {
-            ret = RDB_open_table_index(tbp, &indexv[i], envp, ecp, txp);
+            ret = RDB_open_tbindex(tbp, &indexv[i], envp, ecp, txp);
             if (ret != RDB_OK)
                 goto error;
         } else {
@@ -723,16 +734,25 @@ error:
 }
 
 int
-RDB_open_table_index(RDB_object *tbp, RDB_tbindex *indexp,
+RDB_open_tbindex(RDB_object *tbp, RDB_tbindex *indexp,
         RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     int i;
+    RDB_compare_field *cmpv = NULL;
     int *fieldv = RDB_alloc(sizeof(int *) * indexp->attrc, ecp);
 
     if (fieldv == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
+    }
+
+    if (indexp->ordered) {
+        cmpv = cmpvec(tbp, indexp, ecp);
+        if (cmpv == NULL) {
+            ret = RDB_ERROR;
+            goto cleanup;
+        }
     }
 
     /* get index numbers */
@@ -744,16 +764,18 @@ RDB_open_table_index(RDB_object *tbp, RDB_tbindex *indexp,
     ret = RDB_open_index(tbp->val.tb.stp->recmapp,
                   RDB_table_is_persistent(tbp) ? indexp->name : NULL,
                   RDB_table_is_persistent(tbp) ? RDB_DATAFILE : NULL,
-                  envp, indexp->attrc, fieldv, indexp->unique ? RDB_UNIQUE : 0,
+                  envp, indexp->attrc, fieldv, cmpv, indexp->unique ? RDB_UNIQUE : 0,
                   txp != NULL ? txp->txid : NULL, &indexp->idxp);
+    if (ret != RDB_OK) {
+        RDB_handle_errcode(ret, ecp, txp);
+        indexp->idxp = NULL;
+        ret = RDB_ERROR;
+    }
 
 cleanup:
     RDB_free(fieldv);
-    if (ret != 0) {
-        RDB_handle_errcode(ret, ecp, txp);
-        return RDB_ERROR;
-    }
-    return RDB_OK;
+    RDB_free(cmpv);
+    return ret;
 }
 
 int

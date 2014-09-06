@@ -1284,7 +1284,7 @@ open_indexes(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     for (i = 0; i < indexc; i++) {
         char *p = strchr(indexv[i].name, '$');
         if (p == NULL || strcmp (p, "$0") != 0) {
-            ret = RDB_open_table_index(tbp, &indexv[i], dbrootp->envp, ecp,
+            ret = RDB_open_tbindex(tbp, &indexv[i], dbrootp->envp, ecp,
                     txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;

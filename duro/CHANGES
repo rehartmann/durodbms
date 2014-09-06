@@ -2,6 +2,10 @@ $Id$
 
 Summary of Changes to DuroDBMS
 
+DuroDBMS 0.23
+
+ - Fixed bug that caused secondary index corruption.
+
  - Upgrade to BerkeleyDB 6.1.
 
 DuroDBMS 0.22

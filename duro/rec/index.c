@@ -149,10 +149,10 @@ get_field(RDB_index *ixp, int fi, void *datap, size_t len, size_t *lenp,
 }
 
 static int
-compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p)
+compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p, size_t *locp)
 {
     int i;
-    RDB_index *ixp = (RDB_index *) dbp->app_private;
+    RDB_index *ixp = dbp->app_private;
 
     for (i = 0; i < ixp->fieldc; i++) {
         int offs1, offs2;
@@ -236,7 +236,7 @@ RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     if (ret != 0) {
         goto error;
     }
-   
+
     *ixpp = ixp;
     return RDB_OK;
 
@@ -247,15 +247,31 @@ error:
 
 int
 RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
-        RDB_environment *envp, int fieldc, const int fieldv[], int flags,
-        DB_TXN *txid, RDB_index **ixpp)
+        RDB_environment *envp, int fieldc, const int fieldv[],
+        const RDB_compare_field cmpv[], int flags, DB_TXN *txid, RDB_index **ixpp)
 {
     RDB_index *ixp;
     int ret;
+    int i;
 
     ret = new_index(rmp, namp, filenamp, envp, fieldc, fieldv, &ixp);
     if (ret != 0)
         return ret;
+
+    if (cmpv != NULL) {
+        ixp->cmpv = malloc(sizeof (RDB_compare_field) * fieldc);
+        if (ixp->cmpv == NULL)
+            goto error;
+        for (i = 0; i < fieldc; i++) {
+            ixp->cmpv[i].comparep = cmpv[i].comparep;
+            ixp->cmpv[i].arg = cmpv[i].arg;
+            ixp->cmpv[i].asc = cmpv[i].asc;
+        }
+
+        /* Set comparison function */
+        ixp->dbp->app_private = ixp;
+        ixp->dbp->set_bt_compare(ixp->dbp, &compare_key);
+    }
 
     if (!(RDB_UNIQUE & flags))
         ixp->dbp->set_flags(ixp->dbp, DB_DUPSORT);

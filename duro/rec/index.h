@@ -2,7 +2,7 @@
 #define RDB_INDEX_H
 
 /*
- * Copyright (C) 2004 René Hartmann.
+ * Copyright (C) 2004 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -33,7 +33,7 @@ RDB_create_index(RDB_recmap *, const char *namp, const char *filenamp,
 int
 RDB_open_index(RDB_recmap *, const char *namp, const char *filenamp,
         RDB_environment *dsp, int fieldc, const int fieldv[],
-        int flags, DB_TXN *, RDB_index **);
+        const RDB_compare_field cmpv[], int flags, DB_TXN *, RDB_index **);
 
 /* Close an index. */
 int

@@ -1353,6 +1353,39 @@ test matching_index {MINUS, INTERSECT, SEMIJOIN, SEMIMINUS with index on table #
 1 C
 }
 
+test index_reopen {creating and filling a table with an index and accessing it after closing and reopening the connection} \
+ -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt -e dbenv << {
+        current_db := 'D';
+
+        begin tx;
+
+        var dictionary real relation { word string, normword string } key { word };
+        index dict_normword dictionary (normword);
+        
+        insert dictionary tup { normword 'an', word 'an' };
+        insert dictionary tup { normword 'blau', word 'blau' };
+        insert dictionary tup { normword 'Bo', word 'Bo"' };
+        insert dictionary tup { normword 'Boot', word 'Boot' };
+
+        commit;
+
+        disconnect();
+
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+        put(is_empty(dictionary where normword = 'an')); put_line('');
+        commit;
+
+        begin tx;
+        delete dictionary;
+        commit;
+    }
+} -result {FALSE
+}
+
 test utypetable {table with attribute of user-defined type} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';

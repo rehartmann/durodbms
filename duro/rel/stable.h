@@ -54,11 +54,11 @@ RDB_int *
 RDB_field_no(RDB_stored_table *, const char *attrname);
 
 int
-RDB_create_tbindex(RDB_object *tbp, RDB_environment *, RDB_exec_context *,
-        RDB_transaction *, RDB_tbindex *, int);
+RDB_create_tbindex(RDB_object *, RDB_tbindex *, RDB_environment *,
+        RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_open_table_index(RDB_object *tbp, RDB_tbindex *indexp,
-        RDB_environment *, RDB_exec_context *, RDB_transaction *);
+RDB_open_tbindex(RDB_object *, RDB_tbindex *, RDB_environment *,
+        RDB_exec_context *, RDB_transaction *);
 
 #endif /*STABLE_H*/

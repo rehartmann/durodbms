@@ -1039,8 +1039,8 @@ RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,
         indexp->ordered = (RDB_bool) (RDB_ORDERED & flags);
 
         /* Create index */
-        if (RDB_create_tbindex(tbp, RDB_db_env(RDB_tx_db(txp)), ecp, txp,
-                indexp, flags) != RDB_OK) {
+        if (RDB_create_tbindex(tbp, indexp, RDB_db_env(RDB_tx_db(txp)),
+                ecp, txp) != RDB_OK) {
             goto error;
         }
     }
@@ -1128,7 +1128,7 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
             for (i = 0; i < tbp->val.tb.stp->indexc; i++) {
                 char *p = strchr(tbp->val.tb.stp->indexv[i].name, '$');
                 if (p == NULL || strcmp (p, "$0") != 0) {
-                    ret = RDB_open_table_index(tbp,
+                    ret = RDB_open_tbindex(tbp,
                             &tbp->val.tb.stp->indexv[i], RDB_db_env(RDB_tx_db(txp)), ecp,
                             txp);
                     if (ret != RDB_OK)
