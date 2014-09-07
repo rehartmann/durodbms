@@ -111,6 +111,7 @@ RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
         return RDB_ERROR;
     }
 
+    /* Check if the attribute types are implemented */
     if (!RDB_type_is_valid(reltyp)) {
         RDB_raise_invalid_argument("type not implemented", ecp);
         return RDB_ERROR;

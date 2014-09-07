@@ -674,3 +674,5 @@ test parser {Parser} -match glob -body {
     } res
     puts $res
 } -output {*syntax_error*}
+
+cleanupTests

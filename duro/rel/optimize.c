@@ -1625,7 +1625,7 @@ mutate_join(RDB_expression *texp, RDB_expression **tbpv, int cap,
 
 static int
 mutate_tbref(RDB_expression *texp, RDB_expression **tbpv, int cap,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_exec_context *ecp)
 {
     if (texp->def.tbref.tbp->kind == RDB_OB_TABLE
             && texp->def.tbref.tbp->val.tb.stp != NULL
@@ -1638,8 +1638,7 @@ mutate_tbref(RDB_expression *texp, RDB_expression **tbpv, int cap,
         /* For each index, generate an expression that uses the index */
         for (i = 0; i < tbc; i++) {
             RDB_tbindex *indexp = &texp->def.tbref.tbp->val.tb.stp->indexv[i];
-            RDB_expression *tiexp = RDB_table_ref(
-                    texp->def.tbref.tbp, ecp);
+            RDB_expression *tiexp = RDB_table_ref(texp->def.tbref.tbp, ecp);
             if (tiexp == NULL)
                 return RDB_ERROR;
             tiexp->def.tbref.indexp = indexp;
@@ -1659,7 +1658,7 @@ mutate(RDB_expression *exp, RDB_expression **tbpv, int cap,
         RDB_expression *empty_exp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (exp->kind == RDB_EX_TBP) {
-        return mutate_tbref(exp, tbpv, cap, ecp, txp);
+        return mutate_tbref(exp, tbpv, cap, ecp);
     }
 
     if (exp->kind != RDB_EX_RO_OP)
@@ -1792,7 +1791,7 @@ static void
 trace_plan_cost(RDB_expression *exp, int cost, const char *txt,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_database *dbp = RDB_tx_db(txp);
+    RDB_database *dbp = txp != NULL ? RDB_tx_db(txp) : NULL;
     /* dbp could be NULL, e.g. when RDB_get_dbs() is executed */
     if (dbp != NULL && RDB_env_trace(RDB_db_env(dbp)) > 0) {
         /*
@@ -1884,9 +1883,7 @@ RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
     RDB_expression *nexp;
     RDB_expression *optexp;
 
-    if (txp != NULL) {
-        trace_plan_cost(texp, -1, "plan before transformation", ecp, txp);
-    }
+    trace_plan_cost(texp, -1, "plan before transformation", ecp, txp);
 
     /*
      * Make a deep copy of the table, so it can be transformed freely
@@ -1902,18 +1899,10 @@ RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
         return NULL;
 
     /*
-     * If no tx, optimization ends here
-     */
-    if (txp == NULL) {
-        nexp->optimized = RDB_TRUE;
-        return nexp;
-    }
-
-    /*
      * Replace tables which are declared to be empty
      * by a constraint
      */
-    if (RDB_tx_db(txp) != NULL) {
+    if (txp != NULL && RDB_tx_db(txp) != NULL) {
         if (empty_exp != NULL) {
             if (replace_empty(nexp, empty_exp, ecp, txp) != RDB_OK)
                 return NULL;

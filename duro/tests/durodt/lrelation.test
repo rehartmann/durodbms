@@ -393,8 +393,8 @@ invalid TCLOSE caught
 test delete {DELETE operator} -body {
     exec $testdir/../../dli/durodt << {
 	    var pr1 private relation {n int, s string}
-	            init rel{tup{n 1, s 'one'}, tup{n 2, s 'two'}, tup{n 3, s 'two'},
-	                     tup{n 4, s 'two'}, tup{n 5, s 'five'}}
+	            init rel {tup {n 1, s 'one'}, tup {n 2, s 'two'}, tup {n 3, s 'two'},
+	                      tup {n 4, s 'two'}, tup {n 5, s 'five'}}
 	            key {n};
 	
 	    delete pr1 where n=1;
@@ -409,3 +409,23 @@ test delete {DELETE operator} -body {
 	}
 } -result {5 five
 }
+
+test bigtable_explain {Big local table and EXPLAIN} -match glob -body {
+    exec $testdir/../../dli/durodt << {
+        var pr private relation {a int, b int} key {a};
+        var i int;
+        for i := 1 to 500;
+            insert pr tup {a i, b i};
+        end for;
+        explain pr where a = 400 order();
+        var tp tuple same_heading_as(pr);
+        for tp in pr where b = 200 order();
+            put (tp.b);
+            put_line('');
+        end for;
+    }
+} -result {*pr INDEX pr$0*
+200
+}
+
+cleanupTests

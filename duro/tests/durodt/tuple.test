@@ -103,3 +103,5 @@ test union {tuple UNION} -body {
 2
 yo
 }
+
+cleanupTests

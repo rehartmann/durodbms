@@ -254,6 +254,8 @@ keys_to_indexes(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     }
 
     for (i = 0; i < tbp->val.tb.keyc; i++) {
+        const char *tbname;
+
         tbp->val.tb.stp->indexv[oindexc + i].unique = RDB_TRUE;
         tbp->val.tb.stp->indexv[oindexc + i].ordered = RDB_FALSE;
         tbp->val.tb.stp->indexv[oindexc + i].attrc = tbp->val.tb.keyv[i].strc;
@@ -271,24 +273,22 @@ keys_to_indexes(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             }
         }
 
-        if (RDB_table_is_persistent(tbp)) {
-            tbp->val.tb.stp->indexv[oindexc + i].name = RDB_alloc(strlen(RDB_table_name(tbp)) + 4, ecp);
-            if (tbp->val.tb.stp->indexv[oindexc + i].name == NULL) {
-                return RDB_ERROR;
-            }
-            /* build index name */            
-            sprintf(tbp->val.tb.stp->indexv[oindexc + i].name, "%s$%d", RDB_table_name(tbp), i);
+        tbname = RDB_table_name(tbp);
+        tbp->val.tb.stp->indexv[oindexc + i].name = RDB_alloc((tbname != NULL ? strlen(tbname) : 0) + 4, ecp);
+        if (tbp->val.tb.stp->indexv[oindexc + i].name == NULL) {
+            return RDB_ERROR;
+        }
+        /* build index name */
+        sprintf(tbp->val.tb.stp->indexv[oindexc + i].name, "%s$%d",
+                tbname != NULL ? tbname : "", i);
 
-            if (RDB_table_is_user(tbp)) {
-                ret = RDB_cat_insert_index(tbp->val.tb.stp->indexv[oindexc + i].name,
-                        tbp->val.tb.stp->indexv[oindexc + i].attrc,
-                        tbp->val.tb.stp->indexv[oindexc + i].attrv,
-                        RDB_TRUE, RDB_FALSE, RDB_table_name(tbp), ecp, txp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-        } else {
-            tbp->val.tb.stp->indexv[oindexc + i].name = NULL;
+        if (RDB_table_is_persistent(tbp) && RDB_table_is_user(tbp)) {
+            ret = RDB_cat_insert_index(tbp->val.tb.stp->indexv[oindexc + i].name,
+                    tbp->val.tb.stp->indexv[oindexc + i].attrc,
+                    tbp->val.tb.stp->indexv[oindexc + i].attrv,
+                    RDB_TRUE, RDB_FALSE, RDB_table_name(tbp), ecp, txp);
+            if (ret != RDB_OK)
+                return ret;
         }
 
         tbp->val.tb.stp->indexv[oindexc + i].idxp = NULL;

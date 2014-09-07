@@ -161,3 +161,5 @@ test rollback {rollback after accessing public} -setup $SETUP -cleanup $CLEANUP 
         rollback;
     }
 }
+
+cleanupTests

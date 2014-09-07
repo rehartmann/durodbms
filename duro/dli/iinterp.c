@@ -532,17 +532,14 @@ exec_explain(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
     RDB_expression *exp;
     RDB_object strobj;
     int seqitc;
+    RDB_expression *resexp = NULL;
     RDB_seq_item *seqitv = NULL;
     RDB_expression *optexp = NULL;
-
-    if (interp->txnp == NULL) {
-        RDB_raise_no_running_tx(ecp);
-        return RDB_ERROR;
-    }
+    RDB_transaction *txp = interp->txnp != NULL ? &interp->txnp->tx : NULL;
 
     RDB_init_obj(&strobj);
 
-    exp = RDB_parse_node_expr(nodep, ecp, &interp->txnp->tx);
+    exp = RDB_parse_node_expr(nodep, ecp, txp);
     if (exp == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
@@ -557,8 +554,9 @@ exec_explain(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
         }
     }
 
-    /* Perform type checking */
-    if (RDB_expr_type(exp, NULL, NULL, interp->envp, ecp, &interp->txnp->tx) == NULL) {
+    /* Resolve local variables */
+    resexp = RDB_expr_resolve_varnames(exp, &Duro_get_var, interp, ecp, txp);
+    if (resexp == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
     }
@@ -570,21 +568,21 @@ exec_explain(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
     }
 
     /* Optimize */
-    optexp = RDB_optimize_expr(exp, seqitc, seqitv, NULL, ecp, &interp->txnp->tx);
+    optexp = RDB_optimize_expr(resexp, seqitc, seqitv, NULL, ecp, txp);
     if (optexp == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
     }
 
     /* Convert tree to string */
-    ret = RDB_expr_to_str(&strobj, optexp, ecp, &interp->txnp->tx, RDB_SHOW_INDEX);
+    ret = RDB_expr_to_str(&strobj, optexp, ecp, txp, RDB_SHOW_INDEX);
     if (ret != RDB_OK) {
         goto cleanup;
     }
 
     ret = puts(RDB_obj_string(&strobj));
     if (ret == EOF) {
-        RDB_handle_errcode(errno, ecp, &interp->txnp->tx);
+        RDB_handle_errcode(errno, ecp, txp);
     } else {
         ret = RDB_OK;
     }
@@ -595,6 +593,9 @@ cleanup:
         RDB_free(seqitv);
     if (optexp != NULL) {
         RDB_del_expr(optexp, ecp);
+    }
+    if (resexp != NULL) {
+        RDB_del_expr(resexp, ecp);
     }
     RDB_destroy_obj(&strobj, ecp);
     return ret;

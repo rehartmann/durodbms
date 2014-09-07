@@ -915,7 +915,7 @@ RDB_dfl_obj_equals(int argc, RDB_object *argv[], RDB_operator *op,
             RDB_destroy_obj(&retval, ecp);
             return ret;
         }
-        RDB_bool_to_obj(retvalp, (RDB_bool) RDB_obj_int(&retval) == 0);
+        RDB_bool_to_obj(retvalp, (RDB_bool) (RDB_obj_int(&retval) == 0));
         RDB_destroy_obj(&retval, ecp);
         return RDB_OK;
     }
