@@ -11,7 +11,7 @@ namespace import ::tcltest::*
 source [file dirname [info script]]/setup.tcl
 
 test deedum {TABLE_DEE and TABLE_DUM} -setup $SETUP -body {
-    set dbenv [duro::env open -create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env create [configure -tmpdir]/dbenv]
 
     # Create Database
     duro::db create $dbenv TEST

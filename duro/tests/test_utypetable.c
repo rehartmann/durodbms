@@ -195,7 +195,7 @@ main(void)
     int ret;
     RDB_exec_context ec;
 
-    ret = RDB_open_env("dbenv", &dsp, RDB_CREATE);
+    ret = RDB_open_env("dbenv", &dsp, RDB_RECOVER);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n",
                 RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));

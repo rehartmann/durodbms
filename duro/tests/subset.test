@@ -14,11 +14,11 @@ namespace import ::tcltest::*
 source [file dirname [info script]]/setup.tcl
 
 test subset {SUBSET_OF operator} -setup $SETUP -body {
-    set dbenv [duro::env open -create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env create [configure -tmpdir]/dbenv]
 
     # Create Database
     duro::db create $dbenv TEST
-    
+
     # Create tables
     set tx [duro::begin $dbenv TEST]
     

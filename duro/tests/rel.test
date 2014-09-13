@@ -14,7 +14,7 @@ eval ::tcltest::configure $argv
 namespace import ::tcltest::*
 
 test rel {relation-valued attributes} -setup $SETUP -body {
-    set dbenv [duro::env open -create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env create [configure -tmpdir]/dbenv]
 
     # Create Database
     duro::db create $dbenv TEST

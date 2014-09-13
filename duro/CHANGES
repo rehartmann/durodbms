@@ -4,6 +4,10 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 0.23
 
+ - Added RDB_create_env(), dropped RDB_CREATE flag of RDB_open_env()
+   in favour of RDB_RECOVER. The Durotcl command duro::env was
+   changed accordingly. 
+
  - EXPLAIN now supported for local tables
 
  - Fixed bug that caused secondary index corruption.

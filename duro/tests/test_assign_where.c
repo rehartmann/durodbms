@@ -88,7 +88,7 @@ main(void)
     RDB_database *dbp;
     RDB_exec_context ec;
     
-    assert(RDB_open_env("dbenv", &envp, RDB_CREATE) == RDB_OK);
+    assert(RDB_open_env("dbenv", &envp, RDB_RECOVER) == RDB_OK);
 
     RDB_bdb_env(envp)->set_errfile(RDB_bdb_env(envp), stderr);
 

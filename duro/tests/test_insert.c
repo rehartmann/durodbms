@@ -112,7 +112,7 @@ main(void)
     int ret;
     RDB_exec_context ec;
 
-    ret = RDB_open_env("dbenv", &envp, RDB_CREATE);
+    ret = RDB_open_env("dbenv", &envp, RDB_RECOVER);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
         return 1;

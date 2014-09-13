@@ -14,7 +14,7 @@ namespace import ::tcltest::*
 source [file dirname [info script]]/setup.tcl
 
 test tconstraint {tuple constraint} -setup $SETUP -body {
-    set dbenv [duro::env open -create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env create [configure -tmpdir]/dbenv]
 
     # Create Database
     duro::db create $dbenv TEST
@@ -69,7 +69,7 @@ test tconstraint {tuple constraint} -setup $SETUP -body {
 }
 
 test constraints {table and database constraints} -setup $SETUP -body {
-    set dbenv [duro::env open -create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env create [configure -tmpdir]/dbenv]
 
     # Create Database
     duro::db create $dbenv TEST
@@ -95,8 +95,8 @@ test constraints {table and database constraints} -setup $SETUP -body {
     duro::env close $dbenv
 
     # Reopen DB environment
-    set dbenv [duro::env open -create [configure -tmpdir]/dbenv]
-    
+    set dbenv [duro::env create [configure -tmpdir]/dbenv]
+
     set tx [duro::begin $dbenv TEST]
     
     # Must succeed

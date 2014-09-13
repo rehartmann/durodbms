@@ -14,7 +14,7 @@ namespace import ::tcltest::*
 source [file dirname [info script]]/setup.tcl
 
 test rtables {real tables} -setup $SETUP -body {
-    set dbenv [duro::env open -create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env create [configure -tmpdir]/dbenv]
 
     # Create Database
     duro::db create $dbenv TEST
@@ -354,7 +354,7 @@ test rtables {real tables} -setup $SETUP -body {
 }
 
 test droptables {create and drop tables} -setup $SETUP -body {
-    set dbenv [duro::env open -create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env create [configure -tmpdir]/dbenv]
 
     # Create Database
     duro::db create $dbenv TEST

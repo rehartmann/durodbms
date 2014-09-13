@@ -174,7 +174,7 @@ main(int argc, char *argv[])
     if (envname != NULL) {
         ret = RDB_open_env(envname, &envp, 0);
         if (ret != RDB_OK) {
-            ret = RDB_open_env(envname, &envp, RDB_CREATE);
+            ret = RDB_open_env(envname, &envp, RDB_RECOVER);
             if (ret != RDB_OK) {
                 fprintf(stderr, "unable to open environment %s: %s\n", envname,
                     db_strerror(errno));

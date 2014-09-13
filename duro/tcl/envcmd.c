@@ -66,6 +66,8 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
     RDB_environment *envp;
     Tcl_HashEntry *entryp;
     TclState *statep = (TclState *) data;
+    int new;
+    char handle[20];
 
     if (argc < 2) {
         Tcl_SetResult(interp, "wrong # args: should be \"env option ?arg ...?\"",
@@ -76,19 +78,17 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
     RDB_clear_err(statep->current_ecp);
 
     if (strcmp(argv[1], "open") == 0) {
-        int new;
-        char handle[20];
         int flags;
         const char *path;
     
         if (argc < 3 || argc > 4) {
-            Tcl_SetResult(interp, "wrong # args: should be \"env open [-create] path\"",
+            Tcl_SetResult(interp, "wrong # args: should be \"env open [-recover] path\"",
                     TCL_STATIC);
             return TCL_ERROR;
         }
 
-        if (strcmp(argv[2], "-create") == 0) {
-            flags = RDB_CREATE;
+        if (strcmp(argv[2], "-recover") == 0) {
+            flags = RDB_RECOVER;
             path = argv[3];
         } else {
             flags = 0;
@@ -96,6 +96,34 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
         }
 
         ret = RDB_open_env(path, &envp, flags);
+        if (ret != RDB_OK) {
+            Tcl_AppendResult(interp, "database error: ", db_strerror(ret),
+                    (char *) NULL);
+
+            /* If it is a POSIX error, set errorCode */
+            if (strerror(ret) != NULL) {
+                Tcl_SetErrno(ret);
+                Tcl_PosixError(interp);
+            }
+            return TCL_ERROR;
+        }
+
+        statep->env_uid++;
+        sprintf(handle, "env%d", statep->env_uid);
+        entryp = Tcl_CreateHashEntry(&statep->envs, handle, &new);
+        Tcl_SetHashValue(entryp, (ClientData)envp);
+
+        Tcl_SetStringObj(Tcl_GetObjResult(interp), handle, -1);
+        return TCL_OK;
+    }
+    if (strcmp(argv[1], "create") == 0) {
+        if (argc != 3) {
+            Tcl_SetResult(interp, "wrong # args: should be \"env create path\"",
+                    TCL_STATIC);
+            return TCL_ERROR;
+        }
+
+        ret = RDB_create_env(argv[2], &envp);
         if (ret != RDB_OK) {
             Tcl_AppendResult(interp, "database error: ", db_strerror(ret),
                     (char *) NULL);

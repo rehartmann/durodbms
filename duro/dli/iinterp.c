@@ -67,23 +67,50 @@ connect_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /*
-     * Try opening the environment without RDB_CREATE first
+     * Try opening the environment without RDB_RECOVER first
      * to attach to existing memory pool
      */
+
     Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
+
+    if (interp->envp != NULL) {
+        printf("closing\n");
+        RDB_close_env(interp->envp);
+    }
+
     int ret = RDB_open_env(RDB_obj_string(argv[0]), &interp->envp, 0);
     if (ret != RDB_OK) {
         /*
-         * Retry with RDB_CREATE option, re-creating necessary files
+         * Retry with RDB_RECOVER option, re-creating necessary files
          * and running recovery
          */
         int ret = RDB_open_env(RDB_obj_string(argv[0]), &interp->envp,
-                RDB_CREATE);
+                RDB_RECOVER);
         if (ret != RDB_OK) {
             RDB_handle_errcode(ret, ecp, txp);
             interp->envp = NULL;
             return RDB_ERROR;
         }
+    }
+    return RDB_OK;
+}
+
+static int
+connect_create_op(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    /*
+     * Try opening the environment without RDB_RECOVER first
+     * to attach to existing memory pool
+     */
+    Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
+    RDB_bool create = RDB_obj_bool(argv[1]);
+
+    int ret = RDB_open_env(RDB_obj_string(argv[0]), &interp->envp, create ? 0 : RDB_RECOVER);
+    if (ret != RDB_OK) {
+        RDB_handle_errcode(ret, ecp, txp);
+        interp->envp = NULL;
+        return RDB_ERROR;
     }
     return RDB_OK;
 }
@@ -166,11 +193,11 @@ create_env_op(int argc, RDB_object *argv[], RDB_operator *op,
             | S_IRGRP | S_IWGRP | S_IXGRP);
 #endif
     if (ret == -1 && errno != EEXIST) {
-        RDB_raise_system(strerror(errno), ecp);
+        RDB_errno_to_error(errno, ecp);
         return RDB_ERROR;
     }
 
-    ret = RDB_open_env(RDB_obj_string(argv[0]), &interp->envp, RDB_CREATE);
+    ret = RDB_create_env(RDB_obj_string(argv[0]), &interp->envp);
     if (ret != RDB_OK) {
         RDB_handle_errcode(ret, ecp, txp);
         interp->envp = NULL;
@@ -2565,6 +2592,7 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
 {
     static RDB_parameter exit_int_params[1];
     static RDB_parameter connect_params[1];
+    static RDB_parameter connect_create_params[2];
     static RDB_parameter create_db_params[1];
     static RDB_parameter create_env_params[1];
     static RDB_parameter system_params[2];
@@ -2574,6 +2602,10 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
     exit_int_params[0].update = RDB_FALSE;
     connect_params[0].typ = &RDB_STRING;
     connect_params[0].update = RDB_FALSE;
+    connect_create_params[0].typ = &RDB_STRING;
+    connect_create_params[0].update = RDB_FALSE;
+    connect_create_params[1].typ = &RDB_BOOLEAN;
+    connect_create_params[1].update = RDB_FALSE;
     create_db_params[0].typ = &RDB_STRING;
     create_db_params[0].update = RDB_FALSE;
     create_env_params[0].typ = &RDB_STRING;
@@ -2607,6 +2639,9 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
         goto error;
     if (RDB_put_upd_op(&interp->sys_module.upd_op_map, "connect", 1, connect_params, &connect_op,
             ecp) != RDB_OK)
+        goto error;
+    if (RDB_put_upd_op(&interp->sys_module.upd_op_map, "connect", 2, connect_create_params,
+            &connect_create_op, ecp) != RDB_OK)
         goto error;
     if (RDB_put_upd_op(&interp->sys_module.upd_op_map, "disconnect", 0, NULL, &disconnect_op,
             ecp) != RDB_OK)

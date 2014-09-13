@@ -12,7 +12,7 @@
 #include <obj/excontext.h>
 
 enum {
-    RDB_CREATE = 1
+    RDB_RECOVER = 1
 };
 
 typedef void (RDB_errfn)(const char *msg, void *arg);
@@ -48,6 +48,9 @@ RDB_env_set_trace(RDB_environment *, unsigned);
 
 int
 RDB_open_env(const char *, RDB_environment **, int);
+
+int
+RDB_create_env(const char *, RDB_environment **);
 
 int
 RDB_close_env(RDB_environment *);

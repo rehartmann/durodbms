@@ -17,27 +17,8 @@
  * \#include <rec/env.h>
  */
 
-/**
- * RDB_open_env opens a database environment identified by the
- * system resource \a path.
- *
- * In the current implementation, the path passed to RDB_open_env
- * is a Berkeley DB database environment directory.
- * To create a new empty environment, simply pass an empty directory
- * to RDB_open_env.
- *
- * @param path  pathname of the direcory where the data is stored.
- * @param envpp   location where the pointer to the environment is stored.
- * @param flags can be zero or RDB_CREATE. If it is RDB_CREATE,
- *        all necessary files will be created.
- * 
- * @return On success, RDB_OK is returned. On failure, an error code is returned.
- * 
- * @par Errors:
- * See the documentation of the Berkeley DB function DB_ENV->open for details.
- */
-int
-RDB_open_env(const char *path, RDB_environment **envpp, int flags)
+static int
+open_env(const char *path, RDB_environment **envpp, int bdb_flags)
 {
     RDB_environment *envp;
     int ret;
@@ -75,16 +56,16 @@ RDB_open_env(const char *path, RDB_environment **envpp, int flags)
     envp->envp->set_errfile(envp->envp, NULL);
 
     /* Open DB environment */
-    ret = envp->envp->open(envp->envp, path,
-            DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN
-                    | (flags & RDB_CREATE ? DB_CREATE | DB_RECOVER : 0),
-            0);
+    ret = envp->envp->open(envp->envp, path, bdb_flags, 0);
     if (ret != 0) {
         envp->envp->close(envp->envp, 0);
         free(envp);
         return ret;
     }
 
+    /*
+     * When acquiring locks, distinguish between timeout and deadlock
+     */
     ret = envp->envp->set_flags(envp->envp, DB_TIME_NOTGRANTED, 1);
     if (ret != 0) {
         envp->envp->close(envp->envp, 0);
@@ -93,6 +74,51 @@ RDB_open_env(const char *path, RDB_environment **envpp, int flags)
     }
     
     return RDB_OK;
+}
+
+
+/**
+ * RDB_open_env opens a database environment identified by the
+ * system resource \a path.
+ *
+ * In the current implementation, the path passed to RDB_open_env
+ * is a Berkeley DB database environment directory.
+ * To create a new empty environment, simply pass an empty directory
+ * to RDB_open_env.
+ *
+ * @param path  pathname of the direcory where the data is stored.
+ * @param envpp   location where the pointer to the environment is stored.
+ * @param flags can be zero or RDB_RECOVER. If it is RDB_RECOVER,
+ *        all necessary files will be created.
+ *
+ * @return On success, RDB_OK is returned. On failure, an error code is returned.
+ *
+ * @par Errors:
+ * See the documentation of the Berkeley DB function DB_ENV->open for details.
+ */
+int
+RDB_open_env(const char *path, RDB_environment **envpp, int flags)
+{
+    return open_env(path, envpp, DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN
+            | (flags & RDB_RECOVER ? DB_CREATE | DB_RECOVER : 0));
+}
+
+/**
+ * Creates a database environment identified by the system resource \a path.
+ *
+ * @param path  pathname of the direcory where the data is stored.
+ * @param envpp   location where the pointer to the environment is stored.
+ *
+ * @return On success, RDB_OK is returned. On failure, an error code is returned.
+ *
+ * @par Errors:
+ * See the documentation of the Berkeley DB function DB_ENV->open for details.
+ */
+int
+RDB_create_env(const char *path, RDB_environment **envpp)
+{
+    return open_env(path, envpp,
+            DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_CREATE);
 }
 
 /**

@@ -95,9 +95,9 @@ puts $out "}"
 
 set dbenvpath [lindex $argv 0]
 puts $out "if {\$argc == 1 } {"
-puts $out "    set dbenv \[duro::env open -create \[lindex \$argv 0\]\]"
+puts $out "    set dbenv \[duro::env create \[lindex \$argv 0\]\]"
 puts $out "} else {"
-puts $out "    set dbenv \[duro::env open -create \{$dbenvpath\}\]"
+puts $out "    set dbenv \[duro::env create \{$dbenvpath\}\]"
 puts $out "}"
 
 set dbenv [duro::env open $dbenvpath]

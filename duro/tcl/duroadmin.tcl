@@ -8,7 +8,7 @@ exec wish "$0" ${1+"$@"}
 
 # $Id$
 
-set duro_version 0.22
+set duro_version 0.23
 
 package require -exact duro $duro_version
 package require Tktable
@@ -102,13 +102,13 @@ proc open_env_path {envpath} {
         set ::dbenv [duro::env open $envpath]
     } msg]} {
         if {[tk_messageBox -type retrycancel -title "Error" \
-                -message "$msg - retry with create/recover?" -icon error] \
+                -message "$msg - retry with recover option?" -icon error] \
                 == {cancel}} {
             set ::dbenv ""
             return
         }
         if {[catch {
-            set ::dbenv [duro::env open -create $envpath]
+            set ::dbenv [duro::env open -recover $envpath]
         } msg]} {
             tk_messageBox -type ok -title "Error" -message $msg -icon error
             set ::dbenv ""
@@ -161,7 +161,7 @@ proc create_env {} {
             file mkdir $envpath
         }
 
-        set ::dbenv [duro::env open -create $envpath]
+        set ::dbenv [duro::env create $envpath]
         duro::env seterrfile $::dbenv $::errfile
     } msg]} {
         tk_messageBox -type ok -title "Error" -message $msg -icon error

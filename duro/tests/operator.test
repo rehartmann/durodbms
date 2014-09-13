@@ -14,7 +14,7 @@ namespace import ::tcltest::*
 source [file dirname [info script]]/setup.tcl
 
 test ro_operator {read-only operators} -setup $SETUP -body {
-    set dbenv [duro::env open -create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env create [configure -tmpdir]/dbenv]
 
     # Create Database
     duro::db create $dbenv TEST
@@ -85,8 +85,8 @@ test ro_operator {read-only operators} -setup $SETUP -body {
 }
 
 test upd_operator {update operators} -setup $SETUP -body {
-    set dbenv [duro::env open -create [configure -tmpdir]/dbenv]
-    
+    set dbenv [duro::env create [configure -tmpdir]/dbenv]
+
     # Create Database
     duro::db create $dbenv TEST
     
