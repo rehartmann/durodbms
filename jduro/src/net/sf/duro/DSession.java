@@ -30,7 +30,7 @@ public interface DSession extends AutoCloseable {
      * END OPERATOR;</code> 
      *
      * <p>The method must be static. Non-update parameter types map to
-     * Java types as described in DSession.evaluate().
+     * Java types as described in {@link net.sf.duro.DSession#evaluate(String) evaluate}.
      * Update parameter types map to Java classes as follows:
      * 
      * <dl>

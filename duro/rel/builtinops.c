@@ -22,7 +22,7 @@
 
 RDB_op_map RDB_builtin_ro_op_map;
 
-/** @page builtin-ops Built-in operators
+/** @page builtin-ops Built-in read-only operators
 @section scalar-ops Built-in scalar operators
 
 <h3 id="op_eq">OPERATOR =</h3>

@@ -37,6 +37,44 @@ typedef struct yy_buffer_state *YY_BUFFER_STATE;
 YY_BUFFER_STATE yy_scan_string(const char *txt);
 void yy_delete_buffer(YY_BUFFER_STATE);
 
+/** @page update-ops Built-in system and connection operators
+
+@section system-ops System operators
+
+OPERATOR exit() UPDATES {};
+
+Exits the process with status code 0.
+
+OPERATOR exit(status int) UPDATES {};
+
+Exits the process with status code \a status.
+
+OPERATOR system(command string) UPDATES {};
+
+Executes command \a command.
+
+@section connection-ops Connection operators
+
+OPERATOR connect(envname string) UPDATES {};
+
+Connects to the database environment \a envname.
+If connecting fails, try to connect with the Berkeley DB DB_RECOVER flag.
+
+OPERATOR connect(envname string, recover boolean) UPDATES {};
+
+Connects to the database environment \a envname.
+If \a recover is true, connect with the Berkeley DB DB_RECOVER flag.
+
+OPERATOR disconnect() UPDATES {};
+
+Closes the database connection and sets current_db to the empty string.
+
+OPERATOR create_db(dbname string) UPDATES {};
+
+Create a database named \a dbname.
+
+*/
+
 /*
  * Operator exit() without arguments
  */
@@ -63,28 +101,42 @@ exit_int_op(int argc, RDB_object *argv[], RDB_operator *op,
 }   
 
 static int
+system_op(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret = system(RDB_obj_string(argv[0]));
+    if (ret == -1 || ret == 127) {
+        RDB_handle_errcode(errno, ecp, txp);
+        return RDB_ERROR;
+    }
+    RDB_int_to_obj(argv[1], (RDB_int) ret);
+    return RDB_OK;
+}
+
+static int
 connect_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    int ret;
+    Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
+
+    /* If a connection exists, close it */
+    if (interp->envp != NULL) {
+        RDB_close_env(interp->envp);
+    }
+
     /*
      * Try opening the environment without RDB_RECOVER first
      * to attach to existing memory pool
      */
 
-    Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
-
-    if (interp->envp != NULL) {
-        printf("closing\n");
-        RDB_close_env(interp->envp);
-    }
-
-    int ret = RDB_open_env(RDB_obj_string(argv[0]), &interp->envp, 0);
+    ret = RDB_open_env(RDB_obj_string(argv[0]), &interp->envp, 0);
     if (ret != RDB_OK) {
         /*
          * Retry with RDB_RECOVER option, re-creating necessary files
          * and running recovery
          */
-        int ret = RDB_open_env(RDB_obj_string(argv[0]), &interp->envp,
+        ret = RDB_open_env(RDB_obj_string(argv[0]), &interp->envp,
                 RDB_RECOVER);
         if (ret != RDB_OK) {
             RDB_handle_errcode(ret, ecp, txp);
@@ -96,17 +148,18 @@ connect_op(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-connect_create_op(int argc, RDB_object *argv[], RDB_operator *op,
+connect_recover_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    /*
-     * Try opening the environment without RDB_RECOVER first
-     * to attach to existing memory pool
-     */
+    int ret;
     Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
     RDB_bool create = RDB_obj_bool(argv[1]);
 
-    int ret = RDB_open_env(RDB_obj_string(argv[0]), &interp->envp, create ? 0 : RDB_RECOVER);
+    if (interp->envp != NULL) {
+        RDB_close_env(interp->envp);
+    }
+
+    ret = RDB_open_env(RDB_obj_string(argv[0]), &interp->envp, create ? 0 : RDB_RECOVER);
     if (ret != RDB_OK) {
         RDB_handle_errcode(ret, ecp, txp);
         interp->envp = NULL;
@@ -162,32 +215,20 @@ disconnect_op(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-create_db_op(int argc, RDB_object *argv[], RDB_operator *op,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
-
-    if (interp->envp == NULL) {
-        RDB_raise_resource_not_found("no environment", ecp);
-        return RDB_ERROR;
-    }
-
-    if (RDB_create_db_from_env(RDB_obj_string(argv[0]), interp->envp, ecp) == NULL)
-        return RDB_ERROR;
-    return RDB_OK;
-}
-
-static int
 create_env_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
 
+    if (interp->envp != NULL) {
+        RDB_close_env(interp->envp);
+    }
+
     /* Create directory if does not exist */
 #ifdef _WIN32
     ret = _mkdir(RDB_obj_string(argv[0]));
-#else
+#else /* POSIX */
     ret = mkdir(RDB_obj_string(argv[0]),
             S_IRUSR | S_IWUSR | S_IXUSR
             | S_IRGRP | S_IWGRP | S_IXGRP);
@@ -207,15 +248,18 @@ create_env_op(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-system_op(int argc, RDB_object *argv[], RDB_operator *op,
+create_db_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int ret = system(RDB_obj_string(argv[0]));
-    if (ret == -1 || ret == 127) {
-        RDB_handle_errcode(errno, ecp, txp);
+    Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
+
+    if (interp->envp == NULL) {
+        RDB_raise_resource_not_found("no environment", ecp);
         return RDB_ERROR;
     }
-    RDB_int_to_obj(argv[1], (RDB_int) ret);
+
+    if (RDB_create_db_from_env(RDB_obj_string(argv[0]), interp->envp, ecp) == NULL)
+        return RDB_ERROR;
     return RDB_OK;
 }
 
@@ -2641,7 +2685,7 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
             ecp) != RDB_OK)
         goto error;
     if (RDB_put_upd_op(&interp->sys_module.upd_op_map, "connect", 2, connect_create_params,
-            &connect_create_op, ecp) != RDB_OK)
+            &connect_recover_op, ecp) != RDB_OK)
         goto error;
     if (RDB_put_upd_op(&interp->sys_module.upd_op_map, "disconnect", 0, NULL, &disconnect_op,
             ecp) != RDB_OK)

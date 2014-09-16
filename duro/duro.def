@@ -1,6 +1,7 @@
 LIBRARY duro
 EXPORTS
 RDB_open_env
+RDB_create_env
 RDB_close_env
 RDB_bdb_env
 RDB_BOOLEAN

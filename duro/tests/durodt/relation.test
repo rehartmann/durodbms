@@ -37,6 +37,11 @@ test insert_delete {creating table, insert, delete} \
         var r real relation {i int, d float, c string} key {i};
         commit;
 
+        disconnect();
+
+        connect('dbenv', false);
+        current_db := 'D';
+
         begin tx;
         insert r tup {i 3, d 1.0, c 'Z'};
         rollback;
@@ -104,6 +109,9 @@ test insert_delete {creating table, insert, delete} \
         put(count(r3)); put_line(' tuples');
 
         commit;
+
+        -- connect() without preceding disconnect()
+        connect('dbenv', true);
 
         begin tx;
         delete r3 where n = 1 and s = 'a';
