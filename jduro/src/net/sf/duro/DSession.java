@@ -47,8 +47,8 @@ public interface DSession extends AutoCloseable {
      * </dl>
      * 
      * @param code		The code to execute
-     * @throws DException	If a Duro error occurs
-     * @throws	IllegalStateException	If the code could not be executed
+     * @throws DException	If a Duro error occurs.
+     * @throws	IllegalStateException	If the code could not be executed.
      * 
      */
     public void execute(String code) throws DException;
@@ -74,9 +74,9 @@ public interface DSession extends AutoCloseable {
      * <dd><code>{@link net.sf.duro.PossrepObject}</code>
      * </dl>
      * 
-     * @param	expr		The code to execute
-     * @throws	DException	If a Duro error occurs
-     * @throws	IllegalStateException	If the code could not be executed
+     * @param	expr		The expression to evaluate
+     * @throws	DException	If a Duro error occurs.
+     * @throws	IllegalStateException	If the expression could not be evaluated.
      * 
      */
     public Object evaluate(String expr) throws DException;
@@ -87,7 +87,7 @@ public interface DSession extends AutoCloseable {
      * @param v		The value
      * @throws DException	If a Duro error occurs.
      * @throws java.lang.IllegalArgumentException	If v does not match the
-     * 		type of the variable
+     * 		type of the variable.
      */
     public void setVar(String name, Object v) throws DException;
 

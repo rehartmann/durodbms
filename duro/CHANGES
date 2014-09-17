@@ -4,15 +4,17 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 0.23
 
- - Added RDB_create_env(), dropped RDB_CREATE flag of RDB_open_env()
+- Added connect() with recover parameter.
+
+- Added RDB_create_env(), dropped RDB_CREATE flag of RDB_open_env()
    in favour of RDB_RECOVER. The Durotcl command duro::env was
    changed accordingly. 
 
- - EXPLAIN now supported for local tables
+- EXPLAIN now supported for local tables
 
- - Fixed bug that caused secondary index corruption.
+- Fixed bug that caused secondary index corruption.
 
- - Upgrade to BerkeleyDB 6.1.
+- Upgrade to BerkeleyDB 6.1.
 
 DuroDBMS 0.22
 
