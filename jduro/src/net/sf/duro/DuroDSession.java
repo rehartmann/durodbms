@@ -6,11 +6,11 @@ package net.sf.duro;
  *
  */
 public class DuroDSession implements DSession {
-    public long interp = 0L; // Contains the pointer to the Duro_interp structure
-
     static { 
         System.loadLibrary("jduro"); 
     }
+
+    private long interp = 0L; // Contains the pointer to the Duro_interp structure
 
     private DuroDSession() {}
 

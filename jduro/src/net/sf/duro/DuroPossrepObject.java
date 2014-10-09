@@ -7,7 +7,7 @@ package net.sf.duro;
  */
 public class DuroPossrepObject implements PossrepObject {
     private long ref;
-    public DuroDSession session;
+    private DuroDSession session;
     private ScalarType type;
 
     private static native void setProperty(String name, DuroDSession session,

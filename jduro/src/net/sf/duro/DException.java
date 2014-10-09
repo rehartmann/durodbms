@@ -20,6 +20,15 @@ public class DException extends Exception {
 	this.error = error;
     }
 
+    /**
+     * Returns the Duro error as a Java object.
+     * 
+     * Usually this will be a {@link PossrepObject} whose msg property
+     * (if present, not all Duro errors have a msg property) is
+     * the error message.
+     * 
+     * @return the Duro error.
+     */
     public Object getError() {
 	return error;
     }

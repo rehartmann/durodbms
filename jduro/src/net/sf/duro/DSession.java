@@ -12,7 +12,7 @@ public interface DSession extends AutoCloseable {
      * Executes Duro D/T code.
      * 
      * <p>User-defined operators implemented in Java can be created by
-     * using the OPERATOR statment with the EXTERN keyword.
+     * using the OPERATOR statement with the EXTERN keyword.
      * 
      * <p>Creating a user-defined read-only operator implemented by a Java method:
      * 
@@ -21,9 +21,9 @@ public interface DSession extends AutoCloseable {
      * END OPERATOR;</code> 
      *
      * <p>The method must be static. Parameter types and return type map to
-     * Java types as described in DSession.evaluate().
+     * Java types as described in {@link net.sf.duro.DSession#evaluate(String) evaluate}.
      * 
-     * <p>Creating an user-defined update operator implemented by a Java method:
+     * <p>Creating a user-defined update operator implemented by a Java method:
      * 
      * <p><code>OPERATOR &lt;opname&gt;(&lt;parameter_list&gt;) UPDATES { &lt;update_param_list&gt; }<br />
      * EXTERN 'Java' '&lt;classname&gt;.&lt;methodname&gt;';<br />
