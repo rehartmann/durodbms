@@ -1,29 +1,31 @@
 package net.sf.duro;
 
 /**
- * This class implements the PossrepObject interface.
+ * This class is the default implementation of the PossrepObject interface.
+ * Instances of this class keep a pointer to an RDB_object.
+ * 
  * @author Rene Hartmann
  *
  */
-public class DuroPossrepObject implements PossrepObject {
+public class DefaultPossrepObject implements PossrepObject {
     private long ref;
-    private DuroDSession session;
+    private DSession session;
     private ScalarType type;
 
-    private static native void setProperty(String name, DuroDSession session,
+    private static native void setProperty(String name, DSession session,
 	    long ref, Object value) throws DException;
 
-    private static native Object getProperty(String name, DuroDSession s,
+    private static native Object getProperty(String name, DSession s,
 	    long ref) throws DException;
 
-    private static native Object dispose(DuroDSession dInstance);
+    private static native Object dispose(DSession dInstance);
 
     private static native boolean equals(long ref1, long ref2,
-	    DuroDSession dInstance);
+	    DSession dInstance);
 
     private static native String getTypeName(long ref);
 
-    private static native Possrep[] getPossreps(long ref, DuroDSession session);
+    private static native Possrep[] getPossreps(long ref, DSession session);
 
     public String getTypeName() {
 	return getType().getName();
@@ -36,7 +38,7 @@ public class DuroPossrepObject implements PossrepObject {
 	return type;
     }
 
-    DuroPossrepObject(long ref, DuroDSession dInstance) {
+    DefaultPossrepObject(long ref, DSession dInstance) {
 	if (dInstance == null)
 	    throw new NullPointerException();
 	
@@ -46,13 +48,13 @@ public class DuroPossrepObject implements PossrepObject {
     }
 
     public void setProperty(String name, Object value) throws DException {
-	synchronized(DuroDSession.class) {
+	synchronized(DSession.class) {
 	    setProperty(name, session, ref, value);
 	}
     }
 
     public Object getProperty(String name) throws DException {
-	synchronized(DuroDSession.class) {
+	synchronized(DSession.class) {
 	    return getProperty(name, session, ref);
 	}
     }
@@ -62,14 +64,14 @@ public class DuroPossrepObject implements PossrepObject {
      * the DuroDBMS library function RDB_obj_equals().
      */
     public boolean equals(Object obj) {
-	DuroPossrepObject probj;
+	DefaultPossrepObject probj;
 	try {
-	    probj = (DuroPossrepObject) obj;
+	    probj = (DefaultPossrepObject) obj;
 	} catch (ClassCastException ex) {
 	    return false;
 	}
 
-	synchronized(DuroDSession.class) {
+	synchronized(DSession.class) {
 	    return equals(ref, probj.ref, session);
 	}
     }
@@ -97,7 +99,7 @@ public class DuroPossrepObject implements PossrepObject {
     }
     
     public void dispose() {
-	synchronized(DuroDSession.class) {
+	synchronized(DSession.class) {
 	    if (session != null) {
 	        dispose(session);
 	        session = null;

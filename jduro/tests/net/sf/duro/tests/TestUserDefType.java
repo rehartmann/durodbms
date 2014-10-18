@@ -7,7 +7,7 @@ import java.io.File;
 import net.sf.duro.ArrayType;
 import net.sf.duro.DException;
 import net.sf.duro.DSession;
-import net.sf.duro.DuroDSession;
+import net.sf.duro.DSession;
 import net.sf.duro.Possrep;
 import net.sf.duro.PossrepObject;
 import net.sf.duro.RelationType;
@@ -24,7 +24,7 @@ public class TestUserDefType {
 
     @Before
     public void setUp() throws Exception {
-	session = DuroDSession.createSession();
+	session = DSession.createSession();
 
 	session.execute("create_env('dbenv');"
 		      + "create_db('D');"

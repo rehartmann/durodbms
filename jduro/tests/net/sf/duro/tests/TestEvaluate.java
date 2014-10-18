@@ -7,7 +7,7 @@ import java.util.Set;
 
 import net.sf.duro.DException;
 import net.sf.duro.DSession;
-import net.sf.duro.DuroDSession;
+import net.sf.duro.DSession;
 import net.sf.duro.Tuple;
 
 import org.junit.After;
@@ -20,7 +20,7 @@ public class TestEvaluate {
 
     @Before
     public void setUp() throws Exception {
-	session = DuroDSession.createSession();
+	session = DSession.createSession();
     }
 
     @After

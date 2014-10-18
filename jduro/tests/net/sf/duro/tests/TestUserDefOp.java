@@ -11,7 +11,7 @@ import java.util.Set;
 import net.sf.duro.ByteArray;
 import net.sf.duro.DException;
 import net.sf.duro.DSession;
-import net.sf.duro.DuroDSession;
+import net.sf.duro.DSession;
 import net.sf.duro.PossrepObject;
 import net.sf.duro.Tuple;
 import net.sf.duro.UpdatableBoolean;
@@ -28,7 +28,7 @@ public class TestUserDefOp {
 
     @Before
     public void setUp() throws Exception {
-	session = DuroDSession.createSession();
+	session = DSession.createSession();
 
 	session.execute("create_env('dbenv');"
 		      + "create_db('D');"
@@ -116,7 +116,7 @@ public class TestUserDefOp {
 
     @SuppressWarnings("unused")
     private static String testDException() throws DException {
-	DSession session = DuroDSession.createSession();
+	DSession session = DSession.createSession();
 	try {
 	    throw new DException(session.evaluate("system_error('bar')"));
 	} finally {
@@ -247,7 +247,7 @@ public class TestUserDefOp {
 
     @SuppressWarnings("unused")
     private static void testUpdateDException(StringBuilder buf) throws DException {
-	DSession session = DuroDSession.createSession();
+	DSession session = DSession.createSession();
 	try {
 	    throw new DException(session.evaluate("system_error('bar')"));
 	} finally {

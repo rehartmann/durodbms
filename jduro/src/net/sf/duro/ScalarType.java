@@ -35,7 +35,7 @@ public class ScalarType extends Type {
     }
 
     private static native Possrep[] typePossreps(String name,
-	    DuroDSession session);
+	    DSession session);
 
     @Override
     public String getName() {
@@ -54,7 +54,7 @@ public class ScalarType extends Type {
     public static ScalarType fromString(String typename, DSession session) {
 	ScalarType type = typeMap.get(typename);
 	if (type == null) {
-	    Possrep[] possreps = typePossreps(typename, (DuroDSession) session);
+	    Possrep[] possreps = typePossreps(typename, (DSession) session);
 	    if (possreps == null)
 		return null;
 	    

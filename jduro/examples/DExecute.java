@@ -2,7 +2,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
 import net.sf.duro.DSession;
-import net.sf.duro.DuroDSession;
+import net.sf.duro.DSession;
 
 /**
  * Command line interface for JDuro.
@@ -21,7 +21,7 @@ public class DExecute {
 	DSession dInstance = null;
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-            dInstance = DuroDSession.createSession();
+            dInstance = DSession.createSession();
 
             System.out.println("Input in Parentheses will be evaluated, other input is executed");
             

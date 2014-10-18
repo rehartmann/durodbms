@@ -7,7 +7,7 @@ import java.util.Set;
 
 import net.sf.duro.DException;
 import net.sf.duro.DSession;
-import net.sf.duro.DuroDSession;
+import net.sf.duro.DSession;
 import net.sf.duro.PossrepObject;
 import net.sf.duro.Tuple;
 
@@ -21,7 +21,7 @@ public class TestSetVar {
 
     @Before
     public void setUp() throws Exception {
-	session = DuroDSession.createSession();
+	session = DSession.createSession();
     }
 
     @After

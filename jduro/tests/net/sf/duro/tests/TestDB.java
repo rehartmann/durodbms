@@ -6,7 +6,7 @@ import java.io.File;
 
 import net.sf.duro.DException;
 import net.sf.duro.DSession;
-import net.sf.duro.DuroDSession;
+import net.sf.duro.DSession;
 import net.sf.duro.Tuple;
 
 import org.junit.After;
@@ -19,7 +19,7 @@ public class TestDB {
 
     @Before
     public void setUp() throws DException {
-	session = DuroDSession.createSession();
+	session = DSession.createSession();
     }
 
     @After
