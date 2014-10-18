@@ -93,10 +93,10 @@ public class DSession {
      * @throws	IllegalStateException	If the code could not be executed.
      * 
      */
-    public void execute(String s) throws DException {
+    public void execute(String code) throws DException {
 	try {
 	    synchronized(DSession.class) {
-		executeI(s);
+		executeI(code);
 	    }
 	} catch (ClassNotFoundException ex) {
 	    throw new IllegalStateException(ex);
