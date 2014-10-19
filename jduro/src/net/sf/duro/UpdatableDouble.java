@@ -1,5 +1,13 @@
 package net.sf.duro;
 
+/**
+ * Instances of this class wrap a value of the primitive type
+ * double in an object. Unlike java.lang.Double, the value
+ * can be updated. 
+ * 
+ * @author Rene Hartmann
+ *
+ */
 public class UpdatableDouble extends Number
 	implements Comparable<UpdatableDouble> {
 
@@ -38,6 +46,25 @@ public class UpdatableDouble extends Number
     @Override
     public int compareTo(UpdatableDouble o) {
 	return Double.compare(value, o.value);
+    }
+
+    @Override
+    public int hashCode() {
+	long bits = Double.doubleToLongBits(value);
+	return (int)(bits ^ (bits >>> 32));
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+	if (obj instanceof UpdatableDouble) {
+            return value == ((UpdatableDouble)obj).value;
+        }
+        return false;
+    }
+
+    @Override
+    public String toString() {
+	return Double.toString(value);
     }
 
     public void setValue(double value) {

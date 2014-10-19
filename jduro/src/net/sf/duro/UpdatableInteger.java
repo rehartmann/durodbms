@@ -1,11 +1,16 @@
 package net.sf.duro;
 
+/**
+ * Instances of this class wrap a value of the primitive type
+ * int in an object. Unlike java.lang.Inteer, the value
+ * can be updated. 
+ * 
+ * @author Rene Hartmann
+ *
+ */
 public class UpdatableInteger extends Number
 	implements Comparable<UpdatableInteger> {
 
-    /**
-     * 
-     */
     private static final long serialVersionUID = 1L;
 
     private int value;
@@ -41,6 +46,24 @@ public class UpdatableInteger extends Number
     @Override
     public int compareTo(UpdatableInteger n) {
 	return value - n.value;
+    }
+
+    @Override
+    public int hashCode() {
+	return value;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+	if (obj instanceof UpdatableInteger) {
+            return value == ((UpdatableInteger)obj).value;
+        }
+        return false;
+    }
+
+    @Override
+    public String toString() {
+	return Integer.toString(value);
     }
 
     public void setValue(int value) {
