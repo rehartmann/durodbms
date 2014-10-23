@@ -423,7 +423,7 @@ static Duro_uop_info op_info = {
 };
 
 JNIEXPORT void
-JNICALL Java_net_sf_duro_DuroDSession_initInterp(JNIEnv *env, jobject obj)
+JNICALL Java_net_sf_duro_DSession_initInterp(JNIEnv *env, jobject obj)
 {
     jclass clazz;
     jfieldID interpFieldID;
@@ -704,7 +704,7 @@ JDuro_jobj_session(JNIEnv *env, jobject obj)
 }
 
 JNIEXPORT void
-JNICALL Java_net_sf_duro_DuroDSession_destroyInterp(JNIEnv *env, jobject obj)
+JNICALL Java_net_sf_duro_DSession_destroyInterp(JNIEnv *env, jobject obj)
 {
     JDuro_session *sessionp;
     jclass clazz = (*env)->GetObjectClass(env, obj);
@@ -722,7 +722,7 @@ JNICALL Java_net_sf_duro_DuroDSession_destroyInterp(JNIEnv *env, jobject obj)
 }
 
 JNIEXPORT void
-JNICALL Java_net_sf_duro_DuroDSession_executeI(JNIEnv *env, jobject jobj,
+JNICALL Java_net_sf_duro_DSession_executeI(JNIEnv *env, jobject jobj,
         jstring statements)
 {
     int ret;
@@ -840,7 +840,7 @@ array_to_jobj(JNIEnv *env, const RDB_object *arrp,
     } else if (elemtyp == &RDB_BINARY) {
         clazz = sessionp->byteArrayClass;
     } else {
-        clazz = (*env)->FindClass(env, "net/sf/duro/DuroPossrepObject");
+        clazz = (*env)->FindClass(env, "net/sf/duro/DefaultPossrepObject");
     }
 
     jobjarr = (*env)->NewObjectArray(env, (jsize) size, clazz, NULL);
@@ -982,11 +982,11 @@ JDuro_duro_obj_to_jobj(JNIEnv *env, const RDB_object *objp, RDB_bool updatable,
         goto error;
     }
 
-    clazz = (*env)->FindClass(env, "net/sf/duro/DuroPossrepObject");
+    clazz = (*env)->FindClass(env, "net/sf/duro/DefaultPossrepObject");
     if (clazz == NULL)
         goto error;
     constructorID = (*env)->GetMethodID(env, clazz, "<init>",
-            "(JLnet/sf/duro/DuroDSession;)V");
+            "(JLnet/sf/duro/DSession;)V");
     if (constructorID == NULL) {
         goto error;
     }
@@ -1006,7 +1006,7 @@ error:
 }
 
 JNIEXPORT jobject
-JNICALL Java_net_sf_duro_DuroDSession_evaluateI(JNIEnv *env, jobject obj,
+JNICALL Java_net_sf_duro_DSession_evaluateI(JNIEnv *env, jobject obj,
         jstring expression)
 {
     RDB_object result;
@@ -1575,7 +1575,7 @@ JDuro_jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
         return jtuple_to_obj(env, dstp, obj, sessionp, ecp);
     }
 
-    clazz = (*env)->FindClass(env, "net/sf/duro/DuroPossrepObject");
+    clazz = (*env)->FindClass(env, "net/sf/duro/DefaultPossrepObject");
     if ((*env)->IsInstanceOf(env, obj, clazz)) {
         RDB_object *objp;
         jfieldID refFieldID = (*env)->GetFieldID(env, clazz, "ref", "J");
@@ -1605,7 +1605,7 @@ JDuro_jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
 }
 
 JNIEXPORT void
-JNICALL Java_net_sf_duro_DuroDSession_setVarI(JNIEnv *env, jobject obj,
+JNICALL Java_net_sf_duro_DSession_setVarI(JNIEnv *env, jobject obj,
         jstring name, jobject value)
 {
     const char *namestr;

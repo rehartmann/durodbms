@@ -24,38 +24,35 @@ public class TestUserDefType {
 
     @Before
     public void setUp() throws Exception {
-	session = DSession.createSession();
+        session = DSession.createSession();
 
-	session.execute("create_env('dbenv');"
-		      + "create_db('D');"
-		      + "current_db := 'D';");
+        session.execute("create_env('dbenv');" + "create_db('D');"
+                + "current_db := 'D';");
     }
 
     @After
     public void tearDown() throws DException {
-	session.close();
+        session.close();
 
-	// Delete environment directory
-	File envdir = new File("dbenv");
-	for (File f: envdir.listFiles()) {
-	    f.delete();
-	}
-	envdir.delete();
+        // Delete environment directory
+        File envdir = new File("dbenv");
+        for (File f : envdir.listFiles()) {
+            f.delete();
+        }
+        envdir.delete();
     }
 
     @Test
     public void testScalarProp() throws DException {
         session.execute("begin tx;");
         session.execute("type len possrep { l int } constraint l >= 0 init len(0);");
-	session.execute("implement type len; end implement;");
-	session.execute("var l len;"
-		      + "l := len(5);");
+        session.execute("implement type len; end implement;");
+        session.execute("var l len;" + "l := len(5);");
         PossrepObject l = (PossrepObject) session.evaluate("l");
-	Object lint = session.evaluate("the_l(l)");
-	session.execute("var arrl array len;"
-		      + "length(arrl) := 1;"
-		      + "arrl[0] := len(5);");
-	Object arrl = session.evaluate("arrl");
+        Object lint = session.evaluate("the_l(l)");
+        session.execute("var arrl array len;" + "length(arrl) := 1;"
+                + "arrl[0] := len(5);");
+        Object arrl = session.evaluate("arrl");
 
         assertEquals(lint, Integer.valueOf(5));
 
@@ -63,11 +60,11 @@ public class TestUserDefType {
 
         assertFalse(session.evaluate("l").equals(session.evaluate("len(6)")));
 
-        assertArrayEquals(new PossrepObject[] { l }, (PossrepObject[]) arrl);       
+        assertArrayEquals(new PossrepObject[] { l }, (PossrepObject[]) arrl);
 
         assertEquals(session.evaluate("l").hashCode(),
-        	session.evaluate("len(5)").hashCode());
-        
+                session.evaluate("len(5)").hashCode());
+
         session.execute("commit;");
     }
 
@@ -75,16 +72,17 @@ public class TestUserDefType {
     public void testNonscalarProp() throws DException {
         session.execute("begin tx;");
         session.execute("type t possrep { a array int, b tup { attr int }, c rel { attr int } }"
-        	+ " init t (array int(), tup { attr 0 }, rel { tup { attr 0 } });");
-	session.execute("implement type t; end implement;");
+                + " init t (array int(), tup { attr 0 }, rel { tup { attr 0 } });");
+        session.execute("implement type t; end implement;");
 
-	ScalarType t = ScalarType.fromString("t", session);
+        ScalarType t = ScalarType.fromString("t", session);
 
-	Possrep pr = t.getPossreps()[0];
-	assertEquals(pr.getComponent(0).getType().getClass(), ArrayType.class);
-	assertEquals(pr.getComponent(1).getType().getClass(), TupleType.class);
-	assertEquals(pr.getComponent(2).getType().getClass(), RelationType.class);
+        Possrep pr = t.getPossreps()[0];
+        assertEquals(pr.getComponent(0).getType().getClass(), ArrayType.class);
+        assertEquals(pr.getComponent(1).getType().getClass(), TupleType.class);
+        assertEquals(pr.getComponent(2).getType().getClass(),
+                RelationType.class);
 
-	session.execute("commit;");
+        session.execute("commit;");
     }
 }

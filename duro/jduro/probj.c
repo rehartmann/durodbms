@@ -8,7 +8,7 @@
 #include "jduro.h"
 
 JNIEXPORT jobject
-JNICALL Java_net_sf_duro_DuroPossrepObject_getProperty(JNIEnv *env, jclass clazz,
+JNICALL Java_net_sf_duro_DefaultPossrepObject_getProperty(JNIEnv *env, jclass clazz,
         jstring name, jobject dInstance, jlong ref)
 {
     const char *namestr;
@@ -54,7 +54,7 @@ error:
 }
 
 JNIEXPORT void
-JNICALL Java_net_sf_duro_DuroPossrepObject_setProperty(JNIEnv *env, jclass clazz,
+JNICALL Java_net_sf_duro_DefaultPossrepObject_setProperty(JNIEnv *env, jclass clazz,
         jstring name, jobject dInstance, jlong ref, jobject value)
 {
     const char *namestr;
@@ -90,7 +90,7 @@ JNICALL Java_net_sf_duro_DuroPossrepObject_setProperty(JNIEnv *env, jclass clazz
 }
 
 JNIEXPORT void
-JNICALL Java_net_sf_duro_DuroPossrepObject_dispose(JNIEnv *env, jclass clazz,
+JNICALL Java_net_sf_duro_DefaultPossrepObject_dispose(JNIEnv *env, jclass clazz,
         jobject dInstance, jlong ref)
 {
     JDuro_session *sessionp;
@@ -106,7 +106,7 @@ JNICALL Java_net_sf_duro_DuroPossrepObject_dispose(JNIEnv *env, jclass clazz,
 }
 
 JNIEXPORT jstring
-JNICALL Java_net_sf_duro_DuroPossrepObject_getTypeName(JNIEnv *env, jclass clazz,
+JNICALL Java_net_sf_duro_DefaultPossrepObject_getTypeName(JNIEnv *env, jclass clazz,
         jlong ref)
 {
     RDB_type *typ;
@@ -127,7 +127,7 @@ JNICALL Java_net_sf_duro_DuroPossrepObject_getTypeName(JNIEnv *env, jclass clazz
 }
 
 JNIEXPORT jboolean
-JNICALL Java_net_sf_duro_DuroPossrepObject_equals(JNIEnv *env, jclass clazz,
+JNICALL Java_net_sf_duro_DefaultPossrepObject_equals(JNIEnv *env, jclass clazz,
         jlong ref1, jlong ref2, jobject dInstance)
 {
     RDB_bool result;
@@ -368,7 +368,7 @@ typePossreps(JNIEnv *env, RDB_type *typ, jobject session) {
 }
 
 JNIEXPORT jobjectArray
-JNICALL Java_net_sf_duro_DuroPossrepObject_getPossreps(JNIEnv *env, jclass clazz,
+JNICALL Java_net_sf_duro_DefaultPossrepObject_getPossreps(JNIEnv *env, jclass clazz,
         jlong ref, jobject session)
 {
     RDB_type *typ = RDB_obj_type((RDB_object *) (intptr_t) ref);

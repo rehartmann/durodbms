@@ -6,6 +6,7 @@ import java.util.Set;
 
 /**
  * Instances of this class represent a DuroDBMS tuple type.
+ * 
  * @author Rene Hartmann
  *
  */
@@ -16,23 +17,23 @@ public class TupleType extends Type {
     private Map<String, Type> attributeMap;
 
     public TupleType(VarDef[] attributes) {
-	attributeMap = new HashMap<String, Type>();
-        for (VarDef attr: attributes) {
-	    attributeMap.put(attr.getName(), attr.getType());
-	}
+        attributeMap = new HashMap<String, Type>();
+        for (VarDef attr : attributes) {
+            attributeMap.put(attr.getName(), attr.getType());
+        }
     }
 
     @Override
     public String getName() {
-	return null;
+        return null;
     }
 
     @Override
     public boolean isScalar() {
-	return false;
+        return false;
     }
 
     public Set<String> attributeNames() {
-	return attributeMap.keySet();
+        return attributeMap.keySet();
     }
 }

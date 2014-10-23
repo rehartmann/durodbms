@@ -17,55 +17,53 @@ public class TestExecute {
 
     @Before
     public void setUp() throws Exception {
-	session = DSession.createSession();
+        session = DSession.createSession();
     }
 
     @After
     public void tearDown() throws Exception {
-	session.close();
+        session.close();
     }
 
     @Test
     public void testInteger() throws DException {
-	session.execute("var n init 343;");
-	assertEquals(Integer.valueOf(343), session.evaluate("n"));	
+        session.execute("var n init 343;");
+        assertEquals(Integer.valueOf(343), session.evaluate("n"));
     }
 
     @Test
     public void testString() throws DException {
-	session.execute("var s string init 'Crystal';");
-	assertEquals("Crystal", session.evaluate("s"));
+        session.execute("var s string init 'Crystal';");
+        assertEquals("Crystal", session.evaluate("s"));
     }
 
     @Test
     public void testBoolean() throws DException {
-	session.execute("var b boolean;"
-		+ "b:= true;");
-	assertEquals(Boolean.TRUE, session.evaluate("b"));
+        session.execute("var b boolean;" + "b:= true;");
+        assertEquals(Boolean.TRUE, session.evaluate("b"));
     }
 
     @Test
     public void testFloat() throws DException {
-	session.execute("var f float;"
-		+ "f := 7.8;");
-	assertEquals(Double.valueOf(7.8), session.evaluate("f"));
+        session.execute("var f float;" + "f := 7.8;");
+        assertEquals(Double.valueOf(7.8), session.evaluate("f"));
     }
 
     @Test
     public void testBinary() throws DException {
-	session.execute("var bin binary init X'01f0';");
-	assertArrayEquals(new byte[] { (byte) 1, (byte) 0xf0 },
-		(byte[]) session.evaluate("bin"));
+        session.execute("var bin binary init X'01f0';");
+        assertArrayEquals(new byte[] { (byte) 1, (byte) 0xf0 },
+                (byte[]) session.evaluate("bin"));
     }
 
     @Test
     public void testTuple() throws DException {
-	session.execute("var t tuple { a string };"
-		+ "t := tuple { a 'Casa blanca' };");
+        session.execute("var t tuple { a string };"
+                + "t := tuple { a 'Casa blanca' };");
 
-	Tuple t = new Tuple();
-	t.setAttribute("a", "Casa blanca");
-	assertEquals(t, session.evaluate("t"));	
+        Tuple t = new Tuple();
+        t.setAttribute("a", "Casa blanca");
+        assertEquals(t, session.evaluate("t"));
     }
 
 }

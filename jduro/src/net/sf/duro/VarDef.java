@@ -9,8 +9,8 @@ public class VarDef {
     private Type type;
 
     public VarDef(String name, Type type) {
-	this.name = name;
-	this.type = type;
+        this.name = name;
+        this.type = type;
     }
 
     public String getName() {
