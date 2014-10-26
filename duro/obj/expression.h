@@ -8,6 +8,17 @@
 #ifndef EXPRESSION_H_
 #define EXPRESSION_H_
 
+enum RDB_expr_kind {
+    RDB_EX_OBJ,
+    RDB_EX_TBP,
+
+    RDB_EX_VAR,
+
+    RDB_EX_TUPLE_ATTR,
+    RDB_EX_GET_COMP,
+    RDB_EX_RO_OP
+};
+
 typedef struct RDB_expression RDB_expression;
 
 typedef struct RDB_expr_list {
@@ -17,6 +28,9 @@ typedef struct RDB_expr_list {
 
 RDB_bool
 RDB_expr_is_const(const RDB_expression *);
+
+enum RDB_expr_kind
+RDB_expr_kind(const RDB_expression *);
 
 RDB_expression *
 RDB_bool_to_expr(RDB_bool, RDB_exec_context *);
@@ -56,6 +70,9 @@ RDB_expr_refers(const RDB_expression *, const RDB_object *);
 
 const char *
 RDB_expr_op_name(const RDB_expression *);
+
+RDB_expr_list *
+RDB_expr_op_args(RDB_expression *);
 
 const char *
 RDB_expr_var_name(const RDB_expression *);
@@ -107,5 +124,8 @@ RDB_expr_list_append(RDB_expr_list *, RDB_expression *);
 
 void
 RDB_join_expr_lists(RDB_expr_list *, RDB_expr_list *);
+
+RDB_expression *
+RDB_expr_list_get(RDB_expr_list *, int);
 
 #endif /* EXPRESSION_H_ */

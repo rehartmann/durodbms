@@ -49,6 +49,15 @@ RDB_expr_is_const(const RDB_expression *exp)
 }
 
 /**
+ * Return the kind of which expresion *exp is.
+ */
+enum RDB_expr_kind
+RDB_expr_kind(const RDB_expression *exp)
+{
+    return exp->kind;
+}
+
+/**
  * Replace all occurrences of variable name varname by a copy of expression *texp.
  * Replacement is performed in-place if possible.
  */
@@ -103,7 +112,18 @@ RDB_expr_resolve_varname_expr(RDB_expression **expp, const char *varname,
 const char *
 RDB_expr_op_name(const RDB_expression *exp)
 {
-    return exp->kind == RDB_EX_RO_OP ? exp->def.op.name : NULL;
+    return exp->kind == RDB_EX_RO_OP || exp->kind == RDB_EX_GET_COMP ?
+            exp->def.op.name : NULL;
+}
+
+/**
+ * Return a pointer to the argument list of a read-only operator expression.
+ */
+RDB_expr_list *
+RDB_expr_op_args(RDB_expression *exp)
+{
+    return exp->kind == RDB_EX_RO_OP || exp->kind == RDB_EX_GET_COMP ?
+            &exp->def.op.args : NULL;
 }
 
 /**
@@ -1120,4 +1140,19 @@ RDB_table_refers(const RDB_object *srctbp, const RDB_object *dsttbp)
     if (exp == NULL)
         return RDB_FALSE;
     return RDB_expr_refers(exp, dsttbp);
+}
+
+/**
+ * Return the n-th expression of an expression list,
+ * or NULL if there is no n-th element does not exist.
+ */
+RDB_expression *
+RDB_expr_list_get(RDB_expr_list *explistp, int n)
+{
+    RDB_expression *exp = explistp->firstp;
+    while (n > 0 && exp != NULL) {
+        exp = exp->nextp;
+        --n;
+    }
+    return exp;
 }

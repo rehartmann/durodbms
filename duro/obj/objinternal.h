@@ -23,17 +23,6 @@ enum {
 enum RDB_obj_kind
 RDB_val_kind(const RDB_type *);
 
-enum RDB_expr_kind {
-    RDB_EX_OBJ,
-    RDB_EX_TBP,
-
-    RDB_EX_VAR,
-
-    RDB_EX_TUPLE_ATTR,
-    RDB_EX_GET_COMP,
-    RDB_EX_RO_OP
-};
-
 struct RDB_expression {
     enum RDB_expr_kind kind;
     union {

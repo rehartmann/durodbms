@@ -10,7 +10,7 @@
 #include "interp_eval.h"
 #include "exparse.h"
 #include <rel/tostr.h>
-#include <obj/objinternal.h>
+/*#include <obj/objinternal.h>*/
 
 #include <string.h>
 
@@ -22,18 +22,17 @@ resolve_target(const RDB_expression *exp, Duro_interp *interp, RDB_exec_context 
 
     if (opname != NULL) {
         if (strcmp(opname, "[]") == 0
-                && exp->def.op.args.firstp != NULL
-                && exp->def.op.args.firstp->nextp != NULL
-                && exp->def.op.args.firstp->nextp->nextp == NULL) {
+                && RDB_expr_list_length(RDB_expr_op_args((RDB_expression *) exp)) == 2) {
             RDB_int idx;
             RDB_object idxobj;
+            RDB_expr_list *arglistp = RDB_expr_op_args((RDB_expression *)exp);
 
             /*
              * Resolve array subscription
              */
 
             /* Get first argument, which must be an array */
-            RDB_object *arrp = resolve_target(exp->def.op.args.firstp, interp, ecp);
+            RDB_object *arrp = resolve_target(RDB_expr_list_get(arglistp, 0), interp, ecp);
             if (arrp == NULL)
                 return NULL;
             if (RDB_obj_type(arrp) == NULL
@@ -44,7 +43,7 @@ resolve_target(const RDB_expression *exp, Duro_interp *interp, RDB_exec_context 
 
             /* Get second argument, which must be INTEGER */
             RDB_init_obj(&idxobj);
-            if (Duro_evaluate_retry(exp->def.op.args.firstp->nextp, interp, ecp,
+            if (Duro_evaluate_retry(RDB_expr_list_get(arglistp, 1), interp, ecp,
                     &idxobj) != RDB_OK) {
                 RDB_destroy_obj(&idxobj, ecp);
                 return NULL;
@@ -91,13 +90,13 @@ comp_node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
     RDB_possrep *possrep;
     RDB_object **argpv = NULL;
     RDB_object *argv = NULL;
-    RDB_type *typ = Duro_expr_type_retry(dstexp->def.op.args.firstp, interp, ecp);
+    RDB_type *typ = Duro_expr_type_retry(RDB_expr_list_get(RDB_expr_op_args(dstexp), 0), interp, ecp);
     if (typ == NULL)
         return RDB_ERROR;
 
-    possrep = RDB_comp_possrep(typ, dstexp->def.op.name);
+    possrep = RDB_comp_possrep(typ, RDB_expr_op_name(dstexp));
     if (possrep == NULL) {
-        RDB_raise_name(dstexp->def.op.name, ecp);
+        RDB_raise_name(RDB_expr_op_name(dstexp), ecp);
         return RDB_ERROR;
     }
 
@@ -112,7 +111,7 @@ comp_node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
         RDB_init_obj(&argv[i]);
     }
 
-    i = comp_idx(possrep, dstexp->def.op.name);
+    i = comp_idx(possrep, RDB_expr_op_name(dstexp));
     if (Duro_evaluate_retry(srcexp, interp, ecp, &argv[i]) != RDB_OK)
         goto error;
     argpv[i] = &argv[i];
@@ -123,16 +122,16 @@ comp_node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
         nodep = nodep->nextp->nextp;
         if (nodep->xdata != NULL) {
             RDB_expression *fdstexp = nodep->xdata;
-            if (fdstexp->kind == RDB_EX_GET_COMP) {
+            if (RDB_expr_kind(fdstexp) == RDB_EX_GET_COMP) {
                 RDB_bool iseq;
-                if (RDB_expr_equals(dstexp->def.op.args.firstp,
-                        fdstexp->def.op.args.firstp, ecp,
+                if (RDB_expr_equals(RDB_expr_list_get(RDB_expr_op_args(dstexp), 0),
+                        RDB_expr_list_get(RDB_expr_op_args(fdstexp), 0), ecp,
                         interp->txnp != NULL ? &interp->txnp->tx : NULL, &iseq)
                         != RDB_OK) {
                     goto error;
                 }
                 if (iseq) {
-                    i = comp_idx(possrep, fdstexp->def.op.name);
+                    i = comp_idx(possrep, RDB_expr_op_name(fdstexp));
                     if (i == -1) {
                         /* Invald component name or different possrep */
                         RDB_raise_syntax("invalid assignment", ecp);
@@ -159,7 +158,7 @@ comp_node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
         }
     }
 
-    copyp->dstp = resolve_target(dstexp->def.op.args.firstp, interp, ecp);
+    copyp->dstp = resolve_target(RDB_expr_list_get(RDB_expr_op_args(dstexp), 0), interp, ecp);
     if (copyp->dstp == NULL)
         goto error;
 
@@ -214,7 +213,7 @@ node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep, Duro_interp *interp,
         return RDB_ERROR;
     }
 
-    if (dstexp->kind == RDB_EX_GET_COMP) {
+    if (RDB_expr_kind(dstexp) == RDB_EX_GET_COMP) {
         return comp_node_to_copy(copyp, nodep, dstexp, srcexp, interp, ecp);
     }
 
@@ -455,13 +454,12 @@ op_assign(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
 
     exp = RDB_parse_node_expr(tnodep, ecp,
             interp->txnp != NULL ? &interp->txnp->tx : NULL);
-    if (exp->kind == RDB_EX_GET_COMP)
+    if (RDB_expr_kind(exp) == RDB_EX_GET_COMP)
         return exp;
     opname = RDB_expr_op_name(exp);
     if (opname == NULL)
         return NULL;
-    return exp->def.op.args.firstp != NULL
-            && exp->def.op.args.firstp->nextp == NULL ? exp : NULL;
+    return RDB_expr_list_length(RDB_expr_op_args(exp)) == 1 ? exp : NULL;
 }
 
 static int
@@ -541,7 +539,7 @@ exec_the_assign_set(const RDB_parse_node *nodep, const RDB_expression *opexp,
     RDB_object *argp;
     RDB_expression *srcexp;
     RDB_object srcobj;
-    RDB_expression *argexp = opexp->def.op.args.firstp;
+    RDB_expression *argexp = RDB_expr_list_get(RDB_expr_op_args((RDB_expression *) opexp), 0);
 
     argp = resolve_target(argexp, interp, ecp);
     if (argp == NULL)
@@ -558,7 +556,7 @@ exec_the_assign_set(const RDB_parse_node *nodep, const RDB_expression *opexp,
         return RDB_ERROR;
     }
 
-    ret = RDB_obj_set_property(argp, opexp->def.op.name, &srcobj,
+    ret = RDB_obj_set_property(argp, RDB_expr_op_name(opexp), &srcobj,
             interp->envp, ecp,
             interp->txnp != NULL ? &interp->txnp->tx : NULL);
     RDB_destroy_obj(&srcobj, ecp);
@@ -793,10 +791,10 @@ Duro_exec_assign(const RDB_parse_node *listnodep, Duro_interp *interp,
             if (opname != NULL) {
                 if (strcmp(opname, "length") == 0) {
                     return exec_length_assign(nodep,
-                            opexp->def.op.args.firstp, interp, ecp);
+                            RDB_expr_list_get(RDB_expr_op_args((RDB_expression *) opexp), 0), interp, ecp);
                 }
             }
-            if (opexp->kind == RDB_EX_GET_COMP)
+            if (RDB_expr_kind(opexp) == RDB_EX_GET_COMP)
                 return exec_the_assign_set(nodep, opexp, interp, ecp);
         }
     }
