@@ -8,7 +8,7 @@ package net.sf.duro;
  *
  */
 public class DefaultPossrepObject implements PossrepObject {
-    private long ref;
+    private final long ref;
     private DSession session;
     private ScalarType type;
 

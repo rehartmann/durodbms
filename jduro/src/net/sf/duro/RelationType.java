@@ -9,9 +9,10 @@ import java.util.Set;
  *
  */
 public class RelationType extends Type {
+
     private static final long serialVersionUID = 1L;
 
-    private TupleType baseType;
+    private final TupleType baseType;
 
     public RelationType(VarDef[] attributes) {
         baseType = new TupleType(attributes);

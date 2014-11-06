@@ -10,10 +10,9 @@ import java.util.Map;
  *
  */
 public class ScalarType extends Type {
+
     private static final long serialVersionUID = 1L;
 
-    private String name;
-    private Possrep[] possreps;
     private static Map<String, ScalarType> typeMap = new HashMap<String, ScalarType>();
 
     public static ScalarType BOOLEAN = new ScalarType("boolean", null);
@@ -21,6 +20,9 @@ public class ScalarType extends Type {
     public static ScalarType STRING = new ScalarType("string", null);
     public static ScalarType FLOAT = new ScalarType("float", null);
     public static ScalarType BINARY = new ScalarType("binary", null);
+
+    private final String name;
+    private final Possrep[] possreps;
 
     static {
         typeMap.put("boolean", BOOLEAN);

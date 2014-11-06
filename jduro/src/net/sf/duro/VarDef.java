@@ -4,9 +4,9 @@ package net.sf.duro;
  * Instances of this class represent a name/type pair.
  */
 public class VarDef {
-    private String name;
+    private final String name;
 
-    private Type type;
+    private final Type type;
 
     public VarDef(String name, Type type) {
         this.name = name;

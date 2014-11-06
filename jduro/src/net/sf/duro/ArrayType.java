@@ -9,7 +9,7 @@ package net.sf.duro;
 public class ArrayType extends Type {
     private static final long serialVersionUID = 1L;
 
-    private Type baseType;
+    private final Type baseType;
 
     public ArrayType(Type baseType) {
         this.baseType = baseType;
