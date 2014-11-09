@@ -1,6 +1,8 @@
 package net.sf.duro.tests;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -10,7 +12,6 @@ import java.util.Set;
 
 import net.sf.duro.ByteArray;
 import net.sf.duro.DException;
-import net.sf.duro.DSession;
 import net.sf.duro.DSession;
 import net.sf.duro.PossrepObject;
 import net.sf.duro.Tuple;

@@ -362,6 +362,9 @@ index_like(RDB_expression *condexp, RDB_tbindex *indexp)
     return NULL;
 }
 
+/*
+ * Return the position of the first '?' or '*' in pattern.
+ */
 static int
 like_first_meta(const char *pattern, RDB_exec_context *ecp)
 {
@@ -381,6 +384,10 @@ like_first_meta(const char *pattern, RDB_exec_context *ecp)
         }
         offs += nb;
     }
+
+    // Should never be reached
+    RDB_raise_internal("like_first_meta()", ecp);
+    return RDB_ERROR;
 }
 
 static RDB_expression *

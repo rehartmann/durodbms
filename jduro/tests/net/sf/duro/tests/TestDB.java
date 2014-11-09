@@ -1,11 +1,10 @@
 package net.sf.duro.tests;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 
 import net.sf.duro.DException;
-import net.sf.duro.DSession;
 import net.sf.duro.DSession;
 import net.sf.duro.Tuple;
 

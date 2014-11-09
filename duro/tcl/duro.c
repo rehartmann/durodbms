@@ -16,8 +16,6 @@
 #include <locale.h>
 #include <ctype.h>
 
-extern int yydebug;
-
 static void
 duro_cleanup(ClientData data)
 {

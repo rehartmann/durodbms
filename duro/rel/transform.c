@@ -350,6 +350,10 @@ transform_where(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             return RDB_transform(chexp, getfnp, arg, ecp, txp);
         }
     }
+
+    // Should never be reached
+    RDB_raise_internal("transform_where()", ecp);
+    return RDB_ERROR;
 }
 
 static int

@@ -1,12 +1,13 @@
 package net.sf.duro.tests;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 import java.io.File;
 
 import net.sf.duro.ArrayType;
 import net.sf.duro.DException;
-import net.sf.duro.DSession;
 import net.sf.duro.DSession;
 import net.sf.duro.Possrep;
 import net.sf.duro.PossrepObject;

@@ -2,7 +2,6 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
 import net.sf.duro.DSession;
-import net.sf.duro.DSession;
 
 /**
  * Command line interface for JDuro.

@@ -1,12 +1,12 @@
 package net.sf.duro.tests;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 import java.util.HashSet;
 import java.util.Set;
 
 import net.sf.duro.DException;
-import net.sf.duro.DSession;
 import net.sf.duro.DSession;
 import net.sf.duro.Tuple;
 
