@@ -7,6 +7,7 @@
 
 #include "env.h"
 #include "sequence.h"
+#include <gen/strfns.h>
 
 #include <stdlib.h>
 #include <string.h>

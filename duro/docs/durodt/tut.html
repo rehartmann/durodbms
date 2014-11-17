@@ -46,7 +46,7 @@ for more information on <cite>TTM</cite> and Tutorial D.
 
 <pre>
 durodt
-Duro D/T library version 0.23
+Duro D/T library version 0.24
 Implicit transactions enabled.
 no db>
 </pre>
@@ -350,20 +350,25 @@ no db> var tp init tup { i 1, s 'One' };
 no db>
 </pre>
 
+<p>Tuple assignment:
+
+<pre>
+no db> tp := tup { i 2, s 'Two' };
+1 element affected.
+</pre>
+
 Note that as required by <cite>TTM</cite> proscription 1 there is no attribute
 ordering in Duro D/T, so the statement above is perfectly equivalent
 to the following:
 
 <pre>
-no db> var tp init tup { s 'One', i 1 };
-no db>
+no db> tp := tup { s 'Two', i 2 };
+1 element affected.
 </pre>
 
-<p>Tuples variables can be assigned and updated:</p>
+<p>Tuple update:
 
 <pre>
-no db> tp := tup { i 2, s 'Two' };
-1 element affected.
 no db> update tp { i := 3 };
 1 element affected.
 no db> update tp { i := 4, s := 'Four' };
@@ -1089,7 +1094,7 @@ D> explain r where n = 1 order();
 <p>(This EXPLAIN statement is not to be confused with the EXPLAIN which displays the constraint checking performed for a statement)
 
 <p>The output of EXPLAIN shows that Duro D/T uses the index r$0 to evaluate the expression.
-This is the index which was created to ensure that n is a key attribute of r.
+This is the unique index which was created to ensure that n is a key attribute of r.
 
 <p>Now let's try other WHERE expressions:
 

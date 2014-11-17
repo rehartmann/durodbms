@@ -27,7 +27,7 @@
 									<listOptionValue builtIn="false" value="RDB_INT_MIN=INT_MIN"/>
 									<listOptionValue builtIn="false" value="RDB_INT_MAX=INT_MAX"/>
 								</option>
-								<option id="gnu.c.compiler.option.include.paths.1072589226" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
+								<option id="gnu.c.compiler.option.include.paths.1072589226" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="/usr/lib/jvm/java-6-openjdk-i386/include"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1308327551" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
@@ -54,7 +54,11 @@
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
 		<project id="duro.null.734451254" name="duro"/>
 	</storageModule>
-	<storageModule moduleId="refreshScope"/>
+	<storageModule moduleId="refreshScope" versionNumber="2">
+		<configuration configurationName="Default">
+			<resource resourceType="PROJECT" workspacePath="/duro"/>
+		</configuration>
+	</storageModule>
 	<storageModule moduleId="scannerConfiguration">
 		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="org.eclipse.cdt.make.core.GCCStandardMakePerProjectProfile"/>
 		<profile id="org.eclipse.cdt.make.core.GCCStandardMakePerProjectProfile">
@@ -210,4 +214,5 @@
 			</target>
 		</buildTargets>
 	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 </cproject>

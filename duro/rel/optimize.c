@@ -1620,6 +1620,11 @@ mutate_join(RDB_expression *texp, RDB_expression **tbpv, int cap,
             return RDB_ERROR;
     }
 
+    if (RDB_expr_is_op(texp->def.op.args.firstp->nextp, "rename")
+            && texp->def.op.args.firstp->nextp->def.op.args.firstp->kind == RDB_EX_TBP) {
+        /* printf("2nd arg is rename over real table!!%%\n"); */
+    }
+
     if (texp->def.op.args.firstp->kind == RDB_EX_TBP) {
         int ret = index_joins(texp->def.op.args.firstp->nextp, texp->def.op.args.firstp,
                 tbpv + tbc, cap - tbc, ecp, txp);

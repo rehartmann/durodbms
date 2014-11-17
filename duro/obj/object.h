@@ -9,7 +9,6 @@
 #define OBJECT_H_
 
 #include <gen/types.h>
-#include <gen/strfns.h>
 #include <gen/hashtable.h>
 #include <gen/hashmap.h>
 

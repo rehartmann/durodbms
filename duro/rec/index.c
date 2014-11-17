@@ -12,6 +12,8 @@
 #include <string.h>
 #include <errno.h>
 
+#include <db.h>
+
 static int
 new_index(RDB_recmap *rmp, const char *name, const char *filename,
         RDB_environment *envp, int fieldc, const int fieldv[],

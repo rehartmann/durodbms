@@ -7,6 +7,7 @@
 
 #include "operator.h"
 #include "type.h"
+#include <gen/strfns.h>
 
 /** @addtogroup op
  * @{

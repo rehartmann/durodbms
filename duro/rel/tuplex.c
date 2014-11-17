@@ -8,6 +8,7 @@
 #include "rdb.h"
 #include "internal.h"
 #include <gen/hashtabit.h>
+#include <gen/strfns.h>
 #include <obj/tuple.h>
 #include <obj/expression.h>
 #include <obj/objinternal.h>

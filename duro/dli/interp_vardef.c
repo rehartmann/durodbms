@@ -7,6 +7,7 @@
 
 #include "interp_core.h"
 #include "interp_eval.h"
+#include <gen/strfns.h>
 #include <obj/key.h>
 #include "exparse.h"
 
