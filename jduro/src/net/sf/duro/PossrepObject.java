@@ -1,14 +1,14 @@
 package net.sf.duro;
 
 /**
- * A duro object of a scalar type with possible represenations.
+ * A duro object of a scalar type with possible representations.
  * 
  * @author Rene Hartmann
  *
  */
 public interface PossrepObject {
     /**
-     * Set a property of a PossrepObject
+     * Sets a property of a PossrepObject
      * 
      * @param name
      *            The property name
@@ -20,34 +20,34 @@ public interface PossrepObject {
     public void setProperty(String name, Object value) throws DException;
 
     /**
-     * Get the value of a property.
+     * Gets the value of a property.
      * 
      * @param name
      *            The property name.
      * @return The property value
      * @throws DException
-     *             If a Duro error occurs
+     *             If a Duro error occurs.
      */
     public Object getProperty(String name) throws DException;
 
     /**
-     * Return the type name of a PossrepObject
+     * Returns the type name of a PossrepObject
      * 
      * @return the type name.
      */
     public String getTypeName();
 
     /**
-     * Return the type of a PossrepObject
+     * Returns the type of a PossrepObject
      * 
      * @return the type.
      */
     public ScalarType getType();
 
     /**
-     * Release the resources the PossrepObject holds.
+     * Releases the resources the PossrepObject holds.
      * 
-     * @throws DException
+     * @throws DException       If a Duro error occurs.
      */
     public void dispose() throws DException;
 }
