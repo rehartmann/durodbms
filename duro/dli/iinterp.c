@@ -153,13 +153,13 @@ connect_recover_op(int argc, RDB_object *argv[], RDB_operator *op,
 {
     int ret;
     Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
-    RDB_bool create = RDB_obj_bool(argv[1]);
 
     if (interp->envp != NULL) {
         RDB_close_env(interp->envp);
     }
 
-    ret = RDB_open_env(RDB_obj_string(argv[0]), &interp->envp, create ? 0 : RDB_RECOVER);
+    ret = RDB_open_env(RDB_obj_string(argv[0]), &interp->envp,
+            RDB_obj_bool(argv[1]) ? RDB_RECOVER : 0);
     if (ret != RDB_OK) {
         RDB_handle_errcode(ret, ecp, txp);
         interp->envp = NULL;

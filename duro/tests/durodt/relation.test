@@ -427,6 +427,33 @@ test join_extend {Natural JOIN/EXTEND}  -setup $SETUP -cleanup $CLEANUP -body {
 2 y 1 yy
 }
 
+test join_rename_index {JOIN with index}  -setup $SETUP -cleanup $CLEANUP -match glob -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+
+        var orders real rel {id int, cust_id int} key {id};
+        
+        insert orders rel {tup {id 101, cust_id 1},
+                           tup {id 102, cust_id 1},
+                           tup {id 103, cust_id 2},
+                           tup {id 104, cust_id 2},
+                           tup {id 105, cust_id 3} };
+
+        var customers real rel {id int, name string} key {id};
+        
+        insert customers rel {tup {id 1, name 'Jack'},
+                              tup {id 2, name 'Jill'},
+                              tup {id 3, name 'Karl'} };
+
+        explain orders join customers rename { id as cust_id } order();
+        
+        commit;
+    }
+} -result {*INDEX customers$0*}
+
 test union {UNION and D_UNION} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');

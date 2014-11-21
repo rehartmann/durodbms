@@ -1,12 +1,12 @@
 /*
- * trinternal.h
+ * objinternal.h
  *
  *  Created on: 29.09.2013
- *      Author: rene
+ *      Author: Rene Hartmann
  */
 
-#ifndef TRINTERNAL_H_
-#define TRINTERNAL_H_
+#ifndef OBJINTERNAL_H_
+#define OBJINTERNAL_H_
 
 #include "object.h"
 #include "type.h"
@@ -119,4 +119,4 @@ RDB_drop_expr_children(RDB_expression *, RDB_exec_context *);
 int
 RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *);
 
-#endif /* TRINTERNAL_H_ */
+#endif /* OBJINTERNAL_H_ */

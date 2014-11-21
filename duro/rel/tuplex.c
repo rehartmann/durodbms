@@ -205,6 +205,35 @@ RDB_rename_tuple(const RDB_object *tplp, int renc, const RDB_renaming renv[],
     return RDB_OK;
 }
 
+int
+rename_tuple(RDB_object *dtplp, const RDB_object *stplp,
+        const RDB_expression *exp, RDB_exec_context *ecp)
+{
+    int ret;
+    RDB_hashtable_iter it;
+    tuple_entry *entryp;
+
+    RDB_init_hashtable_iter(&it, (RDB_hashtable *) &stplp->val.tpl_tab);
+    while ((entryp = RDB_hashtable_next(&it)) != NULL) {
+        /* Search for attribute in rename arguments */
+        char *nattrname = RDB_rename_attr(entryp->key, exp);
+
+        if (nattrname != NULL) {
+            /* Found - copy and rename attribute */
+            ret = RDB_tuple_set(dtplp, nattrname, &entryp->obj, ecp);
+        } else {
+            /* Not found - copy only */
+            ret = RDB_tuple_set(dtplp, entryp->key, &entryp->obj, ecp);
+        }
+        if (ret != RDB_OK) {
+            RDB_destroy_hashtable_iter(&it);
+            return RDB_ERROR;
+        }
+    }
+    RDB_destroy_hashtable_iter(&it);
+    return RDB_OK;
+}
+
 static RDB_expression *
 find_rename_to(const RDB_expression *exp, const char *name)
 {

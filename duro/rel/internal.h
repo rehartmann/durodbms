@@ -191,7 +191,7 @@ RDB_dup_rename_keys(int keyc, const RDB_string_vec keyv[], RDB_expression *,
         RDB_exec_context *);
 
 char *
-RDB_rename_attr(const char *srcname, RDB_expression *);
+RDB_rename_attr(const char *srcname, const RDB_expression *);
 
 RDB_bool
 RDB_legal_name(const char *name);
@@ -385,5 +385,10 @@ RDB_close_sequences(RDB_object *);
 
 RDB_expression *
 RDB_attr_eq_strval(const char *, const char *, RDB_exec_context *);
+
+int
+RDB_next_stored_tuple(RDB_qresult *, RDB_object *, RDB_object *,
+        RDB_bool, RDB_bool, RDB_type *,
+        RDB_exec_context *, RDB_transaction *);
 
 #endif

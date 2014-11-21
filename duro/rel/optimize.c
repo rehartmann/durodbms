@@ -223,7 +223,7 @@ expr_covers_index(RDB_expression *exp, RDB_tbindex *indexp)
  * Return the number of attributes covered by the index
  */
 static int
-table_index_attrs(RDB_type *reltyp, RDB_tbindex *indexp)
+table_index_attrs(const RDB_type *reltyp, RDB_tbindex *indexp)
 {
     int i;
 
@@ -240,9 +240,32 @@ table_index_attrs(RDB_type *reltyp, RDB_tbindex *indexp)
  * Check if *reltyp covers all index attributes.
  */
 static RDB_bool
-table_covers_index(RDB_type *reltyp, RDB_tbindex *indexp)
+table_covers_index(const RDB_type *reltyp, RDB_tbindex *indexp)
 {
     return (RDB_bool) table_index_attrs(reltyp, indexp) == indexp->attrc;
+}
+
+/*
+ * Check if *reltyp covers all index attributes, renamed by *renexp.
+ */
+static RDB_bool
+table_covers_index_rename(const RDB_type *reltyp, RDB_tbindex *indexp,
+        const RDB_expression *renexp)
+{
+    int i;
+    char *attrnamp;
+
+    for (i = 0; i < indexp->attrc; i++) {
+        attrnamp = RDB_rename_attr(indexp->attrv[i].attrname, renexp);
+
+        /* Attribute is not renamed - use original attribute name */
+        if (attrnamp == NULL)
+            attrnamp = indexp->attrv[i].attrname;
+
+        if (RDB_tuple_type_attr(reltyp->def.basetyp, attrnamp) == NULL)
+            return RDB_FALSE;
+    }
+    return RDB_TRUE;
 }
 
 /**
@@ -641,24 +664,24 @@ split_by_index(RDB_expression *texp, RDB_tbindex *indexp,
 }
 
 /*
- * Check if the expression is a table or a projection over a table
+ * Check if the expression is a table or a projection/rename over a table
  */
 static RDB_bool
-is_stored_or_project_table(const RDB_expression *exp, RDB_bool *is_projp)
+table_can_use_index(const RDB_expression *exp, RDB_bool *childp)
 {
     if (exp->kind == RDB_EX_TBP) {
         /*
          * Assume that virtual tables have been resolved, so this must be
          * a real (stored) table
          */
-        if (is_projp != NULL)
-            *is_projp = RDB_FALSE;
+        if (childp != NULL)
+            *childp = RDB_FALSE;
         return RDB_TRUE;
     }
-    if (RDB_expr_is_op(exp, "project")
+    if ((RDB_expr_is_op(exp, "project") || RDB_expr_is_op(exp, "rename"))
             && exp->def.op.args.firstp->kind == RDB_EX_TBP) {
-        if (is_projp != NULL)
-            *is_projp = RDB_TRUE;
+        if (childp != NULL)
+            *childp = RDB_TRUE;
         return RDB_TRUE;
     }
     return RDB_FALSE;
@@ -701,7 +724,7 @@ static unsigned
 table_cost(const RDB_expression *exp)
 {
     RDB_tbindex *indexp;
-    RDB_bool is_proj;
+    RDB_bool child;
 
     if (exp->kind != RDB_EX_RO_OP)
         return table_est_cardinality(exp);
@@ -710,23 +733,17 @@ table_cost(const RDB_expression *exp)
             || RDB_expr_is_binop(exp, "minus")
             || RDB_expr_is_binop(exp, "semijoin")
             || RDB_expr_is_binop(exp, "intersect")) {
-        if (is_stored_or_project_table(exp->def.op.args.firstp->nextp, &is_proj)) {
-            if (is_proj) {
+        if (table_can_use_index(exp->def.op.args.firstp->nextp, &child)) {
+            if (child) {
                 indexp = exp->def.op.args.firstp->nextp->def.op.args.firstp->def.tbref.indexp;
-                if (indexp != NULL) {
-                    if (indexp->unique)
-                        return table_cost(exp->def.op.args.firstp);
-                    else
-                        return table_cost(exp->def.op.args.firstp) * 2;
-                }
             } else {
                 indexp = exp->def.op.args.firstp->nextp->def.tbref.indexp;
-                if (indexp != NULL) {
-                    if (indexp->unique)
-                        return table_cost(exp->def.op.args.firstp);
-                    else
-                        return table_cost(exp->def.op.args.firstp) * 2;
-                }
+            }
+            if (indexp != NULL) {
+                if (indexp->unique)
+                    return table_cost(exp->def.op.args.firstp);
+                else
+                    return table_cost(exp->def.op.args.firstp) * 2;
             }
         }
         /* No index used, so the 2nd table has to be searched sequentially */
@@ -1423,15 +1440,15 @@ mutate_matching_index(RDB_expression *texp, RDB_expression **tbpv, int cap,
 {
     int i;
     int tbc;
-    RDB_bool is_proj;
+    RDB_bool child;
 
     /*
      * If the second table is a stored table or a projection over a stored table
      * (assuming virtual tables have been resolved), try to use an index
      */
-    if (is_stored_or_project_table(texp->def.op.args.firstp->nextp, &is_proj)) {
+    if (table_can_use_index(texp->def.op.args.firstp->nextp, &child)) {
         RDB_type *tb1typ;
-        RDB_object *tbp = is_proj ?
+        RDB_object *tbp = child ?
                 texp->def.op.args.firstp->nextp->def.op.args.firstp->def.tbref.tbp
                 : texp->def.op.args.firstp->nextp->def.tbref.tbp;
 
@@ -1452,7 +1469,7 @@ mutate_matching_index(RDB_expression *texp, RDB_expression **tbpv, int cap,
                 if (tbpv[tbc] == NULL)
                     return RDB_ERROR;
                 /* Set index for second argument */
-                if (is_proj) {
+                if (child) {
                     /* Check if index covers type of table #2 */
                     RDB_type *tb2typ = RDB_expr_type(texp->def.op.args.firstp, NULL, NULL, NULL, ecp, txp);
                     if (tb2typ == NULL)
@@ -1554,15 +1571,21 @@ index_joins(RDB_expression *otexp, RDB_expression *itexp,
 {
     int tbc;
     int i;
-    RDB_object *tbp = itexp->def.tbref.tbp;
+    RDB_object *tbp;
     RDB_type *ottyp = RDB_expr_type(otexp, NULL, NULL, NULL, ecp, txp);
     if (ottyp == NULL)
         return RDB_ERROR;
 
+    if (itexp->kind == RDB_EX_TBP) {
+        tbp = itexp->def.tbref.tbp;
+    } else {
+        tbp = itexp->def.op.args.firstp->def.tbref.tbp;
+    }
+
     if (!RDB_table_is_stored(tbp))
         return 0;
 
-    if (tbp->val.tb.stp == NULL) {
+    if (tbp->kind == RDB_OB_TABLE && tbp->val.tb.stp == NULL) {
         if (RDB_create_stored_table(tbp, RDB_db_env(RDB_tx_db(txp)), NULL,
                 ecp, txp) != RDB_OK)
             return RDB_ERROR;
@@ -1574,15 +1597,18 @@ index_joins(RDB_expression *otexp, RDB_expression *itexp,
 
     tbc = 0;
     for (i = 0; i < tbp->val.tb.stp->indexc && tbc < cap; i++) {
-        if (table_covers_index(ottyp, &tbp->val.tb.stp->indexv[i])) {
-            RDB_expression *arg1p, *ntexp;
-            RDB_expression *refargp = RDB_table_ref(tbp, ecp);
-            if (refargp == NULL) {
-                return RDB_ERROR;
-            }
+        RDB_bool useindex;
 
-            refargp->def.tbref.indexp = &tbp->val.tb.stp->indexv[i];
-            ntexp = RDB_ro_op("join", ecp);
+        if (RDB_expr_is_op(itexp, "rename")) {
+            useindex = table_covers_index_rename(ottyp, &tbp->val.tb.stp->indexv[i],
+                    itexp);
+        } else {
+            useindex = table_covers_index(ottyp, &tbp->val.tb.stp->indexv[i]);
+        }
+
+        if (useindex) {
+            RDB_expression *arg1p, *arg2p;
+            RDB_expression * ntexp = RDB_ro_op("join", ecp);
             if (ntexp == NULL) {
                 return RDB_ERROR;
             }
@@ -1592,9 +1618,22 @@ index_joins(RDB_expression *otexp, RDB_expression *itexp,
                 RDB_del_expr(ntexp, ecp);
                 return RDB_ERROR;
             }
-
             RDB_add_arg(ntexp, arg1p);
-            RDB_add_arg(ntexp, refargp);
+
+            arg2p = RDB_dup_expr(itexp, ecp);
+            if (arg2p == NULL) {
+                RDB_del_expr(ntexp, ecp);
+                return RDB_ERROR;
+            }
+            RDB_add_arg(ntexp, arg2p);
+
+            if (itexp->kind == RDB_EX_TBP) {
+                itexp->def.tbref.indexp = &tbp->val.tb.stp->indexv[i];
+            } else {
+                itexp->def.op.args.firstp->def.tbref.indexp
+                        = &tbp->val.tb.stp->indexv[i];
+            }
+
             tbpv[tbc++] = ntexp;
         }
     }
@@ -1613,16 +1652,14 @@ mutate_join(RDB_expression *texp, RDB_expression **tbpv, int cap,
         return mutate_full_vt(texp, tbpv, cap, empty_exp, ecp, txp);
     }
 
-    if (texp->def.op.args.firstp->nextp->kind == RDB_EX_TBP) {
+    if (texp->def.op.args.firstp->nextp->kind == RDB_EX_TBP
+            || (RDB_expr_is_op(texp->def.op.args.firstp->nextp, "rename")
+               && texp->def.op.args.firstp->nextp->def.op.args.firstp->kind == RDB_EX_TBP)) {
+        /* Arg #2 is stored table or rename over stored table */
         tbc = index_joins(texp->def.op.args.firstp, texp->def.op.args.firstp->nextp,
                 tbpv, cap, ecp, txp);
         if (tbc == RDB_ERROR)
             return RDB_ERROR;
-    }
-
-    if (RDB_expr_is_op(texp->def.op.args.firstp->nextp, "rename")
-            && texp->def.op.args.firstp->nextp->def.op.args.firstp->kind == RDB_EX_TBP) {
-        /* printf("2nd arg is rename over real table!!%%\n"); */
     }
 
     if (texp->def.op.args.firstp->kind == RDB_EX_TBP) {

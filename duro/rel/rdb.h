@@ -433,6 +433,10 @@ RDB_rename_tuple(const RDB_object *, int renc, const RDB_renaming renv[],
                  RDB_exec_context *, RDB_object *restplp);
 
 int
+rename_tuple(RDB_object *, const RDB_object *,
+        const RDB_expression *, RDB_exec_context *);
+
+int
 RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const RDB_wrapping wrapv[],
                RDB_exec_context *, RDB_object *restplp);
 

@@ -352,7 +352,7 @@ infer_group_keys(RDB_expression *exp, RDB_exec_context *ecp,
 }
 
 char *
-RDB_rename_attr(const char *srcname, RDB_expression *exp)
+RDB_rename_attr(const char *srcname, const RDB_expression *exp)
 {
     /* Search for attribute in rename arguments */
     RDB_expression *argp = exp->def.op.args.firstp->nextp;

@@ -5,8 +5,8 @@
  * See the file COPYING for redistribution information.
  */
 
-#include "rdb.h"
 #include "qresult.h"
+#include "qr_join.h"
 #include "qr_tclose.h"
 #include "internal.h"
 #include "insert.h"
@@ -1403,8 +1403,8 @@ RDB_get_by_cursor(RDB_object *tbp, RDB_cursor *curp, RDB_type *tpltyp,
     return RDB_OK;
 }
 
-static int
-next_stored_tuple(RDB_qresult *qrp, RDB_object *tbp, RDB_object *tplp,
+int
+RDB_next_stored_tuple(RDB_qresult *qrp, RDB_object *tbp, RDB_object *tplp,
         RDB_bool asc, RDB_bool dup, RDB_type *tpltyp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -1520,67 +1520,6 @@ next_ungroup_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 }
 
 static int
-next_join_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-    int ret;
-
-    /* read first 'outer' tuple, if it's the first invocation */
-    if (!qrp->val.children.tpl_valid) {
-        RDB_init_obj(&qrp->val.children.tpl);
-        qrp->val.children.tpl_valid = RDB_TRUE;
-        if (RDB_next_tuple(qrp->val.children.qrp, &qrp->val.children.tpl,
-                ecp, txp) != RDB_OK) {
-            return RDB_ERROR;
-        }
-    }
-
-    RDB_destroy_obj(tplp, ecp);
-    RDB_init_obj(tplp);
-    for (;;) {
-        /* Read next 'inner' tuple */
-        ret = RDB_next_tuple(qrp->val.children.qr2p, tplp, ecp, txp);
-        if (ret != RDB_OK && RDB_obj_type(RDB_get_err(ecp))
-                != &RDB_NOT_FOUND_ERROR) {
-            return RDB_ERROR;
-        }
-        if (ret == RDB_OK) {
-            RDB_bool iseq;
-
-            /* Compare common attributes */
-            ret = RDB_tuple_matches(tplp, &qrp->val.children.tpl, ecp, txp, &iseq);
-            if (ret != RDB_OK)
-                return RDB_ERROR;
-
-            /* 
-             * If common attributes are equal, leave the loop,
-             * otherwise read next tuple
-             */
-            if (iseq)
-                break;
-            continue;
-        }
-        RDB_clear_err(ecp);
-
-        /* reset nested qresult */
-        ret = RDB_reset_qresult(qrp->val.children.qr2p, ecp, txp);
-        if (ret != RDB_OK) {
-            return RDB_ERROR;
-        }
-
-        /* read next 'outer' tuple */
-        ret = RDB_next_tuple(qrp->val.children.qrp, &qrp->val.children.tpl,
-                ecp, txp);
-        if (ret != RDB_OK) {
-            return RDB_ERROR;
-        }
-    }
-
-    /* join the two tuples into tplp */
-    return RDB_add_tuple(tplp, &qrp->val.children.tpl, ecp, txp);
-}
-
-static int
 find_str_exp(RDB_expression *exp, const char *str)
 {
     int i = 0;
@@ -1594,7 +1533,7 @@ find_str_exp(RDB_expression *exp, const char *str)
 }
 
 static int
-next_unwrap_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+next_unwrap(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;
@@ -1687,135 +1626,6 @@ RDB_seek_index_qresult(RDB_qresult *qrp, struct RDB_tbindex *indexp,
 
 cleanup:
     RDB_free(fv);
-
-    return ret;
-}
-
-static int
-next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    int ret;
-    RDB_tbindex *indexp = qrp->exp->def.op.args.firstp->nextp->def.tbref.indexp;
-
-    /* read first 'outer' tuple, if it's the first invocation */
-    if (!qrp->val.children.tpl_valid) {
-        RDB_init_obj(&qrp->val.children.tpl);
-        ret = RDB_next_tuple(qrp->val.children.qrp, &qrp->val.children.tpl,
-                ecp, txp);
-        if (ret != RDB_OK)
-            return RDB_ERROR;
-        qrp->val.children.tpl_valid = RDB_TRUE;
-
-        /* Set cursor position */
-        ret = RDB_seek_index_qresult(qrp->val.children.qr2p, indexp,
-                &qrp->val.children.tpl, ecp, txp);
-        if (ret != RDB_OK)
-            return RDB_ERROR;
-    }
-
-    RDB_destroy_obj(tplp, ecp);
-    RDB_init_obj(tplp);
-
-    for (;;) {
-        /* read next 'inner' tuple */
-        ret = next_stored_tuple(qrp->val.children.qr2p,
-                qrp->val.children.qr2p->val.stored.tbp, tplp, RDB_TRUE, RDB_TRUE,
-                qrp->val.children.qr2p->val.stored.tbp->typ->def.basetyp,
-                ecp, txp);
-        if (ret != RDB_OK) {
-            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-                return RDB_ERROR;
-            }
-            RDB_clear_err(ecp);
-        } else {
-            RDB_bool match;
-            
-            if (RDB_tuple_matches(tplp, &qrp->val.children.tpl, ecp, txp,
-                    &match) != RDB_OK) {
-                return RDB_ERROR;
-            }
-
-            /* 
-             * If common attributes are equal, leave the loop,
-             * otherwise read next tuple
-             */
-            if (match)
-                break;
-            continue;
-        }
-
-        /* read next 'outer' tuple */
-        ret = RDB_next_tuple(qrp->val.children.qrp, &qrp->val.children.tpl,
-                ecp, txp);
-        if (ret != RDB_OK) {
-            return RDB_ERROR;
-        }
-
-        /* reset cursor */
-        ret = RDB_seek_index_qresult(qrp->val.children.qr2p, indexp,
-                &qrp->val.children.tpl, ecp, txp);
-        if (ret != RDB_OK)
-            return RDB_ERROR;
-    }
-
-    /* join the two tuples into tplp */
-    return RDB_add_tuple(tplp, &qrp->val.children.tpl, ecp, txp);
-}
-
-static int
-next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-    int ret;
-    int i;
-    RDB_object tpl;
-    RDB_object **objpv;
-    RDB_bool match = RDB_FALSE;
-    RDB_tbindex *indexp = qrp->exp->def.op.args.firstp->nextp->def.tbref.indexp;
-
-    objpv = RDB_alloc(sizeof(RDB_object *) * indexp->attrc, ecp);
-    if (objpv == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
-
-    RDB_destroy_obj(tplp, ecp);
-    RDB_init_obj(tplp);
-
-    RDB_init_obj(&tpl);
-
-    do {
-        ret = RDB_next_tuple(qrp->val.children.qrp, tplp, ecp, txp);
-        if (ret != RDB_OK)
-            goto cleanup;
-
-        for (i = 0; i < indexp->attrc; i++) {
-            objpv[i] = RDB_tuple_get(tplp, indexp->attrv[i].attrname);
-            objpv[i]->store_typ = objpv[i]->typ;
-        }
-        ret = RDB_get_by_uindex(qrp->exp->def.op.args.firstp->nextp->def.tbref.tbp,
-                objpv, indexp,
-                qrp->exp->def.op.args.firstp->nextp->def.tbref.tbp->typ->def.basetyp,
-                ecp, txp, &tpl);
-        if (ret == RDB_ERROR) {
-            if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
-                RDB_clear_err(ecp);
-                continue;
-            }
-            goto cleanup;
-        }
-
-        ret = RDB_tuple_matches(tplp, &tpl, ecp, txp, &match);
-        if (ret != RDB_OK)
-            goto cleanup;
-    } while (!match);
-
-    ret = RDB_add_tuple(tplp, &tpl, ecp, txp);
-
-cleanup:
-    RDB_free(objpv);
-    RDB_destroy_obj(&tpl, ecp);
 
     return ret;
 }
@@ -1948,7 +1758,7 @@ cleanup:
 }
 
 static int
-next_project_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+next_project(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;
@@ -2037,7 +1847,7 @@ next_where_index(RDB_qresult *qrp, RDB_object *tplp,
         dup = RDB_TRUE;
 
     do {
-        ret = next_stored_tuple(qrp, qrp->val.stored.tbp, tplp,
+        ret = RDB_next_stored_tuple(qrp, qrp->val.stored.tbp, tplp,
                 qrp->exp->def.op.optinfo.asc, dup, tpltyp, ecp, txp);
         if (ret != RDB_OK)
             goto error;
@@ -2185,7 +1995,7 @@ wrap_tuple(const RDB_object *tplp, RDB_expression *exp,
 }
 
 static int
-next_wrap_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+next_wrap(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_object tpl;
@@ -2345,7 +2155,7 @@ RDB_sdivide_preserves(RDB_expression *exp, const RDB_object *tplp,
 }
 
 static int
-next_sdivide_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+next_sdivide(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;
@@ -2387,43 +2197,21 @@ next_where_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 }
 
 static int
-next_rename_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+next_rename(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_object tpl;
     int ret;
-    RDB_hashtable_iter it;
-    tuple_entry *entryp;
-    RDB_expression *exp = qrp->exp;
 
     RDB_init_obj(&tpl);
-    ret = RDB_next_tuple(qrp->val.children.qrp, &tpl, ecp, txp);
-    if (ret != RDB_OK) {
+    if (RDB_next_tuple(qrp->val.children.qrp, &tpl, ecp, txp) != RDB_OK) {
         RDB_destroy_obj(&tpl, ecp);
         return RDB_ERROR;
     }
 
-    RDB_init_hashtable_iter(&it, (RDB_hashtable *) &tpl.val.tpl_tab);
-    while ((entryp = RDB_hashtable_next(&it)) != NULL) {
-        /* Search for attribute in rename arguments */
-        char *nattrname = RDB_rename_attr(entryp->key, exp);
-
-        if (nattrname != NULL) {
-            /* Found - copy and rename attribute */
-            ret = RDB_tuple_set(tplp, nattrname, &entryp->obj, ecp);
-        } else {
-            /* Not found - copy only */
-            ret = RDB_tuple_set(tplp, entryp->key, &entryp->obj, ecp);
-        }
-        if (ret != RDB_OK) {
-            RDB_destroy_hashtable_iter(&it);
-            RDB_destroy_obj(&tpl, ecp);
-            return RDB_ERROR;
-        }        
-    }
-    RDB_destroy_hashtable_iter(&it);
+    ret = rename_tuple(tplp, &tpl, qrp->exp, ecp);
     RDB_destroy_obj(&tpl, ecp);
-    return RDB_OK;
+    return ret;
 }
 
 static int
@@ -2447,7 +2235,7 @@ next_semiminus_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 }
 
 static int
-next_union_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+next_union(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;
@@ -2471,7 +2259,7 @@ next_union_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 }
 
 static int
-next_d_union_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+next_d_union(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;
@@ -2510,7 +2298,7 @@ next_d_union_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 }
 
 static int
-next_semijoin_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+next_semijoin(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;
@@ -2529,7 +2317,7 @@ next_semijoin_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 }
 
 static int
-next_extend_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+next_extend(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;
@@ -2560,7 +2348,7 @@ next_extend_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 }
 
 static int
-next_relation_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+next_relation(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;
@@ -2592,13 +2380,13 @@ RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_type *tpltyp;
         if (qrp->val.stored.tbp == NULL) {
             /* It's a sorter */
-           return next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE,
+           return RDB_next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE,
                     qrp->matp->typ->def.basetyp, ecp, txp);
 	    }
         tpltyp = qrp->val.stored.tbp->typ->kind == RDB_TP_RELATION ?
                 qrp->val.stored.tbp->typ->def.basetyp
                 : qrp->val.stored.tbp->typ->def.scalar.arep->def.basetyp;
-        return next_stored_tuple(qrp, qrp->val.stored.tbp, tplp, RDB_TRUE,
+        return RDB_next_stored_tuple(qrp, qrp->val.stored.tbp, tplp, RDB_TRUE,
                 RDB_FALSE, tpltyp, ecp, txp);
     }
 
@@ -2626,51 +2414,39 @@ RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
                     return RDB_ERROR;
             }                
         } else if (strcmp(qrp->exp->def.op.name, "project") == 0) {
-            if (next_project_tuple(qrp, tplp, ecp, txp) != RDB_OK)
+            if (next_project(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else if (strcmp(qrp->exp->def.op.name, "rename") == 0) {
-            ret = next_rename_tuple(qrp, tplp, ecp, txp);
-            if (ret != RDB_OK)
+            if (next_rename(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else if (strcmp(qrp->exp->def.op.name, "join") == 0) {
-            if (qrp->exp->def.op.args.firstp->nextp->kind == RDB_EX_TBP
-                    && qrp->exp->def.op.args.firstp->nextp->def.tbref.indexp != NULL) {
-                RDB_tbindex *indexp = qrp->exp->def.op.args.firstp->nextp->def.tbref.indexp;
-                if (indexp->unique) {
-                    ret = next_join_tuple_uix(qrp, tplp, ecp, txp);
-                } else {
-                    ret = next_join_tuple_nuix(qrp, tplp, ecp, txp);
-                }
-            } else {
-                ret = next_join_tuple(qrp, tplp, ecp, txp);
-            }
-            if (ret != RDB_OK)
+            if (RDB_next_join(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else if ((strcmp(qrp->exp->def.op.name, "minus") == 0)
                 || (strcmp(qrp->exp->def.op.name, "semiminus") == 0)) {
             if (next_semiminus_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else if (strcmp(qrp->exp->def.op.name, "union") == 0) {
-            if (next_union_tuple(qrp, tplp, ecp, txp) != RDB_OK)
+            if (next_union(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else if (strcmp(qrp->exp->def.op.name, "d_union") == 0) {
-            if (next_d_union_tuple(qrp, tplp, ecp, txp) != RDB_OK)
+            if (next_d_union(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else if ((strcmp(qrp->exp->def.op.name, "intersect") == 0)
                 || (strcmp(qrp->exp->def.op.name, "semijoin") == 0)) {
-            if (next_semijoin_tuple(qrp, tplp, ecp, txp) != RDB_OK)
+            if (next_semijoin(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else if (strcmp(qrp->exp->def.op.name, "extend") == 0) {
-            if (next_extend_tuple(qrp, tplp, ecp, txp) != RDB_OK)
+            if (next_extend(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else if (strcmp(qrp->exp->def.op.name, "wrap") == 0) {
-            if (next_wrap_tuple(qrp, tplp, ecp, txp) != RDB_OK)
+            if (next_wrap(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else if (strcmp(qrp->exp->def.op.name, "unwrap") == 0) {
-            if (next_unwrap_tuple(qrp, tplp, ecp, txp) != RDB_OK)
+            if (next_unwrap(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else if (strcmp(qrp->exp->def.op.name, "divide") == 0) {
-            if (next_sdivide_tuple(qrp, tplp, ecp, txp) != RDB_OK)
+            if (next_sdivide(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else if (strcmp(qrp->exp->def.op.name, "tclose") == 0) {
             if (RDB_next_tclose_tuple(qrp, tplp, ecp, txp) != RDB_OK)
@@ -2679,7 +2455,7 @@ RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
             if (next_ungroup_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else if (strcmp(qrp->exp->def.op.name, "relation") == 0) {
-            if (next_relation_tuple(qrp, tplp, ecp, txp) != RDB_OK)
+            if (next_relation(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else {
             RDB_raise_internal(qrp->exp->def.op.name, ecp);

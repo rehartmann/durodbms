@@ -67,8 +67,8 @@ recsrc = ['rec/cursor.c', 'rec/env.c', 'rec/index.c', 'rec/recmap.c', 'rec/seque
 
 relsrc = ['rel/array.c', 'rel/database.c', 'rel/uoperator.c',
         'rel/expressionx.c', 'rel/evaluate.c', 'rel/exprtype.c', 'rel/tuplex.c',
-        'rel/stable.c', 'rel/qresult.c', 'rel/qr_tclose.c', 'rel/serialize.c',
-        'rel/table.c', 'rel/vtable.c', 'rel/ptable.c',
+        'rel/stable.c', 'rel/qresult.c', 'rel/qr_join.c', 'rel/qr_tclose.c',
+        'rel/serialize.c', 'rel/table.c', 'rel/vtable.c', 'rel/ptable.c',
         'rel/aggrf.c', 'rel/update.c', 'rel/insert.c', 'rel/contains.c',
         'rel/transaction.c', 'rel/delete.c',
         'rel/utype.c', 'rel/builtinops.c',
@@ -267,7 +267,7 @@ rel_hdrs = Split('rel/rdb.h rel/typeimpl.h util/www.h '
 rel_ihdrs = Split('rel/catalog.h rel/cat_type.h rel/cat_op.h '
 		'rel/delete.h rel/serialize.h '
         'rel/insert.h rel/transform.h rel/internal.h rel/stable.h '
-        'rel/update.h rel/qr_tclose.h '
+        'rel/update.h rel/qr_join.h rel/qr_tclose.h '
         'rel/pexpr.h')
 dli_hdrs = ['dli/parse.h', 'dli/parsenode.h']
 dli_ihdrs = ['dli/exparse.h', 'dli/iinterp.h', 'dli/interp_core.h',
