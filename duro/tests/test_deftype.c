@@ -37,7 +37,8 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     }
     RDB_add_arg(initexp, RDB_int_to_expr(0, ecp));
 
-    ret = RDB_define_type("TINYINT", 1, &pr, constraintp, initexp, ecp, &tx);
+    ret = RDB_define_type("TINYINT", 1, &pr, constraintp, initexp, 0,
+            ecp, &tx);
     RDB_del_expr(constraintp, ecp);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);

@@ -4,6 +4,11 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 0.24
 
+- Type definition now supports ORDERED.
+  Added flags argument to RDB_define_type().
+
+- Querys of the form T1 JOIN T2 RENAME { ... } can now be optimized.
+
 - Added RDB_expr_kind(), RDB_expr_op_args(), and RDB_expr_list_get().
 
 - DSession is now a class. Renamed DuroPossrepObject as DefaultPossrepObject.

@@ -11,6 +11,10 @@
 #include "rdb.h"
 
 int
+RDB_join_qresult(RDB_qresult *, RDB_expression *,
+        RDB_exec_context *, RDB_transaction *);
+
+int
 RDB_next_join(RDB_qresult *, RDB_object *, RDB_exec_context *,
         RDB_transaction *);
 

@@ -10,6 +10,7 @@
 
 #include "object.h"
 #include "excontext.h"
+#include "type.h"
 
 int
 RDB_tuple_set(RDB_object *, const char *, const RDB_object *,
@@ -59,6 +60,10 @@ RDB_project_tuple(const RDB_object *, int, const char *[],
 int
 RDB_remove_tuple(const RDB_object *, int, const char *[],
                  RDB_exec_context *, RDB_object *);
+
+int
+RDB_rename_tuple(const RDB_object *, int renc, const RDB_renaming renv[],
+                 RDB_exec_context *, RDB_object *restplp);
 
 RDB_bool
 RDB_is_tuple(const RDB_object *);

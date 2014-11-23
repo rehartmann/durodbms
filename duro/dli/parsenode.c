@@ -293,8 +293,6 @@ RDB_token_name(int tok)
             return "DROP";
         case TOK_INIT:
             return "INIT";
-        case TOK_ADD:
-            return "ADD";
         case TOK_BEGIN:
             return "BEGIN";
         case TOK_TX:

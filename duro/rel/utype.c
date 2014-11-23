@@ -89,7 +89,7 @@ in which case the transaction may be implicitly rolled back.
 int
 RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
                 RDB_expression *constraintp, RDB_expression *initexp,
-                RDB_exec_context *ecp, RDB_transaction *txp)
+                int flags, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object tpl;
     RDB_object conval;
@@ -142,6 +142,9 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
             != RDB_OK)
         goto error;
     if (RDB_tuple_set_bool(&tpl, "sysimpl", RDB_FALSE, ecp) != RDB_OK)
+        goto error;
+    if (RDB_tuple_set_bool(&tpl, "ordered",
+            (RDB_bool) RDB_TYPE_ORDERED & flags, ecp) != RDB_OK)
         goto error;
 
     /* Store constraint in tuple */

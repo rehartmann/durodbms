@@ -31,6 +31,7 @@ RDB_add_io(RDB_exec_context *ecp)
     RDB_IOSTREAM_ID.ireplen = sizeof(RDB_int);
     RDB_IOSTREAM_ID.name = io_stream_rep.name;
     RDB_IOSTREAM_ID.def.scalar.builtin = RDB_TRUE;
+    RDB_IOSTREAM_ID.def.scalar.ordered = RDB_FALSE;
     RDB_IOSTREAM_ID.def.scalar.repc = 1;
     RDB_IOSTREAM_ID.def.scalar.repv = &io_stream_rep;
     RDB_IOSTREAM_ID.def.scalar.arep = &RDB_INTEGER;

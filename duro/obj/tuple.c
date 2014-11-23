@@ -436,6 +436,56 @@ RDB_remove_tuple(const RDB_object *tplp, int attrc, const char *attrv[],
 }
 
 /**
+ * RDB_rename_tuple creates copies the tuple specified by <var>tplp</var>
+to the tuple specified by <var>restplp</var>, renaming the attributes
+specified by <var>renc</var> and <var>renv</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+The call may fail for a @ref system-errors "system error".
+ */
+int
+RDB_rename_tuple(const RDB_object *tplp, int renc, const RDB_renaming renv[],
+                 RDB_exec_context *ecp, RDB_object *restup)
+{
+    RDB_hashtable_iter it;
+    tuple_entry *entryp;
+
+    if (tplp->kind != RDB_OB_TUPLE) {
+        RDB_raise_invalid_argument("not a tuple", ecp);
+        return RDB_ERROR;
+    }
+
+    /* Copy attributes to tplp */
+    RDB_init_hashtable_iter(&it, (RDB_hashtable *)&tplp->val.tpl_tab);
+    while ((entryp = RDB_hashtable_next(&it)) != NULL) {
+        int ret;
+        int ai = RDB_find_rename_from(renc, renv, entryp->key);
+
+        if (ai >= 0) {
+            ret = RDB_tuple_set(restup, renv[ai].to, &entryp->obj, ecp);
+        } else {
+            ret = RDB_tuple_set(restup, entryp->key, &entryp->obj, ecp);
+        }
+
+        if (ret != RDB_OK) {
+            RDB_destroy_hashtable_iter(&it);
+            return ret;
+        }
+    }
+
+    RDB_destroy_hashtable_iter(&it);
+
+    return RDB_OK;
+}
+
+/**
  * Check if *objp represents a tuple.
  * Calling it with a newly initialized object will return RDB_TRUE.
  */

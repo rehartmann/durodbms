@@ -397,7 +397,7 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *srcp,
         RDB_object tpl;
 
         RDB_init_obj(&tpl);
-        if (RDB_invrename_tuple(srcp, exp, ecp, &tpl) != RDB_OK) {
+        if (RDB_invrename_tuple_ex(srcp, exp, ecp, &tpl) != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             return RDB_ERROR;
         }
@@ -751,7 +751,7 @@ resolve_vdelete_expr(RDB_expression *exp, const RDB_object *srcp,
         RDB_object tpl;
 
         RDB_init_obj(&tpl);
-        if (RDB_invrename_tuple(srcp, exp, ecp, &tpl) != RDB_OK) {
+        if (RDB_invrename_tuple_ex(srcp, exp, ecp, &tpl) != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             return RDB_ERROR;
         }

@@ -143,7 +143,7 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
 
     ret = RDB_define_type(Tcl_GetString(objv[2]), repc, repv, constraintp,
-            initexp, statep->current_ecp, txp);
+            initexp, 0, statep->current_ecp, txp);
     if (constraintp != NULL)
         RDB_del_expr(constraintp, statep->current_ecp);
     if (initexp != NULL)

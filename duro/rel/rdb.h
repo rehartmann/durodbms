@@ -166,6 +166,18 @@ typedef struct {
  * @}
  */
 
+/** @addtogroup type
+ * @{
+ */
+
+enum {
+    RDB_TYPE_ORDERED = 1
+};
+
+/**
+ * @}
+ */
+
 int
 RDB_init_builtin(RDB_exec_context *);
 
@@ -368,7 +380,7 @@ RDB_infer_keys(RDB_expression *, RDB_getobjfn *, void *,
 
 int
 RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
-                RDB_expression *, RDB_expression *,
+                RDB_expression *, RDB_expression *, int,
                 RDB_exec_context *, RDB_transaction *);
 
 RDB_type *
@@ -427,14 +439,6 @@ RDB_add_tuple(RDB_object *, const RDB_object *,
 int
 RDB_union_tuples(const RDB_object *, const RDB_object *, RDB_exec_context *,
         RDB_transaction *, RDB_object *);
-
-int
-RDB_rename_tuple(const RDB_object *, int renc, const RDB_renaming renv[],
-                 RDB_exec_context *, RDB_object *restplp);
-
-int
-rename_tuple(RDB_object *, const RDB_object *,
-        const RDB_expression *, RDB_exec_context *);
 
 int
 RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const RDB_wrapping wrapv[],

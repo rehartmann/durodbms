@@ -1223,9 +1223,10 @@ static int
 exec_typedef(const RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context *ecp)
 {
     int i, j;
+    int flags;
     int repc;
     RDB_possrep *repv;
-    RDB_parse_node *nodep;
+    RDB_parse_node *nodep, *prnodep;
     RDB_expression *initexp;
     RDB_expression *constraintp = NULL;
 
@@ -1234,35 +1235,45 @@ exec_typedef(const RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context 
         return RDB_ERROR;
     }
 
-    repc = RDB_parse_nodelist_length(stmtp->nextp);
+    if (stmtp->nextp->kind == RDB_NODE_TOK) {
+        /* Token must be ORDERED */
+        flags = RDB_TYPE_ORDERED;
+        prnodep = stmtp->nextp->nextp;
+    } else {
+        flags = 0;
+        prnodep = stmtp->nextp;
+    }
+
+    repc = RDB_parse_nodelist_length(prnodep);
     repv = RDB_alloc(repc * sizeof(RDB_possrep), ecp);
     if (repv == NULL)
         goto error;
-    nodep = stmtp->nextp->val.children.firstp;
+
+    nodep = prnodep->val.children.firstp;
     for (i = 0; i < repc; i++) {
         if (parserep_to_rep(nodep, &repv[i], ecp, &interp->txnp->tx) != RDB_OK)
             goto error;
         nodep = nodep->nextp;
     }
 
-    if (stmtp->nextp->nextp->val.token == TOK_CONSTRAINT) {
-        constraintp = RDB_parse_node_expr(stmtp->nextp->nextp->nextp, ecp,
+    if (prnodep->nextp->val.token == TOK_CONSTRAINT) {
+        constraintp = RDB_parse_node_expr(prnodep->nextp->nextp, ecp,
                 &interp->txnp->tx);
         if (constraintp == NULL)
         	goto error;
-        initexp = RDB_parse_node_expr(stmtp->nextp->nextp->nextp->nextp->nextp, ecp,
+        initexp = RDB_parse_node_expr(prnodep->nextp->nextp->nextp->nextp, ecp,
                 &interp->txnp->tx);
         if (initexp == NULL)
             goto error;
     } else {
-        initexp = RDB_parse_node_expr(stmtp->nextp->nextp->nextp, ecp,
+        initexp = RDB_parse_node_expr(prnodep->nextp->nextp, ecp,
                 &interp->txnp->tx);
         if (initexp == NULL)
             goto error;
     }
 
     if (RDB_define_type(RDB_expr_var_name(stmtp->exp),
-            repc, repv, constraintp, initexp, ecp,
+            repc, repv, constraintp, initexp, flags, ecp,
             &interp->txnp->tx) != RDB_OK)
         goto error;
 

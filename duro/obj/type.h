@@ -97,6 +97,8 @@ typedef struct RDB_type {
             /* RDB_TRUE if selector/getters/setters are provided by the system */
             RDB_bool sysimpl;
 
+            RDB_bool ordered;
+
             /* Actual representation, if the type is represented by another type.
                Otherwise NULL. */
             struct RDB_type *arep;

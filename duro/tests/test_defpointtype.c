@@ -57,7 +57,7 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_add_arg(initexp, RDB_float_to_expr((RDB_float) 0.0, ecp));
     RDB_add_arg(initexp, RDB_float_to_expr((RDB_float) 0.0, ecp));
 
-    ret = RDB_define_type("POINT", 2, prv, NULL, initexp, ecp, &tx);
+    ret = RDB_define_type("POINT", 2, prv, NULL, initexp, 0, ecp, &tx);
     assert(ret == RDB_OK);
 
     /*

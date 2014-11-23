@@ -7,9 +7,41 @@
 
 #include "qr_join.h"
 #include "qresult.h"
+#include "qr_stored.h"
 #include "stable.h"
 #include "internal.h"
 #include "obj/objinternal.h"
+
+int
+RDB_join_qresult(RDB_qresult *qrp, RDB_expression *exp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_expression *arg2p;
+
+    /* Create qresult for the first table */
+    qrp->exp = exp;
+    qrp->nested = RDB_TRUE;
+    qrp->val.children.qrp = RDB_expr_qresult(qrp->exp->def.op.args.firstp,
+            ecp, txp);
+    if (qrp->val.children.qrp == NULL)
+        return RDB_ERROR;
+
+    qrp->val.children.tpl_valid = RDB_FALSE;
+
+    /* Create qresult for 2nd table, except if the primary index is used */
+    arg2p = qrp->exp->def.op.args.firstp->nextp;
+    if (arg2p->kind != RDB_EX_TBP || arg2p->def.tbref.indexp == NULL
+            || !arg2p->def.tbref.indexp->unique) {
+        qrp->val.children.qr2p = RDB_expr_qresult(arg2p, ecp, txp);
+        if (qrp->val.children.qr2p == NULL) {
+            RDB_del_qresult(qrp->val.children.qrp, ecp, txp);
+            return RDB_ERROR;
+        }
+    } else {
+        qrp->val.children.qr2p = NULL;
+    }
+    return RDB_OK;
+}
 
 static int
 next_join_rename_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_tbindex *indexp,
@@ -65,7 +97,7 @@ next_join_rename_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_tbindex *indexp,
         }
 
         /* Rename attributes */
-        ret = rename_tuple(&rtpl, &tpl, qrp->val.children.qr2p->exp, ecp);
+        ret = RDB_rename_tuple_ex(&rtpl, &tpl, qrp->val.children.qr2p->exp, ecp);
         if (ret != RDB_OK)
             goto cleanup;
 
@@ -103,7 +135,7 @@ next_join_rename_nuix(RDB_qresult *qrp, RDB_object *tplp, RDB_tbindex *indexp,
             goto error;
         qrp->val.children.tpl_valid = RDB_TRUE;
 
-        if (RDB_invrename_tuple(&qrp->val.children.tpl,
+        if (RDB_invrename_tuple_ex(&qrp->val.children.tpl,
                 qrp->val.children.qr2p->exp, ecp, &oxtpl) != RDB_OK)
             goto error;
 
@@ -132,7 +164,7 @@ next_join_rename_nuix(RDB_qresult *qrp, RDB_object *tplp, RDB_tbindex *indexp,
         } else {
             RDB_bool match;
 
-            if (rename_tuple(tplp, &itpl, qrp->val.children.qr2p->exp, ecp) != RDB_OK)
+            if (RDB_rename_tuple_ex(tplp, &itpl, qrp->val.children.qr2p->exp, ecp) != RDB_OK)
                 goto error;
 
             if (RDB_tuple_matches(tplp, &qrp->val.children.tpl, ecp, txp,
@@ -155,7 +187,7 @@ next_join_rename_nuix(RDB_qresult *qrp, RDB_object *tplp, RDB_tbindex *indexp,
             goto error;
         }
 
-        if (RDB_invrename_tuple(&qrp->val.children.tpl,
+        if (RDB_invrename_tuple_ex(&qrp->val.children.tpl,
                 qrp->val.children.qr2p->exp, ecp, &oxtpl) != RDB_OK)
             goto error;
 

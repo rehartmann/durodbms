@@ -201,9 +201,6 @@ RDB_set_defvals(RDB_object *tbp, int attrc, const RDB_attr attrv[],
         RDB_exec_context *);
 
 int
-RDB_find_rename_from(int renc, const RDB_renaming renv[], const char *name);
-
-int
 RDB_expr_to_empty_table(RDB_expression *, RDB_exec_context *,
         RDB_transaction *);
 
@@ -228,7 +225,11 @@ RDB_tuple_matches(const RDB_object *tpl1p, const RDB_object *tpl2p,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp);
 
 int
-RDB_invrename_tuple(const RDB_object *, const RDB_expression *,
+RDB_rename_tuple_ex(RDB_object *, const RDB_object *,
+        const RDB_expression *, RDB_exec_context *);
+
+int
+RDB_invrename_tuple_ex(const RDB_object *, const RDB_expression *,
                  RDB_exec_context *, RDB_object *restup);
 
 int
@@ -385,10 +386,5 @@ RDB_close_sequences(RDB_object *);
 
 RDB_expression *
 RDB_attr_eq_strval(const char *, const char *, RDB_exec_context *);
-
-int
-RDB_next_stored_tuple(RDB_qresult *, RDB_object *, RDB_object *,
-        RDB_bool, RDB_bool, RDB_type *,
-        RDB_exec_context *, RDB_transaction *);
 
 #endif

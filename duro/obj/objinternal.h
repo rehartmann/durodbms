@@ -66,6 +66,9 @@ struct RDB_expression {
     RDB_bool optimized;
 };
 
+int
+RDB_find_rename_from(int, const RDB_renaming[], const char *);
+
 typedef struct RDB_transaction RDB_transaction;
 
 int
