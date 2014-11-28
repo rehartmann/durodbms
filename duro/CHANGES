@@ -11,7 +11,8 @@ DuroDBMS 0.24
 
 - Added RDB_expr_kind(), RDB_expr_op_args(), and RDB_expr_list_get().
 
-- DSession is now a class. Renamed DuroPossrepObject as DefaultPossrepObject.
+- DSession is now a class. Renamed DuroPossrepObject as DefaultPossrepObject
+  and VarDef as NameTypePair.
   Added missing methods and javadoc comments to UpdatableXXX classes. 
 
 DuroDBMS 0.23

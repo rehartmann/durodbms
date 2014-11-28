@@ -33,7 +33,7 @@ RDB_type_is_numeric(const RDB_type *typ) {
 }
 
 /**
- * Check if a type is valid, that is, if it can be used for declaring variables.
+ * Determines if a type is valid, that is, if it can be used for declaring variables.
  * A scalar type is valid if it is implemented (either a built-in type
  * or a user-defined type on which RDB_implement_type() has been called
  * successfully).
@@ -43,7 +43,8 @@ RDB_type_is_numeric(const RDB_type *typ) {
  * RDB_TRUE if the type is valid, RDB_FALSE otherwise.
  */
 RDB_bool
-RDB_type_is_valid(const RDB_type *typ) {
+RDB_type_is_valid(const RDB_type *typ)
+{
     int i;
 
     switch (typ->kind) {
@@ -63,10 +64,25 @@ RDB_type_is_valid(const RDB_type *typ) {
 }
 
 /**
+ * Determines if a scalar type is ordered.
+ *
+ * @returns
+ * RDB_TRUE if *typ is a scalar ordered type, RDB_FALSE otherwise.
+ */
+RDB_bool
+RDB_type_is_ordered(const RDB_type *typ)
+{
+    if (!RDB_type_is_scalar(typ))
+        return RDB_FALSE;
+    return typ->def.scalar.ordered;
+}
+
+/**
  * Check if a type is a scalar type with possreps.
  */
 RDB_bool
-RDB_type_has_possreps(const RDB_type *typ) {
+RDB_type_has_possreps(const RDB_type *typ)
+{
     return (RDB_bool) (typ->kind == RDB_TP_SCALAR && typ->def.scalar.repc > 0);
 }
 

@@ -55,28 +55,28 @@ test utype {user-defined types} -setup $SETUP -body {
     }
     
     #
-    # Define type PNAME. Only rep is (FIRSTNAME,LASTNAME)
+    # Define type pname. Only rep is (firstname,lastname)
     #
     
-    duro::type define PNAME {
-        {PNAME {{FIRSTNAME string} {LASTNAME string}}}
-    } {PNAME('', '')} $tx
-    
-    duro::type implement PNAME $tx
-    
+    duro::type define pname -ordered {
+        {pname {{firstname string} {lastname string}}}
+    } {pname('', '')} $tx
+
     #
     # Comparison operator
     #
-    duro::operator create cmp -returns integer {name1 PNAME name2 PNAME} {
+    duro::operator create cmp -returns integer {name1 pname name2 pname} {
         set ::compare_called 1
         array set a1 $name1
         array set a2 $name2
-        set r [string compare $a1(LASTNAME) $a2(LASTNAME)]
+        set r [string compare $a1(lastname) $a2(lastname)]
         if {$r != 0} {
             return $r
         }
-        set r [string compare $a1(FIRSTNAME) $a2(FIRSTNAME)]
+        set r [string compare $a1(firstname) $a2(firstname)]
     } $tx
+ 
+    duro::type implement pname $tx
 
     #
     # Define type INTSET
@@ -119,35 +119,35 @@ test utype {user-defined types} -setup $SETUP -body {
     
     duro::table create T2 {
        {NO integer}
-       {NAME PNAME}
+       {NAME pname}
     } {{NO}} $tx
     
-    set tpl {NO 1 NAME {PNAME('Peter', 'Potter')}}
+    set tpl {NO 1 NAME {pname('Peter', 'Potter')}}
     duro::insert T2 $tpl $tx
     
-    duro::table expr -global V1 {T2 WHERE NAME=PNAME("Peter", "Potter")} $tx
+    duro::table expr -global V1 {T2 WHERE NAME=pname("Peter", "Potter")} $tx
 
     if {![duro::table contains T2 $tpl $tx]} {
         error "T2 should contain $tpl, but does not."
     }
+ 
+    array set a [duro::expr {TUPLE FROM (T2 WHERE the_lastname(NAME) = "Potter")} $tx]
     
-    array set a [duro::expr {TUPLE FROM (T2 WHERE the_LASTNAME(NAME) = "Potter")} $tx]
-    
-    if {($a(NO) != 1) || ($a(NAME) != {PNAME('Peter', 'Potter')})} {
+    if {($a(NO) != 1) || ($a(NAME) != {pname('Peter', 'Potter')})} {
         error "wrong value tuple value: $a(NAME)"
     }
     
     array set a [duro::expr {TUPLE FROM V1} $tx]
     
-    if {($a(NO) != 1) || ($a(NAME) != {PNAME('Peter', 'Potter')})} {
+    if {($a(NO) != 1) || ($a(NAME) != {pname('Peter', 'Potter')})} {
         error "V1 has wrong value"
     }
-    
-    duro::insert T2 {NO 2 NAME {PNAME("Ali", "Z")}} $tx
+
+    duro::insert T2 {NO 2 NAME {pname("Ali", "Z")}} $tx
     
     set arr [duro::array create T2 {NAME asc} $tx]
-    checkarray $arr {{NO 1 NAME {PNAME('Peter', 'Potter')}}
-            {NO 2 NAME {PNAME('Ali', 'Z')}}} \
+    checkarray $arr {{NO 1 NAME {pname('Peter', 'Potter')}}
+            {NO 2 NAME {pname('Ali', 'Z')}}} \
             $tx
     duro::array drop $arr
     
@@ -169,8 +169,8 @@ test utype {user-defined types} -setup $SETUP -body {
     
     set compare_called 0
     set arr [duro::array create T2 {NAME asc} $tx]
-    checkarray $arr {{NO 1 NAME {PNAME('Peter', 'Potter')}}
-            {NO 2 NAME {PNAME('Ali', 'Z')}}} \
+    checkarray $arr {{NO 1 NAME {pname('Peter', 'Potter')}}
+            {NO 2 NAME {pname('Ali', 'Z')}}} \
             $tx
     duro::array drop $arr
     

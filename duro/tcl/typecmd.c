@@ -17,6 +17,9 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     int ret;
     int i;
     char *txstr;
+    char *orderedstr;
+    int flags;
+    int prpos;
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
     int repc;
@@ -24,8 +27,8 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_expression *initexp = NULL;
     RDB_expression *constraintp = NULL;
 
-    if ((objc < 6) || (objc > 7)) {
-        Tcl_WrongNumArgs(interp, 2, objv, "typename possreps ?constraint? initexp tx");
+    if ((objc < 6) || (objc > 8)) {
+        Tcl_WrongNumArgs(interp, 2, objv, "typename ?-ordered? possreps ?constraint? initexp tx");
         return TCL_ERROR;
     }
 
@@ -46,6 +49,15 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         repv[i].compv = NULL;
     }
 
+    orderedstr = Tcl_GetString(objv[3]);
+    if (strcmp(orderedstr, "-ordered") == 0) {
+        flags = RDB_TYPE_ORDERED;
+        prpos = 4;
+    } else {
+        flags = 0;
+        prpos = 3;
+    }
+
     /*
      * Read possible representations
      */
@@ -55,7 +67,7 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         Tcl_Obj *repnameobjp, *repcompsobjp;
         int j;
 
-        ret = Tcl_ListObjIndex(interp, objv[3], i, &repobjp);
+        ret = Tcl_ListObjIndex(interp, objv[prpos], i, &repobjp);
         if (ret != TCL_OK)
             goto cleanup;
  
@@ -124,9 +136,9 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         }
     }
 
-    if (objc == 7) {
+    if (objc == prpos + 4) {
         /* Type constraint */
-        constraintp = Duro_parse_expr_utf(interp, Tcl_GetString(objv[4]),
+        constraintp = Duro_parse_expr_utf(interp, Tcl_GetString(objv[prpos + 1]),
                 statep, statep->current_ecp, txp);
         if (constraintp == NULL) {
             ret = TCL_ERROR;
@@ -143,7 +155,7 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
 
     ret = RDB_define_type(Tcl_GetString(objv[2]), repc, repv, constraintp,
-            initexp, 0, statep->current_ecp, txp);
+            initexp, flags, statep->current_ecp, txp);
     if (constraintp != NULL)
         RDB_del_expr(constraintp, statep->current_ecp);
     if (initexp != NULL)

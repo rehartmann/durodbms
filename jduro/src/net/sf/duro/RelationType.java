@@ -14,7 +14,7 @@ public class RelationType extends Type {
 
     private final TupleType baseType;
 
-    public RelationType(VarDef[] attributes) {
+    public RelationType(NameTypePair[] attributes) {
         baseType = new TupleType(attributes);
     }
 

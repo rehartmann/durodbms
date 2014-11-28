@@ -44,10 +44,9 @@ public class DefaultPossrepObject implements PossrepObject {
 
         this.ref = ref;
         this.session = dInstance;
-        this.type = null; /*
-                           * Getting the type is delayed until getType() is
-                           * called
-                           */
+        
+        // Getting the type is delayed until getType() is called
+        this.type = null;
     }
 
     public void setProperty(String name, Object value) throws DException {
@@ -88,7 +87,7 @@ public class DefaultPossrepObject implements PossrepObject {
         Possrep[] possreps = getPossreps(ref, session);
         if (possreps == null)
             return 0;
-        VarDef[] components = possreps[0].getComponents();
+        NameTypePair[] components = possreps[0].getComponents();
 
         /* Use components of 1st possrep to calculate the hash code */
         int code = 0;

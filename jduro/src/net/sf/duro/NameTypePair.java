@@ -3,12 +3,11 @@ package net.sf.duro;
 /**
  * Instances of this class represent a name/type pair.
  */
-public class VarDef {
+public class NameTypePair {
     private final String name;
-
     private final Type type;
 
-    public VarDef(String name, Type type) {
+    public NameTypePair(String name, Type type) {
         this.name = name;
         this.type = type;
     }

@@ -415,7 +415,7 @@ The value of the environment variable <var>name</var>.
 
 <h3 id="op_is_empty">OPERATOR is_empty</h3>
 
-OPERATOR is_empty (<em>RELATION</em>) RETURNS boolean;
+OPERATOR is_empty (RELATION { * }) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -430,7 +430,7 @@ otherwise.
 
 <h3 id="op_count">OPERATOR count</h3>
 
-OPERATOR count (<em>RELATION</em>) RETURNS integer;
+OPERATOR count (RELATION { * }) RETURNS integer;
 
 <h4>Description</h4>
 
@@ -444,7 +444,7 @@ The cardinality of the relation-valued operand.
 
 <h3 id="op_in">OPERATOR in</h3>
 
-OPERATOR in (t <em>TUPLE</em>, r <em>RELATION</em>) RETURNS boolean;
+OPERATOR in (t TUPLE { * }, r RELATION { * }) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -458,7 +458,7 @@ RDB_TRUE if <var>r</var> contains <var>t</var>, RDB_FALSE otherwise.
 
 <h3 id="op_subset_of">OPERATOR subset_of</h3>
 
-OPERATOR subset_of (R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS boolean;
+OPERATOR subset_of (R1 RELATION { * }, R2 RELATION { * }) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -472,7 +472,7 @@ RDB_TRUE if the <var>R1</var> is a subset of <var>R2</var>, RDB_FALSE otherwise.
 
 <h3 id="op_any">OPERATOR any</h3>
 
-OPERATOR any(R <em>RELATION</em>, ATTR boolean) RETURNS boolean;
+OPERATOR any(R RELATION { * }, ATTR boolean) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -483,7 +483,7 @@ For the semantics, see RDB_any().
 
 <h3 id="op_all">OPERATOR all</h3>
 
-OPERATOR all(R <em>RELATION</em>, ATTR boolean) RETURNS boolean;
+OPERATOR all(R RELATION { * }, ATTR boolean) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -494,9 +494,9 @@ For the semantics, see RDB_all().
 
 <h3 id="op_avg">OPERATOR avg</h3>
 
-OPERATOR avg(R <em>RELATION</em>, ATTR INTEGER) RETURNS float;
+OPERATOR avg(R RELATION { * }, ATTR INTEGER) RETURNS float;
 
-OPERATOR avg(R <em>RELATION</em>, ATTR float) RETURNS float;
+OPERATOR avg(R RELATION { * }, ATTR float) RETURNS float;
 
 <h4>Description</h4>
 
@@ -507,9 +507,9 @@ For the semantics, see RDB_avg().
 
 <h3 id="op_max">OPERATOR max</h3>
 
-OPERATOR max(R <em>RELATION</em>, attr integer) RETURNS integer;
+OPERATOR max(R RELATION { * }, attr integer) RETURNS integer;
 
-OPERATOR max(R <em>RELATION</em>, attr float) RETURNS float;
+OPERATOR max(R RELATION { * }, attr float) RETURNS float;
 
 <h4>Description</h4>
 
@@ -520,9 +520,9 @@ For the semantics, see RDB_max().
 
 <h3 id="op_min">OPERATOR min</h3>
 
-OPERATOR min(R <em>RELATION</em>, attr integer) RETURNS INTEGER;
+OPERATOR min(R RELATION { * }, attr integer) RETURNS INTEGER;
 
-OPERATOR min(R <em>RELATION</em>, attr float) RETURNS float;
+OPERATOR min(R RELATION { * }, attr float) RETURNS float;
 
 <h4>Description</h4>
 
@@ -533,9 +533,9 @@ For the semantics, see RDB_min().
 
 <h3 id="op_sum">OPERATOR sum</h3>
 
-OPERATOR SUM(R <em>RELATION</em>, attr integer) RETURNS integer;
+OPERATOR SUM(R RELATION { * }, attr integer) RETURNS integer;
 
-OPERATOR SUM(R <em>RELATION</em>, attr float) RETURNS float;
+OPERATOR SUM(R RELATION { * }, attr float) RETURNS float;
 
 <h4>Description</h4>
 
@@ -558,11 +558,11 @@ The IF-THEN-ELSE operator.
 
 <hr>
 
-@section tup-rel-ops Built-in tuple and relational operators
+@section tup-rel-ops Built-in tuple, relational, and array operators
 
 <h3 id="op_tuple">OPERATOR TUPLE</h3>
 
-OPERATOR TUPLE(ATTRNAME string, ATTRVAL <em>ANY</em>, ...) RETURNS <em>TUPLE</em>;
+OPERATOR TUPLE(ATTRNAME string, ATTRVAL <em>ANY</em>, ...) RETURNS TUPLE { * };
 
 <h4>Description</h4>
 
@@ -572,7 +572,7 @@ The tuple selector.
 
 <h3 id="op_relation">OPERATOR RELATION</h3>
 
-OPERATOR RELATION(T TUPLE, ...) RETURNS <em>RELATION</em>;
+OPERATOR RELATION(T TUPLE { * }, ...) RETURNS RELATION { * };
 
 <h4>Description</h4>
 
@@ -620,7 +620,7 @@ The index, or -1 if DATA does not appear in the array.
 
 <h3 id="op_to_tuple">OPERATOR to_tuple</h3>
 
-OPERATOR TO_TUPLE(R <em>RELATION</em>) RETURNS <em>TUPLE</em>;
+OPERATOR TO_TUPLE(R RELATION { * }) RETURNS TUPLE { * };
 
 <h4>Description</h4>
 
@@ -630,7 +630,7 @@ Extracts a single tuple from a relation.
 
 <h3 id="op_divide">OPERATOR divide</h3>
 
-OPERATOR divide(R1 <em>RELATION</em>, R2 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+OPERATOR divide(R1 RELATION { * }, R2 RELATION { * }, R2 RELATION { * }) RETURNS RELATION { * };
 
 <h4>Description</h4>
 
@@ -640,103 +640,103 @@ The relational three-argument (small) DIVIDE operator.
 
 <h3 id="op_extend">OPERATOR extend</h3>
 
-OPERATOR extend(R <em>RELATION</em>, ATTREXP <em>ANY</em>, attrname string, ...) RETURNS <em>RELATION</em>;
+OPERATOR extend(R RELATION { * }, ATTREXP <em>ANY</em>, attrname string, ...) RETURNS RELATION { * };
 
 <hr>
 
 <h3 id="op_group">OPERATOR group</h3>
 
-OPERATOR group(R <em>RELATION</em>, attrname string ...) RETURNS <em>RELATION</em>;
+OPERATOR group(R RELATION { * }, attrname string ...) RETURNS RELATION { * };
 
 <hr>
 
 <h3 id="op_intersect">OPERATOR intersect</h3>
 
-OPERATOR intersect(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+OPERATOR intersect(R1 RELATION { * }, R2 RELATION { * }) RETURNS RELATION { * };
 
 <hr>
 
 <h3 id="op_join">OPERATOR join</h3>
 
-OPERATOR join(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+OPERATOR join(R1 RELATION { * }, R2 RELATION { * }) RETURNS RELATION { * };
 
 <hr>
 
 <h3 id="op_minus">OPERATOR minus</h3>
 
-OPERATOR minus(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+OPERATOR minus(R1 RELATION { * }, R2 RELATION { * }) RETURNS RELATION { * };
 
 <hr>
 
 <h3 id="op_project">OPERATOR project</h3>
 
-OPERATOR project(R1 <em>RELATION</em>, ATTRNAME string ...) RETURNS <em>RELATION</em>;
+OPERATOR project(R1 RELATION { * }, ATTRNAME string ...) RETURNS RELATION { * };
 
 <hr>
 
 <h3 id="op_remove">OPERATOR remove</h3>
 
-OPERATOR remove(R <em>RELATION</em>, ATTRNAME string ...) RETURNS <em>RELATION</em>;
+OPERATOR remove(R RELATION { * }, ATTRNAME string ...) RETURNS RELATION { * };
 
 <hr>
 
 <h3 id="op_rename">OPERATOR rename</h3>
 
-OPERATOR rename(R <em>RELATION</em>, SRC_ATTRNAME string, DST_ATTRNAME string ...) RETURNS <em>RELATION</em>;
+OPERATOR rename(R RELATION { * }, SRC_ATTRNAME string, DST_ATTRNAME string ...) RETURNS RELATION { * };
 
 <hr>
 
 <h3 id="op_ungroup">OPERATOR ungroup</h3>
 
-OPERATOR ungroup(R <em>RELATION</em>, ATTRNAME string) RETURNS <em>RELATION</em>;
+OPERATOR ungroup(R RELATION { * }, ATTRNAME string) RETURNS RELATION { * };
 
 <hr>
 
 <h3 id="op_union">OPERATOR union</h3>
 
-OPERATOR union(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+OPERATOR union(R1 RELATION { * }, R2 RELATION { * }) RETURNS RELATION { * };
 
 <hr>
 
 <h3 id="op_d_union">OPERATOR d_union</h3>
 
-OPERATOR d_union(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+OPERATOR d_union(R1 RELATION { * }, R2 RELATION { * }) RETURNS RELATION { * };
 
 <hr>
 
 <h3 id="op_update">OPERATOR update</h3>
 
-OPERATOR update(R1 <em>RELATION</em>, DST_ATTRNAME string, SRC_EXPR <em>ANY</em>, ...) RETURNS <em>RELATION</em>;
+OPERATOR update(R1 RELATION { * }, DST_ATTRNAME string, SRC_EXPR <em>ANY</em>, ...) RETURNS RELATION { * };
 
 <hr>
 
 <h3 id="op_unwrap">OPERATOR unwrap</h3>
 
-OPERATOR unwrap(ATTRNAME string, ...) RETURNS <em>RELATION</em>;
+OPERATOR unwrap(ATTRNAME string, ...) RETURNS RELATION { * };
 
 <hr>
 
 <h3 id="op_semijoin">OPERATOR semijoin</h3>
 
-OPERATOR semijoin(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+OPERATOR semijoin(R1 RELATION { * }, R2 RELATION { * }) RETURNS RELATION { * };
 
 <hr>
 
 <h3 id="op_semiminus">OPERATOR semiminus</h3>
 
-OPERATOR semiminus(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+OPERATOR semiminus(R1 RELATION { * }, R2 RELATION { * }) RETURNS RELATION { * };
 
 <hr>
 
 <h3 id="op_summarize">OPERATOR summarize</h3>
 
-OPERATOR summarize(R1 <em>RELATION</em>, R2 <em>RELATION</em>, EXPR <em>ANY</em>, ATTRNAME string, ...) RETURNS <em>RELATION</em>;
+OPERATOR summarize(R1 RELATION { * }, R2 RELATION { * }, EXPR <em>ANY</em>, ATTRNAME string, ...) RETURNS RELATION { * };
 
 <hr>
 
 <h3 id="op_tclose">OPERATOR tclose</h3>
 
-OPERATOR tclose(R <em>RELATION</em>) RETURNS <em>RELATION</em>;
+OPERATOR tclose(R RELATION { * }) RETURNS RELATION { * };
 
 The transitive closure operator.
 
@@ -744,7 +744,7 @@ The transitive closure operator.
 
 <h3 id="op_where">OPERATOR where</h3>
 
-OPERATOR where(R <em>RELATION</em>, B boolean) RETURNS <em>RELATION</em>;
+OPERATOR where(R RELATION { * }, B boolean) RETURNS RELATION { * };
 
 The relational WHERE operator.
 
@@ -752,7 +752,7 @@ The relational WHERE operator.
 
 <h3 id="op_wrap">OPERATOR wrap</h3>
 
-OPERATOR wrap(R <em>RELATION</em>, SRC_ATTRS ARRAY OF string, DST_ATTR string ...) RETURNS <em>RELATION</em>;
+OPERATOR wrap(R RELATION { * }, SRC_ATTRS ARRAY OF string, DST_ATTR string ...) RETURNS RELATION { * };
 
 The relational WRAP operator.
 

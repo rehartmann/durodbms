@@ -48,7 +48,7 @@ getcomptype(const char *compname, void *arg)
 
 /**
  *
-RDB_define_type defines a type with the name <var>name</var> and
+Defines a type with the name <var>name</var> and
 <var>repc</var> possible representations.
 The individual possible representations are
 described by the elements of <var>repv</var>.
@@ -144,7 +144,7 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
     if (RDB_tuple_set_bool(&tpl, "sysimpl", RDB_FALSE, ecp) != RDB_OK)
         goto error;
     if (RDB_tuple_set_bool(&tpl, "ordered",
-            (RDB_bool) RDB_TYPE_ORDERED & flags, ecp) != RDB_OK)
+            RDB_TYPE_ORDERED & flags ? RDB_TRUE : RDB_FALSE, ecp) != RDB_OK)
         goto error;
 
     /* Store constraint in tuple */
@@ -257,7 +257,7 @@ del_type(RDB_type *typ, RDB_exec_context *ecp)
 }
 
 /**
- * Delete the user-defined type with name specified by <var>name</var>.
+ * Deletes the user-defined type with name specified by <var>name</var>.
 
 It is not possible to destroy built-in types.
 
@@ -394,6 +394,18 @@ create_selector(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
     return ret;
 }
 
+static int
+create_comparison_ops(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_parameter paramv[2];
+
+    paramv[0].typ = typ;
+    paramv[1].typ = typ;
+
+    return RDB_create_ro_op("<", 2, paramv, &RDB_BOOLEAN, "", "RDB_sys_lt", "",
+            ecp, txp);
+}
+
 static RDB_possrep *
 RDB_get_possrep(const RDB_type *typ, const char *repname)
 {
@@ -410,7 +422,7 @@ RDB_get_possrep(const RDB_type *typ, const char *repname)
 }
 
 /**
- * Check if the operator *<var>op</var> is a selector.
+ * Determines if the operator *<var>op</var> is a selector.
  */
 RDB_bool
 RDB_is_selector(const RDB_operator *op)
@@ -423,7 +435,7 @@ RDB_is_selector(const RDB_operator *op)
 }
 
 /**
- * Return pointer to a RDB_possrep structure representing the
+ * Returns a pointer to a RDB_possrep structure representing the
  * possible representation of type <var>typ</var> containing
  * a component named <var>name</var>.
  * The structure is managed by the type.
@@ -446,13 +458,23 @@ RDB_comp_possrep(const RDB_type *typ, const char *name)
     return NULL;
 }
 
+static RDB_operator *
+get_cmp_op(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_type *typv[2];
+
+    typv[0] = typ;
+    typv[1] = typ;
+    return RDB_get_ro_op("cmp", 2, typv, NULL, ecp, txp);
+}
+
 /** @defgroup typeimpl Type implementation functions
  * \#include <rel/typeimpl.h>
  * @{
  */
 
 /**
- * RDB_implement_type implements the user-defined type with name
+ * Implements the user-defined type with name
 <var>name</var>. The type must have been defined previously using
 RDB_define_type(). After RDB_implement_type was inkoved successfully,
 this type may be used for local variables and table attributes.
@@ -590,6 +612,20 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
         typ->ireplen = arep != NULL ? arep->ireplen : areplen;
     }
 
+    if (RDB_type_is_ordered(typ)) {
+        if (typ->compare_op == NULL) {
+            /*
+             * Search for comparison function
+             */
+            typ->compare_op = get_cmp_op(typ, ecp, txp);
+            if (typ->compare_op == NULL)
+                return RDB_ERROR;
+        }
+
+        if (create_comparison_ops(typ, ecp, txp) != RDB_OK)
+            return RDB_ERROR;
+    }
+
     /*
      * Update catalog
      */
@@ -667,7 +703,7 @@ cleanup:
 }
 
 /**
- * Check if the operator *<var>op</var> is a getter operator.
+ * Determines if the operator *<var>op</var> is a getter operator.
  */
 RDB_bool
 RDB_is_getter(const RDB_operator *op)
@@ -683,7 +719,7 @@ RDB_is_getter(const RDB_operator *op)
 }
 
 /**
- * Check if the operator *<var>op</var> is a setter operator.
+ * Determines if the operator *<var>op</var> is a setter operator.
  */
 RDB_bool
 RDB_is_setter(const RDB_operator *op)
@@ -699,7 +735,7 @@ RDB_is_setter(const RDB_operator *op)
 }
 
 /**
- * Delete selector, getter, and setter operators.
+ * Deletes selector, getter, and setter operators.
  */
 int
 RDB_drop_typeimpl_ops(const RDB_type *typ, RDB_exec_context *ecp,
@@ -753,7 +789,7 @@ error:
 /* @} */
 
 /**
-Return a pointer to RDB_type structure which
+Returns a pointer to RDB_type structure which
 represents the type with the name <var>name</var>.
 
 @returns
@@ -777,8 +813,6 @@ in which case the transaction may be implicitly rolled back.
 RDB_type *
 RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_type *typv[2];
-    RDB_operator *cmpop;
     RDB_type *typ;
     int ret;
 
@@ -837,25 +871,16 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         /* Load selector, getters, and setters */
         if (RDB_load_type_ops(typ, ecp, txp) != RDB_OK)
             return NULL;
-    }
 
-    /*
-     * Search for comparison function (after type was put into type map
-     * so the type is available)
-     */
-    typv[0] = typ;
-    typv[1] = typ;
-    cmpop = RDB_get_ro_op("cmp", 2, typv, NULL, ecp, txp);
-    if (cmpop != NULL) {
-        typ->compare_op = cmpop;
-    } else {
-        RDB_object *errp = RDB_get_err(ecp);
-        if (errp != NULL
-                && RDB_obj_type(errp) != &RDB_OPERATOR_NOT_FOUND_ERROR
-                && RDB_obj_type(errp) != &RDB_TYPE_MISMATCH_ERROR) {
-            return NULL;
+        if (RDB_type_is_ordered(typ)) {
+            /*
+             * Search for comparison function (after type was put into type map
+             * so the type is available)
+             */
+            typ->compare_op = get_cmp_op(typ, ecp, txp);
+            if (typ->compare_op == NULL)
+                return NULL;
         }
-        RDB_clear_err(ecp);
     }
 
     return typ;
@@ -1084,4 +1109,82 @@ RDB_op_sys_select(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_conte
         RDB_transaction *txp, RDB_object *retvalp)
 {
     return RDB_sys_select(argc, argv, op->name, op->rtyp, ecp, NULL, retvalp);
+}
+
+/* Invoke the comparison function of the argument type */
+static int
+sys_cmp(RDB_object *argv[], RDB_exec_context *ecp, RDB_transaction *txp,
+        RDB_int *resp)
+{
+    RDB_object cmpres;
+    RDB_init_obj(&cmpres);
+    int ret = argv[0]->typ->compare_op->opfn.ro_fp(2, argv, argv[0]->typ->compare_op, ecp, txp,
+            &cmpres);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&cmpres, ecp);
+        return ret;
+    }
+    *resp = RDB_obj_int(&cmpres);
+    RDB_destroy_obj(&cmpres, ecp);
+    return RDB_OK;
+}
+
+/**
+ * Implements the operator '<'.
+ */
+int
+RDB_op_sys_lt(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_int res;
+    int ret = sys_cmp(argv, ecp, txp, &res);
+    if (ret != RDB_OK)
+        return ret;
+    RDB_bool_to_obj(retvalp, (RDB_bool) (res < 0));
+    return RDB_OK;
+}
+
+/**
+ * Implements the operator '<='.
+ */
+int
+RDB_op_sys_let(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_int res;
+    int ret = sys_cmp(argv, ecp, txp, &res);
+    if (ret != RDB_OK)
+        return ret;
+    RDB_bool_to_obj(retvalp, (RDB_bool) (res <= 0));
+    return RDB_OK;
+}
+
+/**
+ * Implements the operator '<'.
+ */
+int
+RDB_op_sys_gt(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_int res;
+    int ret = sys_cmp(argv, ecp, txp, &res);
+    if (ret != RDB_OK)
+        return ret;
+    RDB_bool_to_obj(retvalp, (RDB_bool) (res > 0));
+    return RDB_OK;
+}
+
+/**
+ * Implements the operator '>='.
+ */
+int
+RDB_op_sys_get(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_int res;
+    int ret = sys_cmp(argv, ecp, txp, &res);
+    if (ret != RDB_OK)
+        return ret;
+    RDB_bool_to_obj(retvalp, (RDB_bool) (res >= 0));
+    return RDB_OK;
 }

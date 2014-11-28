@@ -8,6 +8,7 @@
  */
 
 #include "jduro.h"
+#include <gen/strfns.h>
 #include <string.h>
 
 int

@@ -5,17 +5,17 @@ package net.sf.duro;
  * attributes, the order of the properties is important.
  */
 public class Possrep {
-    private VarDef[] components;
+    private NameTypePair[] components;
 
-    public Possrep(VarDef[] components) {
+    public Possrep(NameTypePair[] components) {
         this.components = components;
     }
 
-    public VarDef[] getComponents() {
+    public NameTypePair[] getComponents() {
         return components;
     }
 
-    public VarDef getComponent(int i) {
+    public NameTypePair getComponent(int i) {
         return components[i];
     }
 }

@@ -296,6 +296,7 @@ RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
     typ->def.scalar.sysimpl = RDB_tuple_get_bool(&tpl, "sysimpl");
     typ->def.scalar.repc = 0;
     typ->def.scalar.builtin = RDB_FALSE;
+    typ->def.scalar.ordered = RDB_tuple_get_bool(&tpl, "ordered");
 
     /*
      * Get possrep info from sys_possreps

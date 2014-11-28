@@ -201,7 +201,7 @@ attributes_to_vardefs(JNIEnv *env, RDB_type *typ, jobject session)
     if (attrv == NULL)
         return NULL;
 
-    vardefClass =(*env)->FindClass(env, "net/sf/duro/VarDef");
+    vardefClass =(*env)->FindClass(env, "net/sf/duro/NameTypePair");
     if (vardefClass == NULL)
         return NULL;
 
@@ -253,13 +253,13 @@ duro_type_to_jobj(JNIEnv *env, RDB_type *typ, jobject session)
             if (typeClass == NULL)
                 return NULL;
             constructorId = (*env)->GetMethodID(env, typeClass, "<init>",
-                    "([Lnet/sf/duro/VarDef;)V");
+                    "([Lnet/sf/duro/NameTypePair;)V");
         } else {
             typeClass = (*env)->FindClass(env, "net/sf/duro/TupleType");
             if (typeClass == NULL)
                 return NULL;
             constructorId = (*env)->GetMethodID(env, typeClass, "<init>",
-                    "([Lnet/sf/duro/VarDef;)V");
+                    "([Lnet/sf/duro/NameTypePair;)V");
         }
         if (constructorId == NULL)
             return NULL;
@@ -294,7 +294,7 @@ possrep_to_jobj(JNIEnv *env, const RDB_possrep *possrep, jobject session)
     jclass prClass;
     jmethodID vardefConstructorID;
     jmethodID prConstructorID;
-    jclass vardefClass =(*env)->FindClass(env, "net/sf/duro/VarDef");
+    jclass vardefClass =(*env)->FindClass(env, "net/sf/duro/NameTypePair");
     if (vardefClass == NULL)
         return NULL;
 
@@ -308,7 +308,7 @@ possrep_to_jobj(JNIEnv *env, const RDB_possrep *possrep, jobject session)
         return NULL;
 
     prConstructorID = (*env)->GetMethodID(env, prClass, "<init>",
-            "([Lnet/sf/duro/VarDef;)V");
+            "([Lnet/sf/duro/NameTypePair;)V");
     if (prConstructorID == NULL)
         return NULL;
 

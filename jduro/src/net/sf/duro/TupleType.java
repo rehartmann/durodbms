@@ -16,9 +16,9 @@ public class TupleType extends Type {
 
     private Map<String, Type> attributeMap;
 
-    public TupleType(VarDef[] attributes) {
+    public TupleType(NameTypePair[] attributes) {
         attributeMap = new HashMap<String, Type>();
-        for (VarDef attr : attributes) {
+        for (NameTypePair attr : attributes) {
             attributeMap.put(attr.getName(), attr.getType());
         }
     }

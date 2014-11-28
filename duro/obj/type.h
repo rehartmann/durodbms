@@ -141,6 +141,9 @@ RDB_bool
 RDB_type_is_valid(const RDB_type *);
 
 RDB_bool
+RDB_type_is_ordered(const RDB_type *);
+
+RDB_bool
 RDB_type_has_possreps(const RDB_type *);
 
 RDB_possrep *

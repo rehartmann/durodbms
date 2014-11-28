@@ -45,7 +45,7 @@ public interface PossrepObject {
     public ScalarType getType();
 
     /**
-     * Releases the resources the PossrepObject holds.
+     * Releases the resources the PossrepObject instance holds.
      * 
      * @throws DException       If a Duro error occurs.
      */
