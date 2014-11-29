@@ -398,6 +398,66 @@ test deftypemri {user-defined type with multiple possreps and incomplete impleme
 declaration with unimplemented type caught
 }
 
+test deftypecmp {user-defined type with comparison operator} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+        begin tx;
+
+		type physical_length ordered possrep meters { m float } init meters(0.0);
+		
+		operator cmp(l1 physical_length, l2 physical_length) returns int;
+		    case
+		        when the_m(l1) < the_m(l2) then return -1;
+		        when the_m(l2) > the_m(l2) then return 1;
+		        else return 0;
+		    end case;
+		end operator;
+		
+		implement type physical_length;
+		end implement;
+		
+		put(meters(0.0) < meters(1.0));
+		put_line('');
+
+		put(meters(1.0) < meters(1.0));
+		put_line('');
+		
+		put(meters(0.0) <= meters(1.0));
+		put_line('');
+
+		put(meters(1.0) <= meters(1.0));
+		put_line('');
+		
+		put(meters(0.0) > meters(1.0));
+		put_line('');
+
+		put(meters(1.0) > meters(1.0));
+		put_line('');
+		
+		put(meters(0.0) >= meters(1.0));
+		put_line('');
+
+		put(meters(1.0) >= meters(1.0));
+		put_line('');
+		
+		commit;
+		
+		begin tx;
+		drop operator cmp;
+		drop type physical_length;
+		commit;
+	}
+} -result {TRUE
+FALSE
+TRUE
+TRUE
+FALSE
+FALSE
+FALSE
+TRUE
+}
+
 test defroop {read-only user-defined operators} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt -e dbenv -d D << {
         operator testop() returns string;

@@ -49,7 +49,7 @@ params_to_typesobj(int argc, RDB_parameter paramv[],
  */
 
 /**
- * RDB_create_ro_op creates a read-only operator.
+ * Creates a read-only operator.
 
 To execute the operator, DuroDBMS will execute the function specified by
 <var>symname</var> from the library specified by <var>libname</var>.
@@ -185,25 +185,6 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
     ret = RDB_insert(txp->dbp->dbrootp->ro_ops_tbp, &tpl, ecp, txp);
     if (ret != RDB_OK)
         goto cleanup;
-
-    /* Check if it's a comparison operator */
-    if (strcmp(name, "cmp") == 0 && paramc == 2
-            && RDB_type_equals(paramv[0].typ, paramv[1].typ)
-            && (paramv[0].typ->kind == RDB_TP_SCALAR
-                    && !paramv[0].typ->def.scalar.builtin)) {
-        RDB_operator *cmpop;
-        RDB_type *paramtv[2];
-
-        paramtv[0] = paramv[0].typ;
-        paramtv[1] = paramv[1].typ;
-
-        cmpop = RDB_get_ro_op(name, 2, paramtv, NULL, ecp, txp);
-        if (cmpop == NULL) {
-            ret = RDB_ERROR;
-            goto cleanup;
-        }
-        paramtv[0]->compare_op = cmpop;
-    }
 
 cleanup:
     RDB_destroy_obj(&tpl, ecp);

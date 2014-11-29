@@ -5,7 +5,8 @@ Summary of Changes to DuroDBMS
 DuroDBMS 0.24
 
 - Type definition now supports ORDERED.
-  Added flags argument to RDB_define_type().
+  Added flags argument to RDB_define_type() and -ordered option
+  to Duro::type define.
 
 - Querys of the form T1 JOIN T2 RENAME { ... } can now be optimized.
 

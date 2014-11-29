@@ -36,6 +36,9 @@ RDB_get_op(const RDB_op_map *, const char *name, int argc, RDB_type *argtv[],
         RDB_exec_context *);
 
 int
+RDB_del_cmp_op(RDB_op_map *, const char *, RDB_type *, RDB_exec_context *);
+
+int
 RDB_del_ops(RDB_op_map *, const char *name, RDB_exec_context *);
 
 int

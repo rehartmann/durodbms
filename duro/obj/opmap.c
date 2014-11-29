@@ -148,6 +148,33 @@ RDB_get_op(const RDB_op_map *opmap, const char *name, int argc,
 }
 
 int
+RDB_del_cmp_op(RDB_op_map *opmap, const char *name, RDB_type *typ,
+        RDB_exec_context *ecp)
+{
+    struct op_entry *prevep = NULL;
+    struct op_entry *opep = RDB_hashmap_get(&opmap->map, name);
+
+    while (opep != NULL) {
+        if (opep->op->paramc == 2 && opep->op->paramv[0].typ == typ) {
+            if (prevep == NULL) {
+                int ret = RDB_hashmap_put(&opmap->map, name, opep->nextp);
+                if (ret != RDB_OK) {
+                    RDB_errno_to_error(ret, ecp);
+                    return RDB_ERROR;
+                }
+            } else {
+                prevep->nextp = opep->nextp;
+            }
+            return free_op(opep, ecp);
+        }
+        prevep = opep;
+        opep = opep->nextp;
+    }
+
+    return RDB_OK;
+}
+
+int
 RDB_del_ops(RDB_op_map *opmap, const char *name, RDB_exec_context *ecp)
 {
     struct op_entry *op = RDB_hashmap_get(&opmap->map, name);

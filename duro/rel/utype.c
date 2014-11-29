@@ -320,6 +320,18 @@ RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         }
     }
 
+    if (RDB_type_is_ordered(typ)) {
+        /* Delete comparison operators '<' etc. */
+        if (RDB_del_cmp_op(&txp->dbp->dbrootp->ro_opmap, "<", typ, ecp) != RDB_OK)
+            return RDB_ERROR;
+        if (RDB_del_cmp_op(&txp->dbp->dbrootp->ro_opmap, "<=", typ, ecp) != RDB_OK)
+            return RDB_ERROR;
+        if (RDB_del_cmp_op(&txp->dbp->dbrootp->ro_opmap, ">", typ, ecp) != RDB_OK)
+            return RDB_ERROR;
+        if (RDB_del_cmp_op(&txp->dbp->dbrootp->ro_opmap, ">=", typ, ecp) != RDB_OK)
+            return RDB_ERROR;
+    }
+
     /* Delete type from database */
     wherep = RDB_ro_op("=", ecp);
     if (wherep == NULL) {
@@ -395,15 +407,42 @@ create_selector(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
 }
 
 static int
+add_ro_op(const char *name, int paramc, RDB_type *paramtv[],
+        RDB_type *rtyp, RDB_ro_op_func *opfp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_operator *op = RDB_new_op_data(name, paramc, paramtv, rtyp, ecp);
+    if (op == NULL)
+        return RDB_ERROR;
+
+    op->opfn.ro_fp = opfp;
+
+    if (RDB_put_op(&txp->dbp->dbrootp->ro_opmap, op, ecp) != RDB_OK) {
+        RDB_free_op_data(op, ecp);
+        return RDB_ERROR;
+    }
+
+    return RDB_OK;
+}
+
+/* Create operators '<' etc. but not persistently */
+static int
 create_comparison_ops(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_parameter paramv[2];
+    RDB_type *typev[2];
 
-    paramv[0].typ = typ;
-    paramv[1].typ = typ;
+    typev[0] = typ;
+    typev[1] = typ;
 
-    return RDB_create_ro_op("<", 2, paramv, &RDB_BOOLEAN, "", "RDB_sys_lt", "",
-            ecp, txp);
+    if (add_ro_op("<", 2, typev, &RDB_BOOLEAN, RDB_op_sys_lt, ecp, txp) != RDB_OK)
+        return RDB_ERROR;
+    if (add_ro_op("<=", 2, typev, &RDB_BOOLEAN, RDB_op_sys_let, ecp, txp) != RDB_OK)
+        return RDB_ERROR;
+    if (add_ro_op(">", 2, typev, &RDB_BOOLEAN, RDB_op_sys_gt, ecp, txp) != RDB_OK)
+        return RDB_ERROR;
+    if (add_ro_op(">=", 2, typev, &RDB_BOOLEAN, RDB_op_sys_get, ecp, txp) != RDB_OK)
+        return RDB_ERROR;
+    return RDB_OK;
 }
 
 static RDB_possrep *
