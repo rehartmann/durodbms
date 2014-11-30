@@ -304,7 +304,7 @@ insert_key(const RDB_string_vec *keyp, int i, RDB_object *tablenamep,
         }
     }
 
-    if (RDB_insert(dbrootp->keys_tbp, &tpl, ecp, txp) != RDB_OK)
+    if (RDB_insert_real(dbrootp->keys_tbp, &tpl, ecp, txp) != RDB_OK)
         goto error;
 
     RDB_destroy_obj(&tpl, ecp);
@@ -382,7 +382,11 @@ insert_defvals(RDB_object *tbp, RDB_dbroot *dbrootp,
                 goto error;
             }
 
-            ret = RDB_insert(dbrootp->table_attr_defvals_tbp, &tpl, ecp, txp);
+            if (RDB_table_is_user(tbp)) {
+                ret = RDB_insert(dbrootp->table_attr_defvals_tbp, &tpl, ecp, txp);
+            } else {
+                ret = RDB_insert_real(dbrootp->table_attr_defvals_tbp, &tpl, ecp, txp);
+            }
             if (ret != RDB_OK) {
                 goto error;
             }
@@ -426,6 +430,12 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         goto error;
     }
 
+    /*
+     * When the catalog tables are inserted into the catalog, some tables
+     * are not already present in the catalog. The can cause e.g. reading
+     * the constraints to fail because table names cannot be resolved.
+     * So insert system tables without constraint check.
+     */
     if (RDB_table_is_user(tbp)) {
         if (RDB_insert(dbrootp->rtables_tbp, &tpl, ecp, txp) != RDB_OK) {
             goto error;
@@ -463,9 +473,17 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         if (RDB_tuple_set_int(&tpl, "i_fno", i, ecp) != RDB_OK) {
             goto error;
         }
-        ret = RDB_insert(dbrootp->table_attr_tbp, &tpl, ecp, txp);
-        if (ret != RDB_OK) {
-            goto error;
+
+        if (RDB_table_is_user(tbp)) {
+            ret = RDB_insert(dbrootp->table_attr_tbp, &tpl, ecp, txp);
+            if (ret != RDB_OK) {
+                goto error;
+            }
+        } else {
+            ret = RDB_insert_real(dbrootp->table_attr_tbp, &tpl, ecp, txp);
+            if (ret != RDB_OK) {
+                goto error;
+            }
         }
     }
 
