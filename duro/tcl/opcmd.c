@@ -613,11 +613,6 @@ Duro_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     return RDB_OK;
 }
 
-static RDB_bool
-is_compare (const char *name, int argc) {
-    return (RDB_bool) (argc == 2 && strcmp(name, "cmp") == 0);
-}
-
 int
 Duro_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
@@ -715,7 +710,7 @@ Duro_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     for (i = 0; i < argc; i++) {
         /* If the operator is a getter or cmp, pass actual rep */
         opargv[i + 1] = (RDB_is_getter(op) && i == 0)
-                || is_compare(RDB_operator_name(op), argc) ?
+                || RDB_is_comparer(op) ?
                 Duro_irep_to_tcl(interp, argv[i], ecp, txp)
                 : Duro_to_tcl(interp, argv[i], ecp, txp);
     }

@@ -6,12 +6,10 @@
  */
 
 #include "rdb.h"
-#include "internal.h"
 #include "serialize.h"
 #include "cat_type.h"
 #include "cat_op.h"
-#include "typeimpl.h"
-#include <obj/tuple.h>
+#include "internal.h"
 #include <obj/objinternal.h>
 
 #include <string.h>
@@ -59,6 +57,13 @@ as an attribute with the same name as the type.
 
 <var>initexp</var> specifies the initializer.
 The expression must be of the type being defined.
+
+<var>flags</var> can be 0 or RDB_TYPE_ORDERED.
+If <var>flags</var> is RDB_TYPE_ORDERED, the type being defined is an ordered type.
+If a type is ordered and has more than one possrep,
+or if the possrep contains a component of a type that is not ordered,
+a user-defined comparison operator must be provided.
+(See RDB_implement_type()).
 
 @returns
 
@@ -386,65 +391,6 @@ RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     return RDB_OK;
 }
 
-static int
-create_selector(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    int i;
-    int ret;
-    int compc = typ->def.scalar.repv[0].compc;
-    RDB_parameter *paramv = RDB_alloc(sizeof(RDB_parameter) * compc, ecp);
-    if (paramv == NULL) {
-        return RDB_ERROR;
-    }
-
-    for (i = 0; i < compc; i++)
-        paramv[i].typ = typ->def.scalar.repv[0].compv[i].typ;
-    ret = RDB_create_ro_op(typ->def.scalar.repv[0].name, compc, paramv, typ,
-            "", "RDB_sys_select", typ->name,
-            ecp, txp);
-    RDB_free(paramv);
-    return ret;
-}
-
-static int
-add_ro_op(const char *name, int paramc, RDB_type *paramtv[],
-        RDB_type *rtyp, RDB_ro_op_func *opfp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-    RDB_operator *op = RDB_new_op_data(name, paramc, paramtv, rtyp, ecp);
-    if (op == NULL)
-        return RDB_ERROR;
-
-    op->opfn.ro_fp = opfp;
-
-    if (RDB_put_op(&txp->dbp->dbrootp->ro_opmap, op, ecp) != RDB_OK) {
-        RDB_free_op_data(op, ecp);
-        return RDB_ERROR;
-    }
-
-    return RDB_OK;
-}
-
-/* Create operators '<' etc. but not persistently */
-static int
-create_comparison_ops(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_type *typev[2];
-
-    typev[0] = typ;
-    typev[1] = typ;
-
-    if (add_ro_op("<", 2, typev, &RDB_BOOLEAN, RDB_op_sys_lt, ecp, txp) != RDB_OK)
-        return RDB_ERROR;
-    if (add_ro_op("<=", 2, typev, &RDB_BOOLEAN, RDB_op_sys_let, ecp, txp) != RDB_OK)
-        return RDB_ERROR;
-    if (add_ro_op(">", 2, typev, &RDB_BOOLEAN, RDB_op_sys_gt, ecp, txp) != RDB_OK)
-        return RDB_ERROR;
-    if (add_ro_op(">=", 2, typev, &RDB_BOOLEAN, RDB_op_sys_get, ecp, txp) != RDB_OK)
-        return RDB_ERROR;
-    return RDB_OK;
-}
-
 static RDB_possrep *
 RDB_get_possrep(const RDB_type *typ, const char *repname)
 {
@@ -496,336 +442,6 @@ RDB_comp_possrep(const RDB_type *typ, const char *name)
     }
     return NULL;
 }
-
-static RDB_operator *
-get_cmp_op(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_type *typv[2];
-
-    typv[0] = typ;
-    typv[1] = typ;
-    return RDB_get_ro_op("cmp", 2, typv, NULL, ecp, txp);
-}
-
-/** @defgroup typeimpl Type implementation functions
- * \#include <rel/typeimpl.h>
- * @{
- */
-
-/**
- * Implements the user-defined type with name
-<var>name</var>. The type must have been defined previously using
-RDB_define_type(). After RDB_implement_type was inkoved successfully,
-this type may be used for local variables and table attributes.
-
-If <var>arep</var> is not NULL, it must point to a type which is used
-as the physical representation. The getter, setter, and selector operators
-must be provided by the caller.
-
-If <var>arep</var> is NULL and <var>areplen</var> is not RDB_SYS_REP,
-<var>areplen</var> specifies the length, in bytes,
-of the physical representation, which then is a fixed-length array of bytes.
-The getter, setter, and selector operators must be provided by the caller.
-RDB_irep_to_obj() can be used by the selector to assign a value to an RDB_object.
-RDB_obj_irep() can be used by setters and getters to access the actual representation.
-
-If <var>arep</var> is NULL and <var>areplen</var> is RDB_SYS_REP,
-the getter and setter operators and the selector operator are provided by Duro.
-In this case, the type must have exactly one possible representation.
-If this representation has exactly one component, the type of this component will become
-the physical representation. Otherwise the type will be represented by a tuple type with
-one attribute for each component.
-
-For user-provided setters, getters, and selectors,
-the following conventions apply:
-
-<dl>
-<dt>Selectors
-<dd>A selector is a read-only operator whose name is is the name of a possible
-representation. It takes one argument for each component.
-<dt>Getters
-<dd>A getter is a read-only operator whose name consists of the
-type and a component name, separated by RDB_GETTER_INFIX.
-It takes one argument. The argument must be of the user-defined type in question.
-The return type must be the component type.
-<dt>Setters
-<dd>A setter is an update operator whose name consists of the
-type and a component name, separated by RDB_SETTER_INFIX.
-It takes two arguments. The first argument is an update argument
-and must be of the user-defined type in question.
-The second argument is read-only and must be of the type of
-the component.
-</dl>
-
-A user-defined comparison operator <code>cmp</code> returning an
-<code>integer</code> may be supplied.
-<code>cmp</code> must have two arguments, both of the user-defined type
-for which the comparison is to be defined.
-
-<code>cmp</code> must return -1, 0, or 1 if the first argument is lower than,
-equal to, or greater than the second argument, respectively.
-
-If <code>cmp</code> has been defined, it will be called by the built-in comparison
-operators =, <>, <= etc.
-
-@returns
-
-On success, RDB_OK is returned. Any other return value indicates an error.
-
-@par Errors:
-
-<dl>
-<dt>no_running_tx_error
-<dd>*<var>txp</var> is not a running transaction.
-<dt>not_found_error
-<dd>The type has not been previously defined.
-<dt>invalid_argument_error
-<dd><var>arep</var> is NULL and <var>areplen</var> is RDB_SYS_REP,
-and the type was defined with more than one possible representation.
-</dl>
-
-The call may also fail for a @ref system-errors "system error",
-in which case the transaction may be implicitly rolled back.
- */
-int
-RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_attr_update upd[3];
-    RDB_object typedata;
-    int ret;
-    int i;
-    RDB_expression *exp, *argp;
-    RDB_expression *wherep = NULL;
-    RDB_type *typ = NULL;
-
-    upd[0].exp = upd[1].exp = upd[2].exp = upd[3].exp = NULL;
-
-    if (!RDB_tx_is_running(txp)) {
-        RDB_raise_no_running_tx(ecp);
-        return RDB_ERROR;
-    }
-
-    typ = RDB_get_type(name, ecp, txp);
-    if (typ == NULL)
-        return RDB_ERROR;
-
-    typ->def.scalar.sysimpl = (arep == NULL) && (areplen == RDB_SYS_REP);
-
-    /* Load selector etc. to check if they have been provided */
-    ret = RDB_load_type_ops(typ, ecp, txp);
-    if (ret != RDB_OK)
-       goto cleanup;
-
-    if (typ->def.scalar.sysimpl) {
-        /*
-         * No actual rep given, so selector and getters/setters must be provided
-         * by the system
-         */
-        int compc;
-
-        /* # of possreps must be one */
-        if (typ->def.scalar.repc != 1) {
-            RDB_raise_invalid_argument("invalid # of possreps", ecp);
-            return RDB_ERROR;
-        }
-
-        compc = typ->def.scalar.repv[0].compc;
-        if (compc == 1) {
-            arep = typ->def.scalar.repv[0].compv[0].typ;
-        } else {
-            /* More than one component, so internal rep is a tuple */
-            arep = RDB_new_tuple_type(typ->def.scalar.repv[0].compc,
-                    typ->def.scalar.repv[0].compv, ecp);
-            if (arep == NULL)
-                return RDB_ERROR;
-        }
-
-        typ->def.scalar.arep = arep;
-        typ->ireplen = arep->ireplen;
-
-        if (create_selector(typ, ecp, txp) != RDB_OK)
-            return RDB_ERROR;
-    } else {
-        typ->def.scalar.arep = arep;
-        typ->ireplen = arep != NULL ? arep->ireplen : areplen;
-    }
-
-    if (RDB_type_is_ordered(typ)) {
-        if (typ->compare_op == NULL) {
-            /*
-             * Search for comparison function
-             */
-            typ->compare_op = get_cmp_op(typ, ecp, txp);
-            if (typ->compare_op == NULL)
-                return RDB_ERROR;
-        }
-
-        if (create_comparison_ops(typ, ecp, txp) != RDB_OK)
-            return RDB_ERROR;
-    }
-
-    /*
-     * Update catalog
-     */
-
-    exp = RDB_var_ref("typename", ecp);
-    if (exp == NULL) {
-        return RDB_ERROR;
-    }
-    wherep = RDB_ro_op("=", ecp);
-    if (wherep == NULL) {
-        RDB_del_expr(exp, ecp);
-        return RDB_ERROR;
-    }
-    RDB_add_arg(wherep, exp);
-    argp = RDB_string_to_expr(name, ecp);
-    if (argp == NULL) {
-        RDB_del_expr(exp, ecp);
-        return RDB_ERROR;
-    }
-    RDB_add_arg(wherep, argp);
-
-    upd[0].name = "arep_len";
-    upd[0].exp = RDB_int_to_expr(arep == NULL ? areplen : arep->ireplen, ecp);
-    if (upd[0].exp == NULL) {
-        ret = RDB_ERROR;
-        goto cleanup;
-    }
-    upd[1].name = "sysimpl";
-    upd[1].exp = RDB_bool_to_expr(typ->def.scalar.sysimpl, ecp);
-    if (upd[1].exp == NULL) {
-        ret = RDB_ERROR;
-        goto cleanup;
-    }
-    if (arep != NULL) {
-        RDB_init_obj(&typedata);
-        ret = RDB_type_to_binobj(&typedata, arep, ecp);
-        if (ret != RDB_OK) {
-            RDB_destroy_obj(&typedata, ecp);
-            goto cleanup;
-        }
-
-        upd[2].name = "arep_type";
-        upd[2].exp = RDB_obj_to_expr(&typedata, ecp);
-        RDB_destroy_obj(&typedata, ecp);
-        if (upd[2].exp == NULL) {
-            RDB_raise_no_memory(ecp);
-            ret = RDB_ERROR;
-            goto cleanup;
-        }
-    }
-
-    ret = RDB_update(txp->dbp->dbrootp->types_tbp, wherep,
-            arep != NULL ? 3 : 2, upd, ecp, txp);
-    if (ret != RDB_ERROR)
-        ret = RDB_OK;
-
-    RDB_init_obj(&typ->def.scalar.init_val);
-    if (RDB_evaluate(typ->def.scalar.initexp, NULL, NULL, NULL, ecp, txp,
-            &typ->def.scalar.init_val) != RDB_OK) {
-        RDB_destroy_obj(&typ->def.scalar.init_val, ecp);
-        ret = RDB_ERROR;
-        goto cleanup;
-    }
-    typ->def.scalar.init_val_is_valid = RDB_TRUE;
-
-cleanup:
-    for (i = 0; i < 3; i++) {
-        if (upd[i].exp != NULL)
-            RDB_del_expr(upd[i].exp, ecp);
-    }
-    if (wherep != NULL)
-        RDB_del_expr(wherep, ecp);
-
-    return ret;
-}
-
-/**
- * Determines if the operator *<var>op</var> is a getter operator.
- */
-RDB_bool
-RDB_is_getter(const RDB_operator *op)
-{
-    /*
-     * An operator is treated as a getter if it is read-only, has one argument
-     * and the name contains the substring RDB_GETTER_INFIX.
-     */
-    if (op->rtyp == NULL && op->paramc != 1)
-        return RDB_FALSE;
-
-    return (RDB_bool) (strstr(op->name, RDB_GETTER_INFIX) != NULL);
-}
-
-/**
- * Determines if the operator *<var>op</var> is a setter operator.
- */
-RDB_bool
-RDB_is_setter(const RDB_operator *op)
-{
-    /*
-     * An operator is treated as a setter if it is an update operator,
-     * has two arguments and the name contains the substring RDB_SETTER_INFIX.
-     */
-    if (op->rtyp != NULL && op->paramc != 2)
-        return RDB_FALSE;
-
-    return (RDB_bool) (strstr(op->name, RDB_SETTER_INFIX) != NULL);
-}
-
-/**
- * Deletes selector, getter, and setter operators.
- */
-int
-RDB_drop_typeimpl_ops(const RDB_type *typ, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-    int i, j;
-    RDB_object opnameobj;
-
-    if (!RDB_type_is_scalar(typ)) {
-        RDB_raise_invalid_argument("type must be scalar", ecp);
-        return RDB_ERROR;
-    }
-
-    RDB_init_obj(&opnameobj);
-    for (i = 0; i < typ->def.scalar.repc; i++) {
-        if (RDB_drop_op(typ->def.scalar.repv[i].name, ecp, txp) != RDB_OK) {
-            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR)
-                goto error;
-            RDB_clear_err(ecp);
-        }
-        for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
-            if (RDB_getter_name(typ, typ->def.scalar.repv[i].compv[j].name,
-                    &opnameobj, ecp) != RDB_OK) {
-                goto error;
-            }
-            if (RDB_drop_op(RDB_obj_string(&opnameobj), ecp, txp) != RDB_OK) {
-                if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR)
-                    goto error;
-                RDB_clear_err(ecp);
-            }
-
-            if (RDB_setter_name(typ, typ->def.scalar.repv[i].compv[j].name,
-                    &opnameobj, ecp) != RDB_OK) {
-                goto error;
-            }
-            if (RDB_drop_op(RDB_obj_string(&opnameobj), ecp, txp) != RDB_OK) {
-                if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR)
-                    goto error;
-                RDB_clear_err(ecp);
-            }
-        }
-    }
-
-    return RDB_destroy_obj(&opnameobj, ecp);
-
-error:
-    RDB_destroy_obj(&opnameobj, ecp);
-    return RDB_ERROR;
-}
-
-/* @} */
 
 /**
 Returns a pointer to RDB_type structure which
@@ -897,7 +513,7 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         return NULL;
     }
 
-    if (typ->ireplen != RDB_NOT_IMPLEMENTED) {
+    if (RDB_type_is_valid(typ)) {
         /* Evaluate init expression */
         RDB_init_obj(&typ->def.scalar.init_val);
         if (RDB_evaluate(typ->def.scalar.initexp, NULL, NULL, NULL,
@@ -916,8 +532,11 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
              * Search for comparison function (after type was put into type map
              * so the type is available)
              */
-            typ->compare_op = get_cmp_op(typ, ecp, txp);
+            typ->compare_op = RDB_get_cmp_op(typ, ecp, txp);
             if (typ->compare_op == NULL)
+                return NULL;
+
+            if (RDB_add_comparison_ops(typ, ecp, txp) != RDB_OK)
                 return NULL;
         }
     }
@@ -993,17 +612,6 @@ RDB_check_type_constraint(RDB_object *valp, RDB_environment *envp,
     return RDB_OK;
 }
 
-int
-RDB_getter_name(const RDB_type *typ, const char *compname,
-        RDB_object *strobjp, RDB_exec_context *ecp)
-{
-    if (RDB_string_to_obj(strobjp, typ->name, ecp) != RDB_OK)
-        return RDB_ERROR;
-    if (RDB_append_string(strobjp, RDB_GETTER_INFIX, ecp) != RDB_OK)
-        return RDB_ERROR;
-    return RDB_append_string(strobjp, compname, ecp);
-}
-
 static int
 load_getter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
         RDB_transaction *txp)
@@ -1027,17 +635,6 @@ load_getter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
 error:
     RDB_destroy_obj(&opnameobj, ecp);
     return RDB_ERROR;
-}
-
-int
-RDB_setter_name(const RDB_type *typ, const char *compname,
-        RDB_object *strobjp, RDB_exec_context *ecp)
-{
-    if (RDB_string_to_obj(strobjp, typ->name, ecp) != RDB_OK)
-        return RDB_ERROR;
-    if (RDB_append_string(strobjp, RDB_SETTER_INFIX, ecp) != RDB_OK)
-        return RDB_ERROR;
-    return RDB_append_string(strobjp, compname, ecp);
 }
 
 static int
@@ -1095,7 +692,7 @@ RDB_load_type_ops(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
     return RDB_OK;
 }
 
-/**
+/*
  * Implements a system-generated selector
  */
 int
@@ -1139,7 +736,7 @@ RDB_sys_select(int argc, RDB_object *argv[], const char *opname,
     return RDB_OK;
 }
 
-/**
+/*
  * Implements a system-generated selector.
  * Signature is conformant to RDB_ro_op_func.
  */
@@ -1168,7 +765,7 @@ sys_cmp(RDB_object *argv[], RDB_exec_context *ecp, RDB_transaction *txp,
     return RDB_OK;
 }
 
-/**
+/*
  * Implements the operator '<'.
  */
 int
@@ -1198,7 +795,7 @@ RDB_op_sys_let(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context 
     return RDB_OK;
 }
 
-/**
+/*
  * Implements the operator '<'.
  */
 int
@@ -1213,7 +810,7 @@ RDB_op_sys_gt(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *
     return RDB_OK;
 }
 
-/**
+/*
  * Implements the operator '>='.
  */
 int

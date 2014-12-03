@@ -393,6 +393,13 @@ int
 RDB_setter_name(const RDB_type *typ, const char *,
         RDB_object *, RDB_exec_context *);
 
+RDB_operator *
+RDB_get_cmp_op(RDB_type *, RDB_exec_context *, RDB_transaction *);
+
+int
+RDB_add_comparison_ops(RDB_type *, RDB_exec_context *,
+        RDB_transaction *);
+
 int
 RDB_seq_container_name(const char *, const char *, RDB_object *,
         RDB_exec_context *);

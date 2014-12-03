@@ -6,7 +6,8 @@ package require tcltest 2.2
 eval ::tcltest::configure $argv
 namespace import ::tcltest::*
 
-set SETUP {catch {removeDirectory dbenv}; makeDirectory dbenv; cd [configure -tmpdir]; exec [configure -testdir]/prepare}
+set SETUP {catch {removeDirectory dbenv}; makeDirectory dbenv; cd [configure -tmpdir]; \
+    exec [configure -testdir]/prepare}
 
 test map {hashmap} -body {
     exec [configure -testdir]/maptest

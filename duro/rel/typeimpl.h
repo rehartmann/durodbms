@@ -26,6 +26,7 @@ along with Duro; if not, write to the Free Software Foundation, Inc.,
 
 #define RDB_GETTER_INFIX "_get_"
 #define RDB_SETTER_INFIX "_set_"
+#define RDB_COMPARER_SUFFIX "_cmp"
 
 #define RDB_SYS_REP ((RDB_int) -1)
 
@@ -46,8 +47,11 @@ RDB_is_getter(const RDB_operator *);
 RDB_bool
 RDB_is_setter(const RDB_operator *);
 
+RDB_bool
+RDB_is_comparer(const RDB_operator *);
+
 int
-RDB_drop_typeimpl_ops(const RDB_type *typ, RDB_exec_context *,
+RDB_drop_typeimpl_ops(const RDB_type *, RDB_exec_context *,
         RDB_transaction *);
 
 #endif
