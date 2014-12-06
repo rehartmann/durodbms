@@ -6,6 +6,7 @@
  */
 
 #include "operator.h"
+#include "objinternal.h"
 #include "type.h"
 #include <gen/strfns.h>
 
@@ -34,6 +35,17 @@ RDB_operator_name(const RDB_operator *op)
 }
 
 /**
+ * Returns the return type *<var>op</var>.
+ *
+ * @returns the return type, or NULL if the operator is an update operator.
+ */
+RDB_type *
+RDB_operator_type(const RDB_operator *op)
+{
+    return op->rtyp;
+}
+
+/**
  * Return number of parameters of opeator *<var>op</var>.
  */
 int
@@ -53,13 +65,13 @@ RDB_return_type(const RDB_operator *op)
 }
 
 void *
-RDB_op_u_data(const RDB_operator *op)
+RDB_operator_u_data(const RDB_operator *op)
 {
     return op->u_data;
 }
 
 void
-RDB_set_op_u_data(RDB_operator *op, void *u_data)
+RDB_set_operator_u_data(RDB_operator *op, void *u_data)
 {
     op->u_data = u_data;
 }
@@ -131,52 +143,6 @@ RDB_new_op_data(const char *name, int paramc, RDB_type *paramtv[], RDB_type *rty
     op->u_data = NULL;
     op->cleanup_fp = NULL;
 
-    return op;
-
-error:
-    RDB_destroy_obj(&op->source, ecp);
-    if (op->name != NULL)
-        RDB_free(op->name);
-    if (op->paramv != NULL) {
-        for (i = 0; i < op->paramc; i++) {
-            if (op->paramv[i].typ != NULL
-                   && !RDB_type_is_scalar(op->paramv[i].typ)) {
-                RDB_del_nonscalar_type(op->paramv[i].typ, ecp);
-            }
-        }
-    }
-    RDB_free(op);
-    return NULL;
-}
-
-RDB_operator *
-RDB_new_upd_op(const char *name, int paramc, RDB_parameter paramv[],
-        RDB_upd_op_func *opfp, RDB_exec_context *ecp)
-{
-    int i;
-    RDB_operator *op = RDB_new_op_data(name, 0, NULL, NULL, ecp);
-    if (op == NULL)
-        return NULL;
-
-    op->paramc = paramc;
-    if (paramc > 0) {
-        op->paramv = RDB_alloc(sizeof (RDB_parameter) * paramc, ecp);
-        if (op->paramv == NULL) {
-            goto error;
-        }
-
-        for (i = 0; i < paramc; i++) {
-            op->paramv[i].typ = NULL;
-        }
-        for (i = 0; i < paramc; i++) {
-            op->paramv[i].typ = RDB_dup_nonscalar_type(paramv[i].typ, ecp);
-            if (op->paramv[i].typ == NULL) {
-                goto error;
-            }
-            op->paramv[i].update = paramv[i].update;
-        }
-    }
-    op->opfn.upd_fp = opfp;
     return op;
 
 error:

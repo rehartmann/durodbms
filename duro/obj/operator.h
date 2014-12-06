@@ -13,10 +13,6 @@
 
 #include <ltdl.h>
 
-/**@addtogroup operator
- * @{
- */
-
 typedef struct RDB_op_data RDB_operator;
 typedef struct RDB_transaction RDB_transaction;
 
@@ -27,6 +23,13 @@ typedef int RDB_ro_op_func(int, RDB_object *[], RDB_operator *,
 typedef int RDB_upd_op_func(int, RDB_object *[], RDB_operator *,
     RDB_exec_context *, RDB_transaction *);
 
+/**@addtogroup operator
+ * @{
+ */
+
+/**
+ * A function which is called when an operator is deleted from memory.
+ */
 typedef void RDB_op_cleanup_func(RDB_operator *);
 
 /**
@@ -45,26 +48,18 @@ typedef struct RDB_parameter {
     RDB_bool update;
 } RDB_parameter;
 
-struct RDB_op_data {
-    char *name;
-    RDB_type *rtyp;
-    RDB_object source;
-    lt_dlhandle modhdl;
-    int paramc;
-    RDB_parameter *paramv;
-    union {
-        RDB_upd_op_func *upd_fp;
-        RDB_ro_op_func *ro_fp;
-    } opfn;
-    void *u_data;
-    RDB_op_cleanup_func *cleanup_fp;
-};
+/**
+ * @}
+ */
 
 RDB_parameter *
 RDB_get_parameter(const RDB_operator *, int);
 
 const char *
 RDB_operator_name(const RDB_operator *);
+
+RDB_type *
+RDB_operator_type(const RDB_operator *);
 
 int
 RDB_operator_param_count(const RDB_operator *);
@@ -96,14 +91,11 @@ RDB_return_type(const RDB_operator *);
 const char *
 RDB_operator_source(const RDB_operator *);
 
-RDB_type *
-RDB_return_type(const RDB_operator *);
-
 void *
-RDB_op_u_data(const RDB_operator *);
+RDB_operator_u_data(const RDB_operator *);
 
 void
-RDB_set_op_u_data(RDB_operator *, void *);
+RDB_set_operator_u_data(RDB_operator *, void *);
 
 void
 RDB_set_op_cleanup_fn(RDB_operator *,  RDB_op_cleanup_func*);
@@ -112,15 +104,7 @@ RDB_operator *
 RDB_new_op_data(const char *, int, RDB_type *[], RDB_type *,
         RDB_exec_context *);
 
-RDB_operator *
-RDB_new_upd_op(const char *, int, RDB_parameter[],
-        RDB_upd_op_func *, RDB_exec_context *);
-
 int
 RDB_free_op_data(RDB_operator *, RDB_exec_context *);
-
-/**
- * @}
- */
 
 #endif /* OPERATOR_H_ */

@@ -9,6 +9,7 @@
 #include "internal.h"
 #include "tostr.h"
 #include "optimize.h"
+#include <obj/objinternal.h>
 
 #include <string.h>
 #include <stdlib.h>

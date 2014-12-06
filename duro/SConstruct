@@ -160,7 +160,8 @@ env.Jar('jduro.jar', '../jduro/bin', JARCHDIR='$SOURCE')
 env.Alias('apidocs', 'docs/api/html/index.html')
 
 env.Command('docs/api/html/index.html',
-        ['Doxyfile'] + recsrc + objsrc + relsrc + interpsrc + ['obj/type.h'] + ['rel/rdb.h']
+        ['Doxyfile'] + recsrc + objsrc + relsrc + interpsrc + ['obj/type.h']
+            + ['rel/rdb.h'] + ['obj/operator.h']
             + ['dli/parse.c', 'dli/ioop.c', 'dli/iinterp.c', 'dli/parse.h'],
         'doxygen')
 

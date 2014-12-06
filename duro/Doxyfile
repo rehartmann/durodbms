@@ -746,6 +746,7 @@ WARN_LOGFILE           =
 INPUT                  = rec \
                          obj \
                          obj/type.h \
+                         obj/operator.h \
                          rel \
                          rel/rdb.h \
                          dli/parse.c \

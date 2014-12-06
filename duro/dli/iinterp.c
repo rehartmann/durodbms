@@ -1391,7 +1391,7 @@ free_opdata(RDB_operator *op)
 {
     int i;
     RDB_exec_context ec;
-    struct Duro_op_data *opdatap = RDB_op_u_data(op);
+    struct Duro_op_data *opdatap = RDB_operator_u_data(op);
 
     /* Initialize temporary execution context */
     RDB_init_exec_context(&ec);
@@ -1433,7 +1433,7 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     /* Try to get cached statements */
-    opdatap = op->u_data;
+    opdatap = RDB_operator_u_data(op);
     if (opdatap == NULL) {
         /*
          * Not available - parse code
@@ -1468,7 +1468,7 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
         opdatap->argnamec = argc;
         opdatap->argnamev = argnamev;
 
-        RDB_set_op_u_data(op, opdatap);
+        RDB_set_operator_u_data(op, opdatap);
         RDB_set_op_cleanup_fn(op, &free_opdata);
     }
 
@@ -1520,7 +1520,7 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     /* Set type of return value to the user-defined type */
     if (isselector) {
-        RDB_obj_set_typeinfo(retinfo.objp, op->rtyp);
+        RDB_obj_set_typeinfo(retinfo.objp, RDB_operator_type(op));
     }
 
     if (getter_utyp != NULL) {
@@ -1578,7 +1578,7 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     /* Try to get cached statements */
-    opdatap = RDB_op_u_data(op);
+    opdatap = RDB_operator_u_data(op);
     if (opdatap == NULL) {
         char **argnamev = RDB_alloc(argc * sizeof(char *), ecp);
         if (argnamev == NULL)
@@ -1613,7 +1613,7 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
         opdatap->argnamec = argc;
         opdatap->argnamev = argnamev;
 
-        RDB_set_op_u_data(op, opdatap);
+        RDB_set_operator_u_data(op, opdatap);
         RDB_set_op_cleanup_fn(op, &free_opdata);
     }
 

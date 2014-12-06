@@ -6,6 +6,7 @@
  */
 
 #include "typeimpl.h"
+#include <obj/objinternal.h>
 #include "serialize.h"
 #include "internal.h"
 
@@ -431,7 +432,7 @@ error:
     return RDB_ERROR;
 }
 
-/* @} @} */
+/** @} */
 
 int
 RDB_getter_name(const RDB_type *typ, const char *compname,

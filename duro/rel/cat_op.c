@@ -11,6 +11,7 @@
 #include "qresult.h"
 
 #include <gen/releaseno.h>
+#include <obj/objinternal.h>
 
 #include <string.h>
 

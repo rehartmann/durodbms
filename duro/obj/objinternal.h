@@ -66,6 +66,21 @@ struct RDB_expression {
     RDB_bool optimized;
 };
 
+struct RDB_op_data {
+    char *name;
+    RDB_type *rtyp;
+    RDB_object source;
+    lt_dlhandle modhdl;
+    int paramc;
+    RDB_parameter *paramv;
+    union {
+        RDB_upd_op_func *upd_fp;
+        RDB_ro_op_func *ro_fp;
+    } opfn;
+    void *u_data;
+    RDB_op_cleanup_func *cleanup_fp;
+};
+
 int
 RDB_find_rename_from(int, const RDB_renaming[], const char *);
 

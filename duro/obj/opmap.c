@@ -9,6 +9,7 @@
 #include "type.h"
 #include <gen/hashmapit.h>
 #include <gen/strfns.h>
+#include <obj/objinternal.h>
 
 void
 RDB_init_op_map(RDB_op_map *opmap)
@@ -79,11 +80,11 @@ RDB_put_op(RDB_op_map *opmap, RDB_operator *op,
 
     opep->op = op;
 
-    fopep = RDB_hashmap_get(&opmap->map, op->name);
+    fopep = RDB_hashmap_get(&opmap->map, RDB_operator_name(op));
 
     if (fopep == NULL) {
         opep->nextp = NULL;
-        ret = RDB_hashmap_put(&opmap->map, op->name, opep);
+        ret = RDB_hashmap_put(&opmap->map, RDB_operator_name(op), opep);
         if (ret != RDB_OK) {
             RDB_errno_to_error(ret, ecp);
             goto error;
@@ -114,7 +115,7 @@ RDB_get_op(const RDB_op_map *opmap, const char *name, int argc,
     /* Find an operator with same signature */
     opep = firstopep;
     while (opep != NULL) {
-        if (opep->op->paramc == argc) {
+        if (RDB_operator_param_count(opep->op) == argc) {
             int i;
 
             for (i = 0; (i < argc)
@@ -132,7 +133,7 @@ RDB_get_op(const RDB_op_map *opmap, const char *name, int argc,
     /* If not, found, search generic operator (argc == RDB_VAR_PARAMS) */
     opep = firstopep;
     while (opep != NULL) {
-        if (opep->op->paramc == RDB_VAR_PARAMS) {
+        if (RDB_operator_param_count(opep->op) == RDB_VAR_PARAMS) {
             return opep->op;
         }
         opep = opep->nextp;
@@ -155,7 +156,8 @@ RDB_del_cmp_op(RDB_op_map *opmap, const char *name, RDB_type *typ,
     struct op_entry *opep = RDB_hashmap_get(&opmap->map, name);
 
     while (opep != NULL) {
-        if (opep->op->paramc == 2 && opep->op->paramv[0].typ == typ) {
+        if (RDB_operator_param_count(opep->op) == 2
+                && opep->op->paramv[0].typ == typ) {
             if (prevep == NULL) {
                 int ret = RDB_hashmap_put(&opmap->map, name, opep->nextp);
                 if (ret != RDB_OK) {
@@ -189,6 +191,52 @@ RDB_del_ops(RDB_op_map *opmap, const char *name, RDB_exec_context *ecp)
         }
     }
     return RDB_OK;
+}
+
+static RDB_operator *
+RDB_new_upd_op(const char *name, int paramc, RDB_parameter paramv[],
+        RDB_upd_op_func *opfp, RDB_exec_context *ecp)
+{
+    int i;
+    RDB_operator *op = RDB_new_op_data(name, 0, NULL, NULL, ecp);
+    if (op == NULL)
+        return NULL;
+
+    op->paramc = paramc;
+    if (paramc > 0) {
+        op->paramv = RDB_alloc(sizeof (RDB_parameter) * paramc, ecp);
+        if (op->paramv == NULL) {
+            goto error;
+        }
+
+        for (i = 0; i < paramc; i++) {
+            op->paramv[i].typ = NULL;
+        }
+        for (i = 0; i < paramc; i++) {
+            op->paramv[i].typ = RDB_dup_nonscalar_type(paramv[i].typ, ecp);
+            if (op->paramv[i].typ == NULL) {
+                goto error;
+            }
+            op->paramv[i].update = paramv[i].update;
+        }
+    }
+    op->opfn.upd_fp = opfp;
+    return op;
+
+error:
+    RDB_destroy_obj(&op->source, ecp);
+    if (op->name != NULL)
+        RDB_free(op->name);
+    if (op->paramv != NULL) {
+        for (i = 0; i < op->paramc; i++) {
+            if (op->paramv[i].typ != NULL
+                   && !RDB_type_is_scalar(op->paramv[i].typ)) {
+                RDB_del_nonscalar_type(op->paramv[i].typ, ecp);
+            }
+        }
+    }
+    RDB_free(op);
+    return NULL;
 }
 
 int
