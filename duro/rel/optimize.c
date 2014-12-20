@@ -1662,7 +1662,13 @@ mutate_join(RDB_expression *texp, RDB_expression **tbpv, int cap,
             return RDB_ERROR;
     }
 
-    if (texp->def.op.args.firstp->kind == RDB_EX_TBP) {
+    if (texp->def.op.args.firstp->kind == RDB_EX_TBP
+            || (RDB_expr_is_op(texp->def.op.args.firstp, "rename")
+               && texp->def.op.args.firstp->def.op.args.firstp->kind == RDB_EX_TBP)) {
+        /*
+         * Arg #1 is stored table or rename over stored table,
+         * reverse order of arguments
+         */
         int ret = index_joins(texp->def.op.args.firstp->nextp, texp->def.op.args.firstp,
                 tbpv + tbc, cap - tbc, ecp, txp);
         if (ret == RDB_ERROR)

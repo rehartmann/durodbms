@@ -454,6 +454,46 @@ test join_rename_index {JOIN with index}  -setup $SETUP -cleanup $CLEANUP -match
     }
 } -result {*INDEX customers$0*}
 
+test join_rename_nuindex {JOIN with rename and non-unique index}  -setup $SETUP \
+        -cleanup $CLEANUP -match glob -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+		var r1 real rel {a int, b int}
+		    init rel { tup {a 1, b 1 }, tup {a 2, b 2 }} key {a};
+		var r2 real rel {c int, d int}
+		    init rel { tup {c 1, d 1 }, tup {c 2, d 1 }} key {c};
+		index r2_d r2 (d);
+
+		explain r1 join r2 rename { d as b } order();
+		
+		var tp tup {a int, b int, c int};
+		for tp in r1 join r2 rename { d as b } order(c asc);
+		    put(tp.a); put(' ');
+		    put(tp.b); put(' ');
+		    put(tp.c); put_line('');
+		end for;
+
+		explain r2 rename { d as b } join r1 order();
+		
+		for tp in r2 rename { d as b } join r1 order(c asc);
+		    put(tp.a); put(' ');
+		    put(tp.b); put(' ');
+		    put(tp.c); put_line('');
+		end for;
+
+		commit;
+    }
+} -result {*INDEX r2_d*
+1 1 1
+1 1 2
+*INDEX r2_d*
+1 1 1
+1 1 2
+}
+
 test union {UNION and D_UNION} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
