@@ -372,7 +372,7 @@ RDB_is_comparer(const RDB_operator *op)
     /*
      * An operator is treated as a comparer if it is a readonly operator
      * returning integer, has two arguments and the name contains
-     * the substring RDB_COMPARE.
+     * the substring RDB_COMPARER_SUFFIX.
      */
     if (op->rtyp != &RDB_INTEGER && op->paramc != 2)
         return RDB_FALSE;

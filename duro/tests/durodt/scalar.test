@@ -418,7 +418,7 @@ test deftypecmp {user-defined type with comparison operator} -setup $SETUP -clea
 
 		implement type physical_length;
 		end implement;
-		
+
 		put(meters(0.0) < meters(1.0));
 		put_line('');
 
@@ -453,6 +453,119 @@ test deftypecmp {user-defined type with comparison operator} -setup $SETUP -clea
 		if not cmp_invoked then
 		    put_line('compare operator not invoked');
 		end if;
+
+		begin tx;
+		
+		type pname ordered
+		    possrep full_name { full_name string }
+		    possrep given_family { given_name string, family_name string }
+		init given_family('','');
+		
+		try
+		
+			implement type pname as tuple { gname string, fname string };
+			
+			  operator full_name(name string) returns pname;
+			    var pos int init index_of(name, ' ');
+			    var len int init strlen(name);
+			    return tuple { gname substr(name, pos + 1, len - pos - 1), fname substr(name, 0, pos) };
+			  end operator;
+			
+			  operator get_full_name(n pname) returns string;
+			    return n.fname || ' ' || n.fname;
+			  end operator;
+			
+			  operator set_full_name(pn pname, name string) updates {pn};
+			    var pos int init index_of(name, ' ');
+			    var len int init strlen(name);
+			    update pn { gname := substr(name, pos + 1, len - pos - 1), fname := substr(name, 0, pos) };
+			  end operator;
+			
+			  operator given_family(gname string, fname string) returns pname;
+			    return tuple { gname gname, fname fname };
+			  end operator;
+			
+			  operator get_given_name(pn pname) returns string;
+			    return pn.gname;
+			  end operator;
+			
+			  operator set_given_name(pn pname, gn string) updates { pn };
+			    update pn { gname := gn };
+			  end operator;
+			
+			  operator get_family_name(pn pname) returns string;
+			    return pn.fname;
+			  end operator;
+			
+			  operator set_family_name(pn pname, fn string) updates { pn };
+			    update pn { fname := fn };
+			  end operator;
+			
+			end implement;
+	
+		    put_line('implement type succeeded despite missing comparison op');
+
+		catch err operator_not_found_error;
+		    ;
+		end try;
+
+		operator pname_cmp(pn1 pname, pn2 pname) returns int;
+		   case
+		       when the_family_name(pn1) < the_family_name(pn2) then return -1;
+		       when the_family_name(pn1) > the_family_name(pn2) then return 1;
+		       else case
+		           when the_given_name(pn1) < the_given_name(pn2) then return -1;
+		           when the_given_name(pn1) > the_given_name(pn2) then return 1;
+		           else return 0;
+		       end case;
+		   end case;
+		end operator;           
+		
+		implement type pname as tuple { gname string, fname string };
+		
+		  operator full_name(name string) returns pname;
+		    var pos int init index_of(name, ' ');
+		    var len int init strlen(name);
+		    return tuple { gname substr(name, pos + 1, len - pos - 1), fname substr(name, 0, pos) };
+		  end operator;
+		
+		  operator get_full_name(n pname) returns string;
+		    return n.gname || ' ' || n.fname;
+		  end operator;
+		
+		  operator set_full_name(pn pname, name string) updates {pn};
+		    var pos int init index_of(name, ' ');
+		    var len int init strlen(name);
+		    update pn { gname := substr(name, pos + 1, len - pos - 1), fname := substr(name, 0, pos) };
+		  end operator;
+		
+		  operator given_family(gname string, fname string) returns pname;
+		    return tuple { gname gname, fname fname };
+		  end operator;
+		
+		  operator get_given_name(pn pname) returns string;
+		    return pn.gname;
+		  end operator;
+		
+		  operator set_given_name(pn pname, gn string) updates { pn };
+		    update pn { gname := gn };
+		  end operator;
+		
+		  operator get_family_name(pn pname) returns string;
+		    return pn.fname;
+		  end operator;
+		
+		  operator set_family_name(pn pname, fn string) updates { pn };
+		    update pn { fname := fn };
+		  end operator;
+
+		end implement;
+
+		var name pname;
+		name := given_family('Ronnie', 'Relational');
+		put_line(the_full_name(name));
+
+		commit;
 	}
 } -result {TRUE
 FALSE
@@ -462,6 +575,7 @@ FALSE
 FALSE
 FALSE
 TRUE
+Ronnie Relational
 }
 
 test defroop {read-only user-defined operators} -setup $SETUP -cleanup $CLEANUP -body {

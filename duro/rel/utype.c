@@ -513,7 +513,7 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         return NULL;
     }
 
-    if (RDB_type_is_valid(typ)) {
+    if (typ->ireplen != RDB_NOT_IMPLEMENTED) {
         /* Evaluate init expression */
         RDB_init_obj(&typ->def.scalar.init_val);
         if (RDB_evaluate(typ->def.scalar.initexp, NULL, NULL, NULL,
@@ -533,11 +533,14 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
              * so the type is available)
              */
             typ->compare_op = RDB_get_cmp_op(typ, ecp, txp);
-            if (typ->compare_op == NULL)
-                return NULL;
-
-            if (RDB_add_comparison_ops(typ, ecp, txp) != RDB_OK)
-                return NULL;
+            if (typ->compare_op == NULL) {
+                if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR) {
+                    return NULL;
+                }
+            } else {
+                if (RDB_add_comparison_ops(typ, ecp, txp) != RDB_OK)
+                    return NULL;
+            }
         }
     }
 

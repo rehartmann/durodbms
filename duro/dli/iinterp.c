@@ -1375,9 +1375,18 @@ exec_typeimpl(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
 
     ret = RDB_implement_type(RDB_expr_var_name(nodep->exp),
             ityp, RDB_SYS_REP, ecp, &interp->txnp->tx);
-    if (ret != RDB_OK)
-        goto error;
+    if (ret != RDB_OK) {
+        RDB_exec_context ec;
+        RDB_type *typ;
 
+        RDB_init_exec_context(&ec);
+        typ = RDB_get_type(RDB_expr_var_name(nodep->exp), &ec, &interp->txnp->tx);
+        if (typ != NULL) {
+            RDB_drop_typeimpl_ops(typ, &ec, &interp->txnp->tx);
+        }
+        RDB_destroy_exec_context(&ec);
+        goto error;
+    }
     if (RDB_parse_get_interactive())
         printf("Type %s implemented.\n", RDB_expr_var_name(nodep->exp));
     return RDB_OK;

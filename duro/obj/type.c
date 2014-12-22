@@ -58,6 +58,14 @@ RDB_type_is_valid(const RDB_type *typ)
         case RDB_TP_ARRAY:
             return RDB_type_is_valid(typ->def.basetyp);
         case RDB_TP_SCALAR:
+            /*
+             * If the comparison function not defined for a type with more than one possreps
+             * the type is invalid.
+             */
+            if (typ->def.scalar.repc > 1 && RDB_type_is_ordered(typ)
+                    && typ->compare_op == NULL) {
+                return RDB_FALSE;
+            }
             return (RDB_bool) (typ->ireplen != RDB_NOT_IMPLEMENTED);
     }
     abort();
