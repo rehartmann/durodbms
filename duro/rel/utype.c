@@ -755,9 +755,10 @@ static int
 sys_cmp(RDB_object *argv[], RDB_exec_context *ecp, RDB_transaction *txp,
         RDB_int *resp)
 {
+    int ret;
     RDB_object cmpres;
     RDB_init_obj(&cmpres);
-    int ret = argv[0]->typ->compare_op->opfn.ro_fp(2, argv, argv[0]->typ->compare_op, ecp, txp,
+    ret = argv[0]->typ->compare_op->opfn.ro_fp(2, argv, argv[0]->typ->compare_op, ecp, txp,
             &cmpres);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&cmpres, ecp);

@@ -8,6 +8,8 @@ DuroDBMS 0.24
   Added flags argument to RDB_define_type() and -ordered option
   to Duro::type define.
 
+- Types in ORDER clause must be ordered.
+
 - Querys of the form T1 JOIN T2 RENAME { ... } can now be optimized.
 
 - Added RDB_expr_kind(), RDB_expr_op_args(), and RDB_expr_list_get().

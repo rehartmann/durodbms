@@ -168,16 +168,8 @@ compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p, size_t *locp)
         data2p = ((RDB_byte *) dbt2p->data) + offs2;
 
         /* Compare fields */
-        if (ixp->cmpv[i].comparep != NULL) {
-            /* Comparison function is available, so call it */
-            res = (*ixp->cmpv[i].comparep)(data1p, len1, data2p, len2,
+        res = (*ixp->cmpv[i].comparep)(data1p, len1, data2p, len2,
                     ixp->rmp->envp, ixp->cmpv[i].arg);
-        } else {
-            /* Compare memory */
-            res = memcmp(data1p, data2p, len1 < len2 ? len1 : len2);
-            if (res == 0)
-                res = len1 - len2;
-        }
 
         /* If the fields are different, we're done */
         if (res != 0) {
@@ -200,6 +192,7 @@ RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     RDB_index *ixp;
     int ret;
     int i;
+    RDB_bool all_cmpfn = RDB_TRUE;
    
     ret = new_index(rmp, namp, filenamp, envp, fieldc, fieldv, &ixp);
     if (ret != RDB_OK)
@@ -213,11 +206,18 @@ RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
             ixp->cmpv[i].comparep = cmpv[i].comparep;
             ixp->cmpv[i].arg = cmpv[i].arg;
             ixp->cmpv[i].asc = cmpv[i].asc;
+            if (cmpv[i].comparep == NULL)
+                all_cmpfn = RDB_FALSE;
         }
 
-        /* Set comparison function */
-        ixp->dbp->app_private = ixp;
-        ixp->dbp->set_bt_compare(ixp->dbp, &compare_key);
+        /*
+         * If there is a comparison function for all fields,
+         * set B-tree comparison function
+         */
+        if (all_cmpfn) {
+            ixp->dbp->app_private = ixp;
+            ixp->dbp->set_bt_compare(ixp->dbp, &compare_key);
+        }
     }
 
     /* Allow duplicates, if requested by the caller */
@@ -270,9 +270,11 @@ RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
             ixp->cmpv[i].asc = cmpv[i].asc;
         }
 
-        /* Set comparison function */
-        ixp->dbp->app_private = ixp;
-        ixp->dbp->set_bt_compare(ixp->dbp, &compare_key);
+        if (cmpv[i].comparep != NULL) {
+            /* Set comparison function */
+            ixp->dbp->app_private = ixp;
+            ixp->dbp->set_bt_compare(ixp->dbp, &compare_key);
+        }
     }
 
     if (!(RDB_UNIQUE & flags))

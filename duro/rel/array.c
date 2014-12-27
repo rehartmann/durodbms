@@ -133,6 +133,7 @@ refers to a non-existing operator.
 <dt>invalid_argument_error
 <dd>*<var>arrp</var> is neither newly initialized nor an array.
 <dd>The table represented by *<var>tbp</var> does not exist. (e.g. after a rollback)
+<dd>One of the attributes in seqitv does not exist or is not of an ordered type.
 </dl>
 
 The call may also fail for a @ref system-errors "system error",
@@ -143,11 +144,25 @@ RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
                    int seqitc, const RDB_seq_item seqitv[], int flags,
                    RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    int i;
     RDB_expression *texp;
 
     if (arrp->kind != RDB_OB_INITIAL && arrp->kind != RDB_OB_ARRAY) {
         RDB_raise_invalid_argument("no array", ecp);
         return RDB_ERROR;
+    }
+
+    for (i = 0; i < seqitc; i++) {
+        RDB_type *attrtyp = RDB_type_attr_type(RDB_obj_type(tbp),
+                seqitv[i].attrname);
+        if (attrtyp == NULL) {
+            RDB_raise_invalid_argument("attribute not found", ecp);
+            return RDB_ERROR;
+        }
+        if (!RDB_type_is_ordered(attrtyp)) {
+            RDB_raise_invalid_argument("attribute type is not ordered", ecp);
+            return RDB_ERROR;
+        }
     }
 
     texp = RDB_optimize(tbp, seqitc, seqitv, ecp, txp);

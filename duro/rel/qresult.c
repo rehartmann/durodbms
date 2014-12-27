@@ -1146,8 +1146,22 @@ RDB_table_iterator(RDB_object *tbp,
                    int seqitc, const RDB_seq_item seqitv[],
                    RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    int i;
     RDB_qresult *qrp;
     RDB_expression *texp;
+
+    for (i = 0; i < seqitc; i++) {
+        RDB_type *attrtyp = RDB_type_attr_type(RDB_obj_type(tbp),
+                seqitv[i].attrname);
+        if (attrtyp == NULL) {
+            RDB_raise_invalid_argument("attribute not found", ecp);
+            return NULL;
+        }
+        if (!RDB_type_is_ordered(attrtyp)) {
+            RDB_raise_invalid_argument("attribute type is not ordered", ecp);
+            return NULL;
+        }
+    }
 
     if (RDB_TB_CHECK & tbp->val.tb.flags) {
         if (RDB_check_table(tbp, ecp, txp) != RDB_OK)

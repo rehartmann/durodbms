@@ -200,6 +200,37 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
 		end try;
 
         drop var v;
+
+        var r real rel { t t };
+        
+        insert r tup { t t(1, 1) };
+ 
+        var a array tup same_heading_as(r);
+        load a from r order();
+
+        try
+            load a from r order(t asc);
+            put_line('usage of non-ordered type t in order clause succeeded');
+        catch err invalid_argument_error;
+            ;
+        end try;
+
+        var tp tup same_heading_as(r);
+
+        try
+            for tp in r order(t asc);
+                ;
+            end for;
+            put_line('usage of non-ordered type t in order clause succeeded');
+        catch err invalid_argument_error;
+            ;
+        end try;
+
+        drop var r;
+
+        drop var a;
+        drop var tp;
+
         drop type t;
 
         try
@@ -231,7 +262,7 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
         catch err type_constraint_violation_error;
             put_line('type constraint violation caught');
         end try;
-        commit;
+        commit;        
     }
 } -result {error #1 caused by incomplete type caught
 0

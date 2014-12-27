@@ -474,6 +474,10 @@ RDB_get_cmp_op(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
     RDB_destroy_obj(&opnameobj, ecp);
     if (cmpop == NULL) {
         int i;
+        static struct RDB_op_data sys_compare = {
+            NULL,
+            &RDB_INTEGER
+        };
         RDB_type *errtyp = RDB_obj_type(RDB_get_err(ecp));
         if (errtyp != &RDB_OPERATOR_NOT_FOUND_ERROR
                 && errtyp != &RDB_TYPE_MISMATCH_ERROR)
@@ -496,11 +500,6 @@ RDB_get_cmp_op(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
                 return NULL;
             }
         }
-
-        static struct RDB_op_data sys_compare = {
-            NULL,
-            &RDB_INTEGER
-        };
 
         if (sys_compare.name == NULL) {
             sys_compare.opfn.ro_fp = &op_sys_cmp;

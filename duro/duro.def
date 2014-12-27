@@ -246,9 +246,8 @@ RDB_expr_var_name
 RDB_expr_kind
 RDB_expr_op_args
 RDB_expr_list_get
-RDB_op_u_data
-RDB_set_op_u_data
 RDB_set_op_cleanup_fn
+RDB_is_comparer
 RDB_parse_set_read_line_fn
 RDB_parse_set_free_line_fn
 RDB_parse_set_case_insensitive

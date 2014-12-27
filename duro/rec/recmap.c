@@ -121,16 +121,8 @@ compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p, size_t *locp)
         data2p = ((RDB_byte *) dbt2p->data) + offs2;
 
         /* Compare field */
-        if (rmp->cmpv[i].comparep != NULL) {
-            /* Comparison function is available, so call it */
-            res = (*rmp->cmpv[i].comparep)(data1p, len1, data2p, len2,
-                    rmp->envp, rmp->cmpv[i].arg);
-        } else {
-            /* Compare memory */
-            res = memcmp(data1p, data2p, len1 < len2 ? len1 : len2);
-            if (res == 0)
-                res = len1 - len2;
-        }
+        res = (*rmp->cmpv[i].comparep)(data1p, len1, data2p, len2,
+                rmp->envp, rmp->cmpv[i].arg);
 
         /* If the fields are different, we're done */
         if (res != 0) {
@@ -161,6 +153,7 @@ RDB_create_recmap(const char *name, const char *filename,
         DB_TXN *txid, RDB_recmap **rmpp)
 {
     int i;
+    RDB_bool all_cmpfn = RDB_TRUE;
     /* Allocate and initialize RDB_recmap structure */
     int ret = new_recmap(rmpp, name, filename, envp,
             fieldc, fieldlenv, keyfieldc, flags);
@@ -177,11 +170,15 @@ RDB_create_recmap(const char *name, const char *filename,
             (*rmpp)->cmpv[i].comparep = cmpv[i].comparep;
             (*rmpp)->cmpv[i].arg = cmpv[i].arg;
             (*rmpp)->cmpv[i].asc = cmpv[i].asc;
+            if (cmpv[i].comparep == NULL)
+                all_cmpfn = RDB_FALSE;
         }
 
-        /* Set comparison function */
-        (*rmpp)->dbp->app_private = *rmpp;
-        (*rmpp)->dbp->set_bt_compare((*rmpp)->dbp, &compare_key);
+        if (all_cmpfn) {
+            /* Set comparison function */
+            (*rmpp)->dbp->app_private = *rmpp;
+            (*rmpp)->dbp->set_bt_compare((*rmpp)->dbp, &compare_key);
+        }
     }
 
     if (!(RDB_UNIQUE & flags)) {
