@@ -849,23 +849,23 @@ RDB_destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
 }
 
 RDB_bool
-RDB_expr_expr_depend(const RDB_expression *ex1p, const RDB_expression *ex2p)
+RDB_expr_depends_expr(const RDB_expression *ex1p, const RDB_expression *ex2p)
 {
     switch (ex1p->kind) {
         case RDB_EX_OBJ:
             return RDB_FALSE;
         case RDB_EX_TBP:
-            return RDB_expr_table_depend(ex2p, ex1p->def.tbref.tbp);
+            return RDB_expr_depends_table(ex2p, ex1p->def.tbref.tbp);
         case RDB_EX_VAR:
             return RDB_FALSE;
         case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
-            return RDB_expr_expr_depend(ex1p->def.op.args.firstp, ex2p);
+            return RDB_expr_depends_expr(ex1p->def.op.args.firstp, ex2p);
         case RDB_EX_RO_OP:
         {
             RDB_expression *argp = ex1p->def.op.args.firstp;
             while (argp != NULL) {
-                if (RDB_expr_expr_depend(argp, ex2p))
+                if (RDB_expr_depends_expr(argp, ex2p))
                     return RDB_TRUE;
                 argp = argp->nextp;
             }
@@ -936,11 +936,11 @@ RDB_expr_refers_var(const RDB_expression *exp, const char *attrname)
  * Check if there is some table which both exp and tbp depend on
  */
 RDB_bool
-RDB_expr_table_depend(const RDB_expression *exp, const RDB_object *tbp)
+RDB_expr_depends_table(const RDB_expression *exp, const RDB_object *tbp)
 {
     if (tbp->val.tb.exp == NULL)
         return RDB_expr_refers(exp, tbp);
-    return RDB_expr_expr_depend(tbp->val.tb.exp, exp);
+    return RDB_expr_depends_expr(tbp->val.tb.exp, exp);
 }
 
 RDB_object *

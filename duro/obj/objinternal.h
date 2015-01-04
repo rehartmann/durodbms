@@ -108,10 +108,10 @@ RDB_bool
 RDB_expr_refers_var(const RDB_expression *, const char *attrname);
 
 RDB_bool
-RDB_expr_table_depend(const RDB_expression *, const RDB_object *);
+RDB_expr_depends_table(const RDB_expression *, const RDB_object *);
 
 RDB_bool
-RDB_expr_expr_depend(const RDB_expression *, const RDB_expression *);
+RDB_expr_depends_expr(const RDB_expression *, const RDB_expression *);
 
 int
 RDB_invrename_expr(RDB_expression *, RDB_expression *,

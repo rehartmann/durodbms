@@ -86,6 +86,40 @@ RDB_type_is_ordered(const RDB_type *typ)
 }
 
 /**
+ * Determines if a type depends on another type.
+ */
+RDB_bool
+RDB_type_depends_type(const RDB_type *typ, const RDB_type *dtyp)
+{
+    int i;
+    int j;
+
+    if (typ == dtyp)
+        return RDB_TRUE;
+
+    switch (typ->kind) {
+        case RDB_TP_TUPLE:
+            for (i = 0; i < typ->def.tuple.attrc; i++) {
+                if (RDB_type_depends_type(typ->def.tuple.attrv[i].typ, dtyp))
+                    return RDB_TRUE;
+            }
+            return RDB_FALSE;
+        case RDB_TP_RELATION:
+        case RDB_TP_ARRAY:
+            return RDB_type_depends_type(typ->def.basetyp, dtyp);
+        case RDB_TP_SCALAR:
+            for (i = 0; i < typ->def.scalar.repc; i++) {
+                for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
+                    if (RDB_type_depends_type(typ->def.scalar.repv[i].compv[j].typ, dtyp))
+                        return RDB_TRUE;
+                }
+            }
+            return RDB_FALSE;
+    }
+    abort();
+}
+
+/**
  * Check if a type is a scalar type with possreps.
  */
 RDB_bool

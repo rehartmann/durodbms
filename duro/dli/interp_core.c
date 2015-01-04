@@ -321,7 +321,7 @@ var_of_type(RDB_hashmap *mapp, RDB_type *typ)
             RDB_type *vtyp = RDB_obj_type((RDB_object *) datap);
 
             /* If the types are equal, return variable name */
-            if (vtyp != NULL && RDB_type_equals(vtyp, typ))
+            if (vtyp != NULL && RDB_type_depends_type(vtyp, typ))
                 return namp;
         }
     }
@@ -336,8 +336,8 @@ const char *
 Duro_type_in_use(Duro_interp *interp, RDB_type *typ)
 {
     const char *typenamp;
-    if (interp->current_varmapp != NULL) {
-        varmap_node *varnodep = interp->current_varmapp;
+    varmap_node *varnodep = interp->current_varmapp;
+    if (varnodep != NULL) {
         do {
             typenamp = var_of_type(&varnodep->map, typ);
             if (typenamp != NULL)

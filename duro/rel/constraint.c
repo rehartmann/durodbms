@@ -333,29 +333,29 @@ expr_refers_target(const RDB_expression *exp,
     int i;
 
     for (i = 0; i < insc; i++) {
-        if (RDB_expr_table_depend(exp, insv[i].tbp))
+        if (RDB_expr_depends_table(exp, insv[i].tbp))
             return RDB_TRUE;
     }
 
     for (i = 0; i < updc; i++) {
-        if (RDB_expr_table_depend(exp, updv[i].tbp))
+        if (RDB_expr_depends_table(exp, updv[i].tbp))
             return RDB_TRUE;
     }
 
     for (i = 0; i < delc; i++) {
-        if (RDB_expr_table_depend(exp, delv[i].tbp))
+        if (RDB_expr_depends_table(exp, delv[i].tbp))
             return RDB_TRUE;
     }
 
     for (i = 0; i < vdelc; i++) {
-        if (RDB_expr_table_depend(exp, vdelv[i].tbp))
+        if (RDB_expr_depends_table(exp, vdelv[i].tbp))
             return RDB_TRUE;
     }
 
     for (i = 0; i < copyc; i++) {
         RDB_object *tbp = RDB_expr_obj((RDB_expression *) exp);
         if (tbp != NULL && tbp->kind == RDB_OB_TABLE) {
-            if (tbp != NULL && RDB_expr_table_depend(exp, tbp))
+            if (tbp != NULL && RDB_expr_depends_table(exp, tbp))
                 return RDB_TRUE;
         }
     }

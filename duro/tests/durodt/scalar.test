@@ -228,7 +228,24 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
 
         drop var r;
 
+        try
+            -- Must fail because a depends on the type
+            drop type t;
+            put_line('dropping type succeeded despite variable a depending on it');
+        catch ex in_use_error;
+            ;
+        end try;
+            
         drop var a;
+
+        try
+            -- Must fail because tp depends on the type
+            drop type t;
+            put_line('dropping type succeeded despite variable tp depending on it');
+        catch ex in_use_error;
+            ;
+        end try;
+
         drop var tp;
 
         drop type t;

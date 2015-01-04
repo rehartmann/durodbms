@@ -1330,7 +1330,7 @@ exec_typedrop(const RDB_parse_node *nodep, Duro_interp *interp,
      * Check if a transient variable of that type exists
      */
     if (Duro_type_in_use(interp, typ)) {
-        RDB_raise_in_use("enable to drop type because a variable with that type exists", ecp);
+        RDB_raise_in_use("unable to drop type because a variable depends on it", ecp);
         goto error;
     }
 

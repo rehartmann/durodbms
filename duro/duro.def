@@ -230,10 +230,16 @@ RDB_del_nonscalar_type
 RDB_get_parameter
 RDB_operator_source
 RDB_operator_name
+RDB_operator_type
+RDB_operator_param_count
 RDB_is_selector
 RDB_is_getter
 RDB_is_setter
 RDB_return_type
+RDB_operator_u_data
+RDB_set_operator_u_data
+RDB_new_op_data
+RDB_free_op_data
 RDB_next_attr_sorted
 RDB_obj_set_typeinfo
 RDB_init_expr_list
