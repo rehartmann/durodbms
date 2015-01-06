@@ -19,6 +19,8 @@ public class TestDB {
     @Before
     public void setUp() throws DException {
         session = DSession.createSession();
+        session.execute("create_env('dbenv');"
+                + "create_db('D');");
     }
 
     @After
@@ -35,8 +37,7 @@ public class TestDB {
 
     @Test
     public void test() throws DException {
-        session.execute("create_env('dbenv');"
-                + "create_db('D');"
+        session.execute("connect('dbenv');"
                 + "current_db := 'D';"
                 + "begin tx;"
                 + "var emp real rel {id int, name string, m_salary float} key {id};"
