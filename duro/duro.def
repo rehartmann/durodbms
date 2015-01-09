@@ -14,6 +14,7 @@ RDB_INVALID_ARGUMENT_ERROR
 RDB_TYPE_MISMATCH_ERROR
 RDB_NOT_FOUND_ERROR
 RDB_OPERATOR_NOT_FOUND_ERROR
+RDB_TYPE_NOT_FOUND_ERROR
 RDB_NAME_ERROR
 RDB_ELEMENT_EXISTS_ERROR
 RDB_TYPE_CONSTRAINT_VIOLATION_ERROR
@@ -169,6 +170,7 @@ RDB_raise_no_running_tx
 RDB_raise_not_found
 RDB_raise_type_mismatch
 RDB_raise_operator_not_found
+RDB_raise_type_not_found
 RDB_raise_type_constraint_violation
 RDB_raise_element_exists
 RDB_raise_not_supported

@@ -4,6 +4,8 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 0.24
 
+- Added error type type_not_found_error.
+
 - Type definition now supports ORDERED.
   Added flags argument to RDB_define_type() and -ordered option
   to Duro::type define.

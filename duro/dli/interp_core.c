@@ -389,7 +389,7 @@ Duro_parse_node_to_type_retry(RDB_parse_node *nodep, Duro_interp *interp,
      */
     if (typ != NULL)
         return typ;
-    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NAME_ERROR
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_TYPE_NOT_FOUND_ERROR
             && RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR)
         return NULL;
     /*

@@ -177,6 +177,12 @@ RDB_raise_operator_not_found(const char *msg, RDB_exec_context *ecp)
 }
 
 RDB_object *
+RDB_raise_type_not_found(const char *msg, RDB_exec_context *ecp)
+{
+    return raise_msg_err(&RDB_TYPE_NOT_FOUND_ERROR, msg, ecp);
+}
+
+RDB_object *
 RDB_raise_type_constraint_violation(const char *msg, RDB_exec_context *ecp)
 {
     return raise_msg_err(&RDB_TYPE_CONSTRAINT_VIOLATION_ERROR, msg, ecp);

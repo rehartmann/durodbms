@@ -454,7 +454,7 @@ The pointer to the type on success, or NULL if an error occured.
 @par Errors:
 
 <dl>
-<dt>name_error</dt>
+<dt>type_not_found_error</dt>
 <dd>A type with the name <var>name</var> could not be found.
 </dd>
 <dt></dt>
@@ -480,7 +480,7 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     }
 
     if (txp == NULL) {
-        RDB_raise_name(name, ecp);
+        RDB_raise_type_not_found(name, ecp);
         return NULL;
     }
 
@@ -499,7 +499,7 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     if (ret != RDB_OK) {
         RDB_type *errtyp = RDB_obj_type(RDB_get_err(ecp));
         if (errtyp != NULL && errtyp == &RDB_NOT_FOUND_ERROR) {
-            RDB_raise_name(name, ecp);
+            RDB_raise_type_not_found(name, ecp);
         }
         return NULL;
     }

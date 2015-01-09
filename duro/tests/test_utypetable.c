@@ -181,7 +181,7 @@ test_drop(RDB_database *dbp, RDB_exec_context *ecp)
 
     tinyintp = RDB_get_type("TINYINT", ecp, &tx);
     assert(tinyintp == NULL);
-    assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_NAME_ERROR);
+    assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_TYPE_NOT_FOUND_ERROR);
     RDB_clear_err(ecp);
 
     return RDB_commit(ecp, &tx);

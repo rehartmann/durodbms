@@ -43,6 +43,8 @@ TYPE not_found_error POSSREP { msg string };
 
 TYPE operator_not_found_error POSSREP { msg string };
 
+TYPE type_not_found_error POSSREP { msg string };
+
 TYPE name_error POSSREP { msg string };
 
 TYPE element_exists_error POSSREP { msg string };
@@ -121,6 +123,7 @@ RDB_type RDB_INVALID_ARGUMENT_ERROR;
 RDB_type RDB_TYPE_MISMATCH_ERROR;
 RDB_type RDB_NOT_FOUND_ERROR;
 RDB_type RDB_OPERATOR_NOT_FOUND_ERROR;
+RDB_type RDB_TYPE_NOT_FOUND_ERROR;
 RDB_type RDB_NAME_ERROR;
 RDB_type RDB_ELEMENT_EXISTS_ERROR;
 RDB_type RDB_TYPE_CONSTRAINT_VIOLATION_ERROR;
@@ -480,6 +483,14 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
         &operator_not_found_comp
     };
 
+    static RDB_attr type_not_found_comp = { "msg", &RDB_STRING };
+
+    static RDB_possrep type_not_found_rep = {
+        "type_not_found_error",
+        1,
+        &type_not_found_comp
+    };
+
     static RDB_attr element_exists_comp = { "msg", &RDB_STRING };
 
     static RDB_possrep element_exists_rep = {
@@ -694,6 +705,23 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
         return RDB_ERROR;
     RDB_OPERATOR_NOT_FOUND_ERROR.def.scalar.init_val_is_valid = RDB_TRUE;
     RDB_OPERATOR_NOT_FOUND_ERROR.compare_op = NULL;
+
+    RDB_TYPE_NOT_FOUND_ERROR.kind = RDB_TP_SCALAR;
+    RDB_TYPE_NOT_FOUND_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_TYPE_NOT_FOUND_ERROR.name = "type_not_found_error";
+    RDB_TYPE_NOT_FOUND_ERROR.def.scalar.builtin = RDB_TRUE;
+    RDB_TYPE_NOT_FOUND_ERROR.def.scalar.ordered = RDB_FALSE;
+    RDB_TYPE_NOT_FOUND_ERROR.def.scalar.repc = 1;
+    RDB_TYPE_NOT_FOUND_ERROR.def.scalar.repv = &type_not_found_rep;
+    RDB_TYPE_NOT_FOUND_ERROR.def.scalar.arep = &RDB_STRING;
+    RDB_TYPE_NOT_FOUND_ERROR.def.scalar.constraintp = NULL;
+    RDB_TYPE_NOT_FOUND_ERROR.def.scalar.initexp = NULL;
+    RDB_TYPE_NOT_FOUND_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    if (select_e_str(&RDB_TYPE_NOT_FOUND_ERROR.def.scalar.init_val,
+            &RDB_TYPE_NOT_FOUND_ERROR, ecp) != RDB_OK)
+        return RDB_ERROR;
+    RDB_TYPE_NOT_FOUND_ERROR.def.scalar.init_val_is_valid = RDB_TRUE;
+    RDB_TYPE_NOT_FOUND_ERROR.compare_op = NULL;
 
     RDB_ELEMENT_EXISTS_ERROR.kind = RDB_TP_SCALAR;
     RDB_ELEMENT_EXISTS_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -985,6 +1013,10 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     if (RDB_add_type(&RDB_OPERATOR_NOT_FOUND_ERROR,
+            ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+    if (RDB_add_type(&RDB_TYPE_NOT_FOUND_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
