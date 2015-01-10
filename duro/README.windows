@@ -7,10 +7,10 @@ database management system.
 
 Complete source code is available from http://sourceforge.net/projects/duro.
 
-The following software is required for running this version of DuroDBMS:
+The following software is required for running this version of DuroDBMS on MS Windows:
 
 - Berkeley DB Transactional Data Store, release 6.1
-- POSIX.2 regular expressions (e.g., GNU Regex)
+- GNU Regex
 - GNU Libtool
 - Tcl 8.1 or later (optional)
 
@@ -24,8 +24,8 @@ To learn about how to use DuroDBMS, see the documentation in the 'docs'
 subdirectory. Example code can be found in the 'tests' subdirectory
 of the source release.
 
-The Java interface requires Java Development Kit 7. Add the file jduro.jar
-in the 'lib' subdirectory to the classpath. 
+The Java interface requires Java Development Kit 7 or later.
+Add the file jduro.jar in the 'lib' subdirectory to the classpath. 
 
 The Tcl interface can be found in the 'lib' subdirectory.
 The easiest way to make it available to application
