@@ -33,6 +33,9 @@ RDB_parse_node_to_type(RDB_parse_node *, RDB_gettypefn *getfnp, void *arg,
 RDB_parse_node *
 RDB_parse_expr(const char *, RDB_exec_context *);
 
+int
+RDB_parse_node_modname(RDB_parse_node *, RDB_object *, RDB_exec_context *);
+
 RDB_parse_node *
 RDB_parse_stmt(RDB_exec_context *);
 

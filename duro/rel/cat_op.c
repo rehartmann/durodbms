@@ -232,7 +232,6 @@ RDB_cat_load_upd_op(const char *name, RDB_exec_context *ecp,
     RDB_object tpl;
     RDB_object typesobj;
     RDB_object *updobjp, *updvobjp;
-    int ret;
     int i;
     RDB_operator *op;
     RDB_int opcount = 0;
@@ -312,15 +311,25 @@ RDB_cat_load_upd_op(const char *name, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
     RDB_clear_err(ecp);
-    ret = RDB_drop_table(vtbp, ecp, txp);
-    if (ret != RDB_OK)
+
+    if (RDB_del_qresult(qrp, ecp, txp) != RDB_OK) {
+        qrp = NULL;
         goto error;
+    }
+
+    if (RDB_drop_table(vtbp, ecp, txp) != RDB_OK) {
+        vtbp = NULL;
+        goto error;
+    }
 
     RDB_destroy_obj(&tpl, ecp);
     return opcount;
 
 error:
-    RDB_drop_table(vtbp, ecp, txp);
+    if (qrp != NULL)
+        RDB_del_qresult(qrp, ecp, txp);
+    if (vtbp != NULL)
+        RDB_drop_table(vtbp, ecp, txp);
     RDB_destroy_obj(&tpl, ecp);
     return RDB_ERROR;
 }

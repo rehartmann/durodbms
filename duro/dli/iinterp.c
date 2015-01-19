@@ -207,7 +207,7 @@ disconnect_op(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     /* If CURRENT_DB was set, set it to empty string */
-    dbnameobjp = RDB_hashmap_get(&interp->sys_module.varmap, "current_db");
+    dbnameobjp = RDB_hashmap_get(&interp->sys_varmap, "current_db");
     if (dbnameobjp == NULL || *RDB_obj_string(dbnameobjp) == '\0') {
         return RDB_OK;
     }
@@ -284,19 +284,19 @@ trace_op(int argc, RDB_object *argv[], RDB_operator *op,
 /* Add I/O operators and variables */
 static int
 add_io(Duro_interp *interp, RDB_exec_context *ecp) {
-    if (RDB_add_io_ops(&interp->sys_module.upd_op_map, ecp) != RDB_OK) {
+    if (RDB_add_io_ops(&interp->sys_upd_op_map, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 
-    if (RDB_hashmap_put(&interp->sys_module.varmap, "stdin", &DURO_STDIN_OBJ) != RDB_OK) {
+    if (RDB_hashmap_put(&interp->sys_varmap, "stdin", &DURO_STDIN_OBJ) != RDB_OK) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    if (RDB_hashmap_put(&interp->sys_module.varmap, "stdout", &DURO_STDOUT_OBJ) != RDB_OK) {
+    if (RDB_hashmap_put(&interp->sys_varmap, "stdout", &DURO_STDOUT_OBJ) != RDB_OK) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    if (RDB_hashmap_put(&interp->sys_module.varmap, "stderr", &DURO_STDERR_OBJ) != RDB_OK) {
+    if (RDB_hashmap_put(&interp->sys_varmap, "stderr", &DURO_STDERR_OBJ) != RDB_OK) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
@@ -336,7 +336,27 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
     RDB_object argv[DURO_MAX_LLEN];
     RDB_operator *op;
     RDB_parse_node *argp = nodep->nextp->nextp->val.children.firstp;
-    const char *opname = RDB_parse_node_ID(nodep);
+    const char *opname;
+    RDB_object qop_nameobj;
+
+    RDB_init_obj(&qop_nameobj);
+
+    if (nodep->kind == RDB_NODE_INNER) {
+        ret = RDB_parse_node_modname(nodep->val.children.firstp, &qop_nameobj, ecp);
+        if (ret != RDB_OK)
+            goto cleanup;
+        ret = RDB_append_string(&qop_nameobj, ".", ecp);
+        if (ret != RDB_OK)
+            goto cleanup;
+        ret = RDB_append_string(&qop_nameobj,
+                        RDB_expr_var_name(nodep->val.children.firstp->nextp->nextp->exp),
+                        ecp);
+        if (ret != RDB_OK)
+            goto cleanup;
+        opname = RDB_obj_string(&qop_nameobj);
+    } else {
+        opname = RDB_expr_var_name(nodep->exp);
+    }
 
     /*
      * Get argument types
@@ -359,7 +379,7 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
     /*
      * Get operator
      */
-    op = RDB_get_op(&interp->sys_module.upd_op_map, opname, argc, argtv, ecp);
+    op = RDB_get_op(&interp->sys_upd_op_map, opname, argc, argtv, ecp);
     if (op == NULL) {
         RDB_bool type_mismatch =
                 (RDB_obj_type(RDB_get_err(ecp)) == &RDB_TYPE_MISMATCH_ERROR);
@@ -483,6 +503,7 @@ cleanup:
         if (argpv[i] == &argv[i])
             RDB_destroy_obj(&argv[i], ecp);
     }
+    RDB_destroy_obj(&qop_nameobj, ecp);
     return ret;
 }
 
@@ -681,12 +702,12 @@ exec_stmts(RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context *ecp,
         return_info *retinfop)
 {
     int ret;
-    do {
+    while (stmtp != NULL) {
         ret = Duro_exec_stmt(stmtp, interp, ecp, retinfop);
         if (ret != RDB_OK)
             return ret;
         stmtp = stmtp->nextp;
-    } while (stmtp != NULL);
+    }
     return RDB_OK;
 }
 
@@ -1416,6 +1437,7 @@ free_opdata(RDB_operator *op)
         RDB_free(opdatap->argnamev[i]);
     }
     RDB_free(opdatap->argnamev);
+    RDB_free(opdatap);
 }
 
 int
@@ -1679,6 +1701,38 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
 }
 
+/* Define read-only operator, prepend module name */
+static int
+create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type *rtyp,
+                 const char *libname, const char *symname,
+                 const char *sourcep, Duro_interp *interp,
+                 RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_object opnameobj;
+
+    if (*RDB_obj_string(&interp->module_name) == '\0') {
+        return RDB_create_ro_op(name, paramc, paramv, rtyp,
+                libname, symname, sourcep, ecp, txp);
+    }
+    RDB_init_obj(&opnameobj);
+    if (RDB_string_to_obj(&opnameobj, RDB_obj_string(&interp->module_name), ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&opnameobj, ".", ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&opnameobj, name, ecp) != RDB_OK)
+        goto error;
+
+    if (RDB_create_ro_op(RDB_obj_string(&opnameobj), paramc, paramv, rtyp,
+            libname, symname, sourcep, ecp, txp) != RDB_OK)
+        goto error;
+    RDB_destroy_obj(&opnameobj, ecp);
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&opnameobj, ecp);
+    return RDB_ERROR;
+}
+
 static int
 ro_opdef_extern(const char *opname, RDB_type *rtyp,
         int paramc, RDB_parameter *paramv,
@@ -1692,10 +1746,42 @@ ro_opdef_extern(const char *opname, RDB_type *rtyp,
         return RDB_ERROR;
     }
 
-    return RDB_create_ro_op(opname, paramc, paramv, rtyp,
+    return create_ro_op(opname, paramc, paramv, rtyp,
             creop_infop->libname,
             creop_infop->ro_op_symname,
-            extname, ecp, txp);
+            extname, interp, ecp, txp);
+}
+
+/* Define  operator, prepend module name */
+static int
+create_update_op(const char *name, int paramc, RDB_parameter paramv[],
+                 const char *libname, const char *symname,
+                 const char *sourcep, Duro_interp *interp,
+                 RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_object opnameobj;
+
+    if (*RDB_obj_string(&interp->module_name) == '\0') {
+        return RDB_create_update_op(name, paramc, paramv,
+                libname, symname, sourcep, ecp, txp);
+    }
+    RDB_init_obj(&opnameobj);
+    if (RDB_string_to_obj(&opnameobj, RDB_obj_string(&interp->module_name), ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&opnameobj, ".", ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&opnameobj, name, ecp) != RDB_OK)
+        goto error;
+
+    if (RDB_create_update_op(RDB_obj_string(&opnameobj), paramc, paramv,
+            libname, symname, sourcep, ecp, txp) != RDB_OK)
+        goto error;
+    RDB_destroy_obj(&opnameobj, ecp);
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&opnameobj, ecp);
+    return RDB_ERROR;
 }
 
 static int
@@ -1711,10 +1797,10 @@ update_opdef_extern(const char *opname,
         return RDB_ERROR;
     }
 
-    return RDB_create_update_op(opname, paramc, paramv,
+    return create_update_op(opname, paramc, paramv,
             creop_infop->libname,
             creop_infop->update_op_symname,
-            extname, ecp, txp);
+            extname, interp, ecp, txp);
 }
 
 static int
@@ -1729,11 +1815,14 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     int i;
     const char *opname;
     RDB_object opnameobj; /* Only used when the name is modified */
+    /* const char *modname = RDB_obj_string(&interp->module_name); */
     RDB_parse_node *stmtp = parentp->val.children.firstp->nextp;
     RDB_parameter *paramv = NULL;
     int paramc = ((int) RDB_parse_nodelist_length(stmtp->nextp->nextp) + 1) / 3;
 
+    RDB_init_obj(&code);
     RDB_init_obj(&opnameobj);
+
     opname = RDB_expr_var_name(stmtp->exp);
 
     /*
@@ -1744,20 +1833,17 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
 
         if (interp->envp == NULL) {
             RDB_raise_resource_not_found("no connection", ecp);
-            return RDB_ERROR;
+            goto error;
         }
 
         dbp = Duro_get_db(interp, ecp);
         if (dbp == NULL)
-            return RDB_ERROR;
+            goto error;
 
         if (RDB_begin_tx(ecp, &tmp_tx, dbp, NULL) != RDB_OK) {
-            return RDB_ERROR;
+            goto error;
         }
     }
-
-    /* Convert defining code back */
-    RDB_init_obj(&code);
 
     paramv = RDB_alloc(paramc * sizeof(RDB_parameter), ecp);
     if (paramv == NULL) {
@@ -1781,6 +1867,7 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     ro = (RDB_bool)
             (stmtp->nextp->nextp->nextp->nextp->val.token == TOK_RETURNS);
 
+    /* Convert defining code back */
     if (Duro_parse_node_to_obj_string(&code, parentp, ecp,
             interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx) != RDB_OK) {
         goto error;
@@ -1835,14 +1922,14 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
                     interp, ecp,
                     interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
         } else {
-            ret = RDB_create_ro_op(opname, paramc, paramv, rtyp,
+            ret = create_ro_op(opname, paramc, paramv, rtyp,
 #ifdef _WIN32
                     "duro",
 #else
                     "libduro",
 #endif
                     "Duro_dt_invoke_ro_op",
-                    RDB_obj_string(&code), ecp,
+                    RDB_obj_string(&code), interp, ecp,
                     interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
         }
         if (ret != RDB_OK)
@@ -1915,7 +2002,7 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
                     interp, ecp,
                     interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
         } else {
-            ret = RDB_create_update_op(opname,
+            ret = create_update_op(opname,
                     paramc, paramv,
 #ifdef _WIN32
                     "duro",
@@ -1923,7 +2010,7 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
                     "libduro",
 #endif
                     "Duro_dt_invoke_update_op",
-                    RDB_obj_string(&code), ecp,
+                    RDB_obj_string(&code), interp, ecp,
                     interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
         }
         if (ret != RDB_OK)
@@ -2153,6 +2240,45 @@ exec_try(const RDB_parse_node *nodep, Duro_interp *interp,
         }
     }
     return ret;
+}
+
+static int
+exec_moduledef(RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context *ecp,
+        return_info *retinfop)
+{
+    int ret;
+    RDB_object oldmodname;
+    size_t olen = strlen(RDB_obj_string(&interp->module_name));
+    RDB_init_obj(&oldmodname);
+
+    if (olen > 0) {
+        RDB_append_string(&interp->module_name, ".", ecp);
+    }
+    RDB_append_string(&interp->module_name, RDB_expr_var_name(stmtp->exp), ecp);
+
+    ret = exec_stmts(stmtp->nextp->nextp->val.children.firstp,
+            interp, ecp, retinfop);
+
+    if (RDB_string_n_to_obj(&oldmodname, RDB_obj_string(&interp->module_name),
+            olen, ecp) != RDB_OK) {
+        RDB_raise_fatal(ecp);
+        return RDB_ERROR;
+    }
+    if (RDB_copy_obj(&interp->module_name, &oldmodname, ecp) != RDB_OK) {
+        RDB_raise_fatal(ecp);
+        return RDB_ERROR;
+    }
+
+    RDB_destroy_obj(&oldmodname, ecp);
+    return ret;
+}
+
+static int
+exec_implmoduledef(RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context *ecp,
+        return_info *retinfop)
+{
+    return exec_stmts(stmtp->nextp->nextp->val.children.firstp,
+            interp, ecp, retinfop);
 }
 
 static int
@@ -2474,13 +2600,20 @@ Duro_exec_stmt(RDB_parse_node *stmtp, Duro_interp *interp,
                 ret = exec_raise(firstchildp->nextp, interp, ecp);
                 break;
             case TOK_IMPLEMENT:
-                ret = exec_typeimpl(firstchildp->nextp->nextp, interp, ecp);
+                if (firstchildp->nextp->val.token == TOK_TYPE) {
+                    ret = exec_typeimpl(firstchildp->nextp->nextp, interp, ecp);
+                } else {
+                    ret = exec_implmoduledef(firstchildp->nextp->nextp, interp, ecp, retinfop);
+                }
                 break;
             case TOK_MAP:
                 ret = exec_map(firstchildp->nextp, interp, ecp);
                 break;
             case TOK_RENAME:
                 ret = Duro_exec_rename(firstchildp->nextp->nextp, interp, ecp);
+                break;
+            case TOK_MODULE:
+                ret = exec_moduledef(firstchildp->nextp, interp, ecp, retinfop);
                 break;
             default:
                 RDB_raise_internal("invalid token", ecp);
@@ -2527,6 +2660,15 @@ Duro_exec_stmt(RDB_parse_node *stmtp, Duro_interp *interp,
         RDB_raise_internal("interpreter encountered invalid node", ecp);
         return RDB_ERROR;
     }
+    if (firstchildp->nextp->val.token == '(') {
+        /* Operator invocation with qualified operator name */
+        ret = exec_call(firstchildp, interp, ecp);
+        if (ret == RDB_ERROR && interp->err_line < 0) {
+            interp->err_line = stmtp->lineno;
+        }
+        return ret;
+    }
+
     /* Assignment */
     ret = Duro_exec_assign(firstchildp, interp, ecp);
     if (ret == RDB_ERROR && interp->err_line < 0) {
@@ -2598,7 +2740,7 @@ Duro_process_stmt(Duro_interp *interp, RDB_exec_context *ecp)
 {
     int ret;
     RDB_parse_node *stmtp;
-    RDB_object *dbnameobjp = RDB_hashmap_get(&interp->sys_module.varmap, "current_db");
+    RDB_object *dbnameobjp = RDB_hashmap_get(&interp->sys_varmap, "current_db");
 
     if (RDB_parse_get_interactive()) {
         /* Build interp->prompt */
@@ -2691,35 +2833,39 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
 
     Duro_init_vars(interp);
 
-    RDB_init_op_map(&interp->sys_module.upd_op_map);
+    RDB_init_op_map(&interp->sys_upd_op_map);
+
+    RDB_init_hashmap(&interp->uop_info_map, 5);
 
     RDB_init_obj(&interp->current_db_obj);
     RDB_init_obj(&interp->implicit_tx_obj);
 
-    if (RDB_put_upd_op(&interp->sys_module.upd_op_map, "exit", 0, NULL, &exit_op, ecp) != RDB_OK)
+    RDB_init_obj(&interp->module_name);
+
+    if (RDB_put_upd_op(&interp->sys_upd_op_map, "exit", 0, NULL, &exit_op, ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&interp->sys_module.upd_op_map, "exit", 1, exit_int_params, &exit_int_op,
+    if (RDB_put_upd_op(&interp->sys_upd_op_map, "exit", 1, exit_int_params, &exit_int_op,
             ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&interp->sys_module.upd_op_map, "connect", 1, connect_params, &connect_op,
+    if (RDB_put_upd_op(&interp->sys_upd_op_map, "connect", 1, connect_params, &connect_op,
             ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&interp->sys_module.upd_op_map, "connect", 2, connect_create_params,
+    if (RDB_put_upd_op(&interp->sys_upd_op_map, "connect", 2, connect_create_params,
             &connect_recover_op, ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&interp->sys_module.upd_op_map, "disconnect", 0, NULL, &disconnect_op,
+    if (RDB_put_upd_op(&interp->sys_upd_op_map, "disconnect", 0, NULL, &disconnect_op,
             ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&interp->sys_module.upd_op_map, "create_db", 1, create_db_params,
+    if (RDB_put_upd_op(&interp->sys_upd_op_map, "create_db", 1, create_db_params,
             &create_db_op, ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&interp->sys_module.upd_op_map, "create_env", 1, create_env_params,
+    if (RDB_put_upd_op(&interp->sys_upd_op_map, "create_env", 1, create_env_params,
             &create_env_op, ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&interp->sys_module.upd_op_map, "system", 2, system_params, &system_op,
+    if (RDB_put_upd_op(&interp->sys_upd_op_map, "system", 2, system_params, &system_op,
             ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&interp->sys_module.upd_op_map, "trace", 1, trace_params,
+    if (RDB_put_upd_op(&interp->sys_upd_op_map, "trace", 1, trace_params,
             &trace_op, ecp) != RDB_OK)
         goto error;
 
@@ -2731,13 +2877,13 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
 
     RDB_bool_to_obj(&interp->implicit_tx_obj, RDB_FALSE);
 
-    if (RDB_hashmap_put(&interp->sys_module.varmap, "current_db", &interp->current_db_obj)
+    if (RDB_hashmap_put(&interp->sys_varmap, "current_db", &interp->current_db_obj)
             != RDB_OK) {
         RDB_raise_no_memory(ecp);
         goto error;
     }
 
-    if (RDB_hashmap_put(&interp->sys_module.varmap, "implicit_tx", &interp->implicit_tx_obj)
+    if (RDB_hashmap_put(&interp->sys_varmap, "implicit_tx", &interp->implicit_tx_obj)
             != RDB_OK) {
         RDB_raise_no_memory(ecp);
         goto error;
@@ -2747,7 +2893,8 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
         goto error;
     }
 
-    RDB_init_hashmap(&interp->uop_info_map, 5);
+    if (RDB_string_to_obj(&interp->module_name, "", ecp) != RDB_OK)
+        goto error;
 
     return RDB_OK;
 
@@ -2755,7 +2902,9 @@ error:
     RDB_destroy_obj(&interp->current_db_obj, ecp);
     RDB_destroy_obj(&interp->implicit_tx_obj, ecp);
 
-    RDB_destroy_op_map(&interp->sys_module.upd_op_map);
+    RDB_destroy_op_map(&interp->sys_upd_op_map);
+    RDB_destroy_obj(&interp->module_name, ecp);
+    RDB_destroy_hashmap(&interp->uop_info_map);
     return RDB_ERROR;
 }
 
@@ -2782,9 +2931,11 @@ Duro_destroy_interp(Duro_interp *interp)
         if (RDB_parse_get_interactive())
             printf("Transaction rolled back.\n");
     }
-    RDB_destroy_op_map(&interp->sys_module.upd_op_map);
+    RDB_destroy_op_map(&interp->sys_upd_op_map);
 
     RDB_destroy_hashmap(&interp->uop_info_map);
+
+    RDB_destroy_obj(&interp->module_name, &ec);
 
     if (interp->envp != NULL)
         RDB_close_env(interp->envp);

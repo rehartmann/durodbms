@@ -76,18 +76,18 @@ Duro_remove_varmap(Duro_interp *interp)
 void
 Duro_init_vars(Duro_interp *interp)
 {
-    RDB_init_hashmap(&interp->root_module.varmap, DEFAULT_VARMAP_SIZE);
-    RDB_init_hashmap(&interp->sys_module.varmap, DEFAULT_VARMAP_SIZE);
+    RDB_init_hashmap(&interp->root_varmap, DEFAULT_VARMAP_SIZE);
+    RDB_init_hashmap(&interp->sys_varmap, DEFAULT_VARMAP_SIZE);
     interp->current_varmapp = NULL;
 }
 
 void
 Duro_destroy_vars(Duro_interp *interp)
 {
-    Duro_destroy_varmap(&interp->root_module.varmap);
+    Duro_destroy_varmap(&interp->root_varmap);
 
     /* Destroy only the varmap, not the variables as they are global */
-    RDB_destroy_hashmap(&interp->sys_module.varmap);
+    RDB_destroy_hashmap(&interp->sys_varmap);
 }
 
 /*
@@ -116,12 +116,12 @@ lookup_transient_var(Duro_interp *interp, const char *name, varmap_node *varmapp
     }
 
     /* Search in global transient vars */
-    objp = RDB_hashmap_get(&interp->root_module.varmap, name);
+    objp = RDB_hashmap_get(&interp->root_varmap, name);
     if (objp != NULL)
         return objp;
 
     /* Search in system Duro_module */
-    return RDB_hashmap_get(&interp->sys_module.varmap, name);
+    return RDB_hashmap_get(&interp->sys_varmap, name);
 }
 
 RDB_object *
@@ -216,11 +216,11 @@ Duro_exec_vardrop(const RDB_parse_node *nodep, Duro_interp *interp,
         }
     }
     if (objp == NULL) {
-        objp = RDB_hashmap_get(&interp->root_module.varmap, varname);
+        objp = RDB_hashmap_get(&interp->root_varmap, varname);
         if (objp != NULL) {
             if (check_foreach_depends(objp, interp, ecp) != RDB_OK)
                 return RDB_ERROR;
-            if (RDB_hashmap_put(&interp->root_module.varmap, varname, NULL) != RDB_OK)
+            if (RDB_hashmap_put(&interp->root_varmap, varname, NULL) != RDB_OK)
                 return RDB_ERROR;
         }
     }
@@ -345,14 +345,14 @@ Duro_type_in_use(Duro_interp *interp, RDB_type *typ)
             varnodep = varnodep->parentp;
         } while (varnodep != NULL);
     }
-    return var_of_type(&interp->root_module.varmap, typ);
+    return var_of_type(&interp->root_varmap, typ);
 }
 
 RDB_database *
 Duro_get_db(Duro_interp *interp, RDB_exec_context *ecp)
 {
     char *dbname;
-    RDB_object *dbnameobjp = RDB_hashmap_get(&interp->sys_module.varmap, "current_db");
+    RDB_object *dbnameobjp = RDB_hashmap_get(&interp->sys_varmap, "current_db");
     if (dbnameobjp == NULL) {
         RDB_raise_resource_not_found("no database", ecp);
         return NULL;

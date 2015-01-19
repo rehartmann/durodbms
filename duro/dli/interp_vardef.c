@@ -50,7 +50,7 @@ Duro_exec_vardef(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *e
      * Check if the variable already exists
      */
     if (RDB_hashmap_get(interp->current_varmapp != NULL ?
-            &interp->current_varmapp->map : &interp->root_module.varmap, varname) != NULL) {
+            &interp->current_varmapp->map : &interp->root_varmap, varname) != NULL) {
         RDB_raise_element_exists(varname, ecp);
         return RDB_ERROR;
     }
@@ -96,7 +96,7 @@ Duro_exec_vardef(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *e
         }
     } else {
         /* Global scope */
-        if (RDB_hashmap_put(&interp->root_module.varmap, varname, objp) != RDB_OK) {
+        if (RDB_hashmap_put(&interp->root_varmap, varname, objp) != RDB_OK) {
             RDB_raise_no_memory(ecp);
             goto error;
         }
@@ -300,7 +300,7 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, Duro_interp *interp,
      * Check if the variable already exists
      */
     if (RDB_hashmap_get(interp->current_varmapp != NULL ?
-            &interp->current_varmapp->map : &interp->root_module.varmap, varname) != NULL) {
+            &interp->current_varmapp->map : &interp->root_varmap, varname) != NULL) {
         RDB_raise_element_exists(varname, ecp);
         return RDB_ERROR;
     }
@@ -369,7 +369,7 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, Duro_interp *interp,
             goto error;
         }
     } else {
-        if (RDB_hashmap_put(&interp->root_module.varmap, varname, tbp) != RDB_OK) {
+        if (RDB_hashmap_put(&interp->root_varmap, varname, tbp) != RDB_OK) {
             RDB_destroy_obj(tbp, ecp);
             goto error;
         }
@@ -572,7 +572,7 @@ Duro_exec_vardef_public(RDB_parse_node *nodep, Duro_interp *interp,
      * Check if the variable already exists
      */
     if (RDB_hashmap_get(interp->current_varmapp != NULL ?
-            &interp->current_varmapp->map : &interp->root_module.varmap, varname) != NULL) {
+            &interp->current_varmapp->map : &interp->root_varmap, varname) != NULL) {
         RDB_raise_element_exists(varname, ecp);
         return RDB_ERROR;
     }

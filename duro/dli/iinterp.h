@@ -17,15 +17,6 @@ typedef struct Duro_tx_node {
     struct Duro_tx_node *parentp;
 } tx_node;
 
-/* Contains operators and global transient variables */
-typedef struct Duro_module {
-    /* Global transient variables */
-    RDB_hashmap varmap;
-
-    /* System-defined update operators (not stored), only used in sys_module */
-    RDB_op_map upd_op_map;
-} Duro_module;
-
 typedef struct {
     char *libname;
     char *ro_op_symname;
@@ -60,11 +51,17 @@ typedef struct Duro_interp {
 
     RDB_operator *inner_op;
 
-    /* System Duro_module, contains STDIN, STDOUT etc. */
-    Duro_module sys_module;
+    /* System variables, contains STDIN, STDOUT etc. */
+    RDB_hashmap sys_varmap;
 
-    /* Top-level Duro_module */
-    Duro_module root_module;
+    /* System update operators */
+    RDB_op_map sys_upd_op_map;
+
+    /* Top-level variables */
+    RDB_hashmap root_varmap;
+
+    /* Name of current module */
+    RDB_object module_name;
 
     int err_line;
 

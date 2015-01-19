@@ -1,0 +1,112 @@
+#!/bin/sh
+# Execute tclsh from the user's PATH \
+exec tclsh "$0" ${1+"$@"}
+
+# $Id$
+#
+# Test database tables and relational operators
+#
+
+package require tcltest 2.2
+eval ::tcltest::configure $argv
+namespace import ::tcltest::*
+
+set testdir [::tcltest::configure -testdir]
+
+set ::SETUP {
+    removeDirectory dbenv
+    makeDirectory dbenv
+    cd $::tcltest::temporaryDirectory
+    exec $testdir/../../dli/durodt << {
+        create_env('dbenv');
+        create_db('D');
+    }
+}
+
+set ::CLEANUP {
+    removeDirectory dbenv
+}
+
+test module {Modules} \
+        -setup $SETUP -cleanup $CLEANUP -body {
+    puts -nonewline [exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        module m;
+        
+            operator mul2(n int) returns int;
+                return n * 2;
+            end operator;
+ 
+            operator puts(s string) updates {};
+                put_line(s);
+            end operator;
+
+            module modmod_mod;
+                operator dec(n int) returns int;
+                    return n - 1;
+                end operator;
+
+                operator mul2upd(n int) updates {n};
+                    n := n * 2;
+                end operator;
+            end module;
+
+        end module;
+        
+        put(m.mul2(5));
+        put_line('');
+ 
+        m.puts('Yip');
+
+        put(m.modmod_mod.dec(17));
+        put_line('');
+
+        var m int init 7;
+        call m.modmod_mod.mul2upd(m);
+        put(m);
+        put_line('');
+    }]
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+        
+        put(m.mul2(53));
+        put_line('');
+ 
+        m.puts('/&;');
+
+        put(m.modmod_mod.dec(10));
+        put_line('');
+
+        var m int init 22;
+        call m.modmod_mod.mul2upd(m);
+        put(m);
+        put_line('');
+        
+        try
+            put('Yo'.dec(4));
+            put_line('syntax error expected from read-only op invocation');
+        catch err syntax_error;
+            ;
+        end try;
+
+        try
+            7.puts('yo');
+            put_line('syntax error expected from update op invocation');
+        catch err syntax_error;
+            ;
+        end try;
+    }
+} -output {10
+Yip
+16
+14
+} -result {106
+/&;
+9
+44
+}
+
+cleanupTests

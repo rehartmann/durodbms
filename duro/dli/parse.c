@@ -39,7 +39,7 @@ int RDB_parse_tokens[] = {
     TOK_FROM, TOK_GROUP, TOK_IF, TOK_IMPLEMENT, TOK_IN, TOK_INDEX,
     TOK_INIT, TOK_INSERT, TOK_INTERSECT, TOK_JOIN, TOK_KEY, TOK_LEAVE,
     TOK_LIKE, TOK_LOAD, TOK_MAX, TOK_MATCHING,
-    TOK_MIN, TOK_MINUS, TOK_NOT, TOK_OPERATOR, TOK_OR,
+    TOK_MIN, TOK_MINUS, TOK_MODULE, TOK_NOT, TOK_OPERATOR, TOK_OR,
     TOK_ORDER, TOK_ORDERED, TOK_PER,
     TOK_POSSREP, TOK_PRIVATE, TOK_RAISE, TOK_REAL, TOK_REGEX_LIKE,
     TOK_RELATION, TOK_RENAME, TOK_RETURN, TOK_RETURNS,
@@ -680,36 +680,103 @@ divide_node_expr(RDB_parse_node *argnodep,
     return rexp;
 }
 
+int
+RDB_parse_node_modname(RDB_parse_node *nodep, RDB_object *nameobjp, RDB_exec_context *ecp)
+{
+    const char *name;
+
+    switch (nodep->kind) {
+        case RDB_NODE_EXPR:
+            name = RDB_expr_var_name(nodep->exp);
+            /* Must check because the grammar allows general expressions */
+            if (name == NULL) {
+                RDB_raise_syntax("identifier expected", ecp);
+                return RDB_ERROR;
+            }
+            return RDB_string_to_obj(nameobjp, name, ecp);
+        case RDB_NODE_INNER:
+            if (RDB_parse_nodelist_length(nodep) != 3) {
+                RDB_raise_syntax("invalid expression", ecp);
+                return RDB_ERROR;
+            }
+            if (nodep->val.children.firstp->nextp->kind != RDB_NODE_TOK
+                    || nodep->val.children.firstp->nextp->val.token != '.') {
+                RDB_raise_syntax("invalid expression", ecp);
+                return RDB_ERROR;
+            }
+            if (nodep->val.children.firstp->nextp->nextp->kind != RDB_NODE_EXPR) {
+                RDB_raise_syntax("identifier expected", ecp);
+                return RDB_ERROR;
+            }
+            if (RDB_parse_node_modname(nodep->val.children.firstp, nameobjp, ecp) != RDB_OK) {
+                return RDB_ERROR;
+            }
+            name = RDB_expr_var_name(nodep->val.children.firstp->nextp->nextp->exp);
+            if (name == NULL) {
+                RDB_raise_syntax("identifier expected", ecp);
+                return RDB_ERROR;
+            }
+            if (RDB_append_string(nameobjp, ".", ecp) != RDB_OK)
+                return RDB_ERROR;
+            return RDB_append_string(nameobjp, name, ecp);
+        default: ;
+    }
+    RDB_raise_syntax("invalid expression", ecp);
+    return RDB_ERROR;
+}
+
 static RDB_expression *
-ro_op_node_expr(RDB_parse_node *argnodep,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+ro_op_node_expr(RDB_parse_node *argnodep, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     RDB_expression *rexp;
-    const char *opnamep = RDB_expr_var_name(argnodep->exp);
-    
+    const char *opnamep;
+    RDB_object qop_nameobj;
+
+    RDB_init_obj(&qop_nameobj);
+
+    if (argnodep->kind == RDB_NODE_INNER) {
+        if (RDB_parse_node_modname(argnodep->val.children.firstp, &qop_nameobj, ecp) != RDB_OK)
+            goto error;
+        if (RDB_append_string(&qop_nameobj, ".", ecp) != RDB_OK)
+            goto error;
+        if (RDB_append_string(&qop_nameobj,
+                RDB_expr_var_name(argnodep->val.children.firstp->nextp->nextp->exp),
+                ecp) != RDB_OK)
+            goto error;
+        opnamep = RDB_obj_string(&qop_nameobj);
+    } else {
+        opnamep = RDB_expr_var_name(argnodep->exp);
+    }
+
     // Readonly operator
     if (strncmp(opnamep, RDB_THE_PREFIX, sizeof(RDB_THE_PREFIX) - 1) == 0) {
         RDB_expression *argp;
 
         if (argnodep->nextp->nextp == NULL) {
             RDB_raise_syntax("the_ operator requires argument", ecp);
-            return NULL;
+            goto error;
         }
         argp = RDB_dup_expr(RDB_parse_node_expr(RDB_parse_node_child(
                 argnodep->nextp->nextp, 0), ecp, txp), ecp);
         if (argp == NULL)
-            return NULL;
+            goto error;
         rexp = RDB_expr_comp(argp, opnamep + sizeof(RDB_THE_PREFIX) - 1,
                 ecp);
     } else {
         rexp = RDB_ro_op(opnamep, ecp);
         if (rexp == NULL)
-            return NULL;
+            goto error;
         if (add_args(rexp, argnodep->nextp->nextp, ecp, txp) != RDB_OK) {
-            return NULL;
+            goto error;
         }
     }
+    RDB_destroy_obj(&qop_nameobj, ecp);
     return rexp;
+
+error:
+    RDB_destroy_obj(&qop_nameobj, ecp);
+    return NULL;
 }
 
 static RDB_expression *

@@ -415,6 +415,8 @@ RDB_token_name(int tok)
             return "CATCH";
         case TOK_IMPLEMENT:
             return "IMPLEMENT";
+        case TOK_MODULE:
+            return "MODULE";
         case TOK_EXPLAIN:
             return "EXPLAIN";
     }
