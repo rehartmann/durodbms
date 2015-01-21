@@ -261,6 +261,8 @@ RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
         return ret;
 
     if (cmpv != NULL) {
+        RDB_bool all_comparefn = RDB_TRUE;
+
         ixp->cmpv = malloc(sizeof (RDB_compare_field) * fieldc);
         if (ixp->cmpv == NULL)
             goto error;
@@ -268,9 +270,12 @@ RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
             ixp->cmpv[i].comparep = cmpv[i].comparep;
             ixp->cmpv[i].arg = cmpv[i].arg;
             ixp->cmpv[i].asc = cmpv[i].asc;
-        }
 
-        if (cmpv[i].comparep != NULL) {
+            if (cmpv[i].comparep == NULL) {
+                all_comparefn = RDB_FALSE;
+            }
+        }
+        if (all_comparefn) {
             /* Set comparison function */
             ixp->dbp->app_private = ixp;
             ixp->dbp->set_bt_compare(ixp->dbp, &compare_key);
