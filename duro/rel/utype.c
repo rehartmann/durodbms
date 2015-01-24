@@ -40,6 +40,68 @@ getcomptype(const char *compname, void *arg)
     return NULL;
 }
 
+static int
+check_init(RDB_expression *initexp, int repc, const RDB_possrep repv[], const char *typename,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int i, j;
+    RDB_type *argtyp;
+    RDB_expr_list *arglistp;
+    RDB_expression *argp;
+    RDB_object selnameobj;
+
+    /* Check if initexp is an operator invocation */
+    if (initexp->kind != RDB_EX_RO_OP) {
+        RDB_raise_invalid_argument("invalid INIT expression: operator invocation required", ecp);
+        return RDB_ERROR;
+    }
+
+    RDB_init_obj(&selnameobj);
+
+    /* Check if the operator name matches a selector name */
+    for (i = 0; i < repc; i++) {
+        if (repv[i].name != NULL) {
+            if (RDB_possrep_to_selector(&selnameobj, repv[i].name, typename, ecp) != RDB_OK)
+                goto error;
+            if (strcmp(RDB_obj_string(&selnameobj), initexp->def.op.name) == 0)
+                break;
+        } else {
+            /* No possrep name, use type name if only one possrep */
+            if (repc == 1 && strcmp(typename, initexp->def.op.name) == 0)
+                break;
+        }
+    }
+    if (i >= repc) {
+        RDB_raise_invalid_argument("invalid INIT expression: selector call required", ecp);
+        goto error;
+    }
+
+    arglistp = RDB_expr_op_args(initexp);
+    if (RDB_expr_list_length(arglistp) != repv[i].compc) {
+        RDB_raise_invalid_argument("# of arguments does not match selector", ecp);
+        goto error;
+    }
+
+    /* Check argument types against component */
+    argp = arglistp->firstp;
+    for (j = 0; j < repv[i].compc; j++) {
+        argtyp = RDB_expr_type(argp, NULL, NULL, NULL, ecp, txp);
+        if (argtyp == NULL)
+            goto error;
+        if (!RDB_type_equals(argtyp, repv[i].compv[j].typ)) {
+            RDB_raise_type_mismatch("INIT expression argument type dot match selector", ecp);
+            goto error;
+        }
+        argp = argp->nextp;
+    }
+
+    return RDB_destroy_obj(&selnameobj, ecp);
+
+error:
+    RDB_destroy_obj(&selnameobj, ecp);
+    return RDB_ERROR;
+}
+
 /** @addtogroup type
  * @{
  */
@@ -86,6 +148,11 @@ reference that could not be resolved.
 <dt>operator_not_found_error
 <dd><var>constraintp</var> is not NULL and contains an invocation
 of an operator that has not been defined.
+<dt>invalid argument error
+<dd><var>initexp</var> is not a valid selector invocation.
+<dt>type_mismatch_error
+<dd><var>initexp</var> contains an argument whose type does not match
+the corresponing selector parameter.
 </dl>
 
 The call may also fail for a @ref system-errors "system error",
@@ -126,6 +193,10 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
             return RDB_ERROR;
         }
     }
+
+    /* Check if initexp is a selector invocation */
+    if (check_init(initexp, repc, repv, name, ecp, txp) != RDB_OK)
+        return RDB_ERROR;
 
     RDB_init_obj(&tpl);
     RDB_init_obj(&conval);
@@ -175,13 +246,20 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
         char *prname = repv[i].name;
 
         if (prname == NULL) {
+            char *dp;
             /* Possrep name may be NULL if there's only 1 possrep */
             if (repc > 1) {
                 RDB_raise_invalid_argument("possrep name is NULL", ecp);
                 goto error;
             }
-            /* Make type name the possrep name */
-            prname = (char *) name;
+
+            /* Make type name (without module) the possrep name */
+            dp = strrchr(name, '.');
+            if (dp == NULL) {
+                prname = (char *) name;
+            } else {
+                prname = dp + 1;
+            }
         }
         if (RDB_tuple_set_string(&tpl, "possrepname", prname, ecp) != RDB_OK)
             goto error;
@@ -699,19 +777,10 @@ RDB_load_type_ops(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
  * Implements a system-generated selector
  */
 int
-RDB_sys_select(int argc, RDB_object *argv[], const char *opname,
-        RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp,
+RDB_sys_select(int argc, RDB_object *argv[],
+        RDB_type *typ, RDB_exec_context *ecp,
         RDB_object *retvalp)
 {
-    RDB_possrep *prp;
-
-    /* Find possrep */
-    prp = RDB_get_possrep(typ, opname);
-    if (prp == NULL) {
-        RDB_raise_invalid_argument("component name is NULL", ecp);
-        return RDB_ERROR;
-    }
-
     /* If *retvalp carries a value, it must match the type */
     if (retvalp->kind != RDB_OB_INITIAL
             && (retvalp->typ == NULL
@@ -747,7 +816,7 @@ int
 RDB_op_sys_select(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    return RDB_sys_select(argc, argv, op->name, op->rtyp, ecp, NULL, retvalp);
+    return RDB_sys_select(argc, argv, op->rtyp, ecp, retvalp);
 }
 
 /* Invoke the comparison function of the argument type */
@@ -773,7 +842,7 @@ sys_cmp(RDB_object *argv[], RDB_exec_context *ecp, RDB_transaction *txp,
  * Implements the operator '<'.
  */
 int
-RDB_op_sys_lt(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+RDB_sys_lt(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int res;
@@ -788,7 +857,7 @@ RDB_op_sys_lt(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *
  * Implements the operator '<='.
  */
 int
-RDB_op_sys_let(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+RDB_sys_let(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int res;
@@ -803,7 +872,7 @@ RDB_op_sys_let(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context 
  * Implements the operator '<'.
  */
 int
-RDB_op_sys_gt(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+RDB_sys_gt(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int res;
@@ -818,7 +887,7 @@ RDB_op_sys_gt(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *
  * Implements the operator '>='.
  */
 int
-RDB_op_sys_get(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+RDB_sys_get(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int res;

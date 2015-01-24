@@ -14,92 +14,6 @@
 
 #include <db.h>
 
-static int
-new_index(RDB_recmap *rmp, const char *name, const char *filename,
-        RDB_environment *envp, int fieldc, const int fieldv[],
-        RDB_index **ixpp)
-{
-    int ret;
-    int i;
-    RDB_index *ixp = malloc(sizeof (RDB_index));
-
-    if (ixp == NULL) {
-        return ENOMEM;
-    }
-    ixp->fieldv = NULL;
-    ixp->rmp = rmp;
-
-    ixp->namp = ixp->filenamp = NULL;
-    if (name != NULL) {  
-        ixp->namp = RDB_dup_str(name);
-        if (ixp->namp == NULL) {
-            ret = ENOMEM;
-            goto error;
-        }
-    }
-    if (filename != NULL) {
-        ixp->filenamp = RDB_dup_str(filename);
-        if (ixp->filenamp == NULL) {
-            ret = ENOMEM;
-            goto error;
-        }
-    }
-
-    ixp->fieldc = fieldc;
-    ixp->fieldv = malloc(fieldc * sizeof(int));
-    if (ixp->fieldv == NULL) {
-        ret = ENOMEM;
-        goto error;
-    }
-    for (i = 0; i < fieldc; i++)
-        ixp->fieldv[i] = fieldv[i];
-    ixp->cmpv = 0;
-
-    ret = db_create(&ixp->dbp, envp != NULL ? envp->envp : NULL, 0);
-    if (ret != 0) {
-        goto error;
-    }
-
-    *ixpp = ixp;
-    return RDB_OK;
-
-error:
-    free(ixp->namp);
-    free(ixp->filenamp);
-    free(ixp->fieldv);
-    free(ixp);
-    return ret;
-}
-
-/* Fill the DBT for the secondary key */
-static int
-make_skey(DB *dbp, const DBT *pkeyp, const DBT *pdatap, DBT *skeyp)
-{
-    RDB_index *ixp = dbp->app_private;
-    RDB_field *fieldv;
-    int ret;
-    int i;
-
-    fieldv = malloc (sizeof(RDB_field) * ixp->fieldc);
-    if (fieldv == NULL)
-        return ENOMEM;
-
-    for (i = 0; i < ixp->fieldc; i++) {
-        fieldv[i].no = ixp->fieldv[i];
-        fieldv[i].copyfp = &memcpy;
-    }
-    ret = RDB_get_DBT_fields(ixp->rmp, pkeyp, pdatap, ixp->fieldc, fieldv);
-    if (ret != RDB_OK) {
-        free(fieldv);
-        return ret;
-    }
-
-    ret = RDB_fields_to_DBT(ixp->rmp, ixp->fieldc, fieldv, skeyp);
-    skeyp->flags = DB_DBT_APPMALLOC;
-    free(fieldv);
-    return ret;
-}
-
 /*
  * Read field from an index DBT
  */
@@ -113,7 +27,7 @@ get_field(RDB_index *ixp, int fi, void *datap, size_t len, size_t *lenp,
     int fno = ixp->fieldv[fi];
 
     /*
-     * compute offset and length for key
+     * Compute offset and length for key
      */
     if (ixp->rmp->fieldlens[fno] != RDB_VARIABLE_LEN) {
         /* Offset is sum of lengths of previous fields */
@@ -127,14 +41,14 @@ get_field(RDB_index *ixp, int fi, void *datap, size_t len, size_t *lenp,
     } else {
         /*
          * Offset is sum of lengths of fixed-length fields
-         * plus lengths of previous variable-length fields 
+         * plus lengths of previous variable-length fields
          */
         int vfcnt = 0;
         for (i = 0; i < ixp->fieldc; i++) {
             if (ixp->rmp->fieldlens[ixp->fieldv[i]] == RDB_VARIABLE_LEN)
                 vfcnt++;
         }
-         
+
         vpos = 0;
         for (i = 0; i < fi; i++) {
             if (ixp->rmp->fieldlens[ixp->fieldv[i]] != RDB_VARIABLE_LEN) {
@@ -183,22 +97,56 @@ compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p, size_t *locp)
     return 0;
 }
 
-int
-RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
+static int
+new_index(RDB_recmap *rmp, const char *name, const char *filename,
         RDB_environment *envp, int fieldc, const int fieldv[],
-        const RDB_compare_field cmpv[], int flags, DB_TXN *txid,
+        const RDB_compare_field cmpv[], int flags,
         RDB_index **ixpp)
 {
-    RDB_index *ixp;
     int ret;
     int i;
-    RDB_bool all_cmpfn = RDB_TRUE;
-   
-    ret = new_index(rmp, namp, filenamp, envp, fieldc, fieldv, &ixp);
-    if (ret != RDB_OK)
-        return ret;
+    RDB_index *ixp = malloc(sizeof (RDB_index));
+
+    if (ixp == NULL) {
+        return ENOMEM;
+    }
+    ixp->fieldv = NULL;
+    ixp->rmp = rmp;
+
+    ixp->namp = ixp->filenamp = NULL;
+    if (name != NULL) {  
+        ixp->namp = RDB_dup_str(name);
+        if (ixp->namp == NULL) {
+            ret = ENOMEM;
+            goto error;
+        }
+    }
+    if (filename != NULL) {
+        ixp->filenamp = RDB_dup_str(filename);
+        if (ixp->filenamp == NULL) {
+            ret = ENOMEM;
+            goto error;
+        }
+    }
+
+    ixp->fieldc = fieldc;
+    ixp->fieldv = malloc(fieldc * sizeof(int));
+    if (ixp->fieldv == NULL) {
+        ret = ENOMEM;
+        goto error;
+    }
+    for (i = 0; i < fieldc; i++)
+        ixp->fieldv[i] = fieldv[i];
+    ixp->cmpv = 0;
+
+    ret = db_create(&ixp->dbp, envp != NULL ? envp->envp : NULL, 0);
+    if (ret != 0) {
+        goto error;
+    }
 
     if (cmpv != NULL) {
+        RDB_bool all_cmpfn = RDB_TRUE;
+
         ixp->cmpv = malloc(sizeof (RDB_compare_field) * fieldc);
         if (ixp->cmpv == NULL)
             goto error;
@@ -206,6 +154,7 @@ RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
             ixp->cmpv[i].comparep = cmpv[i].comparep;
             ixp->cmpv[i].arg = cmpv[i].arg;
             ixp->cmpv[i].asc = cmpv[i].asc;
+
             if (cmpv[i].comparep == NULL)
                 all_cmpfn = RDB_FALSE;
         }
@@ -220,9 +169,61 @@ RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
         }
     }
 
-    /* Allow duplicates, if requested by the caller */
     if (!(RDB_UNIQUE & flags))
         ixp->dbp->set_flags(ixp->dbp, DB_DUPSORT);
+
+    *ixpp = ixp;
+    return RDB_OK;
+
+error:
+    free(ixp->namp);
+    free(ixp->filenamp);
+    free(ixp->fieldv);
+    free(ixp);
+    return ret;
+}
+
+/* Fill the DBT for the secondary key */
+static int
+make_skey(DB *dbp, const DBT *pkeyp, const DBT *pdatap, DBT *skeyp)
+{
+    RDB_index *ixp = dbp->app_private;
+    RDB_field *fieldv;
+    int ret;
+    int i;
+
+    fieldv = malloc (sizeof(RDB_field) * ixp->fieldc);
+    if (fieldv == NULL)
+        return ENOMEM;
+
+    for (i = 0; i < ixp->fieldc; i++) {
+        fieldv[i].no = ixp->fieldv[i];
+        fieldv[i].copyfp = &memcpy;
+    }
+    ret = RDB_get_DBT_fields(ixp->rmp, pkeyp, pdatap, ixp->fieldc, fieldv);
+    if (ret != RDB_OK) {
+        free(fieldv);
+        return ret;
+    }
+
+    ret = RDB_fields_to_DBT(ixp->rmp, ixp->fieldc, fieldv, skeyp);
+    skeyp->flags = DB_DBT_APPMALLOC;
+    free(fieldv);
+    return ret;
+}
+
+int
+RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
+        RDB_environment *envp, int fieldc, const int fieldv[],
+        const RDB_compare_field cmpv[], int flags, DB_TXN *txid,
+        RDB_index **ixpp)
+{
+    RDB_index *ixp;
+    int ret;
+   
+    ret = new_index(rmp, namp, filenamp, envp, fieldc, fieldv, cmpv, flags, &ixp);
+    if (ret != RDB_OK)
+        return ret;
 
     ret = ixp->dbp->open(ixp->dbp, txid, filenamp, namp,
             RDB_ORDERED & flags ? DB_BTREE : DB_HASH, DB_CREATE, 0664);
@@ -230,10 +231,10 @@ RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
         goto error;
     }
 
-    /* attach index to BDB database (for the callback) */
+    /* Attach index to BDB database (for the callback) */
     ixp->dbp->app_private = ixp;
 
-    /* associate the index DB with the recmap DB */
+    /* Associate the index DB with the recmap DB */
     ret = ixp->dbp->associate(rmp->dbp, txid, ixp->dbp, make_skey, DB_CREATE);
     if (ret != 0) {
         goto error;
@@ -254,36 +255,10 @@ RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
 {
     RDB_index *ixp;
     int ret;
-    int i;
 
-    ret = new_index(rmp, namp, filenamp, envp, fieldc, fieldv, &ixp);
+    ret = new_index(rmp, namp, filenamp, envp, fieldc, fieldv, cmpv, flags, &ixp);
     if (ret != 0)
         return ret;
-
-    if (cmpv != NULL) {
-        RDB_bool all_comparefn = RDB_TRUE;
-
-        ixp->cmpv = malloc(sizeof (RDB_compare_field) * fieldc);
-        if (ixp->cmpv == NULL)
-            goto error;
-        for (i = 0; i < fieldc; i++) {
-            ixp->cmpv[i].comparep = cmpv[i].comparep;
-            ixp->cmpv[i].arg = cmpv[i].arg;
-            ixp->cmpv[i].asc = cmpv[i].asc;
-
-            if (cmpv[i].comparep == NULL) {
-                all_comparefn = RDB_FALSE;
-            }
-        }
-        if (all_comparefn) {
-            /* Set comparison function */
-            ixp->dbp->app_private = ixp;
-            ixp->dbp->set_bt_compare(ixp->dbp, &compare_key);
-        }
-    }
-
-    if (!(RDB_UNIQUE & flags))
-        ixp->dbp->set_flags(ixp->dbp, DB_DUPSORT);
 
     ret = ixp->dbp->open(ixp->dbp, txid, filenamp, namp, DB_UNKNOWN, 0, 0664);
     if (ret != 0) {

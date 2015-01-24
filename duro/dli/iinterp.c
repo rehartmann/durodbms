@@ -1240,6 +1240,17 @@ parserep_to_rep(const RDB_parse_node *nodep, RDB_possrep *rep,
     return RDB_OK;
 }
 
+/* Prepend id with module name */
+static int
+q_id(RDB_object *dstobjp, const char *id, Duro_interp *interp, RDB_exec_context *ecp)
+{
+    if (RDB_string_to_obj(dstobjp, RDB_obj_string(&interp->module_name), ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_append_string(dstobjp, ".", ecp) != RDB_OK)
+        return RDB_ERROR;
+    return RDB_append_string(dstobjp, id, ecp);
+}
+
 static int
 exec_typedef(const RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context *ecp)
 {
@@ -1250,11 +1261,15 @@ exec_typedef(const RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context 
     RDB_parse_node *nodep, *prnodep;
     RDB_expression *initexp;
     RDB_expression *constraintp = NULL;
+    RDB_object nameobj;
+    const char *namp;
 
     if (interp->txnp == NULL) {
         RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
+
+    RDB_init_obj(&nameobj);
 
     if (stmtp->nextp->kind == RDB_NODE_TOK) {
         /* Token must be ORDERED */
@@ -1293,8 +1308,16 @@ exec_typedef(const RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context 
             goto error;
     }
 
-    if (RDB_define_type(RDB_expr_var_name(stmtp->exp),
-            repc, repv, constraintp, initexp, flags, ecp,
+    /* If we're within MODULE, prepend module name */
+    if (*RDB_obj_string(&interp->module_name) != '\0') {
+        if (q_id(&nameobj, RDB_expr_var_name(stmtp->exp), interp, ecp) != RDB_OK)
+            goto error;
+        namp = RDB_obj_string(&nameobj);
+    } else {
+        namp = RDB_expr_var_name(stmtp->exp);
+    }
+
+    if (RDB_define_type(namp, repc, repv, constraintp, initexp, flags, ecp,
             &interp->txnp->tx) != RDB_OK)
         goto error;
 
@@ -1307,6 +1330,7 @@ exec_typedef(const RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context 
     RDB_free(repv);
     if (RDB_parse_get_interactive())
         printf("Type %s defined.\n", RDB_expr_var_name(stmtp->exp));
+    RDB_destroy_obj(&nameobj, ecp);
     return RDB_OK;
 
 error:
@@ -1318,6 +1342,7 @@ error:
         }
     }
     RDB_free(repv);
+    RDB_destroy_obj(&nameobj, ecp);
     return RDB_ERROR;
 }
 
@@ -1326,6 +1351,8 @@ exec_typedrop(const RDB_parse_node *nodep, Duro_interp *interp,
         RDB_exec_context *ecp)
 {
     RDB_type *typ;
+    RDB_object nameobj;
+    const char *namp;
 
     /*
      * DROP TYPE is not allowed in user-defined operators,
@@ -1343,7 +1370,18 @@ exec_typedrop(const RDB_parse_node *nodep, Duro_interp *interp,
         return RDB_ERROR;
     }
 
-    typ = RDB_get_type(RDB_expr_var_name(nodep->exp), ecp, &interp->txnp->tx);
+    RDB_init_obj(&nameobj);
+
+    /* If we're within MODULE, prepend module name */
+    if (*RDB_obj_string(&interp->module_name) != '\0') {
+        if (q_id(&nameobj, RDB_expr_var_name(nodep->exp), interp, ecp) != RDB_OK)
+            goto error;
+        namp = RDB_obj_string(&nameobj);
+    } else {
+        namp = RDB_expr_var_name(nodep->exp);
+    }
+
+    typ = RDB_get_type(namp, ecp, &interp->txnp->tx);
     if (typ == NULL)
         goto error;
 
@@ -1363,9 +1401,10 @@ exec_typedrop(const RDB_parse_node *nodep, Duro_interp *interp,
 
     if (RDB_parse_get_interactive())
         printf("Type %s dropped.\n", RDB_expr_var_name(nodep->exp));
-    return RDB_OK;
+    return RDB_destroy_obj(&nameobj, ecp);
 
 error:
+    RDB_destroy_obj(&nameobj, ecp);
     return RDB_ERROR;
 }
 
@@ -1374,6 +1413,8 @@ exec_typeimpl(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
 {
     int ret;
     RDB_type *ityp = NULL;
+    RDB_object nameobj;
+    const char *namp;
 
     if (interp->txnp == NULL) {
         RDB_raise_no_running_tx(ecp);
@@ -1394,8 +1435,17 @@ exec_typeimpl(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
             return ret;
     }
 
-    ret = RDB_implement_type(RDB_expr_var_name(nodep->exp),
-            ityp, RDB_SYS_REP, ecp, &interp->txnp->tx);
+    RDB_init_obj(&nameobj);
+
+    if (*RDB_obj_string(&interp->module_name) != '\0') {
+        if (q_id(&nameobj, RDB_expr_var_name(nodep->exp), interp, ecp) != RDB_OK)
+            goto error;
+        namp = RDB_obj_string(&nameobj);
+    } else {
+        namp = RDB_expr_var_name(nodep->exp);
+    }
+
+    ret = RDB_implement_type(namp, ityp, RDB_SYS_REP, ecp, &interp->txnp->tx);
     if (ret != RDB_OK) {
         RDB_exec_context ec;
         RDB_type *typ;
@@ -1410,9 +1460,10 @@ exec_typeimpl(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
     }
     if (RDB_parse_get_interactive())
         printf("Type %s implemented.\n", RDB_expr_var_name(nodep->exp));
-    return RDB_OK;
+    return RDB_destroy_obj(&nameobj, ecp);
 
 error:
+    RDB_destroy_obj(&nameobj, ecp);
     return RDB_ERROR;
 }
 
@@ -1715,11 +1766,7 @@ create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type *rty
                 libname, symname, sourcep, ecp, txp);
     }
     RDB_init_obj(&opnameobj);
-    if (RDB_string_to_obj(&opnameobj, RDB_obj_string(&interp->module_name), ecp) != RDB_OK)
-        goto error;
-    if (RDB_append_string(&opnameobj, ".", ecp) != RDB_OK)
-        goto error;
-    if (RDB_append_string(&opnameobj, name, ecp) != RDB_OK)
+    if (q_id(&opnameobj, name, interp, ecp) != RDB_OK)
         goto error;
 
     if (RDB_create_ro_op(RDB_obj_string(&opnameobj), paramc, paramv, rtyp,
@@ -2242,6 +2289,7 @@ exec_try(const RDB_parse_node *nodep, Duro_interp *interp,
     return ret;
 }
 
+/* Implements both MODULE .. END MODULE and IMPLEMENT MODULE .. END IMPLEMENT. */
 static int
 exec_moduledef(RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context *ecp,
         return_info *retinfop)
@@ -2271,14 +2319,6 @@ exec_moduledef(RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context *ecp
 
     RDB_destroy_obj(&oldmodname, ecp);
     return ret;
-}
-
-static int
-exec_implmoduledef(RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context *ecp,
-        return_info *retinfop)
-{
-    return exec_stmts(stmtp->nextp->nextp->val.children.firstp,
-            interp, ecp, retinfop);
 }
 
 static int
@@ -2603,7 +2643,7 @@ Duro_exec_stmt(RDB_parse_node *stmtp, Duro_interp *interp,
                 if (firstchildp->nextp->val.token == TOK_TYPE) {
                     ret = exec_typeimpl(firstchildp->nextp->nextp, interp, ecp);
                 } else {
-                    ret = exec_implmoduledef(firstchildp->nextp->nextp, interp, ecp, retinfop);
+                    ret = exec_moduledef(firstchildp->nextp->nextp, interp, ecp, retinfop);
                 }
                 break;
             case TOK_MAP:

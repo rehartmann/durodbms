@@ -2,6 +2,12 @@ $Id$
 
 Summary of Changes to DuroDBMS
 
+DuroDBMS 0.25
+
+- Added support for modules.
+
+- Fixed bug in opening secondary indexes that could cause index corruption.
+
 DuroDBMS 0.24
 
 - Added error type type_not_found_error.

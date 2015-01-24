@@ -87,8 +87,8 @@ RDB_find_rename_from(int, const RDB_renaming[], const char *);
 typedef struct RDB_transaction RDB_transaction;
 
 int
-RDB_sys_select(int argc, RDB_object *[], const char *,
-        struct RDB_type *, struct RDB_exec_context *, RDB_transaction *, RDB_object *);
+RDB_sys_select(int argc, RDB_object *[], struct RDB_type *,
+        struct RDB_exec_context *, RDB_object *);
 
 int
 RDB_init_builtin_scalar_ops(struct RDB_exec_context *);

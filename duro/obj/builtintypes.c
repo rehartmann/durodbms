@@ -252,7 +252,7 @@ select_e_str(RDB_object *retvalp, RDB_type *typ, RDB_exec_context *ecp)
         goto error;
 
     argp = &arg;
-    if (RDB_sys_select(1, &argp, typ->name, typ, ecp, NULL, retvalp)
+    if (RDB_sys_select(1, &argp, typ, ecp, retvalp)
             != RDB_OK) {
         goto error;
     }

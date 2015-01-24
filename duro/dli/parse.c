@@ -1438,26 +1438,26 @@ tup_rel_node_to_type(RDB_parse_node *nodep, RDB_gettypefn *getfnp, void *getarg,
             (RDB_bool) (nodep->val.token == TOK_RELATION), ecp, txp);
 }
 
+static int
+explist_to_id(RDB_parse_node *nodep, RDB_object *idobjp, RDB_exec_context *ecp)
+{
+    if (RDB_string_to_obj(idobjp, RDB_expr_var_name(nodep->exp), ecp) != RDB_OK)
+        return RDB_ERROR;
+    while (nodep->nextp != NULL) {
+        if (RDB_append_string(idobjp, ".", ecp) != RDB_OK)
+            return RDB_ERROR;
+        nodep = nodep->nextp->nextp;
+        if (RDB_append_string(idobjp, RDB_expr_var_name(nodep->exp), ecp) != RDB_OK)
+            return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
 RDB_type *
 RDB_parse_node_to_type(RDB_parse_node *nodep, RDB_gettypefn *getfnp, void *getarg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    if (nodep->kind == RDB_NODE_EXPR) {
-        const char *name = RDB_expr_var_name(nodep->exp);
-        if (strcmp(name, "char") == 0)
-            return &RDB_STRING;
-        if (strcmp(name, "int") == 0)
-            return &RDB_INTEGER;
-        if (strcmp(name, "rational") == 0)
-            return &RDB_FLOAT;
-        if (strcmp(name, "rat") == 0)
-            return &RDB_FLOAT;
-        if (strcmp(name, "bool") == 0)
-            return &RDB_BOOLEAN;
-        return RDB_get_type(name, ecp, txp);
-    }
-    if (nodep->kind == RDB_NODE_INNER
-            && nodep->val.children.firstp->kind == RDB_NODE_TOK) {
+    if (nodep->val.children.firstp->kind == RDB_NODE_TOK) {
         switch(nodep->val.children.firstp->val.token) {
             case TOK_TUPLE:
             case TOK_RELATION:
@@ -1484,6 +1484,33 @@ RDB_parse_node_to_type(RDB_parse_node *nodep, RDB_gettypefn *getfnp, void *getar
                 return RDB_dup_nonscalar_type(typ, ecp);
             }
         }
+    } else {
+        RDB_object idobj;
+        const char *name;
+        RDB_type *typ;
+
+        RDB_init_obj(&idobj);
+        if (explist_to_id(nodep->val.children.firstp, &idobj, ecp) != RDB_OK) {
+            RDB_destroy_obj(&idobj, ecp);
+            return NULL;
+        }
+
+        name = RDB_obj_string(&idobj);
+        if (strcmp(name, "char") == 0) {
+            typ = &RDB_STRING;
+        } else if (strcmp(name, "int") == 0) {
+            typ = &RDB_INTEGER;
+        } else if (strcmp(name, "rational") == 0) {
+            typ = &RDB_FLOAT;
+        } else if (strcmp(name, "rat") == 0) {
+            typ = &RDB_FLOAT;
+        } else if (strcmp(name, "bool") == 0) {
+            typ = &RDB_BOOLEAN;
+        } else {
+            typ = RDB_get_type(name, ecp, txp);
+        }
+        RDB_destroy_obj(&idobj, ecp);
+        return typ;
     }
 
     RDB_raise_not_supported("unsupported type", ecp);

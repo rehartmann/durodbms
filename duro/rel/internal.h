@@ -328,19 +328,19 @@ RDB_op_sys_select(int, RDB_object *[], RDB_operator *,
         RDB_exec_context *, RDB_transaction *, RDB_object *);
 
 int
-RDB_op_sys_lt(int, RDB_object *[], RDB_operator *, RDB_exec_context *,
+RDB_sys_lt(int, RDB_object *[], RDB_operator *, RDB_exec_context *,
         RDB_transaction *, RDB_object *);
 
 int
-RDB_op_sys_let(int, RDB_object *[], RDB_operator *, RDB_exec_context *,
+RDB_sys_let(int, RDB_object *[], RDB_operator *, RDB_exec_context *,
         RDB_transaction *, RDB_object *);
 
 int
-RDB_op_sys_gt(int, RDB_object *[], RDB_operator *, RDB_exec_context *,
+RDB_sys_gt(int, RDB_object *[], RDB_operator *, RDB_exec_context *,
         RDB_transaction *, RDB_object *);
 
 int
-RDB_op_sys_get(int, RDB_object *[], RDB_operator *, RDB_exec_context *,
+RDB_sys_get(int, RDB_object *[], RDB_operator *, RDB_exec_context *,
         RDB_transaction *, RDB_object *);
 
 typedef struct RDB_tbindex RDB_tbindex;
@@ -409,5 +409,9 @@ RDB_close_sequences(RDB_object *);
 
 RDB_expression *
 RDB_attr_eq_strval(const char *, const char *, RDB_exec_context *);
+
+int
+RDB_possrep_to_selector(RDB_object *, const char *,
+        const char *, RDB_exec_context *);
 
 #endif

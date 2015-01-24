@@ -12,22 +12,51 @@
 
 #include <string.h>
 
+/*
+ * Turn a possrep name into selector by copying it,
+ * prepending the module name if necessary
+ */
+int
+RDB_possrep_to_selector(RDB_object *selnameobjp, const char *repname,
+        const char *typename, RDB_exec_context *ecp)
+{
+    char *dp = strrchr(typename, '.');
+    if (dp == NULL) {
+        return RDB_string_to_obj(selnameobjp, repname, ecp);
+    }
+    if (RDB_string_n_to_obj(selnameobjp, typename, dp - typename + 1, ecp)
+            != RDB_OK) {
+        return RDB_ERROR;
+    }
+    return RDB_append_string(selnameobjp, repname, ecp);
+}
+
 static int
 create_selector(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     int ret;
+    RDB_object nameobj;
     int compc = typ->def.scalar.repv[0].compc;
     RDB_parameter *paramv = RDB_alloc(sizeof(RDB_parameter) * compc, ecp);
     if (paramv == NULL) {
         return RDB_ERROR;
     }
 
+    /* create_selector is only called when there is only one possrep, so take the first */
     for (i = 0; i < compc; i++)
         paramv[i].typ = typ->def.scalar.repv[0].compv[i].typ;
-    ret = RDB_create_ro_op(typ->def.scalar.repv[0].name, compc, paramv, typ,
-            "", "RDB_sys_select", typ->name,
-            ecp, txp);
+
+    RDB_init_obj(&nameobj);
+    if (RDB_possrep_to_selector(&nameobj, typ->def.scalar.repv[0].name,
+            RDB_type_name(typ), ecp) != RDB_OK) {
+        RDB_destroy_obj(&nameobj, ecp);
+        RDB_free(paramv);
+        return RDB_ERROR;
+    }
+
+    ret = RDB_create_ro_op(RDB_obj_string(&nameobj), compc, paramv, typ,
+                "", "RDB_op_sys_select", typ->name, ecp, txp);
     RDB_free(paramv);
     return ret;
 }
@@ -540,13 +569,13 @@ RDB_add_comparison_ops(RDB_type *typ, RDB_exec_context *ecp,
     typev[0] = typ;
     typev[1] = typ;
 
-    if (add_ro_op("<", 2, typev, &RDB_BOOLEAN, RDB_op_sys_lt, ecp, txp) != RDB_OK)
+    if (add_ro_op("<", 2, typev, &RDB_BOOLEAN, RDB_sys_lt, ecp, txp) != RDB_OK)
         return RDB_ERROR;
-    if (add_ro_op("<=", 2, typev, &RDB_BOOLEAN, RDB_op_sys_let, ecp, txp) != RDB_OK)
+    if (add_ro_op("<=", 2, typev, &RDB_BOOLEAN, RDB_sys_let, ecp, txp) != RDB_OK)
         return RDB_ERROR;
-    if (add_ro_op(">", 2, typev, &RDB_BOOLEAN, RDB_op_sys_gt, ecp, txp) != RDB_OK)
+    if (add_ro_op(">", 2, typev, &RDB_BOOLEAN, RDB_sys_gt, ecp, txp) != RDB_OK)
         return RDB_ERROR;
-    if (add_ro_op(">=", 2, typev, &RDB_BOOLEAN, RDB_op_sys_get, ecp, txp) != RDB_OK)
+    if (add_ro_op(">=", 2, typev, &RDB_BOOLEAN, RDB_sys_get, ecp, txp) != RDB_OK)
         return RDB_ERROR;
     return RDB_OK;
 }

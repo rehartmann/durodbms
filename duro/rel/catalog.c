@@ -21,7 +21,7 @@
 
 enum {
     MAJOR_VERSION = 0,
-    MINOR_VERSION = 24
+    MINOR_VERSION = 25
 };
 
 /*
