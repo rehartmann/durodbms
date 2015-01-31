@@ -463,3 +463,14 @@ Duro_init_obj(RDB_object *objp, RDB_type *typ, Duro_interp *interp,
     }
     return RDB_OK;
 }
+
+/* Prepend id with module name */
+int
+Duro_module_q_id(RDB_object *dstobjp, const char *id, Duro_interp *interp, RDB_exec_context *ecp)
+{
+    if (RDB_string_to_obj(dstobjp, RDB_obj_string(&interp->module_name), ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_append_string(dstobjp, ".", ecp) != RDB_OK)
+        return RDB_ERROR;
+    return RDB_append_string(dstobjp, id, ecp);
+}

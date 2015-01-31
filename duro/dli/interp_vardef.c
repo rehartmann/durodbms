@@ -556,16 +556,29 @@ Duro_exec_vardef_public(RDB_parse_node *nodep, Duro_interp *interp,
     RDB_string_vec *keyv;
     RDB_bool freekeys = RDB_FALSE;
     RDB_type *tbtyp = NULL;
-    const char *varname = RDB_expr_var_name(nodep->exp);
+    RDB_object idobj;
+    const char *varname;
+
+    RDB_init_obj(&idobj);
+
+    if (*RDB_obj_string(&interp->module_name) != '\0') {
+        if (Duro_module_q_id(&idobj, RDB_expr_var_name(nodep->exp), interp, ecp)
+                != RDB_OK) {
+            goto error;
+        }
+        varname = RDB_obj_string(&idobj);
+    } else {
+        varname = RDB_expr_var_name(nodep->exp);
+    }
 
     if (interp->txnp == NULL) {
         RDB_raise_no_running_tx(ecp);
-        return RDB_ERROR;
+        goto error;
     }
 
     tbtyp = Duro_parse_node_to_type_retry(nodep->nextp->nextp, interp, ecp);
     if (tbtyp == NULL)
-        return RDB_ERROR;
+        goto error;
     keylistnodep = nodep->nextp->nextp->nextp;
 
     /*
@@ -612,6 +625,7 @@ Duro_exec_vardef_public(RDB_parse_node *nodep, Duro_interp *interp,
         RDB_free(keyv);
     }
 
+    RDB_destroy_obj(&idobj, ecp);
     return RDB_OK;
 
 error:
@@ -626,5 +640,6 @@ error:
         }
         RDB_free(keyv);
     }
+    RDB_destroy_obj(&idobj, ecp);
     return RDB_ERROR;
 }

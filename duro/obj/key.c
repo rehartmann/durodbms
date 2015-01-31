@@ -1,8 +1,6 @@
 /*
- * key.c
- *
- *  Created on: 02.08.2013
- *      Author: Rene Hartmann
+ * Copyright (C) 2013 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  *
  * Key functions
  */

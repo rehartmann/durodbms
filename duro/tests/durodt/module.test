@@ -60,7 +60,11 @@ test module {Modules} \
             type t2 possrep pr { comp1 int, comp2 string, comp3 float }
                     init(m.pr(0, '-', 0.0));
 
+            var p public relation { n int, s string } key { n };
+
         end module;
+
+        var r real rel { n int, s string } key { n };
 
         implement module m;
         
@@ -69,7 +73,9 @@ test module {Modules} \
 
             implement type t2;
             end implement;
-        
+ 
+            map p r;
+
         end implement;
 
         commit;

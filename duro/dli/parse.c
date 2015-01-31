@@ -1438,7 +1438,7 @@ tup_rel_node_to_type(RDB_parse_node *nodep, RDB_gettypefn *getfnp, void *getarg,
             (RDB_bool) (nodep->val.token == TOK_RELATION), ecp, txp);
 }
 
-static int
+int
 explist_to_id(RDB_parse_node *nodep, RDB_object *idobjp, RDB_exec_context *ecp)
 {
     if (RDB_string_to_obj(idobjp, RDB_expr_var_name(nodep->exp), ecp) != RDB_OK)

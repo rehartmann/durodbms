@@ -96,4 +96,7 @@ Duro_init_obj(RDB_object *, RDB_type *, Duro_interp *, RDB_exec_context *,
 RDB_object *
 Duro_get_var(const char *, void *);
 
+int
+Duro_module_q_id(RDB_object *, const char *, Duro_interp *, RDB_exec_context *);
+
 #endif /* INTERP_CORE_H_ */
