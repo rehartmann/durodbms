@@ -1656,7 +1656,7 @@ assign: assignable_expression TOK_ASSIGN expression {
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
     }
-    | TOK_INSERT TOK_ID expression {
+    | TOK_INSERT qualified_id expression {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -1668,7 +1668,7 @@ assign: assignable_expression TOK_ASSIGN expression {
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
     }
-    | TOK_DELETE TOK_ID {
+    | TOK_DELETE qualified_id {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -1678,7 +1678,7 @@ assign: assignable_expression TOK_ASSIGN expression {
         RDB_parse_add_child($$, $1);
         RDB_parse_add_child($$, $2);
     }
-    | TOK_DELETE TOK_ID TOK_WHERE expression {
+    | TOK_DELETE qualified_id TOK_WHERE expression {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -1692,7 +1692,7 @@ assign: assignable_expression TOK_ASSIGN expression {
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
     }
-    | TOK_DELETE TOK_ID expression {
+    | TOK_DELETE qualified_id expression {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);

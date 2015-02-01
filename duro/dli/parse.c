@@ -1439,8 +1439,9 @@ tup_rel_node_to_type(RDB_parse_node *nodep, RDB_gettypefn *getfnp, void *getarg,
 }
 
 int
-explist_to_id(RDB_parse_node *nodep, RDB_object *idobjp, RDB_exec_context *ecp)
+RDB_parse_node_qid(RDB_parse_node *parentp, RDB_object *idobjp, RDB_exec_context *ecp)
 {
+    RDB_parse_node *nodep = parentp->val.children.firstp;
     if (RDB_string_to_obj(idobjp, RDB_expr_var_name(nodep->exp), ecp) != RDB_OK)
         return RDB_ERROR;
     while (nodep->nextp != NULL) {
@@ -1490,7 +1491,7 @@ RDB_parse_node_to_type(RDB_parse_node *nodep, RDB_gettypefn *getfnp, void *getar
         RDB_type *typ;
 
         RDB_init_obj(&idobj);
-        if (explist_to_id(nodep->val.children.firstp, &idobj, ecp) != RDB_OK) {
+        if (RDB_parse_node_qid(nodep, &idobj, ecp) != RDB_OK) {
             RDB_destroy_obj(&idobj, ecp);
             return NULL;
         }

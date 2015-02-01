@@ -306,17 +306,22 @@ static int
 node_to_insert(RDB_ma_insert *insp, RDB_parse_node *nodep, Duro_interp *interp,
         RDB_exec_context *ecp)
 {
+    RDB_object idobj;
     RDB_expression *srcexp;
-    RDB_expression *dstexp = RDB_parse_node_expr(nodep, ecp,
-            interp->txnp != NULL ? &interp->txnp->tx : NULL);
-    if (dstexp == NULL) {
+
+    RDB_init_obj(&idobj);
+
+    if (RDB_parse_node_qid(nodep, &idobj, ecp) != RDB_OK) {
+        RDB_destroy_obj(&idobj, ecp);
         return RDB_ERROR;
     }
 
-    insp->tbp = resolve_target(dstexp, interp, ecp);
+    insp->tbp = Duro_lookup_var(RDB_obj_string(&idobj), interp, ecp);
+    RDB_destroy_obj(&idobj, ecp);
     if (insp->tbp == NULL) {
         return RDB_ERROR;
     }
+
     /* Only tables are allowed as target */
     if (insp->tbp->typ == NULL
             || !RDB_type_is_relation(insp->tbp->typ)) {
@@ -375,20 +380,25 @@ static int
 node_to_delete(RDB_ma_delete *delp, RDB_parse_node *nodep, Duro_interp *interp,
         RDB_exec_context *ecp)
 {
-    RDB_expression *dstexp = RDB_parse_node_expr(nodep, ecp,
-            interp->txnp != NULL ? &interp->txnp->tx : NULL);
-    if (dstexp == NULL) {
+    RDB_object idobj;
+
+    RDB_init_obj(&idobj);
+
+    if (RDB_parse_node_qid(nodep, &idobj, ecp) != RDB_OK) {
+        RDB_destroy_obj(&idobj, ecp);
         return RDB_ERROR;
     }
 
-    delp->tbp = resolve_target(dstexp, interp, ecp);
+    delp->tbp = Duro_lookup_var(RDB_obj_string(&idobj), interp, ecp);
+    RDB_destroy_obj(&idobj, ecp);
     if (delp->tbp == NULL) {
         return RDB_ERROR;
     }
+
     /* Only tables are allowed as target */
     if (delp->tbp->typ == NULL
             || !RDB_type_is_relation(delp->tbp->typ)) {
-        RDB_raise_type_mismatch("INSERT target must be relation", ecp);
+        RDB_raise_type_mismatch("DELETE target must be relation", ecp);
         return RDB_ERROR;
     }
 
@@ -408,17 +418,22 @@ static int
 node_to_vdelete(RDB_ma_vdelete *delp, RDB_parse_node *nodep, Duro_interp *interp,
         RDB_exec_context *ecp)
 {
+    RDB_object idobj;
     RDB_expression *srcexp;
-    RDB_expression *dstexp = RDB_parse_node_expr(nodep, ecp,
-            interp->txnp != NULL ? &interp->txnp->tx : NULL);
-    if (dstexp == NULL) {
+
+    RDB_init_obj(&idobj);
+
+    if (RDB_parse_node_qid(nodep, &idobj, ecp) != RDB_OK) {
+        RDB_destroy_obj(&idobj, ecp);
         return RDB_ERROR;
     }
 
-    delp->tbp = resolve_target(dstexp, interp, ecp);
+    delp->tbp = Duro_lookup_var(RDB_obj_string(&idobj), interp, ecp);
+    RDB_destroy_obj(&idobj, ecp);
     if (delp->tbp == NULL) {
         return RDB_ERROR;
     }
+
     /* Only tables are allowed as target */
     if (delp->tbp->typ == NULL
             || !RDB_type_is_relation(delp->tbp->typ)) {

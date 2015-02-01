@@ -36,6 +36,9 @@ RDB_parse_expr(const char *, RDB_exec_context *);
 int
 RDB_parse_node_modname(RDB_parse_node *, RDB_object *, RDB_exec_context *);
 
+int
+RDB_parse_node_qid(RDB_parse_node *, RDB_object *, RDB_exec_context *);
+
 RDB_parse_node *
 RDB_parse_stmt(RDB_exec_context *);
 
