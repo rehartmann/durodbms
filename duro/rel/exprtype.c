@@ -1,8 +1,8 @@
 /*
  * $Id$
  *
- *  Created on: 31.01.2012
- *
+ * Copyright (C) 2012, 2015 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #include "rdb.h"
@@ -1013,24 +1013,23 @@ error:
 }
 
 static RDB_type *
-var_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
+var_type(const char *varname, RDB_gettypefn *getfnp, void *getarg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_type *typ;
     RDB_object *errp;
 
     if (getfnp != NULL) {
-        typ = (*getfnp) (RDB_expr_var_name(exp), getarg);
+        RDB_clear_err(ecp);
+        typ = (*getfnp) (varname, getarg);
         if (typ != NULL) {
-            exp->typ = RDB_dup_nonscalar_type(typ, ecp);
-            return exp->typ;
+            return RDB_dup_nonscalar_type(typ, ecp);
         }
     }
     if (txp != NULL) {
-        RDB_object *tbp = RDB_get_table(exp->def.varname, ecp, txp);
+        RDB_object *tbp = RDB_get_table(varname, ecp, txp);
         if (tbp != NULL) {
-            exp->typ = RDB_dup_nonscalar_type(RDB_obj_type(tbp), ecp);
-            return exp->typ;
+            return RDB_dup_nonscalar_type(RDB_obj_type(tbp), ecp);
         }
     }
 
@@ -1039,8 +1038,7 @@ var_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
      */
     errp = RDB_get_err(ecp);
     if (errp == NULL || RDB_obj_type(errp) == &RDB_NOT_FOUND_ERROR) {
-        RDB_clear_err(ecp);
-        RDB_raise_name(exp->def.varname, ecp);
+        RDB_raise_name(varname, ecp);
     }
     return NULL;
 }
@@ -1208,12 +1206,27 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
         case RDB_EX_TBP:
             return RDB_obj_type(exp->def.tbref.tbp);
         case RDB_EX_VAR:
-            return var_expr_type(exp, getfnp, getarg, ecp, txp);
+            exp->typ = var_type(RDB_expr_var_name(exp), getfnp, getarg, ecp, txp);
+            return exp->typ;
         case RDB_EX_TUPLE_ATTR:
             typ = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg,
                     envp, ecp, txp);
-            if (typ == NULL)
-                return NULL;
+            if (typ == NULL) {
+                RDB_object varnameobj;
+
+                if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NAME_ERROR)
+                    return NULL;
+
+                /* Interpret as qualified variable name */
+                RDB_init_obj(&varnameobj);
+                if (RDB_expr_attr_qid(exp, &varnameobj, ecp) != RDB_OK) {
+                    RDB_destroy_obj(&varnameobj, ecp);
+                    return NULL;
+                }
+                exp->typ = var_type(RDB_obj_string(&varnameobj), getfnp, getarg, ecp, txp);
+                RDB_destroy_obj(&varnameobj, ecp);
+                return exp->typ;
+            }
             typ = RDB_type_attr_type(typ, exp->def.op.name);
             if (typ == NULL) {
                 RDB_raise_name(exp->def.op.name, ecp);

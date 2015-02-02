@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2007-2014 Rene Hartmann.
+ * Copyright (C) 2007, 2014 Rene Hartmann.
  * See the file COPYING for redistribution information.
  *
  * Statement execution functions.
@@ -1495,6 +1495,7 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     int isselector;
     RDB_type *getter_utyp = NULL;
     RDB_operator *parent_op;
+    int lineno;
     Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
 
     if (interp->interrupted) {
@@ -1513,7 +1514,9 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
         if (argnamev == NULL)
             return RDB_ERROR;
 
+        lineno = yylineno;
         codestmtp = RDB_parse_stmt_string(RDB_operator_source(op), ecp);
+        yylineno = lineno;
         if (codestmtp == NULL) {
             RDB_free(argnamev);
             return RDB_ERROR;
@@ -1639,6 +1642,7 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     varmap_node *ovarmapp;
     struct Duro_op_data *opdatap;
     RDB_operator *parent_op;
+    int lineno;
     RDB_type *setter_utyp = NULL;
     Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
 
@@ -1658,7 +1662,9 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
         /*
          * Not available - parse code
          */
+        lineno = yylineno;
         codestmtp = RDB_parse_stmt_string(RDB_operator_source(op), ecp);
+        yylineno = lineno;
         if (codestmtp == NULL) {
             RDB_free(argnamev);
             return RDB_ERROR;

@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2012 Rene Hartmann.
+ * Copyright (C) 2004, 2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -112,7 +112,8 @@ RDB_expr_resolve_varname_expr(RDB_expression **expp, const char *varname,
 const char *
 RDB_expr_op_name(const RDB_expression *exp)
 {
-    return exp->kind == RDB_EX_RO_OP || exp->kind == RDB_EX_GET_COMP ?
+    return exp->kind == RDB_EX_RO_OP || exp->kind == RDB_EX_GET_COMP
+            || exp->kind == RDB_EX_TUPLE_ATTR ?
             exp->def.op.name : NULL;
 }
 
@@ -122,7 +123,8 @@ RDB_expr_op_name(const RDB_expression *exp)
 RDB_expr_list *
 RDB_expr_op_args(RDB_expression *exp)
 {
-    return exp->kind == RDB_EX_RO_OP || exp->kind == RDB_EX_GET_COMP ?
+    return exp->kind == RDB_EX_RO_OP || exp->kind == RDB_EX_GET_COMP
+            || exp->kind == RDB_EX_TUPLE_ATTR ?
             &exp->def.op.args : NULL;
 }
 
@@ -442,6 +444,34 @@ RDB_tuple_attr(RDB_expression *arg, const char *attrname,
         return NULL;
     }
     return exp;
+}
+
+/**
+ * Extract qualified id from attribute expression
+ */
+int
+RDB_expr_attr_qid(const RDB_expression *exp, RDB_object *idobjp, RDB_exec_context *ecp)
+{
+    RDB_expr_list *arglistp = RDB_expr_op_args((RDB_expression *) exp);
+    RDB_expression *arg1p = RDB_expr_list_get(arglistp, 0);
+
+    switch (RDB_expr_kind(arg1p)) {
+        case RDB_EX_VAR:
+            if (RDB_string_to_obj(idobjp, RDB_expr_var_name(arg1p), ecp) != RDB_OK)
+                return RDB_ERROR;
+            break;
+        case RDB_EX_TUPLE_ATTR:
+            if (RDB_expr_attr_qid(arg1p, idobjp, ecp) != RDB_OK)
+                return RDB_ERROR;
+            break;
+        default:
+            RDB_raise_invalid_argument("invalid usage of \'.\'", ecp);
+            return RDB_ERROR;
+    }
+
+    if (RDB_append_string(idobjp, ".", ecp) != RDB_OK)
+        return RDB_ERROR;
+    return RDB_append_string(idobjp, RDB_expr_op_name(exp), ecp);
 }
 
 /**

@@ -1,8 +1,8 @@
 /*
- * objinternal.h
+ * $Id$
  *
- *  Created on: 29.09.2013
- *      Author: Rene Hartmann
+ * Copyright (C) 2013 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #ifndef OBJINTERNAL_H_
@@ -17,7 +17,7 @@
 
 enum {
     /** marks types which have been defined but not implemented */
-    RDB_NOT_IMPLEMENTED = -2,
+    RDB_NOT_IMPLEMENTED = -2
 };
 
 enum RDB_obj_kind

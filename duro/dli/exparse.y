@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2015 Rene Hartmann.
+ * Copyright (C) 2004-2009, 2011-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -1704,7 +1704,7 @@ assign: assignable_expression TOK_ASSIGN expression {
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
     }
-    | TOK_UPDATE TOK_ID '{' ne_id_assign_commalist '}' {
+    | TOK_UPDATE assignable_expression '{' ne_id_assign_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -1720,7 +1720,7 @@ assign: assignable_expression TOK_ASSIGN expression {
         RDB_parse_add_child($$, $4);
         RDB_parse_add_child($$, $5);
     }
-    | TOK_UPDATE TOK_ID TOK_WHERE expression '{' ne_id_assign_commalist '}' {
+    | TOK_UPDATE assignable_expression TOK_WHERE expression '{' ne_id_assign_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);

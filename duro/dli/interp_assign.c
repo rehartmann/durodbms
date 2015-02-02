@@ -1,8 +1,8 @@
 /*
- * interp_assign.c
+ * $Id$
  *
- *  Created on: 07.12.2012
- *      Author: Rene Hartmann
+ * Copyright (C) 2012, 2015 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #include "interp_assign.h"
@@ -10,7 +10,6 @@
 #include "interp_eval.h"
 #include "exparse.h"
 #include <rel/tostr.h>
-/*#include <obj/objinternal.h>*/
 
 #include <string.h>
 
@@ -19,6 +18,20 @@ resolve_target(const RDB_expression *exp, Duro_interp *interp, RDB_exec_context 
 {
     const char *varname;
     const char *opname = RDB_expr_op_name(exp);
+
+    if (RDB_expr_kind(exp) == RDB_EX_TUPLE_ATTR) {
+        RDB_object idobj;
+        RDB_object *resp;
+
+        RDB_init_obj(&idobj);
+        if (RDB_expr_attr_qid(exp, &idobj, ecp) != RDB_OK) {
+            RDB_destroy_obj(&idobj, ecp);
+            return NULL;
+        }
+        resp = Duro_lookup_var(RDB_obj_string(&idobj), interp, ecp);
+        RDB_destroy_obj(&idobj, ecp);
+        return resp;
+    }
 
     if (opname != NULL) {
         if (strcmp(opname, "[]") == 0
@@ -230,7 +243,7 @@ node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep, Duro_interp *interp,
 }
 
 static int
-tuple_update_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
+tuple_update_to_copy(RDB_ma_copy *copyp, RDB_object *dstp, RDB_parse_node *nodep,
         Duro_interp *interp, RDB_exec_context *ecp)
 {
     RDB_expression *srcexp;
@@ -242,13 +255,7 @@ tuple_update_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
         goto error;
     }
 
-    /*
-     * Get destination
-     */
-    copyp->dstp = resolve_target(nodep->exp, interp, ecp);
-    if (copyp->dstp == NULL) {
-        return RDB_ERROR;
-    }
+    copyp->dstp = dstp;
 
     /*
      * Get source value by creating an UPDATE expression
@@ -596,6 +603,7 @@ node_to_multi_assign(const RDB_parse_node *listnodep,
     int i;
     RDB_expression *dstexp;
     RDB_parse_node *nodep;
+
     /*
      * If there are several the_() assignments to the same target
      * they must be combined into a single selector call.
@@ -696,7 +704,7 @@ node_to_multi_assign(const RDB_parse_node *listnodep,
 
                         RDB_init_obj(&srcobjv[(*srcobjcp)++]);
                         copyv[(*copycp)].srcp = &srcobjv[(*srcobjcp) - 1];
-                        if (tuple_update_to_copy(&copyv[(*copycp)++], firstp->nextp,
+                        if (tuple_update_to_copy(&copyv[(*copycp)++], dstp, firstp->nextp,
                                 interp, ecp) != RDB_OK) {
                             goto error;
                         }

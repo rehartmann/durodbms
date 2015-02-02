@@ -1,8 +1,8 @@
 /*
- * expression.h
+ * $Id$
  *
- *  Created on: 29.09.2013
- *      Author: Rene Hartmann
+ * Copyright (C) 2013 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #ifndef EXPRESSION_H_
@@ -88,6 +88,9 @@ RDB_eq(RDB_expression *, RDB_expression *, RDB_exec_context *);
 
 RDB_expression *
 RDB_tuple_attr(RDB_expression *, const char *attrname, RDB_exec_context *);
+
+int
+RDB_expr_attr_qid(const RDB_expression *, RDB_object *, RDB_exec_context *);
 
 RDB_expression *
 RDB_expr_comp(RDB_expression *, const char *, RDB_exec_context *);

@@ -96,7 +96,7 @@ test module {Modules} \
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
-        
+
         put(m.mul2(53));
         put_line('');
  
@@ -105,9 +105,9 @@ test module {Modules} \
         put(m.modmod_mod.dec(10));
         put_line('');
 
-        var m int init 22;
-        call m.modmod_mod.mul2upd(m);
-        put(m);
+        var mv int init 22;
+        call m.modmod_mod.mul2upd(mv);
+        put(mv);
         put_line('');
         
         try
@@ -160,6 +160,35 @@ test module {Modules} \
         put(the_comp3(t2v)); put_line('');
 
         drop var t2v;
+
+
+        -- Test public table
+        put_line('');
+        begin tx;
+
+        insert m.p tup { n 1, s 'blah' };
+        insert m.p tup { n 2, s 'blooo' };
+
+        put_line((tuple from (m.p where n = 1)).s);
+
+        update m.p where n = 2 { s := 'bl o' };
+
+        put_line((tuple from (m.p where n = 2)).s);
+
+        delete m.p where n = 2;
+
+        put_line((tuple from m.p).s);
+
+        -- Not supported yet m.p := rel { tup { n 10, s 'abc def' }, tup { n 50, s 'Xy !' } };
+
+        var tp tup same_heading_as(m.p);
+        for tp in m.p order(n asc);
+            put(tp.n);
+            put(' ');
+            put_line(tp.s);
+        end for;
+
+        commit;
     }
 } -output {10
 Yip
@@ -175,6 +204,11 @@ Yip
 0 - 0.0
 4 foo 4.2
 5 bar 2.04
+
+blah
+bl o
+blah
+1 blah
 }
 
 cleanupTests

@@ -1,7 +1,8 @@
 /*
  * $Id$
  *
- *  Created on: 01.01.2012
+ * Copyright (C) 2012, 2015 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #include "rdb.h"
@@ -555,6 +556,29 @@ cleanup:
     return ret;
 }
 
+static int
+evaluate_var(const char *varname, RDB_getobjfn *getfnp, void *getdata,
+        RDB_exec_context *ecp, RDB_transaction *txp,
+        RDB_object *valp)
+{
+    /* Try to resolve variable via getfnp */
+    if (getfnp != NULL) {
+        RDB_object *srcp = (*getfnp)(varname, getdata);
+        if (srcp != NULL)
+            return RDB_copy_obj(valp, srcp, ecp);
+    }
+
+    /* Try to get table */
+    if (txp != NULL) {
+        RDB_object *srcp = RDB_get_table(varname, ecp, txp);
+
+        if (srcp != NULL)
+            return RDB_copy_obj_data(valp, srcp, ecp, txp);
+    }
+    RDB_raise_name(varname, ecp);
+    return RDB_ERROR;
+}
+
 /** @addtogroup expr
  * @{
  */
@@ -615,12 +639,28 @@ RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             ret = RDB_evaluate(exp->def.op.args.firstp, getfnp, getdata, envp, ecp,
                     txp, &tpl);
             if (ret != RDB_OK) {
+                RDB_object varnameobj;
+
                 RDB_destroy_obj(&tpl, ecp);
-                return RDB_ERROR;
+
+                if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NAME_ERROR)
+                    return RDB_ERROR;
+
+                /* Interpret as qualified variable name */
+                RDB_init_obj(&varnameobj);
+                if (RDB_expr_attr_qid(exp, &varnameobj, ecp) != RDB_OK) {
+                    RDB_destroy_obj(&varnameobj, ecp);
+                    return RDB_ERROR;
+                }
+                ret = evaluate_var(RDB_obj_string(&varnameobj), getfnp, getdata,
+                        ecp, txp, valp);
+                RDB_destroy_obj(&varnameobj, ecp);
+
+                return ret;
             }
             if (tpl.kind != RDB_OB_TUPLE) {
                 RDB_destroy_obj(&tpl, ecp);
-                RDB_raise_type_mismatch("", ecp);
+                RDB_raise_type_mismatch("tuple required", ecp);
                 return RDB_ERROR;
             }
 
@@ -655,22 +695,8 @@ RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         case RDB_EX_RO_OP:
             return evaluate_ro_op(exp, getfnp, getdata, envp, ecp, txp, valp);
         case RDB_EX_VAR:
-            /* Try to resolve variable via getfnp */
-            if (getfnp != NULL) {
-                RDB_object *srcp = (*getfnp)(exp->def.varname, getdata);
-                if (srcp != NULL)
-                    return RDB_copy_obj(valp, srcp, ecp);
-            }
-
-            /* Try to get table */
-            if (txp != NULL) {
-                RDB_object *srcp = RDB_get_table(exp->def.varname, ecp, txp);
-
-                if (srcp != NULL)
-                    return RDB_copy_obj_data(valp, srcp, ecp, txp);
-            }
-            RDB_raise_name(exp->def.varname, ecp);
-            return RDB_ERROR;
+            return evaluate_var(exp->def.varname, getfnp, getdata, ecp,
+                    txp, valp);
         case RDB_EX_OBJ:
             return RDB_copy_obj(valp, &exp->def.obj, ecp);
         case RDB_EX_TBP:
