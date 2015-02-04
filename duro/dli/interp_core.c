@@ -182,21 +182,6 @@ Duro_exec_vardef_virtual(RDB_parse_node *nodep, Duro_interp *interp,
     return RDB_OK;
 }
 
-static int
-check_foreach_depends(const RDB_object *tbp, Duro_interp *interp,
-        RDB_exec_context *ecp)
-{
-    foreach_iter *itp = interp->current_foreachp;
-    while (itp != NULL) {
-        if (RDB_table_refers(itp->tbp, tbp)) {
-            RDB_raise_in_use("FOREACH refers to table", ecp);
-            return RDB_ERROR;
-        }
-        itp = itp->prevp;
-    }
-    return RDB_OK;
-}
-
 int
 Duro_exec_vardrop(const RDB_parse_node *nodep, Duro_interp *interp,
         RDB_exec_context *ecp)
@@ -204,12 +189,15 @@ Duro_exec_vardrop(const RDB_parse_node *nodep, Duro_interp *interp,
     const char *varname = RDB_expr_var_name(nodep->exp);
     RDB_object *objp = NULL;
 
+    if (interp->current_foreachp != NULL) {
+        RDB_raise_not_supported("Dropping variables not supported in FOR .. IN loops", ecp);
+        return RDB_ERROR;
+    }
+
     /* Try to look up local variable */
     if (interp->current_varmapp != NULL) {
         objp = RDB_hashmap_get(&interp->current_varmapp->map, varname);
         if (objp != NULL) {
-            if (check_foreach_depends(objp, interp, ecp) != RDB_OK)
-                return RDB_ERROR;
             /* Delete key by putting NULL value */
             if (RDB_hashmap_put(&interp->current_varmapp->map, varname, NULL) != RDB_OK)
                 return RDB_ERROR;
@@ -218,8 +206,6 @@ Duro_exec_vardrop(const RDB_parse_node *nodep, Duro_interp *interp,
     if (objp == NULL) {
         objp = RDB_hashmap_get(&interp->root_varmap, varname);
         if (objp != NULL) {
-            if (check_foreach_depends(objp, interp, ecp) != RDB_OK)
-                return RDB_ERROR;
             if (RDB_hashmap_put(&interp->root_varmap, varname, NULL) != RDB_OK)
                 return RDB_ERROR;
         }
@@ -239,24 +225,7 @@ Duro_exec_vardrop(const RDB_parse_node *nodep, Duro_interp *interp,
         return RDB_ERROR;
     }
 
-    objp = RDB_get_table(varname, ecp, &interp->txnp->tx);
-    if (objp == NULL) {
-        /* Might be an unmapped public table - try to drop by name */
-        if (RDB_drop_table_by_name(varname, ecp, &interp->txnp->tx) != RDB_OK)
-            return RDB_ERROR;
-        if (RDB_parse_get_interactive())
-            printf("Table %s dropped.\n", varname);
-        return RDB_OK;
-    }
-
-    /*
-     * If a foreach loop is running, check if the table
-     * depends on the foreach expression
-     */
-    if (check_foreach_depends(objp, interp, ecp) != RDB_OK)
-        return RDB_ERROR;
-
-    if (RDB_drop_table(objp, ecp, &interp->txnp->tx) != RDB_OK)
+    if (RDB_drop_table_by_name(varname, ecp, &interp->txnp->tx) != RDB_OK)
         return RDB_ERROR;
 
     if (RDB_parse_get_interactive())
@@ -278,6 +247,11 @@ Duro_exec_rename(const RDB_parse_node *nodep, Duro_interp *interp,
         return RDB_ERROR;
     }
 
+    if (interp->current_foreachp != NULL) {
+        RDB_raise_not_supported("Dropping variables not supported in FOR .. IN loops", ecp);
+        return RDB_ERROR;
+    }
+
     /*
      * If a foreach loop is running, check if the table
      * depends on the foreach expression
@@ -286,10 +260,6 @@ Duro_exec_rename(const RDB_parse_node *nodep, Duro_interp *interp,
     tbp = RDB_get_table(srcname, ecp, &interp->txnp->tx);
     if (tbp == NULL)
         return RDB_ERROR;
-
-    if (check_foreach_depends(tbp, interp, ecp) != RDB_OK)
-        return RDB_ERROR;
-
     if (RDB_set_table_name(tbp, dstname, ecp, &interp->txnp->tx) != RDB_OK)
         return RDB_ERROR;
 
