@@ -206,6 +206,8 @@ test for {FOR .. IN} -body {
              put_line('dropping FOREACH variable: error caught');
         catch err name_error;
              put_line('dropping FOREACH variable: error caught');
+        catch err not_supported_error;
+             put_line('dropping FOREACH variable: error caught');
         end try;
     }
 } -result {1

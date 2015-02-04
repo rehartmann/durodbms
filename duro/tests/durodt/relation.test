@@ -207,12 +207,12 @@ test for_in_drop {DROP in FOR .. IN} -setup $SETUP -cleanup $CLEANUP -body {
             for t in r {no} order();
                 drop var r;
             end for;
-        catch err in_use_error;
-            put_line('in_use caught');
+        catch err not_supported_error;
+            put_line('not_supported caught');
         end try;
         commit;
     }
-} -result {in_use caught
+} -result {not_supported caught
 }
 
 test invalid_type {invalid (scalar) type for table} -setup $SETUP -cleanup $CLEANUP -match glob -body {

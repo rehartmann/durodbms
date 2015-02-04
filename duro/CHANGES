@@ -13,6 +13,8 @@ DuroDBMS 0.25
 - Added RDB_drop_table_by_name(), solving the problem of dropping unmapped
   public tables.
 
+- DROP VAR and RENAME VAR are now generally prohibited in FOR .. IN loops.
+
 DuroDBMS 0.24
 
 - Added error type type_not_found_error.
