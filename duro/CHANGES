@@ -8,6 +8,11 @@ DuroDBMS 0.25
 
 - Fixed bug in opening secondary indexes that could cause index corruption.
 
+- Assignment of virtual tables via := is now supported.
+
+- Added RDB_drop_table_by_name(), solving the problem of dropping unmapped
+  public tables.
+
 DuroDBMS 0.24
 
 - Added error type type_not_found_error.

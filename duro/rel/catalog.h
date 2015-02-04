@@ -24,6 +24,9 @@ int
 RDB_cat_delete(RDB_object *, RDB_exec_context *, RDB_transaction *);
 
 int
+RDB_cat_delete_ptable(const char *, RDB_exec_context *, RDB_transaction *);
+
+int
 RDB_open_systables(RDB_dbroot *, RDB_exec_context *, RDB_transaction *);
 
 int

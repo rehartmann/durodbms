@@ -1240,6 +1240,32 @@ RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 }
 
 /*
+ * Check if table with name tbname depends on *tbp and raise in_use_error if it does
+ */
+static int
+table_name_dep_check(const char *tbname, RDB_object *tbp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_expression *tbexp;
+    RDB_object *dtbp = RDB_get_table(tbname, ecp, txp);
+    if (dtbp == NULL) {
+        return RDB_ERROR;
+    }
+
+    tbexp = RDB_vtable_expr(dtbp);
+    if (tbexp != NULL) {
+        if (RDB_expr_resolve_tbnames(tbexp, ecp, txp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+        if (RDB_expr_refers(tbexp, tbp)) {
+            RDB_raise_in_use("a virtual table depends on this table", ecp);
+            return RDB_ERROR;
+        }
+    }
+    return RDB_OK;
+}
+
+/*
  * Check if there is a virtual table that depends on this table.
  * Raise in_use_error if such a table exists.
  */
@@ -1251,7 +1277,6 @@ table_dep_check(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     RDB_int len;
     RDB_object tbarr;
     RDB_object *vtbp;
-    RDB_object *dtbp;
     RDB_expression *wherep;
     RDB_expression *ex2p;
     RDB_expression *ex1p = RDB_var_ref("dbname", ecp);
@@ -1309,31 +1334,46 @@ table_dep_check(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         goto cleanup;
     }
     for (i = 0; i < len; i++) {
-        RDB_expression *tbexp;
         RDB_object *tplp = RDB_array_get(&tbarr, (RDB_int) i, ecp);
         if (tplp == NULL) {
             ret = RDB_ERROR;
             goto cleanup;
         }
 
-        dtbp = RDB_get_table(RDB_tuple_get_string(tplp, "tablename"), ecp, txp);
-        if (dtbp == NULL) {
+        ret = table_name_dep_check(RDB_tuple_get_string(tplp, "tablename"), tbp,
+                ecp, txp);
+        if (ret != RDB_OK)
+            goto cleanup;
+    }
+
+    /*
+     * Check public tables
+     */
+
+    RDB_destroy_obj(&tbarr, ecp);
+    RDB_init_obj(&tbarr);
+    ret = RDB_table_to_array(&tbarr, txp->dbp->dbrootp->ptables_tbp, 0, NULL, 0, ecp, txp);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    len = RDB_array_length(&tbarr, ecp);
+    if (len == (RDB_int) RDB_ERROR) {
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+    for (i = 0; i < len; i++) {
+        RDB_object *tplp = RDB_array_get(&tbarr, (RDB_int) i, ecp);
+        if (tplp == NULL) {
             ret = RDB_ERROR;
             goto cleanup;
         }
-        tbexp = RDB_vtable_expr(dtbp);
-        if (tbexp != NULL) {
-            if (RDB_expr_resolve_tbnames(tbexp, ecp, txp) != RDB_OK) {
-                ret = RDB_ERROR;
-                goto cleanup;
-            }
-            if (RDB_expr_refers(tbexp, tbp)) {
-                RDB_raise_in_use("a virtual table depends on this table", ecp);
-                ret = RDB_ERROR;
-                goto cleanup;
-            }
-        }
+
+        ret = table_name_dep_check(RDB_tuple_get_string(tplp, "tablename"), tbp,
+                ecp, txp);
+        if (ret != RDB_OK)
+            goto cleanup;
     }
+
     ret = RDB_OK;           
 
 cleanup:
@@ -1508,6 +1548,20 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     RDB_free_obj(tbp, ecp);
     return RDB_OK;
+}
+
+/**
+ * Drop table by name. This is currently the only way to drop a unmapped public table.
+ */
+int
+RDB_drop_table_by_name(const char *tbname, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_object *tbp = RDB_get_table(tbname, ecp, txp);
+    if (tbp != NULL) {
+        return RDB_drop_table(tbp, ecp, txp);
+    }
+    /* Could be a public unmapped table - delete it from the catalog */
+    return RDB_cat_delete_ptable(tbname, ecp, txp);
 }
 
 /**

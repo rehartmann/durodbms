@@ -179,7 +179,7 @@ test module {Modules} \
 
         put_line((tuple from m.p).s);
 
-        -- Not supported yet m.p := rel { tup { n 10, s 'abc def' }, tup { n 50, s 'Xy !' } };
+        m.p := rel { tup { n 10, s 'abc def' }, tup { n 50, s 'Xy !' } };
 
         var tp tup same_heading_as(m.p);
         for tp in m.p order(n asc);
@@ -208,7 +208,8 @@ Yip
 blah
 bl o
 blah
-1 blah
+10 abc def
+50 Xy !
 }
 
 cleanupTests

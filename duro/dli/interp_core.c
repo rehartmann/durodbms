@@ -239,15 +239,20 @@ Duro_exec_vardrop(const RDB_parse_node *nodep, Duro_interp *interp,
         return RDB_ERROR;
     }
 
+    objp = RDB_get_table(varname, ecp, &interp->txnp->tx);
+    if (objp == NULL) {
+        /* Might be an unmapped public table - try to drop by name */
+        if (RDB_drop_table_by_name(varname, ecp, &interp->txnp->tx) != RDB_OK)
+            return RDB_ERROR;
+        if (RDB_parse_get_interactive())
+            printf("Table %s dropped.\n", varname);
+        return RDB_OK;
+    }
+
     /*
      * If a foreach loop is running, check if the table
      * depends on the foreach expression
      */
-
-    objp = RDB_get_table(varname, ecp, &interp->txnp->tx);
-    if (objp == NULL)
-        return RDB_ERROR;
-
     if (check_foreach_depends(objp, interp, ecp) != RDB_OK)
         return RDB_ERROR;
 

@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005-2012 Rene Hartmann.
+ * Copyright (C) 2005, 2012, 2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  * 
  * Functions for assignment operations (insert, update, delete, copy),
@@ -40,6 +40,11 @@ typedef struct vdelete_node {
     RDB_ma_vdelete del;
     struct vdelete_node *nextp;
 } vdelete_node;
+
+typedef struct copy_node {
+    RDB_ma_copy cpy;
+    struct copy_node *nextp;
+} copy_node;
 
 static void
 concat_inslists(insert_node **dstpp, insert_node *srcp)
@@ -99,6 +104,23 @@ concat_vdellists(vdelete_node **dstpp, vdelete_node *srcp)
         *dstpp = srcp;
     } else {
         vdelete_node *lastp = *dstpp;
+
+        /* Find last node */
+        while (lastp->nextp != NULL)
+            lastp = lastp->nextp;
+
+        /* Concat lists */
+        lastp->nextp = srcp;
+    }
+}
+
+static void
+concat_copylists(copy_node **dstpp, copy_node *srcp)
+{
+    if (*dstpp == NULL) {
+        *dstpp = srcp;
+    } else {
+        copy_node *lastp = *dstpp;
 
         /* Find last node */
         while (lastp->nextp != NULL)
@@ -238,6 +260,31 @@ new_vdelete_node(RDB_object *tbp, const RDB_object *srcp, RDB_exec_context *ecp)
     return vdelnp;
 }
 
+static copy_node *
+new_copy_node(RDB_object *tbp, const RDB_object *srcp, RDB_exec_context *ecp)
+{
+    int ret;
+
+    copy_node *copynp = RDB_alloc(sizeof (copy_node), ecp);
+    if (copynp == NULL)
+        return NULL;
+    copynp->cpy.srcp = RDB_alloc(sizeof(RDB_object), ecp);
+    if (copynp->cpy.srcp == NULL) {
+        RDB_free(copynp);
+        return NULL;
+    }
+    RDB_init_obj(copynp->cpy.srcp);
+    ret = RDB_copy_obj_data(copynp->cpy.srcp, srcp, ecp, NULL);
+    if (ret != RDB_OK) {
+        RDB_free_obj(copynp->cpy.srcp, ecp);
+        RDB_free(copynp);
+        return NULL;
+    }
+    copynp->cpy.dstp = tbp;
+    copynp->nextp = NULL;
+    return copynp;
+}
+
 static void
 del_inslist(insert_node *insnp, RDB_exec_context *ecp)
 {
@@ -303,8 +350,24 @@ del_vdellist(vdelete_node *delnp, RDB_exec_context *ecp)
     }
 }
 
+static void
+del_copylist(copy_node *copynp, RDB_exec_context *ecp)
+{
+    copy_node *hcpynp;
+
+    while (copynp != NULL) {
+        hcpynp = copynp->nextp;
+
+        if (copynp->cpy.srcp != NULL) {
+            RDB_free_obj(copynp->cpy.srcp, ecp);
+        }
+        RDB_free(copynp);
+        copynp = hcpynp;
+    }
+}
+
 static int
-resolve_insert(RDB_object *tbp, const RDB_object *tplp, insert_node **insnpp,
+resolve_insert(RDB_object *tbp, const RDB_object *srcp, insert_node **insnpp,
                RDB_exec_context *, RDB_transaction *);
 
 static int
@@ -773,6 +836,114 @@ resolve_vdelete_expr(RDB_expression *exp, const RDB_object *srcp,
     RDB_raise_not_supported("insert is not supported for this kind of table",
             ecp);
     return RDB_ERROR;
+}
+
+static int
+resolve_copy(RDB_object *, const RDB_object *, copy_node **,
+               RDB_exec_context *, RDB_transaction *);
+
+static int
+resolve_copy_expr(RDB_expression *exp, const RDB_object *srcp,
+    copy_node **copynpp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret;
+    RDB_object *tbp;
+
+    switch (exp->kind) {
+        case RDB_EX_TBP:
+            return resolve_copy(exp->def.tbref.tbp, srcp, copynpp, ecp, txp);
+        case RDB_EX_OBJ:
+            return resolve_copy(&exp->def.obj, srcp, copynpp, ecp, txp);
+        case RDB_EX_RO_OP:
+            break;
+        case RDB_EX_VAR:
+            /* Resolve variable */
+            tbp = RDB_get_table(exp->def.varname, ecp, txp);
+            if (tbp == NULL)
+                return RDB_ERROR;
+            return resolve_copy(tbp, srcp, copynpp, ecp, txp);
+        default:
+            RDB_raise_invalid_argument("invalid target table", ecp);
+            return RDB_ERROR;
+    }
+
+    if (strcmp(exp->def.op.name, "where") == 0) {
+        RDB_bool b;
+        if (src_matches_condition(exp->def.op.args.firstp->nextp, srcp, ecp, txp, &b)
+                != RDB_OK)
+            return RDB_ERROR;
+
+        if (!b) {
+           RDB_raise_predicate_violation("where predicate violation", ecp);
+           return RDB_ERROR;
+        }
+        return resolve_copy_expr(exp->def.op.args.firstp, srcp, copynpp,
+                ecp, txp);
+    }
+    if (strcmp(exp->def.op.name, "project") == 0
+        || strcmp(exp->def.op.name, "remove") == 0) {
+        return resolve_copy_expr(exp->def.op.args.firstp, srcp, copynpp, ecp,
+                txp);
+    }
+    if (strcmp(exp->def.op.name, "rename") == 0) {
+        RDB_object tpl;
+
+        RDB_init_obj(&tpl);
+        if (RDB_invrename_tuple_ex(srcp, exp, ecp, &tpl) != RDB_OK) {
+            RDB_destroy_obj(&tpl, ecp);
+            return RDB_ERROR;
+        }
+        ret = resolve_copy_expr(exp->def.op.args.firstp, &tpl, copynpp, ecp, txp);
+        RDB_destroy_obj(&tpl, ecp);
+        return ret;
+    }
+    if (strcmp(exp->def.op.name, "extend") == 0) {
+        ret = check_extend(srcp, exp, ecp, txp);
+        if (ret != RDB_OK)
+            return RDB_ERROR;
+        return resolve_copy_expr(exp->def.op.args.firstp, srcp, copynpp, ecp, txp);
+    }
+    if (strcmp(exp->def.op.name, "unwrap") == 0) {
+        RDB_object tpl;
+
+        RDB_init_obj(&tpl);
+        ret = RDB_invunwrap_tuple(srcp, exp, ecp, txp, &tpl);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&tpl, ecp);
+            return RDB_ERROR;
+        }
+        ret = resolve_copy_expr(exp->def.op.args.firstp, &tpl, copynpp, ecp, txp);
+        RDB_destroy_obj(&tpl, ecp);
+        return ret;
+    }
+    if (strcmp(exp->def.op.name, "wrap") == 0) {
+        RDB_object tpl;
+
+        RDB_init_obj(&tpl);
+        ret = RDB_invwrap_tuple(srcp, exp, ecp, &tpl);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&tpl, ecp);
+            return ret;
+        }
+        ret = resolve_copy_expr(exp->def.op.args.firstp, &tpl, copynpp, ecp, txp);
+        RDB_destroy_obj(&tpl, ecp);
+        return ret;
+    }
+    RDB_raise_not_supported("copy is not supported for this kind of table",
+            ecp);
+    return RDB_ERROR;
+}
+
+static int
+resolve_copy(RDB_object *dstp, const RDB_object *srcp, copy_node **copynpp,
+               RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    if (dstp->val.tb.exp == NULL) {
+        *copynpp = new_copy_node(dstp, srcp, ecp);
+        return *copynpp == NULL ? RDB_ERROR : RDB_OK;
+    }
+
+    return resolve_copy_expr(dstp->val.tb.exp, srcp, copynpp, ecp, txp);
 }
 
 /*
@@ -1342,6 +1513,92 @@ error:
     return RDB_ERROR;
 }
 
+/*
+ * Convert copy operations to virtual tables to copy operations to real tables.
+ * *gencopypp will contain a pointer to the list of generated table inserts or
+ * NULL if there were no virtual tables to be resolved.
+ */
+static int
+resolve_copies(int copyc, const RDB_ma_copy *copyv, RDB_ma_copy **ncopyvp,
+        copy_node **gencopypp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int i, j;
+    int ncopyc = 0;
+    int llen = 0;
+
+    /* list of generated inserts */
+    copy_node *gencopyp = NULL;
+
+    copy_node *copynp;
+
+    for (i = 0; i < copyc; i++) {
+        if (copyv[i].dstp->kind == RDB_OB_TABLE) {
+            if (RDB_TB_CHECK & copyv[i].dstp->val.tb.flags) {
+                if (RDB_check_table(copyv[i].dstp, ecp, txp) != RDB_OK) {
+                    goto error;
+                }
+            }
+
+            if (copyv[i].dstp->val.tb.exp != NULL) {
+                if (resolve_copy(copyv[i].dstp, copyv[i].srcp, &copynp, ecp, txp)
+                        != RDB_OK)
+                    goto error;
+
+                /* Add copies to list */
+                concat_copylists(&gencopyp, copynp);
+                llen++;
+            } else {
+                ncopyc++;
+            }
+        } else {
+            ncopyc++;
+        }
+    }
+
+    if (llen == 0) {
+        /* No tables had to be resolved, simply return copyv and copyc */
+        *ncopyvp = (RDB_ma_copy *) copyv;
+        *gencopypp = NULL;
+        return copyc;
+    }
+
+    ncopyc += llen;
+
+    /*
+     * If copies have been generated, allocate new copy list
+     * which consists of old and new copies
+     */
+
+    *ncopyvp = RDB_alloc(sizeof (RDB_ma_copy) * ncopyc, ecp);
+    if (*ncopyvp == NULL)
+        goto error;
+
+    j = 0;
+    for (i = 0; i < copyc; i++) {
+        if (copyv[i].dstp->val.tb.exp == NULL) {
+            (*ncopyvp)[j].dstp = copyv[i].dstp;
+            (*ncopyvp)[j++].srcp = copyv[i].srcp;
+        }
+    }
+
+    copynp = gencopyp;
+    while (copynp != NULL) {
+        (*ncopyvp)[j].dstp = copynp->cpy.dstp;
+        (*ncopyvp)[j].srcp = copynp->cpy.srcp;
+
+        copynp = copynp->nextp;
+        j++;
+    }
+    *gencopypp = gencopyp;
+    return ncopyc;
+
+error:
+    if (gencopyp != NULL)
+        del_copylist(gencopyp, ecp);
+
+    return RDB_ERROR;
+}
+
 static RDB_bool
 copy_needs_tx(const RDB_object *dstp, const RDB_object *srcp)
 {
@@ -1832,6 +2089,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     int nupdc;
     int ndelc;
     int nvdelc;
+    int ncopyc;
     RDB_bool need_tx;
     RDB_transaction subtx;
     RDB_transaction *atxp = NULL;
@@ -1839,10 +2097,12 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     RDB_ma_update *nupdv = NULL;
     RDB_ma_delete *ndelv = NULL;
     RDB_ma_vdelete *nvdelv = NULL;
+    RDB_ma_copy *ncopyv = NULL;
     insert_node *geninsp = NULL;
     update_node *genupdp = NULL;
     delete_node *gendelp = NULL;
     vdelete_node *genvdelp = NULL;
+    copy_node *gencopyp = NULL;
 
     if (check_assign_types(insc, insv, updc, updv, delc, delv,
             copyc, copyv, ecp, txp) != RDB_OK) {
@@ -1901,18 +2161,30 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         nvdelv = NULL;
     }
 
+    if (copyc > 0) {
+        ncopyc = resolve_copies(copyc, copyv, &ncopyv, &gencopyp, ecp, txp);
+        if (ncopyc == RDB_ERROR) {
+            rcount = RDB_ERROR;
+            ncopyv = NULL;
+            goto cleanup;
+        }
+    } else {
+        ncopyc = 0;
+        ncopyv = NULL;
+    }
+
     /*
      * A running transaction is required if a persistent table is involved.
      */
     need_tx = assign_needs_tx(ninsc, ninsv, nupdc, nupdv, ndelc, ndelv,
-            nvdelc, nvdelv, copyc, copyv);
+            nvdelc, nvdelv, ncopyc, ncopyv);
     if (need_tx && !RDB_tx_is_running(txp)) {
         RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
     rcount = check_conflicts_deps(ninsc, ninsv, nupdc, nupdv,
-            ndelc, ndelv, nvdelc, nvdelv, copyc, copyv, ecp, txp);
+            ndelc, ndelv, nvdelc, nvdelv, ncopyc, ncopyv, ecp, txp);
     if (rcount != RDB_OK)
         goto cleanup;
 
@@ -1923,7 +2195,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     /* No constraint checking for transient tables */
     if (need_tx) {
         if (check_assign_constraints(ninsc, ninsv, nupdc, nupdv, ndelc, ndelv,
-                nvdelc, nvdelv, copyc, copyv, ecp, txp) != RDB_OK) {
+                nvdelc, nvdelv, ncopyc, ncopyv, ecp, txp) != RDB_OK) {
             rcount = RDB_ERROR;
             goto cleanup;
         }
@@ -1934,20 +2206,31 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
      */
 
     /*
-     * Start subtransaction, if there is more than one assignment.
+     * Start subtransaction, if there is more than one assignment
+     * or if the source of an insert or copy is a table.
      * A subtransaction is also needed for an insert into a table
      * with secondary indexes, because the insert is not atomic
      * in Berkeley DB 4.5. !! and if a table is inserted
      */
-    if (need_tx
-            && (ninsc + nupdc + ndelc + nvdelc + copyc > 1
-            || (ninsc == 1 && ninsv[0].tbp->val.tb.stp != NULL
-                    && ninsv[0].tbp->val.tb.stp->indexc > 1))) {
-        if (RDB_begin_tx(ecp, &subtx, RDB_tx_db(txp), txp) != RDB_OK) {
-            rcount = RDB_ERROR;
-            goto cleanup;
+    if (need_tx) {
+        if ((ninsc + nupdc + ndelc + nvdelc + copyc > 1)
+                || (ninsc == 1
+                    && ((ninsv[0].tbp->val.tb.stp != NULL
+                        && ninsv[0].tbp->val.tb.stp->indexc > 1)
+                        || ninsv[0].objp->kind == RDB_OB_TABLE))
+                || (ncopyc == 1
+                        && ncopyv[0].dstp->kind == RDB_OB_TABLE
+                        && ((ncopyv[0].dstp->val.tb.stp != NULL
+                            && ncopyv[0].dstp->val.tb.stp->indexc > 1)
+                            || ncopyv[0].srcp->kind == RDB_OB_TABLE))) {
+            if (RDB_begin_tx(ecp, &subtx, RDB_tx_db(txp), txp) != RDB_OK) {
+                rcount = RDB_ERROR;
+                goto cleanup;
+            }
+            atxp = &subtx;
+        } else {
+            atxp = txp;
         }
-        atxp = &subtx;
     } else {
         atxp = txp;
     }
@@ -2053,23 +2336,18 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
             rcount += cnt;
         }
     }
-    for (i = 0; i < copyc; i++) {
-        if (copyv[i].dstp->kind == RDB_OB_TABLE) {
-            if (RDB_TB_CHECK & copyv[i].dstp->val.tb.flags) {
-                if (RDB_check_table(copyv[i].dstp, ecp, txp) != RDB_OK) {
-                    rcount = RDB_ERROR;
-                    goto cleanup;
-                }
-            }
+    for (i = 0; i < ncopyc; i++) {
+        RDB_object *dstp = ncopyv[i].dstp;
 
-            if (copyv[i].dstp->val.tb.exp != NULL) {
-                RDB_raise_not_supported(
-                        "Virtual table is copy destination", ecp);
+        if (dstp->kind == RDB_OB_TABLE
+                && (RDB_TB_CHECK & dstp->val.tb.flags)) {
+            if (RDB_check_table(dstp, ecp, txp) != RDB_OK) {
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
         }
-        if (copy_obj(copyv[i].dstp, copyv[i].srcp, ecp, atxp) != RDB_OK) {
+
+        if (copy_obj(dstp, ncopyv[i].srcp, ecp, atxp) != RDB_OK) {
             rcount = RDB_ERROR;
             goto cleanup;
         }
@@ -2107,6 +2385,12 @@ cleanup:
     }
     if (genvdelp != NULL)
         del_vdellist(genvdelp, ecp);
+
+    if (ncopyv != NULL && ncopyv != copyv) {
+        RDB_free(ncopyv);
+    }
+    if (gencopyp != NULL)
+        del_copylist(gencopyp, ecp);
 
     /* Abort subtx, if necessary */
     if (rcount == RDB_ERROR) {

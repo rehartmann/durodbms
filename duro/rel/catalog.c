@@ -1079,19 +1079,19 @@ cleanup:
 }
 
 /* Delete a public table from the catalog */
-static int
-delete_ptable(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+int
+RDB_cat_delete_ptable(const char *tbname, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_expression *exprp;
     RDB_expression *idexprp;
 
-    exprp = tablename_eq_expr(RDB_table_name(tbp), ecp);
+    exprp = tablename_eq_expr(tbname, ecp);
     if (exprp == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
     }
-    idexprp = tablename_id_eq_expr(RDB_table_name(tbp), ecp);
+    idexprp = tablename_id_eq_expr(tbname, ecp);
     if (idexprp == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
@@ -1134,7 +1134,7 @@ RDB_cat_delete(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     /* Can be a virtual or public table - delete from both catalog tables */
     if (delete_vtable(tbp, ecp, txp) != RDB_OK)
         return RDB_ERROR;
-    return delete_ptable(tbp, ecp, txp);
+    return RDB_cat_delete_ptable(RDB_table_name(tbp), ecp, txp);
 }
 
 /*
