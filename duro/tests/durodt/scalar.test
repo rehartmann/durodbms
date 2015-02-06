@@ -45,7 +45,7 @@ test scalar_builtin_types_pr {built-in scalar types with possreps} -body {
     exec $testdir/../../dli/durodt << {
 
         var inv_arg_err invalid_argument_error;
-        put_line(the_msg(inv_arg_err));
+        io.put_line(the_msg(inv_arg_err));
 
         var nrt_err no_running_transaction_error;
 
@@ -96,24 +96,24 @@ test scalar_builtin_types_pr {built-in scalar types with possreps} -body {
 
 test casts {cast operators} -body {
     exec $testdir/../../dli/durodt << {
-	    put(cast_as_integer('11')); put_line('');
-	    put(cast_as_int('-7')); put_line('');
-	    put(cast_as_integer(-3.0)); put_line('');
-	    put(cast_as_int(5.1)); put_line('');
+	    io.put(cast_as_integer('11')); io.put_line('');
+	    io.put(cast_as_int('-7')); io.put_line('');
+	    io.put(cast_as_integer(-3.0)); io.put_line('');
+	    io.put(cast_as_int(5.1)); io.put_line('');
 	
-	    put(cast_as_float('1.1')); put_line('');
-	    put(cast_as_rational('-5.3')); put_line('');
-	    put(cast_as_rat('4.0')); put_line('');
-	    put(cast_as_float(1)); put_line('');
-	    put(cast_as_rational(2)); put_line('');
-	    put(cast_as_rat(0)); put_line('');
+	    io.put(cast_as_float('1.1')); io.put_line('');
+	    io.put(cast_as_rational('-5.3')); io.put_line('');
+	    io.put(cast_as_rat('4.0')); io.put_line('');
+	    io.put(cast_as_float(1)); io.put_line('');
+	    io.put(cast_as_rational(2)); io.put_line('');
+	    io.put(cast_as_rat(0)); io.put_line('');
 
-	    put_line(cast_as_string(500));
-	    put_line(cast_as_char(-13));
-	    put_line(cast_as_string(-34.5551));
-	    put_line(cast_as_char(0.0));
+	    io.put_line(cast_as_string(500));
+	    io.put_line(cast_as_char(-13));
+	    io.put_line(cast_as_string(-34.5551));
+	    io.put_line(cast_as_char(0.0));
 	    
-	    put_line(cast_as_string(X'446f'));
+	    io.put_line(cast_as_string(X'446f'));
     }
 } -result {11
 -7
@@ -148,7 +148,7 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
         try
             var vt t;
         catch err;
-            put_line('error #1 caused by incomplete type caught');
+            io.put_line('error #1 caused by incomplete type caught');
         end try;
 
         implement type t;
@@ -158,15 +158,15 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
         -- Check selector access w/o tx
         var v init t(0, 0);
         
-        put(the_a(v)); put_line('');
-        put(the_b(v)); put_line('');
+        io.put(the_a(v)); io.put_line('');
+        io.put(the_b(v)); io.put_line('');
 
         v := t(1, 2);
-        put(the_a(v)); put_line('');
-        put(the_b(v)); put_line('');
+        io.put(the_a(v)); io.put_line('');
+        io.put(the_b(v)); io.put_line('');
 
         the_a(v) := 5;
-        put(the_a(v)); put_line('');
+        io.put(the_a(v)); io.put_line('');
 
         begin tx;
         var v2 t;
@@ -175,20 +175,20 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
 
         -- Check multiple assignment
         the_a(v) := 9; the_b(v) := -7;
-        put(the_a(v)); put_line('');
-        put(the_b(v)); put_line('');
+        io.put(the_a(v)); io.put_line('');
+        io.put(the_b(v)); io.put_line('');
 
         var i int;
         the_a(v) := 15; i := 4;
-        put(the_a(v)); put_line('');
-        put(the_b(v)); put_line('');
-        put(i); put_line('');
+        io.put(the_a(v)); io.put_line('');
+        io.put(the_b(v)); io.put_line('');
+        io.put(i); io.put_line('');
 
         -- Conflicting assignment
         try
             the_a(v) := 24, the_a(v) := 42;
 		catch ex syntax_error;
-		    put_line('invalid assignment caught');
+		    io.put_line('invalid assignment caught');
 		end try;     
 
         -- Dropping t must fail because v still exists
@@ -196,7 +196,7 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
         try
             drop type t;
 		catch ex in_use_error;
-		    put_line('caught in_use_error');
+		    io.put_line('caught in_use_error');
 		end try;
 
         drop var v;
@@ -210,7 +210,7 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
 
         try
             load a from r order(t asc);
-            put_line('usage of non-ordered type t in order clause succeeded');
+            io.put_line('usage of non-ordered type t in order clause succeeded');
         catch err invalid_argument_error;
             ;
         end try;
@@ -221,7 +221,7 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
             for tp in r order(t asc);
                 ;
             end for;
-            put_line('usage of non-ordered type t in order clause succeeded');
+            io.put_line('usage of non-ordered type t in order clause succeeded');
         catch err invalid_argument_error;
             ;
         end try;
@@ -231,7 +231,7 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
         try
             -- Must fail because a depends on the type
             drop type t;
-            put_line('dropping type succeeded despite variable a depending on it');
+            io.put_line('dropping type succeeded despite variable a depending on it');
         catch ex in_use_error;
             ;
         end try;
@@ -241,7 +241,7 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
         try
             -- Must fail because tp depends on the type
             drop type t;
-            put_line('dropping type succeeded despite variable tp depending on it');
+            io.put_line('dropping type succeeded despite variable tp depending on it');
         catch ex in_use_error;
             ;
         end try;
@@ -254,7 +254,7 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
             type string5 possrep {value string} constraint strlen(val) <= 5
                     init string5('');
 		catch ex name_error;
-		    put_line('caught name_error');
+		    io.put_line('caught name_error');
 		end try;        
 
         type string5 possrep {value string} constraint strlen(value) <= 5
@@ -264,7 +264,7 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
         try
             var pr private rel {id int, s5 string5} key {id};
         catch err;
-            put_line('error #2 caused by incomplete type caught');
+            io.put_line('error #2 caused by incomplete type caught');
         end try;
 
         implement type string5;
@@ -277,7 +277,7 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
         try
         	s := string5('Too long');
         catch err type_constraint_violation_error;
-            put_line('type constraint violation caught');
+            io.put_line('type constraint violation caught');
         end try;
         commit;        
     }
@@ -347,16 +347,16 @@ test deftypemr {user-defined type with multiple possreps} -setup $SETUP -cleanup
         var f2 init fixed2r(1.23);
         var f3 init fixed2i(321);
 
-        put(the_i(f1)); put_line('');
-        put(the_r(f1)); put_line('');
-        put(the_i(f2)); put_line('');
-        put(the_r(f2)); put_line('');
-        put(the_i(f3)); put_line('');
-        put(the_r(f3)); put_line('');
+        io.put(the_i(f1)); io.put_line('');
+        io.put(the_r(f1)); io.put_line('');
+        io.put(the_i(f2)); io.put_line('');
+        io.put(the_r(f2)); io.put_line('');
+        io.put(the_i(f3)); io.put_line('');
+        io.put(the_r(f3)); io.put_line('');
 
         the_i(f1) := 20;
-        put(the_i(f1)); put_line('');
-        put(the_r(f1)); put_line('');
+        io.put(the_i(f1)); io.put_line('');
+        io.put(the_r(f1)); io.put_line('');
 
         var p private relation {id int, amount fixed2} key {id};
         
@@ -366,8 +366,8 @@ test deftypemr {user-defined type with multiple possreps} -setup $SETUP -cleanup
         var tp tuple same_heading_as(p);
 
         for tp in p order(id asc);
-             put(the_i(tp.amount)); put_line('');
-             put(the_r(tp.amount)); put_line('');
+             io.put(the_i(tp.amount)); io.put_line('');
+             io.put(the_r(tp.amount)); io.put_line('');
         end for;
 
         var p2 private relation {id int, amount fixed2}
@@ -375,8 +375,8 @@ test deftypemr {user-defined type with multiple possreps} -setup $SETUP -cleanup
                        tuple { id 2, amount fixed2i(20012) } };
 
         for tp in p2 order(id asc);
-             put(the_i(tp.amount)); put_line('');
-             put(the_r(tp.amount)); put_line('');
+             io.put(the_i(tp.amount)); io.put_line('');
+             io.put(the_r(tp.amount)); io.put_line('');
         end for;
     }
 } -result {0
@@ -432,14 +432,14 @@ test deftypemri {user-defined type with multiple possreps and incomplete impleme
 	
 			end implement;
         catch err operator_not_found_error;
-            put_line('operator_not_found_error');
+            io.put_line('operator_not_found_error');
         end try;
         commit;
 
         try
             var f1 fixed2;
         catch err;
-            put_line('declaration with unimplemented type caught');
+            io.put_line('declaration with unimplemented type caught');
         end try;
     }
 } -result {operator_not_found_error
@@ -467,29 +467,29 @@ test deftypecmp {user-defined type with comparison operator} -setup $SETUP -clea
 		implement type physical_length;
 		end implement;
 
-		put(meters(0.0) < meters(1.0));
-		put_line('');
+		io.put(meters(0.0) < meters(1.0));
+		io.put_line('');
 
-		put(meters(1.0) < meters(1.0));
-		put_line('');
+		io.put(meters(1.0) < meters(1.0));
+		io.put_line('');
 		
-		put(meters(0.0) <= meters(1.0));
-		put_line('');
+		io.put(meters(0.0) <= meters(1.0));
+		io.put_line('');
 
-		put(meters(1.0) <= meters(1.0));
-		put_line('');
+		io.put(meters(1.0) <= meters(1.0));
+		io.put_line('');
 		
-		put(meters(0.0) > meters(1.0));
-		put_line('');
+		io.put(meters(0.0) > meters(1.0));
+		io.put_line('');
 
-		put(meters(1.0) > meters(1.0));
-		put_line('');
+		io.put(meters(1.0) > meters(1.0));
+		io.put_line('');
 		
-		put(meters(0.0) >= meters(1.0));
-		put_line('');
+		io.put(meters(0.0) >= meters(1.0));
+		io.put_line('');
 
-		put(meters(1.0) >= meters(1.0));
-		put_line('');
+		io.put(meters(1.0) >= meters(1.0));
+		io.put_line('');
 		
 		commit;
 
@@ -499,7 +499,7 @@ test deftypecmp {user-defined type with comparison operator} -setup $SETUP -clea
 		commit;
 		
 		if not cmp_invoked then
-		    put_line('compare operator not invoked');
+		    io.put_line('compare operator not invoked');
 		end if;
 
 		begin tx;
@@ -551,7 +551,7 @@ test deftypecmp {user-defined type with comparison operator} -setup $SETUP -clea
 			
 			end implement;
 	
-		    put_line('implement type succeeded despite missing comparison op');
+		    io.put_line('implement type succeeded despite missing comparison op');
 
 		catch err operator_not_found_error;
 		    ;
@@ -611,7 +611,7 @@ test deftypecmp {user-defined type with comparison operator} -setup $SETUP -clea
 
 		var name pname;
 		name := given_family('Ronnie', 'Relational');
-		put_line(the_full_name(name));
+		io.put_line(the_full_name(name));
 
 		commit;
 	}
@@ -692,18 +692,18 @@ test defroop {read-only user-defined operators} -setup $SETUP -cleanup $CLEANUP 
         current_db := 'D';
         begin tx;
 
-        put_line(testop());
+        io.put_line(testop());
 
-        put_line(reverse("Madam, I'm Adam."));
+        io.put_line(reverse("Madam, I'm Adam."));
 
         commit;
 
         -- Test without tx
 
-        put(fib(6)); put_line('');
+        io.put(fib(6)); io.put_line('');
 
-        put(sgn(5)); put_line('');
-        put(sgn(0)); put_line('');
+        io.put(sgn(5)); io.put_line('');
+        io.put(sgn(0)); io.put_line('');
 
         drop operator testop;
 
@@ -712,7 +712,7 @@ test defroop {read-only user-defined operators} -setup $SETUP -cleanup $CLEANUP 
                     || (if d then 'y' else 'n');
         end operator;
         
-        put_line(test4params(1, 'x', 5, true));
+        io.put_line(test4params(1, 'x', 5, true));
     }
 } -result {a = 1, b = 1, c = 8, d = 15
 .madA m'I ,madaM
@@ -748,7 +748,7 @@ test defupdop {user-defined update operators} -setup $SETUP -cleanup $CLEANUP -b
         var a string init 'x';
         var b integer init 1;
         op(a, b);
-        put_line("a = " || a);
+        io.put_line("a = " || a);
 
         drop operator op1;
         drop operator op2;
@@ -769,7 +769,7 @@ test defupdop {user-defined update operators} -setup $SETUP -cleanup $CLEANUP -b
             ;
             end operator;
         catch err invalid_argument_error;
-            put_line('invalid updates caught');
+            io.put_line('invalid updates caught');
         end try;
 
         operator test5paramsu(a int, b string, c int, d boolean, e string)
@@ -780,7 +780,7 @@ test defupdop {user-defined update operators} -setup $SETUP -cleanup $CLEANUP -b
 
         var e string;
         test5paramsu(1, 'x', 5, true, e);
-        put_line(e);
+        io.put_line(e);
 
         commit;
     }
@@ -800,7 +800,7 @@ test typeinf {type inference} -setup $SETUP -cleanup $CLEANUP -body {
         current_db := 'D';
         var i same_type_as(zero());
         var j init zero();
-        put(i); put(' '); put(j); put_line('');
+        io.put(i); io.put(' '); io.put(j); io.put_line('');
     }
 } -result {0 0
 }
@@ -815,9 +815,9 @@ test trycatch {TRY .. CATCH} -setup $SETUP -cleanup $CLEANUP -body {
             try
                 s := substr('x', 1, 1);
             catch err NAME_ERROR;
-                put_line('caught NAME_ERROR');
+                io.put_line('caught NAME_ERROR');
             catch err;
-                put_line('caught');
+                io.put_line('caught');
             end try;
         end operator;
 
@@ -832,17 +832,17 @@ test getenv {GETENV operator} -setup $SETUP -cleanup $CLEANUP -body {
     set ::env(TEST) DUROTEST
 
     exec $testdir/../../dli/durodt -e dbenv << {
-        put_line(GETENV('TEST'));
+        io.put_line(os.getenv('TEST'));
     }
 } -result {DUROTEST
 }
 
 test with {WITH expression} -body {
     exec $testdir/../../dli/durodt << {
-        put(WITH (C := 100): WITH (A := 7, B := C): A+B); put_line('');
+        io.put(WITH (C := 100): WITH (A := 7, B := C): A+B); io.put_line('');
         
         -- empty WITH
-        put(WITH (): 7); put_line('');
+        io.put(WITH (): 7); io.put_line('');
     }
 } -result {107
 7
@@ -850,15 +850,15 @@ test with {WITH expression} -body {
 
 test like {LIKE operator} -body {
     exec $testdir/../../dli/durodt << {
-        put_line(if 'abc' like '?bc' then 'true' else 'false');
-        put_line(if 'aabc' like '?bc' then 'true' else 'false');
-        put_line(if 'abc' like 'a*c' then 'true' else 'false');
-        put_line(if 'ac' like 'a*c' then 'true' else 'false');
-        put_line(if 'aca' like 'a*c' then 'true' else 'false');
-        put_line(if '\x' like '\?' then 'true' else 'false');
-        put_line(if 'a/b' like 'a?b' then 'true' else 'false');
-        put_line(if 'ab/cd/eF' like 'a*F' then 'true' else 'false');
-        put_line(if 'ab/cd/eF' like 'a\/*F' then 'true' else 'false');
+        io.put_line(if 'abc' like '?bc' then 'true' else 'false');
+        io.put_line(if 'aabc' like '?bc' then 'true' else 'false');
+        io.put_line(if 'abc' like 'a*c' then 'true' else 'false');
+        io.put_line(if 'ac' like 'a*c' then 'true' else 'false');
+        io.put_line(if 'aca' like 'a*c' then 'true' else 'false');
+        io.put_line(if '\x' like '\?' then 'true' else 'false');
+        io.put_line(if 'a/b' like 'a?b' then 'true' else 'false');
+        io.put_line(if 'ab/cd/eF' like 'a*F' then 'true' else 'false');
+        io.put_line(if 'ab/cd/eF' like 'a\/*F' then 'true' else 'false');
     }
 } -result {true
 false
@@ -875,17 +875,17 @@ test www {Web operators} -body {
     exec $testdir/../../dli/durodt << {
 	    var tp init tup {aa 'x', b 'x', n 1, f 2.0}; 
 
-	    www_form_to_tuple(tp, 'aa=Y%2Bx+z&f=1.2&n=2'); 
+	    www.form_to_tuple(tp, 'aa=Y%2Bx+z&f=1.2&n=2'); 
 
-	    put_line(tp.aa);
-	    put_line(tp.b);
-	    put(tp.n); put_line('');
-        put(tp.f); put_line('');
+	    io.put_line(tp.aa);
+	    io.put_line(tp.b);
+	    io.put(tp.n); io.put_line('');
+        io.put(tp.f); io.put_line('');
 
-	-- Check that invalid input does not crash the decoder 
+        -- Check that invalid input does not crash the decoder 
 
-	    www_form_to_tuple(tp, 'aa=%fg&b=%5');
-	    www_form_to_tuple(tp, 'n=$&aa=%5');
+	    www.form_to_tuple(tp, 'aa=%fg&b=%5');
+	    www.form_to_tuple(tp, 'n=$&aa=%5');
 	}
 } -result {Y+x z
 x
@@ -897,7 +897,7 @@ test parser {Parser} -match glob -body {
     catch {
         exec $testdir/../../dli/durodt << {
             -- Invalid character
-            put ($);
+            io.put ($);
         }
     } res
     puts $res

@@ -400,20 +400,6 @@ The operand, converted to string.
 
 <hr>
 
-<h3 id="op_getenv">OPERATOR getenv</h3>
-
-OPERATOR getenv (name string) RETURNS string;
-
-<h4>Description</h4>
-
-Reads the environment variable <var>name</var>.
-
-<h4>Return value</h4>
-
-The value of the environment variable <var>name</var>.
-
-<hr>
-
 <h3 id="op_is_empty">OPERATOR is_empty</h3>
 
 OPERATOR is_empty (RELATION { * }) RETURNS boolean;
@@ -556,6 +542,24 @@ The IF-THEN-ELSE operator.
 <h4>Return value</h4>
 
 <var>V1</var> if <var>B</var> is RDB_TRUE, <var>V2</var> otherwise.
+
+<hr>
+
+<h3 id="op_getenv">OPERATOR getenv</h3>
+
+MODULE os;
+
+OPERATOR getenv (name string) RETURNS string;
+
+END MODULE;
+
+<h4>Description</h4>
+
+Reads the environment variable <var>name</var>.
+
+<h4>Return value</h4>
+
+The value of the environment variable <var>name</var>.
 
 <hr>
 
@@ -2394,7 +2398,7 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     paramtv[0] = &RDB_STRING;
 
-    ret = RDB_put_global_ro_op("getenv", 1, paramtv, &RDB_STRING, &op_getenv, ecp);
+    ret = RDB_put_global_ro_op("os.getenv", 1, paramtv, &RDB_STRING, &op_getenv, ecp);
     if (ret != RDB_OK)
         return ret;
 

@@ -15,6 +15,9 @@ DuroDBMS 0.25
 
 - DROP VAR and RENAME VAR are now generally prohibited in FOR .. IN loops.
 
+- I/O, system, and www operators are now in system-provided modules io, sys,
+  and www, respectively. 
+
 DuroDBMS 0.24
 
 - Added error type type_not_found_error.

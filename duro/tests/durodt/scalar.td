@@ -1,19 +1,19 @@
 VAR i integer;
 VAR j integer INIT 1;
-put_line(cast_as_string(j + 1));
+io.put_line(cast_as_string(j + 1));
 i := 2;
-put_line(cast_as_string(i + j));
+io.put_line(cast_as_string(i + j));
 VAR k SAME_TYPE_AS(i);
 k := 5;
 
 VAR c1 string;
 c1 := 'AB%&/';
 VAR c2 string INIT 'XX';
-put_line(c1);
-put_line(c2);
+io.put_line(c1);
+io.put_line(c2);
 
 VAR b1 boolean;
-put(b1); put_line('');
+io.put(b1); io.put_line('');
 VAR b2 boolean init TRUE;
 
 VAR f1 float;
@@ -22,9 +22,9 @@ f1 := 1.0;
 
 VAR bin1 binary;
 bin1 := X'416a';
-put(bin1); put_line('');
+io.put(bin1); io.put_line('');
 VAR bin2 binary init X'2025';
-put(bin2); put_line('');
+io.put(bin2); io.put_line('');
 
 -- Synonyms
 VAR l int;
@@ -37,5 +37,5 @@ TRY
     VAR i INT;
     VAR i INT;
 CATCH err element_exists_error;
-    put_line('error caught');
+    io.put_line('error caught');
 END TRY;

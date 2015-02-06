@@ -32,15 +32,15 @@ test for {FOR} -setup $DBSETUP -cleanup $CLEANUP -body {
         var i INTEGER;
     
         for i := 1 to 3;
-            put(i); put_line('');
+            io.put(i); io.put_line('');
         end for;
 
         for i := -1 to 1;
-            put(i); put_line('');
+            io.put(i); io.put_line('');
         end for;
 
         for i := 0 to -1;
-            put_line('Must not appear');
+            io.put_line('Must not appear');
             exit();
         end for;
     }
@@ -70,8 +70,8 @@ test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -cleanup $CLEANUP -body {
             end while;
         end for;
 
-        put(i); put_line('');
-        put(j); put_line('');
+        io.put(i); io.put_line('');
+        io.put(j); io.put_line('');
 
         operator lop() returns STRING;
             var i INTEGER;
@@ -88,7 +88,7 @@ test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -cleanup $CLEANUP -body {
             return CAST_AS_STRING(i) || ',' || CAST_AS_STRING(j);
         end operator;
         
-        put_line(lop());
+        io.put_line(lop());
 
         commit;
 
@@ -99,7 +99,7 @@ test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -cleanup $CLEANUP -body {
                 leave;
             end if;
         end for;
-        put_line(cast_as_string(i));
+        io.put_line(cast_as_string(i));
 
         i := 10;
         while true;
@@ -108,7 +108,7 @@ test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -cleanup $CLEANUP -body {
                 leave;
             end if;
         end while;            
-        put_line(cast_as_string(i));
+        io.put_line(cast_as_string(i));
 
         -- Dropping FOR loop variable
         try
@@ -117,9 +117,9 @@ test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -cleanup $CLEANUP -body {
              end for;
         -- Both errors are acceptable
         catch err in_use_error;
-             put_line('dropping FOR variable: error caught');
+             io.put_line('dropping FOR variable: error caught');
         catch err name_error;
-             put_line('dropping FOR variable: error caught');
+             io.put_line('dropping FOR variable: error caught');
         end try;
     }
 } -result {2
@@ -150,7 +150,7 @@ test leave_op {Unmatched LEAVE in operator} -setup $DBSETUP -cleanup $CLEANUP -b
 		        leave_upd_op();
 		    end for;
 		catch err SYNTAX_ERROR;
-		    put_line("syntax error caught: " || THE_MSG(err));
+		    io.put_line("syntax error caught: " || THE_MSG(err));
 		end try;
 
         try
@@ -161,7 +161,7 @@ test leave_op {Unmatched LEAVE in operator} -setup $DBSETUP -cleanup $CLEANUP -b
 		        v := leave_ro_op();
 		    end for;
 		catch err SYNTAX_ERROR;
-		    put_line("syntax error caught: " || THE_MSG(err));
+		    io.put_line("syntax error caught: " || THE_MSG(err));
 		end try;
 
    }
@@ -175,23 +175,23 @@ test for {FOR .. IN} -body {
 
         var t1 tuple{i integer, j integer};
         for t1 in pr order(i asc);
-            put(t1.i); put_line('');
+            io.put(t1.i); io.put_line('');
         end for;
         for t1 in pr order(i desc);
-            put(t1.i); put_line('');
+            io.put(t1.i); io.put_line('');
         end for;
 
         var t2 tuple{i integer};
         for t2 in pr {i} order(i asc);
-            put(t2.i); put_line('');
+            io.put(t2.i); io.put_line('');
         end for;
         for t2 in pr {i} order(i desc);
-            put(t2.i); put_line('');
+            io.put(t2.i); io.put_line('');
         end for;
 
         -- LEAVE with label
         l: for t2 in pr {i} order(i asc);
-            put(t2.i); put_line('');
+            io.put(t2.i); io.put_line('');
             if t2.i = 1 then
                 leave l;
             end if;
@@ -203,11 +203,11 @@ test for {FOR .. IN} -body {
                 drop var t1;
              end for;
         catch err in_use_error;
-             put_line('dropping FOREACH variable: error caught');
+             io.put_line('dropping FOREACH variable: error caught');
         catch err name_error;
-             put_line('dropping FOREACH variable: error caught');
+             io.put_line('dropping FOREACH variable: error caught');
         catch err not_supported_error;
-             put_line('dropping FOREACH variable: error caught');
+             io.put_line('dropping FOREACH variable: error caught');
         end try;
     }
 } -result {1

@@ -15,34 +15,34 @@ set testdir [::tcltest::configure -testdir]
 
 test std_output {Standard output} -match regexp -body {
     exec $testdir/../../dli/durodt << {
-        put('Test ');
-        put(3);
-        put(1.7);
-        put(TRUE);
-        put(X'446f');
-        put(X'');
+        io.put('Test ');
+        io.put(3);
+        io.put(1.7);
+        io.put(TRUE);
+        io.put(X'446f');
+        io.put(X'');
 
-        put_line('Duro');
+        io.put_line('Duro');
     }
 } -result {Test 31.70*TRUEDoDuro
 }
 
 test file_output {File Output} -match regexp -body {
     exec $testdir/../../dli/durodt << {
-        VAR is iostream_id;
+        VAR is io.iostream_id;
 
-        open(is, 'out.txt', 'w');
+        io.open(is, 'out.txt', 'w');
 
-        put(is, 'Test ');
-        put(is, 3);
-        put(is, 1.7);
-        put(is, TRUE);
+        io.put(is, 'Test ');
+        io.put(is, 3);
+        io.put(is, 1.7);
+        io.put(is, TRUE);
 
-        put_line(is, 'Duro');
+        io.put_line(is, 'Duro');
 
-        put(is, X'4464'); put_line('');
+        io.put(is, X'4464'); io.put_line('');
 
-        close(is);
+        io.close(is);
     }
     set f [open out.txt r]
     puts [read $f]
@@ -55,25 +55,25 @@ Dd
 
 test stdout_output {stdout output} -match regexp -body {
     exec $testdir/../../dli/durodt << {
-        put(stdout, 'Test ');
-        put(stdout, 3);
-        put(stdout, 1.7);
-        put(stdout, TRUE);
-        put(stdout, X'444f');
+        io.put(stdout, 'Test ');
+        io.put(stdout, 3);
+        io.put(stdout, 1.7);
+        io.put(stdout, TRUE);
+        io.put(stdout, X'444f');
 
-        put_line(stdout, 'Duro');
+        io.put_line(stdout, 'Duro');
     }
 } -result {Test 31.70*TRUEDODuro
 }
 
 test stderr_output {stderr output} -match regexp -body {
     exec $testdir/../../dli/durodt << {
-        put(stderr, 'Test ');
-        put(stderr, 3);
-        put(stderr, 1.7);
-        put(stderr, TRUE);
+        io.put(stderr, 'Test ');
+        io.put(stderr, 3);
+        io.put(stderr, 1.7);
+        io.put(stderr, TRUE);
 
-        put_line(stderr, 'Duro');
+        io.put_line(stderr, 'Duro');
     } 2> out.txt
     set f [open out.txt r]
     puts [read $f]
@@ -90,25 +90,25 @@ test file_input {File input} -body {
     close $f    
 
     set res [exec $testdir/../../dli/durodt << {
-        VAR is iostream_id;
+        VAR is io.iostream_id;
 
-        open(is, 'in.txt', 'r');
+        io.open(is, 'in.txt', 'r');
         VAR line string;
-        get_line(is, line);
-        put_line(line);
-        get_line(is, line);
-        put_line(line);
-        put(eof(is)); put_line('');
-        get_line(is, line);
-        put_line(line);
-        put(eof(is)); put_line('');
-        close(is);
+        io.get_line(is, line);
+        io.put_line(line);
+        io.get_line(is, line);
+        io.put_line(line);
+        io.put(io.eof(is)); io.put_line('');
+        io.get_line(is, line);
+        io.put_line(line);
+        io.put(io.eof(is)); io.put_line('');
+        io.close(is);
 
-        open(is, 'in.txt', 'r');
+        io.open(is, 'in.txt', 'r');
         VAR bin binary;
-        read(is, bin, 7);
-        close(is);
-        put(bin); put_line('');
+        io.read(is, bin, 7);
+        io.close(is);
+        io.put(bin); io.put_line('');
     }]
     file delete -force in.txt
     return $res

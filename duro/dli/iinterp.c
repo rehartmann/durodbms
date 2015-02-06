@@ -2304,10 +2304,12 @@ exec_moduledef(RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context *ecp
 
     if (RDB_string_n_to_obj(&oldmodname, RDB_obj_string(&interp->module_name),
             olen, ecp) != RDB_OK) {
+        fprintf(stderr, "module 1\n");
         RDB_raise_fatal(ecp);
         return RDB_ERROR;
     }
     if (RDB_copy_obj(&interp->module_name, &oldmodname, ecp) != RDB_OK) {
+        fprintf(stderr, "module 2\n");
         RDB_raise_fatal(ecp);
         return RDB_ERROR;
     }
@@ -2918,11 +2920,11 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
     if (RDB_put_upd_op(&interp->sys_upd_op_map, "create_env", 1, create_env_params,
             &create_env_op, ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&interp->sys_upd_op_map, "system", 2, system_params, &system_op,
-            ecp) != RDB_OK)
-        goto error;
     if (RDB_put_upd_op(&interp->sys_upd_op_map, "trace", 1, trace_params,
             &trace_op, ecp) != RDB_OK)
+        goto error;
+    if (RDB_put_upd_op(&interp->sys_upd_op_map, "os.system", 2, system_params, &system_op,
+            ecp) != RDB_OK)
         goto error;
 
     /* Create current_db and implicit_tx in system module */

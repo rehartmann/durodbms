@@ -22,7 +22,7 @@ test private {creating private table and inserting tuples} -body {
             var ir private relation {i int} key {i};
             var ir private relation {i int} key {i};
         catch err element_exists_error;
-            put_line("double creation caught");
+            io.put_line("double creation caught");
         end try;
 
         var pr2 private relation {i int} init relation { tuple {i 1}, tuple {i 2} }
@@ -34,7 +34,7 @@ test private {creating private table and inserting tuples} -body {
         try
             insert pr1 tuple{i 1, d 2.0, c 'Z'};
         catch err key_violation_error;
-            put_line('key_violation_error');
+            io.put_line('key_violation_error');
         end try;
 
         insert pr1 tuple {i 2 + 1, d 1.0, c 'Z'}; 
@@ -43,21 +43,21 @@ test private {creating private table and inserting tuples} -body {
 
         delete pr1 where i<>2;
 
-        put(count(pr1)); put_line('');
-        put_line((tuple from pr1 where i = 2).c);
+        io.put(count(pr1)); io.put_line('');
+        io.put_line((tuple from pr1 where i = 2).c);
 
         -- SUM with non-existent table
         try
-            put(sum(prinv, i)); put_line('');
+            io.put(sum(prinv, i)); io.put_line('');
         catch err name_error;
-            put_line('name_error');
+            io.put_line('name_error');
         end try;
 
         -- multiple update
         update pr1 where i=2 {i:=20}, update pr2 where i=1 {i:=10};
 
-        put((tuple from pr1).i); put_line('');
-        put(sum(pr2, i)); put_line('');
+        io.put((tuple from pr1).i); io.put_line('');
+        io.put(sum(pr2, i)); io.put_line('');
 
         drop var pr1;
 
@@ -66,22 +66,22 @@ test private {creating private table and inserting tuples} -body {
         insert pr3 tup {n 1, m 1};
         insert pr3 tup {n 1, m 2};
         insert pr3 tup {n 2, m 1};
-        put(sum(extend pr3: {s := n + m}, s)); put_line('');
+        io.put(sum(extend pr3: {s := n + m}, s)); io.put_line('');
 
         -- Invalid relation selector
         try
             var pr4 init relation {a int} {tuple {a 'x'}};
         catch err type_mismatch_error;
-            put_line('type_mismatch_error');
+            io.put_line('type_mismatch_error');
         end try;
 
-        put((tuple from relation {a int} {tuple {a 7}}).a); put_line('');
+        io.put((tuple from relation {a int} {tuple {a 7}}).a); io.put_line('');
 
         -- Error in INIT clause
         try
             var pr5 private relation {i int} init undef() key {i};
         catch err operator_not_found_error;
-            put_line('operator_not_found_error');
+            io.put_line('operator_not_found_error');
         end try;
 
         -- Table assignment
@@ -89,10 +89,10 @@ test private {creating private table and inserting tuples} -body {
         pr6 := pr3;
         var t tuple same_heading_as(pr6);
         for t in pr6 order(n asc, m asc);
-            put(cast_as_string(t.n));
-            put(' ');
-            put(cast_as_string(t.m));
-            put_line('');
+            io.put(cast_as_string(t.n));
+            io.put(' ');
+            io.put(cast_as_string(t.m));
+            io.put_line('');
         end for;
     }
 } -result {double creation caught
@@ -113,15 +113,15 @@ operator_not_found_error
 
 test deedum {TABLE_DEE and TABLE_DUM} -body {
     exec $testdir/../../dli/durodt << {
-        put(tup from TABLE_DEE); put_line('');
-        put(tup from DEE); put_line('');
+        io.put(tup from TABLE_DEE); io.put_line('');
+        io.put(tup from DEE); io.put_line('');
 
-        put(TABLE_DUM); put_line('');
-        put(DUM); put_line('');
+        io.put(TABLE_DUM); io.put_line('');
+        io.put(DUM); io.put_line('');
 
-        put(tuple from (rel{} {} union table_dee)); put_line('');
+        io.put(tuple from (rel{} {} union table_dee)); io.put_line('');
         
-        put((tuple from relation{tuple{i 7}} join table_dee).i); put_line('');       
+        io.put((tuple from relation{tuple{i 7}} join table_dee).i); io.put_line('');       
     }
 } -result {TUPLE {}
 TUPLE {}
@@ -134,7 +134,7 @@ TUPLE {}
 test group {GROUP} -body {
     exec $testdir/../../dli/durodt << {
 		var gt init rel{tup{i 1, j 1}, tup{i 2, j 2}} group {i, j} as ij;
-		put((tuple from gt).ij = rel{tup{i 1, j 1}, tup{i 2, j 2}}); put_line('');
+		io.put((tuple from gt).ij = rel{tup{i 1, j 1}, tup{i 2, j 2}}); io.put_line('');
     }
 } -result {TRUE
 }
@@ -146,13 +146,13 @@ test ungroup {UNGROUP} -body {
 		        tup {st rel{tup{s 'e', t 'f'}}}} ungroup st;
 		var arr array tuple{s string, t string};
 		load arr from ugt order(s asc);
-		put(LENGTH(arr)); put_line('');
-		put_line(arr[0].s);
-		put_line(arr[0].t);
-		put_line(arr[1].s);
-		put_line(arr[1].t);
-		put_line(arr[2].s);
-		put_line(arr[2].t);
+		io.put(LENGTH(arr)); io.put_line('');
+		io.put_line(arr[0].s);
+		io.put_line(arr[0].t);
+		io.put_line(arr[1].s);
+		io.put_line(arr[1].t);
+		io.put_line(arr[2].s);
+		io.put_line(arr[2].t);
     }
 } -result {3
 a
@@ -172,14 +172,14 @@ test sdivide {small DIVIDE} -body {
             var p_c private init rel{tup{pizza# 1, cond 'salami'},
                     tup{pizza 2, cond 'salami'}, tup{pizza 2, cond 'mushrooms'}};
         catch err;
-            put_line('error caught');
+            io.put_line('error caught');
         end try;
 
         var p_c private init rel{tup{pizza# 1, cond 'salami'},
                 tup{pizza# 2, cond 'salami'}, tup{pizza# 2, cond 'mushrooms'}};
                 
         -- Get # of pizza with all condiments
-        put((tuple from (pizzas divideby condiments per (p_c))).pizza#); put_line('');
+        io.put((tuple from (pizzas divideby condiments per (p_c))).pizza#); io.put_line('');
     }
 } -result {error caught
 2
@@ -192,51 +192,51 @@ test union {UNION and D_UNION} -body {
 
 	    var arr array tuple{i int};
 	    load arr from rel{tup{i 1}} union rel{tup{i 2}} order (i asc);
-	    put(arr[0].i); put_line('');
-	    put(arr[1].i); put_line('');
-	    put_line('');
+	    io.put(arr[0].i); io.put_line('');
+	    io.put(arr[1].i); io.put_line('');
+	    io.put_line('');
 	
 	    var tp tuple{i int, s string};
 	    for tp in rel{tup{i 1, s 'a'}} union rel{tup{i 2, s 'b'}} order (i desc);
-	        put(tp.i); put(' ');
-	        put(tp.s); put_line('');
+	        io.put(tp.i); io.put(' ');
+	        io.put(tp.s); io.put_line('');
 	    end for;
-	    put_line('');
+	    io.put_line('');
 
         try
             v := count(p union rel{tup{n 2, m 3, s 'beta'}});
         catch err type_mismatch_error;
-            put_line('type mismatch (1)');
+            io.put_line('type mismatch (1)');
         end try;
 
         try
             v := count(p d_union rel{tup{n 2, m 3, s 'beta'}});
         catch err type_mismatch_error;
-            put_line('type mismatch (2)');
+            io.put_line('type mismatch (2)');
         end try;
 
-        put_line((tuple from p union rel{tup{n 1, s 'alpha'}}).s);
+        io.put_line((tuple from p union rel{tup{n 1, s 'alpha'}}).s);
         
         try
-        put_line((tuple from p d_union rel{tup{n 1, s 'alpha'}}).s);
+        io.put_line((tuple from p d_union rel{tup{n 1, s 'alpha'}}).s);
         catch err element_exists_error;
-            put_line('element_exists_error caught');
+            io.put_line('element_exists_error caught');
         end try;
 
         var tp2 tuple same_heading_as(p);
         for tp2 in p d_union rel{tup{n 1, s 'alfa'}} order (s asc);
-            put_line(tp2.s);
+            io.put_line(tp2.s);
         end for;
 
-        put_line('');
+        io.put_line('');
 
         for tp2 in rel{tup{n 1, s 'alfa'}, tup{n 2, s 'beta'}} d_union p
                 order (s asc);
-            put_line(tp2.s);
+            io.put_line(tp2.s);
         end for;
 
         if (tup{n 1, s 'alfa'} in (p d_union rel{tup{n 1, s 'alfa'}})) then
-            put_line('ok');
+            io.put_line('ok');
         end if;
     }
 } -result {1
@@ -260,36 +260,36 @@ ok
 
 test ra {relational algebra} -body {
     exec $testdir/../../dli/durodt << {
-        put((tuple from (rel{tup{i 1}, tup{i 2}} minus rel{tup{i 1}})).i);
-        put_line('');
+        io.put((tuple from (rel{tup{i 1}, tup{i 2}} minus rel{tup{i 1}})).i);
+        io.put_line('');
 
-        put(count(rel{tup{i 1}} minus rel{tup{i 1}}));
-        put_line('');
+        io.put(count(rel{tup{i 1}} minus rel{tup{i 1}}));
+        io.put_line('');
 
-        put(is_empty(rel{tup{i 1}} intersect rel{tup{i 2}}));
-        put_line('');
+        io.put(is_empty(rel{tup{i 1}} intersect rel{tup{i 2}}));
+        io.put_line('');
 
         var pr private init rel{tup{id 1, name 'x'},
                 tup{id 2, name 'y'}};
-        put_line((tuple from pr semijoin rel{tup{name 'y'}}).name);
+        io.put_line((tuple from pr semijoin rel{tup{name 'y'}}).name);
 
-        put_line((tuple from pr matching (rel{tup{id 1}, tup{id 2}} where id=1)).name);
+        io.put_line((tuple from pr matching (rel{tup{id 1}, tup{id 2}} where id=1)).name);
 
-        put_line((tuple from pr matching (rel{tup{id 1, name 'z'}} {id})).name);
+        io.put_line((tuple from pr matching (rel{tup{id 1, name 'z'}} {id})).name);
 
-        put_line((tuple from
+        io.put_line((tuple from
                 pr semiminus (rel{tup{id 1}}
                               join rel{tup{name 'x'}}))
                 .name);
 
-        put((is_empty(pr not matching (rel{tup{id 1}} union rel{tup{id 2}}))));
-        put_line('');
+        io.put((is_empty(pr not matching (rel{tup{id 1}} union rel{tup{id 2}}))));
+        io.put_line('');
 
-        put_line((tuple from
+        io.put_line((tuple from
                 pr matching (rel{tup{id 1}, tup{id 2}}
                              intersect rel{tup{id 2}, tup{id 3}}))
                .name);
-        put_line((tuple from
+        io.put_line((tuple from
                 pr intersect (pr matching rel{tup{id 2}, tup{id 3}}))
                .name);
     }
@@ -309,7 +309,7 @@ test relattr {relation-valued attribute} -body {
     exec $testdir/../../dli/durodt << {
         var t tuple{r relation{i int}};
 
-        put(is_empty(t.r)); put_line('');
+        io.put(is_empty(t.r)); io.put_line('');
     }
 } -result {TRUE
 }
@@ -338,20 +338,20 @@ test private_default {private table with default values} -body {
             var r4 private tup {no int, r float, name string}
                     key {no} default {name 'John Doe'};
         catch err type_mismatch_error;
-            put_line('r4: type_mismatch_error caught');
+            io.put_line('r4: type_mismatch_error caught');
         end try;
 
-        put(t1.i); put(' ');
-        put(cast_as_integer(t1.r * 100.0)); put(' ');
-        put(t1.c); put_line('');
+        io.put(t1.i); io.put(' ');
+        io.put(cast_as_integer(t1.r * 100.0)); io.put(' ');
+        io.put(t1.c); io.put_line('');
 
-        put(t2.i); put(' ');
-        put(cast_as_integer(t2.r * 100.0)); put(' ');
-        put(t2.c); put_line('');
+        io.put(t2.i); io.put(' ');
+        io.put(cast_as_integer(t2.r * 100.0)); io.put(' ');
+        io.put(t2.c); io.put_line('');
 
-        put(t3.i); put(' ');
-        put(cast_as_integer(t3.r * 100.0)); put(' ');
-        put(t3.c); put_line('');
+        io.put(t3.i); io.put(' ');
+        io.put(cast_as_integer(t3.r * 100.0)); io.put(' ');
+        io.put(t3.c); io.put_line('');
     }
 } -result {r4: type_mismatch_error caught
 5 120 xyz
@@ -365,17 +365,17 @@ test tclose {TCLOSE} -body {
         for t in tclose(rel{tup{n1 1, n2 2}, tup{n1 2, n2 3},
                 tup{n1 3, n2 12}, tup{n1 10, n2 10}, tup{n1 10, n2 8}})
                 order (n1 asc, n2 asc);
-            put(t.n1); put(' ');
-            put(t.n2); put_line('');
+            io.put(t.n1); io.put(' ');
+            io.put(t.n2); io.put_line('');
         end for;
 
-        put_line(if is_empty(tclose(rel {n1 int, n2 int} {}))
+        io.put_line(if is_empty(tclose(rel {n1 int, n2 int} {}))
                 then 'empty' else 'not empty');
         
         try
-            put(tclose(rel {tup {n 1, s '1'}}));
+            io.put(tclose(rel {tup {n 1, s '1'}}));
         catch err;
-            put_line('invalid TCLOSE caught');
+            io.put_line('invalid TCLOSE caught');
         end try;
     }
 } -result {1 2
@@ -402,10 +402,10 @@ test delete {DELETE operator} -body {
 	    delete pr1 rel{tup{n 3, s 'two'}, tup{n 4, s 'two'}};
 	
 	    var t init tuple from pr1;
-	    put(t.n);
-	    put(' ');
-	    put(t.s);
-	    put_line('');
+	    io.put(t.n);
+	    io.put(' ');
+	    io.put(t.s);
+	    io.put_line('');
 	}
 } -result {5 five
 }
@@ -420,8 +420,8 @@ test bigtable_explain {Big local table and EXPLAIN} -match glob -body {
         explain pr where a = 400 order();
         var tp tuple same_heading_as(pr);
         for tp in pr where b = 200 order();
-            put (tp.b);
-            put_line('');
+            io.put (tp.b);
+            io.put_line('');
         end for;
     }
 } -result {*pr INDEX pr$0*

@@ -22,7 +22,7 @@ RDB_add_io(RDB_exec_context *ecp)
     static RDB_attr io_stream_comp = { "id", &RDB_INTEGER };
 
     static RDB_possrep io_stream_rep = {
-            "iostream_id",
+            "io.iostream_id",
         1,
         &io_stream_comp
     };

@@ -971,7 +971,7 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
     RDB_IDENTIFIER.ireplen = RDB_VARIABLE_LEN;
     RDB_IDENTIFIER.name = "identifier";
     RDB_IDENTIFIER.def.scalar.builtin = RDB_TRUE;
-    RDB_IDENTIFIER.def.scalar.ordered = RDB_FALSE;
+    RDB_IDENTIFIER.def.scalar.ordered = RDB_TRUE;
     RDB_IDENTIFIER.def.scalar.repc = 1;
     RDB_IDENTIFIER.def.scalar.repv = &id_rep;
     RDB_IDENTIFIER.def.scalar.arep = &RDB_STRING;

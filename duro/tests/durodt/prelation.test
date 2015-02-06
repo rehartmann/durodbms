@@ -50,7 +50,7 @@ test create {creating and populating public table} -setup $SETUP -cleanup $CLEAN
         try
             var i init count(p);
         catch err name_error;
-            put_line('name error caught');
+            io.put_line('name error caught');
         end try;
 
         map p r1;
@@ -59,14 +59,14 @@ test create {creating and populating public table} -setup $SETUP -cleanup $CLEAN
         try
             map p r2;
         catch err type_mismatch_error;
-            put_line('type mismatch caught');
+            io.put_line('type mismatch caught');
         end try;
 
         -- keys do not match
         try
             map p r3;
         catch err invalid_argument_error;
-            put_line('invalid arguments caught');
+            io.put_line('invalid arguments caught');
         end try;
 
         insert p tup{no 1, c 'one'};
@@ -74,15 +74,15 @@ test create {creating and populating public table} -setup $SETUP -cleanup $CLEAN
 
         var tp tuple same_heading_as(p);
         for tp in p order(no asc);
-            put(tp.no);
-            put(' ');
-            put_line(tp.c);
+            io.put(tp.no);
+            io.put(' ');
+            io.put_line(tp.c);
         end for;
 
-        put(count(p)); put_line('');
+        io.put(count(p)); io.put_line('');
         commit;
 
-        put_line('');
+        io.put_line('');
 
         begin tx;
 
@@ -94,32 +94,32 @@ test create {creating and populating public table} -setup $SETUP -cleanup $CLEAN
         insert p tup{no 11, c 'eleven'};
 
         for tp in p order(no asc);
-            put(tp.no);
-            put(' ');
-            put_line(tp.c);
+            io.put(tp.no);
+            io.put(' ');
+            io.put_line(tp.c);
         end for;        
 
         -- Dropping the table the public table is mapped to should fail
         try
             drop var r4;
-            put_line('Dropping r4 succeeded');
+            io.put_line('Dropping r4 succeeded');
         catch err in_use_error;
             ;
         end try;
 
         -- Rename
         rename var p as p2;
-        put_line((tuple from p2 where no = 11).c);
+        io.put_line((tuple from p2 where no = 11).c);
 
         insert p2 tup { no 16, c 'sss' };
 
         try
             var cnt init count(p);
         catch err name_error;
-            put_line('name error caught');
+            io.put_line('name error caught');
         end try;
 
-        put(count(r1)); put_line('');
+        io.put(count(r1)); io.put_line('');
         commit;
         
         -- Assign (copy)
@@ -129,9 +129,9 @@ test create {creating and populating public table} -setup $SETUP -cleanup $CLEAN
         drop var p2;
         commit;
 
-        put(tp.no);
-        put(' ');
-        put_line(tp.c);
+        io.put(tp.no);
+        io.put(' ');
+        io.put_line(tp.c);
     }
 } -result {name error caught
 type mismatch caught

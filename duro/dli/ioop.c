@@ -516,7 +516,7 @@ init_iostream(RDB_object *iosp, int fno, RDB_exec_context *ecp)
     RDB_init_obj(&fobj);
     RDB_int_to_obj(&fobj, (RDB_int) fno);
     fobjp = &fobj;
-    ret = RDB_call_ro_op_by_name("iostream_id", 1, &fobjp, ecp, NULL, iosp);
+    ret = RDB_call_ro_op_by_name("io.iostream_id", 1, &fobjp, ecp, NULL, iosp);
     RDB_destroy_obj(&fobj, ecp);
     return ret;
 }    
@@ -679,84 +679,84 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     close_paramv[0].typ = &RDB_IOSTREAM_ID;
     close_paramv[0].update = RDB_FALSE;
 
-    if (RDB_put_upd_op(opmapp, "put_line", 1, put_string_params, &op_put_line_string,
+    if (RDB_put_upd_op(opmapp, "io.put_line", 1, put_string_params, &op_put_line_string,
             ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (RDB_put_upd_op(opmapp, "put_line", 2, put_iostream_string_params,
+    if (RDB_put_upd_op(opmapp, "io.put_line", 2, put_iostream_string_params,
             &op_put_line_iostream_string, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (RDB_put_upd_op(opmapp, "put", 1, put_string_params, &op_put_string, ecp)
+    if (RDB_put_upd_op(opmapp, "io.put", 1, put_string_params, &op_put_string, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "put", 1, put_binary_params, &op_put_binary, ecp)
+    if (RDB_put_upd_op(opmapp, "io.put", 1, put_binary_params, &op_put_binary, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "put", 1, put_int_params, &op_put_int, ecp)
+    if (RDB_put_upd_op(opmapp, "io.put", 1, put_int_params, &op_put_int, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "put", 1, put_float_params, &op_put_float, ecp)
+    if (RDB_put_upd_op(opmapp, "io.put", 1, put_float_params, &op_put_float, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "put", 1, put_bool_params, &op_put_bool, ecp)
+    if (RDB_put_upd_op(opmapp, "io.put", 1, put_bool_params, &op_put_bool, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "put", -1, NULL, &op_put_nonscalar, ecp)
+    if (RDB_put_upd_op(opmapp, "io.put", -1, NULL, &op_put_nonscalar, ecp)
             != RDB_OK)
         return RDB_ERROR;
 
-    if (RDB_put_upd_op(opmapp, "put", 2, put_iostream_string_params,
+    if (RDB_put_upd_op(opmapp, "io.put", 2, put_iostream_string_params,
             &op_put_iostream_string, ecp) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "put", 2, put_iostream_binary_params,
+    if (RDB_put_upd_op(opmapp, "io.put", 2, put_iostream_binary_params,
             &op_put_iostream_binary, ecp) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "put", 2, put_iostream_int_params,
+    if (RDB_put_upd_op(opmapp, "io.put", 2, put_iostream_int_params,
             &op_put_iostream_int, ecp) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "put", 2, put_iostream_float_params,
+    if (RDB_put_upd_op(opmapp, "io.put", 2, put_iostream_float_params,
             &op_put_iostream_float, ecp) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "put", 2, put_iostream_bool_params,
+    if (RDB_put_upd_op(opmapp, "io.put", 2, put_iostream_bool_params,
             &op_put_iostream_bool, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (RDB_put_upd_op(opmapp, "get_line", 1, get_line_params, &op_get_line, ecp)
+    if (RDB_put_upd_op(opmapp, "io.get_line", 1, get_line_params, &op_get_line, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "get_line", 2, get_line_iostream_params,
+    if (RDB_put_upd_op(opmapp, "io.get_line", 2, get_line_iostream_params,
             &op_get_line_iostream, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (RDB_put_upd_op(opmapp, "read", 2, read_params, &op_read, ecp)
+    if (RDB_put_upd_op(opmapp, "io.read", 2, read_params, &op_read, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "read", 3, read_iostream_params,
+    if (RDB_put_upd_op(opmapp, "io.read", 3, read_iostream_params,
             &op_read_iostream, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (RDB_put_upd_op(opmapp, "open", 3, open_paramv, &op_open, ecp)
+    if (RDB_put_upd_op(opmapp, "io.open", 3, open_paramv, &op_open, ecp)
             != RDB_OK)
         return RDB_ERROR;
 
-    if (RDB_put_upd_op(opmapp, "close", 1, close_paramv, &op_close, ecp)
+    if (RDB_put_upd_op(opmapp, "io.close", 1, close_paramv, &op_close, ecp)
             != RDB_OK)
         return RDB_ERROR;
 
     eof_iostream_param_typ = &RDB_IOSTREAM_ID;
 
-    if (RDB_put_global_ro_op("eof", 0, NULL, &RDB_BOOLEAN, &op_eof, ecp)
+    if (RDB_put_global_ro_op("io.eof", 0, NULL, &RDB_BOOLEAN, &op_eof, ecp)
             != RDB_OK) {
         return RDB_ERROR;
     }
 
-    if (RDB_put_global_ro_op("eof", 1, &eof_iostream_param_typ,
+    if (RDB_put_global_ro_op("io.eof", 1, &eof_iostream_param_typ,
             &RDB_BOOLEAN, &op_eof_iostream, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 
-    if (RDB_put_upd_op(opmapp, "www_form_to_tuple", RDB_VAR_PARAMS, NULL,
+    if (RDB_put_upd_op(opmapp, "www.form_to_tuple", RDB_VAR_PARAMS, NULL,
             &op_www_form_to_tuple, ecp) != RDB_OK)
        return RDB_ERROR;
 

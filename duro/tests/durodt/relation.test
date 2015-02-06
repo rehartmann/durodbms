@@ -52,7 +52,7 @@ test insert_delete {creating table, insert, delete} \
         try
             insert r relation {} {};
         catch err type_mismatch_error;
-            put_line('type mismatch caught');
+            io.put_line('type mismatch caught');
         end try;
 
         var a init 1;
@@ -63,9 +63,9 @@ test insert_delete {creating table, insert, delete} \
         var t init tuple {i 2 + 1, d 1.0, c 'Z'};
         insert r update t : {i := i + 1};
 
-        put_line(cast_as_string(count(r)));
-        put_line(cast_as_string(count(s)));
-        put_line((tuple from r where i=2).c);
+        io.put_line(cast_as_string(count(r)));
+        io.put_line(cast_as_string(count(s)));
+        io.put_line((tuple from r where i=2).c);
         
         -- Test table with 2 keys
 
@@ -76,21 +76,21 @@ test insert_delete {creating table, insert, delete} \
         try
             insert r2 tup {no 1, id '2', str 'yyy'};
         catch err key_violation_error;
-            put_line('key violation caught (1)');
+            io.put_line('key violation caught (1)');
         end try;
 
         -- Test key #2
         try
             insert r2 tup {no 1, id '2', str 'zzz'};
         catch err key_violation_error;
-            put_line('key violation caught (2)');
+            io.put_line('key violation caught (2)');
         end try;
 
         insert r2 tup{no 2, id '2', str 'xxx'};
 
         try
             delete r2 tup { no 1, id '2', str 'yyy' };
-            put_line('delete of tuple where only key matched succeeded');
+            io.put_line('delete of tuple where only key matched succeeded');
         catch err not_found_error;
             ;
         end try;
@@ -104,9 +104,9 @@ test insert_delete {creating table, insert, delete} \
         try
             insert r3 tup {n 1, s 'a'};
         catch err element_exists_error;
-            put_line('element_exists_error');
+            io.put_line('element_exists_error');
         end try;
-        put(count(r3)); put_line(' tuples');
+        io.put(count(r3)); io.put_line(' tuples');
 
         commit;
 
@@ -115,19 +115,19 @@ test insert_delete {creating table, insert, delete} \
 
         begin tx;
         delete r3 where n = 1 and s = 'a';
-        put(count(r3)); put_line(' tuples');
+        io.put(count(r3)); io.put_line(' tuples');
         delete r3 rel { tup {n 1, s 'b'} };
         try
             delete r3 rel { tup {n 1, s 'b'}, tup {n 2, s 'a'} };
         catch err not_found_error;
-            put_line('2nd delete of same tuple failed');
+            io.put_line('2nd delete of same tuple failed');
         end try;
-        put(count(r3)); put_line(' tuples');
+        io.put(count(r3)); io.put_line(' tuples');
 
         delete r3 tup {n 2, s 'a'};
-        put(count(r3)); put_line(' tuple');
+        io.put(count(r3)); io.put_line(' tuple');
         delete r3;
-        put_line(if is_empty(r3) then 'empty' else 'not empty');
+        io.put_line(if is_empty(r3) then 'empty' else 'not empty');
     }
 } -result {type mismatch caught
 4
@@ -157,29 +157,29 @@ test update {creating table and updating tuples} -setup $SETUP -cleanup $CLEANUP
         
         -- Updating value
         update r where k = 1 { v := '1' };
-        put_line((tuple from r where k = 1).v);
-        put_line((tuple from r where k = 2).v);
+        io.put_line((tuple from r where k = 1).v);
+        io.put_line((tuple from r where k = 2).v);
 
         -- Updating values
         update r { v := v || v };
-        put_line((tuple from r where k = 1).v);
-        put_line((tuple from r where k = 2).v);
+        io.put_line((tuple from r where k = 1).v);
+        io.put_line((tuple from r where k = 2).v);
 
         -- Updating keys
         update r { k := k + 1 };
-        put_line((tuple from r where k = 2).v);
-        put_line((tuple from r where k = 3).v);
+        io.put_line((tuple from r where k = 2).v);
+        io.put_line((tuple from r where k = 3).v);
 
         -- Update that would violate the key constraint
         try
             update r { k := 1 };
         catch err key_violation_error;
-            put_line('key violation caught');
+            io.put_line('key violation caught');
         end try;
 
         -- Update combining both tuples into one 
         update r { k := 1, v := 'Uno' };
-        put_line((tuple from r).v);
+        io.put_line((tuple from r).v);
 
         commit;
     }
@@ -208,7 +208,7 @@ test for_in_drop {DROP in FOR .. IN} -setup $SETUP -cleanup $CLEANUP -body {
                 drop var r;
             end for;
         catch err not_supported_error;
-            put_line('not_supported caught');
+            io.put_line('not_supported caught');
         end try;
         commit;
     }
@@ -240,9 +240,9 @@ test extend {EXTEND} -setup $SETUP -cleanup $CLEANUP -body {
 
         var tpx tup { a int, bx string, cx int };
         for tpx in t2x { a, bx, cx } order (a asc);
-            put(tpx.a); put(' ');
-            put(tpx.bx); put(' ');
-            put(tpx.cx); put_line('');
+            io.put(tpx.a); io.put(' ');
+            io.put(tpx.bx); io.put(' ');
+            io.put(tpx.cx); io.put_line('');
         end for;
 
         commit;
@@ -256,21 +256,21 @@ test extend {EXTEND} -setup $SETUP -cleanup $CLEANUP -body {
 
         try
             insert t2x rel { tup { a 5, b 'x', c 1, bx 'x', cx 101 } };
-            put_line('INSERT succeeded where b and bx do not match');
+            io.put_line('INSERT succeeded where b and bx do not match');
         catch err predicate_violation_error;
             ;
         end try;
 
         try
             insert t2x tup { a 5, b 'x', c 1, bx 'xx', cx 102 };
-            put_line('Tuple INSERT succeeded where b and bx do not match');
+            io.put_line('Tuple INSERT succeeded where b and bx do not match');
         catch err predicate_violation_error;
             ;
         end try;
 
         try
             delete t2x rel { tup { a 1, b 'x', c 1, bx 'xxx', cx 101 } };
-            put_line('DELETE succeeded where b and bx do not match');
+            io.put_line('DELETE succeeded where b and bx do not match');
         catch err not_found_error;
             ;
         end try;
@@ -282,9 +282,9 @@ test extend {EXTEND} -setup $SETUP -cleanup $CLEANUP -body {
         delete t2x tup { a 3, b 'u', c 1, bx 'uu', cx 101 };
 
         for tpx in t2x { a, bx, cx } order (a asc);
-            put(tpx.a); put(' ');
-            put(tpx.bx); put(' ');
-            put(tpx.cx); put_line('');
+            io.put(tpx.a); io.put(' ');
+            io.put(tpx.bx); io.put(' ');
+            io.put(tpx.cx); io.put_line('');
         end for;
 
         commit;
@@ -309,10 +309,10 @@ test project {project} -setup $SETUP -cleanup $CLEANUP -body {
 
         var tp tup { a int, b string };
         for tp in t1p order (a asc);
-            put(tp.a); put(' ');
-            put(tp.b); put_line('');
+            io.put(tp.a); io.put(' ');
+            io.put(tp.b); io.put_line('');
         end for;
-        put_line('');
+        io.put_line('');
 
         commit;
 
@@ -327,20 +327,20 @@ test project {project} -setup $SETUP -cleanup $CLEANUP -body {
 
         try
             update t1p where a = 2 { c := 7 };
-            put_line('update of attribute not present in virtual table succeeded');
+            io.put_line('update of attribute not present in virtual table succeeded');
         catch err name_error;
             ;
         end try;
 
         for tp in t1p order (a asc);
-            put(tp.a); put(' ');
-            put(tp.b); put_line('');
+            io.put(tp.a); io.put(' ');
+            io.put(tp.b); io.put_line('');
         end for;
-        put_line('');
+        io.put_line('');
 
         try
             delete t1p where c = 10;
-            put_line('delete with ref to attribute not present in virtual table succeeded');
+            io.put_line('delete with ref to attribute not present in virtual table succeeded');
         catch err name_error;
             ;
         end try;
@@ -349,8 +349,8 @@ test project {project} -setup $SETUP -cleanup $CLEANUP -body {
         delete t1p where b = 'u';
 
         for tp in t1p order (a asc);
-            put(tp.a); put(' ');
-            put(tp.b); put_line('');
+            io.put(tp.a); io.put(' ');
+            io.put(tp.b); io.put_line('');
         end for;
 
         commit;
@@ -381,22 +381,22 @@ test join_extend {Natural JOIN/EXTEND}  -setup $SETUP -cleanup $CLEANUP -body {
 
         var tp tup {a int, b string, c int};
         for tp in t1 join t2 order (a asc, b asc, c asc);
-            put(tp.a); put(' ');
-            put(tp.b); put(' ');
-            put(tp.c); put_line('');
+            io.put(tp.a); io.put(' ');
+            io.put(tp.b); io.put(' ');
+            io.put(tp.c); io.put_line('');
         end for;
 
         for tp in t1 join extend t3: { c := if b = 'x' then 0 else 1 } order (a asc, b asc, c asc);
-            put(tp.a); put(' ');
-            put(tp.b); put(' ');
-            put(tp.c); put_line('');
+            io.put(tp.a); io.put(' ');
+            io.put(tp.b); io.put(' ');
+            io.put(tp.c); io.put_line('');
         end for;
 
         -- Empty EXTEND
         var tp2 tuple same_heading_as(t1);
         for tp2 in t1 join extend t3: { } order (a asc, b asc);
-            put(tp2.a); put(' ');
-            put(tp2.b); put_line('');
+            io.put(tp2.a); io.put(' ');
+            io.put(tp2.b); io.put_line('');
         end for;
 
         -- EXTEND adding 2 attributes, using user-def operator
@@ -408,10 +408,10 @@ test join_extend {Natural JOIN/EXTEND}  -setup $SETUP -cleanup $CLEANUP -body {
         var tp3 tup {a int, b string, c int, d string};
         for tp3 in t1 join extend t3: { c := if b = 'x' then 0 else 1, d := dup_string(b) }
                 order (a asc, b asc, c asc);
-            put(tp3.a); put(' ');
-            put(tp3.b); put(' ');
-            put(tp3.c); put(' ');
-            put(tp3.d); put_line('');
+            io.put(tp3.a); io.put(' ');
+            io.put(tp3.b); io.put(' ');
+            io.put(tp3.c); io.put(' ');
+            io.put(tp3.d); io.put_line('');
         end for;
 
         commit;
@@ -471,17 +471,17 @@ test join_rename_nuindex {JOIN with rename and non-unique index}  -setup $SETUP 
 		
 		var tp tup {a int, b int, c int};
 		for tp in r1 join r2 rename { d as b } order(c asc);
-		    put(tp.a); put(' ');
-		    put(tp.b); put(' ');
-		    put(tp.c); put_line('');
+		    io.put(tp.a); io.put(' ');
+		    io.put(tp.b); io.put(' ');
+		    io.put(tp.c); io.put_line('');
 		end for;
 
 		explain r2 rename { d as b } join r1 order();
 		
 		for tp in r2 rename { d as b } join r1 order(c asc);
-		    put(tp.a); put(' ');
-		    put(tp.b); put(' ');
-		    put(tp.c); put_line('');
+		    io.put(tp.a); io.put(' ');
+		    io.put(tp.b); io.put(' ');
+		    io.put(tp.c); io.put_line('');
 		end for;
 
 		commit;
@@ -507,29 +507,29 @@ test union {UNION and D_UNION} -setup $SETUP -cleanup $CLEANUP -body {
 
         var tp tuple same_heading_as(t1);
         for tp in t1 union t2 order (n asc, s asc);
-            put(tp.n); put(' ');
-            put_line(tp.s);
+            io.put(tp.n); io.put(' ');
+            io.put_line(tp.s);
         end for;
-        put_line('');
+        io.put_line('');
 
         for tp in t1 union t3 order (n asc, s asc);
-            put(tp.n); put(' ');
-            put_line(tp.s);
+            io.put(tp.n); io.put(' ');
+            io.put_line(tp.s);
         end for;
-        put_line('');
+        io.put_line('');
 
         try
             for tp in t1 d_union t2 order (n asc, s asc);
-                put(tp.n); put(' ');
-                put_line(tp.s);
+                io.put(tp.n); io.put(' ');
+                io.put_line(tp.s);
             end for;
         catch err element_exists_error;
-            put_line('duplicate tuple caught');
+            io.put_line('duplicate tuple caught');
         end try;
 
         for tp in t1 d_union t3 order (n asc, s asc);
-            put(tp.n); put(' ');
-            put_line(tp.s);
+            io.put(tp.n); io.put(' ');
+            io.put_line(tp.s);
         end for;
     }
 } -result {1 x
@@ -568,13 +568,13 @@ test where {WHERE virtual table} -setup $SETUP -cleanup $CLEANUP -body {
             insert green_parts rel { tup { id 3, colour 'green' },
                     tup { id 4, colour 'red' } },
                     insert pr tup { id 1 };
-            put_line('insert of red part into green parts succeeded');
+            io.put_line('insert of red part into green parts succeeded');
         catch err predicate_violation_error;
             ;
         end try;
-        put_line(cast_as_string(count(parts)));
-        put_line(cast_as_string(count(green_parts)));
-        put_line('');
+        io.put_line(cast_as_string(count(parts)));
+        io.put_line(cast_as_string(count(green_parts)));
+        io.put_line('');
 
         insert green_parts rel { tup { id 3, colour 'green' },
                     tup { id 4, colour 'green' } },
@@ -582,21 +582,21 @@ test where {WHERE virtual table} -setup $SETUP -cleanup $CLEANUP -body {
 
         var part tuple same_heading_as(parts);
         for part in parts order (id asc);
-            put(part.id);
-            put_line('');
+            io.put(part.id);
+            io.put_line('');
         end for;
         commit;
 
-        put_line('');
+        io.put_line('');
 
-        put((tuple from pr).id);
-        put_line('');
+        io.put((tuple from pr).id);
+        io.put_line('');
 
         begin tx;
         try
             delete green_parts rel { tup { id 1, colour 'red' },
                     tup { id 2, colour 'green' } };
-            put_line('delete of red part from green parts succeeded');
+            io.put_line('delete of red part from green parts succeeded');
         catch err not_found_error;
             ;
         end try;
@@ -607,10 +607,10 @@ test where {WHERE virtual table} -setup $SETUP -cleanup $CLEANUP -body {
         delete green_parts where id = 4;
 
         for part in parts order (id asc);
-            put(part.id);
-            put_line('');
+            io.put(part.id);
+            io.put_line('');
         end for;
-        put(count(pr)); put_line('');
+        io.put(count(pr)); io.put_line('');
         commit;
     }
 } -result {2
@@ -649,59 +649,59 @@ test ra {relational algebra} -setup $SETUP -cleanup $CLEANUP -body {
         insert t2 relation { tuple {a 2}, tuple {a 3} };
 
         -- project / INTERSECT
-        put(with (p := t1 { a }, is := p intersect t2): (tuple from is).a); put_line('');
+        io.put(with (p := t1 { a }, is := p intersect t2): (tuple from is).a); io.put_line('');
 
         -- SEMIMINUS / NOT MATCHING
         var tp init tuple from (t1 SEMIMINUS t2);
-        put(tp.a); put(' ');
-        put_line(tp.b);
-        put((tuple from (t2 NOT MATCHING t1)).a); put_line('');
+        io.put(tp.a); io.put(' ');
+        io.put_line(tp.b);
+        io.put((tuple from (t2 NOT MATCHING t1)).a); io.put_line('');
 
         -- remove
-        put((tuple from (t1 where a = 1 { ALL BUT a })).b); put_line('');
+        io.put((tuple from (t1 where a = 1 { ALL BUT a })).b); io.put_line('');
         try
-            put((tuple from (t1 where a = 1 { ALL BUT a })).a); put_line('');
+            io.put((tuple from (t1 where a = 1 { ALL BUT a })).a); io.put_line('');
         catch err name_error;
-            put_line('name_error caught');
+            io.put_line('name_error caught');
         end try;
 
         -- RENAME
-        put((tuple from (v2 rename { a as na })).na); put_line('');
+        io.put((tuple from (v2 rename { a as na })).na); io.put_line('');
 
-        put((tuple from (v2 rename { })).a); put_line('');
+        io.put((tuple from (v2 rename { })).a); io.put_line('');
 
         var tpr init tuple from t1 rename { a as na, b as nb } where na = 2;
-        put(tpr.na); put(' ');
-        put_line(tpr.nb);
+        io.put(tpr.na); io.put(' ');
+        io.put_line(tpr.nb);
 
         -- UPDATE expression
-        put((tuple from (update v2 : { a := a + 1 })).a); put_line('');
+        io.put((tuple from (update v2 : { a := a + 1 })).a); io.put_line('');
 
         -- no-op UPDATE
-        put((tuple from (update v2 : { })).a); put_line('');
+        io.put((tuple from (update v2 : { })).a); io.put_line('');
 
         var va init 1;
-        put_line((tuple from (t1 where a = va)).b);
+        io.put_line((tuple from (t1 where a = va)).b);
 
-        put(is_empty(v2 where a>2)); put_line('');
-        put(is_empty(v2 intersect rel{tup{a 2}})); put_line('');
+        io.put(is_empty(v2 where a>2)); io.put_line('');
+        io.put(is_empty(v2 intersect rel{tup{a 2}})); io.put_line('');
 
         -- Test nested virtual table
         var vv2 virtual v2 where a>=2;
-        put((tuple from vv2).a); put_line('');        
+        io.put((tuple from vv2).a); io.put_line('');        
 
         var tpa tup{a int};
         for tpa in t1 {a} order (a asc);
-            put(tpa.a); put_line('');
+            io.put(tpa.a); io.put_line('');
         end for;
 
         var tpb tup{b string};
         for tpb in t1 {all but a} order (b asc);
-            put_line(tpb.b);
+            io.put_line(tpb.b);
         end for;
 
         for tp in t1 order (b asc);
-            put_line(tp.b);
+            io.put_line(tp.b);
         end for;
 
         commit;
@@ -749,12 +749,12 @@ test virtual_assign {assignment to virtual tables} -setup $SETUP -cleanup $CLEAN
             -- Must fail because of dept_id=2
             insert empd1 tup {emp_id 3, dept_id 2, name 'Miller'};
         catch err predicate_violation_error;
-            put_line('predicate violation caught');
+            io.put_line('predicate violation caught');
         end try;
 
         var emptp tup same_heading_as(empd1);
         for emptp in empd1 order (emp_id asc);
-            put_line(emptp.name);
+            io.put_line(emptp.name);
         end for;
 
         commit;
@@ -785,9 +785,9 @@ test tupleattr {tuple-valued attributes} -setup $SETUP -cleanup $CLEANUP -body {
         -- test tuple comparison in WHERE
         var t tup same_heading_as(tr);
         t := tuple from tr where no = 1 and tp = tup{n 10, s 'one'};
-        put(t.no); put_line('');
-        put(t.tp.n); put_line('');
-        put(t.tp.s); put_line('');
+        io.put(t.no); io.put_line('');
+        io.put(t.tp.n); io.put_line('');
+        io.put(t.tp.s); io.put_line('');
         commit;
     }
 } -result {1
@@ -819,7 +819,7 @@ test updop {user defined update operators} -setup $SETUP -body {
 
         defop();
         insop(r);
-        put((tuple from v).bx); put_line('');
+        io.put((tuple from v).bx); io.put_line('');
         commit;
     }
 } -result {durox
@@ -841,8 +841,8 @@ test roop {user defined read-only operators} -setup $SETUP -cleanup $CLEANUP -bo
             return r;
         end operator;
 
-        put(is_empty(int_to_rel(0))); put_line('');
-        put(count(int_to_rel(3))); put_line('');
+        io.put(is_empty(int_to_rel(0))); io.put_line('');
+        io.put(count(int_to_rel(3))); io.put_line('');
     }
 } -result {TRUE
 3
@@ -863,7 +863,7 @@ test zero_attrs {Tables with zero attributes} -setup $SETUP -body {
         connect('dbenv');
         current_db:='D';
         begin tx;
-        put(ev); put_line('');
+        io.put(ev); io.put_line('');
         commit;
     }
 } -result {RELATION {}
@@ -890,7 +890,7 @@ test logic {Logic operators} -setup $SETUP -cleanup $CLEANUP -body {
         try
             load arr from vo order(i asc, b asc);
         catch err;
-            put_line('invalid order clause');
+            io.put_line('invalid order clause');
         end try;
 
         -- Virtual table as variable
@@ -898,58 +898,58 @@ test logic {Logic operators} -setup $SETUP -cleanup $CLEANUP -body {
 
         var i int;
         for i:= 0 to length(arr)-1;
-			put(arr[i].a);
-			put(' ');
-			put(arr[i].b); put_line('');			
+			io.put(arr[i].a);
+			io.put(' ');
+			io.put(arr[i].b); io.put_line('');			
 		end for;
 
-		put_line('');
+		io.put_line('');
 
         -- Virtual table as expression
         load arr from t where a=1 or b=1 order(a asc, b asc);
 
         for i:= 0 to length(arr)-1;
-			put(arr[i].a);
-			put(' ');
-			put(arr[i].b); put_line('');			
+			io.put(arr[i].a);
+			io.put(' ');
+			io.put(arr[i].b); io.put_line('');			
 		end for;
 
-		put_line('');
+		io.put_line('');
 
         load arr from vo order(a asc, b asc);
         
         for i:= 0 to length(arr)-1;
-			put(arr[i].a);
-			put(' ');
-			put(arr[i].b); put_line('');			
+			io.put(arr[i].a);
+			io.put(' ');
+			io.put(arr[i].b); io.put_line('');			
 		end for;
 
-		put_line('');
+		io.put_line('');
 
         load arr from t where a=1 and b=1 order(a asc, b asc);
         
         for i:= 0 to length(arr)-1;
-			put(arr[i].a);
-			put(' ');
-			put(arr[i].b); put_line('');			
+			io.put(arr[i].a);
+			io.put(' ');
+			io.put(arr[i].b); io.put_line('');			
 		end for;
 
-		put_line('');
+		io.put_line('');
 
         load arr from vx order(a asc, b asc);
         for i:= 0 to length(arr)-1;
-			put(arr[i].a);
-			put(' ');
-			put(arr[i].b); put_line('');			
+			io.put(arr[i].a);
+			io.put(' ');
+			io.put(arr[i].b); io.put_line('');			
 		end for;
 
-		put_line('');
+		io.put_line('');
 
         load arr from t where a=1 xor b=1 order(a asc, b asc);
         for i:= 0 to length(arr)-1;
-			put(arr[i].a);
-			put(' ');
-			put(arr[i].b); put_line('');			
+			io.put(arr[i].a);
+			io.put(' ');
+			io.put(arr[i].b); io.put_line('');			
 		end for;
 
         commit;
@@ -986,10 +986,10 @@ test aggregate {Aggregate operators} -setup $SETUP -cleanup $CLEANUP -body {
 		insert t tup {b true};
 		insert t tup {b false};
 
-		put(all(t, b)); put_line('');
-		put(and(t, b)); put_line('');
-		put(any(t, b)); put_line('');
-		put(or(t, b)); put_line('');
+		io.put(all(t, b)); io.put_line('');
+		io.put(and(t, b)); io.put_line('');
+		io.put(any(t, b)); io.put_line('');
+		io.put(or(t, b)); io.put_line('');
 
         commit;
     }
@@ -1026,15 +1026,15 @@ test summarize {SUMMARIZE} -setup $SETUP -cleanup $CLEANUP -body {
 
         var i int;
         for i:= 0 to length(arr)-1;
-			put(arr[i].a_sum);
-			put(' ');
-			put(arr[i].a_all);
-			put(' ');
-			put(arr[i].a_and);
-			put(' ');
-			put(arr[i].a_any);
-			put(' ');
-			put(arr[i].a_or); put_line('');
+			io.put(arr[i].a_sum);
+			io.put(' ');
+			io.put(arr[i].a_all);
+			io.put(' ');
+			io.put(arr[i].a_and);
+			io.put(' ');
+			io.put(arr[i].a_any);
+			io.put(' ');
+			io.put(arr[i].a_or); io.put_line('');
 		end for;
 
         commit;
@@ -1056,8 +1056,8 @@ test relrel {table with relation attribute} -setup $SETUP -body {
 
 		var tp init tuple from (tuple from t).r;
 
-        put(tp.i); put_line('');
-        put_line(tp.s);
+        io.put(tp.i); io.put_line('');
+        io.put_line(tp.s);
         commit;
     }
 } -result {5
@@ -1088,7 +1088,7 @@ test index {creating index} -setup $SETUP -cleanup $CLEANUP -match glob -body {
 
         var t tuple same_heading_as(r);
         for t in r where ai > 35 and ad = 3.0 order(ai asc);
-            put(t.ai); put_line('');
+            io.put(t.ai); io.put_line('');
         end for;
 
         commit;
@@ -1121,7 +1121,7 @@ test real_default {public real table with default values} -setup $SETUP -cleanup
         try
             insert r1 rel {} {};
         catch err type_mismatch_error;
-            put_line('type_mismatch_error caught');
+            io.put_line('type_mismatch_error caught');
         end try;
 
         insert r1 rel {tup {i 1}, tup {i 2}};
@@ -1143,25 +1143,25 @@ test real_default {public real table with default values} -setup $SETUP -cleanup
         	var r4 real rel {no int, r float, name string}
             	    key {no} key {no, name} default {name 'John Doe'};
         catch err invalid_argument_error;
-            put_line('r4: invalid_argument_error caught');
+            io.put_line('r4: invalid_argument_error caught');
         end try;
 
         var t1 tuple same_heading_as(r1);
         for t1 in r1 order (i asc);
-            put(t1.i); put(' ');
-            put(cast_as_integer(t1.r * 100.0)); put(' ');
-            put(t1.c); put_line('');
+            io.put(t1.i); io.put(' ');
+            io.put(cast_as_integer(t1.r * 100.0)); io.put(' ');
+            io.put(t1.c); io.put_line('');
         end for;
 
         commit;
 
-        put(t2.i); put(' ');
-        put(cast_as_integer(t2.r * 100.0)); put(' ');
-        put(t2.c); put_line('');
+        io.put(t2.i); io.put(' ');
+        io.put(cast_as_integer(t2.r * 100.0)); io.put(' ');
+        io.put(t2.c); io.put_line('');
 
-        put(t3.i); put(' ');
-        put(cast_as_integer(t3.r * 100.0)); put(' ');
-        put(t3.c); put_line('');
+        io.put(t3.i); io.put(' ');
+        io.put(cast_as_integer(t3.r * 100.0)); io.put(' ');
+        io.put(t3.c); io.put_line('');
     }
 } -result {type_mismatch_error caught
 r4: invalid_argument_error caught
@@ -1194,13 +1194,13 @@ test dbconstraint {db/table constraints 1} -setup $SETUP -cleanup $CLEANUP -body
         try
             insert r tuple {no 2, name 'two'};
         catch err predicate_violation_error;
-            put_line('caught predicate violation: ' || THE_MSG(err));
+            io.put_line('caught predicate violation: ' || THE_MSG(err));
         end try;
 
         try
             drop var r;
         catch err in_use_error;
-            put_line('caught in_use_error');
+            io.put_line('caught in_use_error');
         end try;
 
         drop_constraint();
@@ -1247,32 +1247,32 @@ test refconstraint {referential constraint} -setup $SETUP -cleanup $CLEANUP -bod
         try
             insert orders tup{order_id 2, cust_id 3};
         catch err predicate_violation_error;
-            put_line('insert into orders caught');
+            io.put_line('insert into orders caught');
         end try;
 
         try
             insert orders rel{ tup{order_id 2, cust_id 3},
                     tup{order_id 3, cust_id 3}};
         catch err predicate_violation_error;
-            put_line('2nd insert into orders caught');
+            io.put_line('2nd insert into orders caught');
         end try;
 
         try
             delete customers where cust_id=1;
         catch err predicate_violation_error;
-            put_line('delete from customers caught');
+            io.put_line('delete from customers caught');
         end try;
 
         try
             delete customers tup {cust_id 1, name 'James'};
         catch err predicate_violation_error;
-            put_line('2nd delete from customers caught');
+            io.put_line('2nd delete from customers caught');
         end try;
 
         try
             delete customers rel { tup {cust_id 1, name 'James'} };
         catch err predicate_violation_error;
-            put_line('3rd delete from customers caught');
+            io.put_line('3rd delete from customers caught');
         end try;
 
         -- Must succeed
@@ -1367,7 +1367,7 @@ test trconstraint {Transition constraint} -setup $SETUP -body {
         try
             update rs where id = 1 { status := 0 };
         catch err predicate_violation_error;
-            put_line('decreasing status caught');
+            io.put_line('decreasing status caught');
         end try;
     }
 } -result {decreasing status caught
@@ -1401,20 +1401,20 @@ test matching_index {MINUS, INTERSECT, SEMIJOIN, SEMIMINUS with index on table #
         var tp tuple {b int, c string};
 
         tp := tuple from (t1 semijoin t2);
-        put(tp.b); put(' ');
-        put(tp.c); put_line('');
+        io.put(tp.b); io.put(' ');
+        io.put(tp.c); io.put_line('');
         
         tp := tuple from (t1 semiminus t2);
-        put(tp.b); put(' ');
-        put(tp.c); put_line('');
+        io.put(tp.b); io.put(' ');
+        io.put(tp.c); io.put_line('');
         
         tp := tuple from (t1 intersect t2 {b, c});
-        put(tp.b); put(' ');
-        put(tp.c); put_line('');
+        io.put(tp.b); io.put(' ');
+        io.put(tp.c); io.put_line('');
 
         tp := tuple from (t1 minus t2 {b, c});
-        put(tp.b); put(' ');
-        put(tp.c); put_line('');
+        io.put(tp.b); io.put(' ');
+        io.put(tp.c); io.put_line('');
         
         commit;
     }
@@ -1451,7 +1451,7 @@ test index_reopen {creating and filling a table with an index and accessing it a
         current_db := 'D';
 
         begin tx;
-        put(is_empty(dictionary where normword = 'an')); put_line('');
+        io.put(is_empty(dictionary where normword = 'an')); io.put_line('');
         commit;
 
         begin tx;
@@ -1478,12 +1478,12 @@ test utypetable {table with attribute of user-defined type} -setup $SETUP -clean
                        tup{id 2, uv utype('b')}};
 
         try
-            put_line(the_s(utr));
+            io.put_line(the_s(utr));
         catch err type_mismatch_error;
-            put_line('type mismatch caught');
+            io.put_line('type mismatch caught');
         end try;
 
-        put_line(the_s((tuple from utr where id=1).uv));
+        io.put_line(the_s((tuple from utr where id=1).uv));
 
         commit;
 
@@ -1492,7 +1492,7 @@ test utypetable {table with attribute of user-defined type} -setup $SETUP -clean
         try
             drop type utype;
         catch err in_use_error;
-            put_line('caught in_use_error');
+            io.put_line('caught in_use_error');
         end try;
 
         drop var utr;
@@ -1519,12 +1519,12 @@ test implicit_tx {implicit transactions} -setup $SETUP -cleanup $CLEANUP -body {
         insert r tuple { c 'Vanad', n 1234565, d 666.77, s 'Amethyst' };
 
 
-        put((tuple from r where c = 'xo' and n = 77).s);
-        put_line('');
+        io.put((tuple from r where c = 'xo' and n = 77).s);
+        io.put_line('');
 
         delete r where s = 'Gr';
         
-        put((tuple from r).c); put_line('');
+        io.put((tuple from r).c); io.put_line('');
     }
 } -result {Gr
 Vanad
@@ -1546,15 +1546,15 @@ test rollback_r1 {rollback after real table creation} -setup $SETUP -cleanup $CL
         begin tx;
 
         try
-            put_line(cast_as_string(count(r1)));
+            io.put_line(cast_as_string(count(r1)));
         catch err invalid_argument_error;
-            put_line('invalid_argument_error caught (1)');
+            io.put_line('invalid_argument_error caught (1)');
         end try;
 
         try
-            put_line(cast_as_string(count(r2)));
+            io.put_line(cast_as_string(count(r2)));
         catch err invalid_argument_error;
-           put_line('invalid_argument_error caught (2)');
+           io.put_line('invalid_argument_error caught (2)');
         end try;
 
         try
@@ -1596,8 +1596,8 @@ test rollback_r2 {rollback after real table creation followed by re-creating the
         insert r1 tup{no 1};
         insert r2 tup{no 1, s 'truly relational'};
 
-        put_line(cast_as_string((tuple from r1).no));
-        put_line((tuple from r2).s);
+        io.put_line(cast_as_string((tuple from r1).no));
+        io.put_line((tuple from r2).s);
 
         commit;
     }
@@ -1624,15 +1624,15 @@ test rollback_v1 {rollback after virtual table creation} -setup $SETUP -cleanup 
         begin tx;
 
         try
-            put_line(cast_as_string(count(v1)));
+            io.put_line(cast_as_string(count(v1)));
         catch err invalid_argument_error;
-            put_line('invalid_argument_error caught (1)');
+            io.put_line('invalid_argument_error caught (1)');
         end try;
 
         try
-            put_line((tuple from v2).s);
+            io.put_line((tuple from v2).s);
         catch err invalid_argument_error;
-           put_line('invalid_argument_error caught (2)');
+           io.put_line('invalid_argument_error caught (2)');
         end try;
 
         try
@@ -1679,8 +1679,8 @@ test rollback_v2 {rollback after real table creation followed by re-creating the
         insert v1 tup{no 1};
         insert v2 tup{no 1, s 'truly relational'};
 
-        put_line(cast_as_string((tuple from r1).no));
-        put_line((tuple from v2).s);
+        io.put_line(cast_as_string((tuple from r1).no));
+        io.put_line((tuple from v2).s);
 
         commit;
     }
@@ -1709,19 +1709,19 @@ test rollback_p1 {rollback after virtual table creation} -setup $SETUP -cleanup 
         begin tx;
 
         try
-            put_line(cast_as_string(count(p1)));
+            io.put_line(cast_as_string(count(p1)));
         catch err invalid_argument_error;
-            put_line('invalid argument or not found (1)');
+            io.put_line('invalid argument or not found (1)');
         catch err name_error;
-            put_line('invalid argument or not found (1)');
+            io.put_line('invalid argument or not found (1)');
         end try;
 
         try
-            put_line((tuple from p2).s);
+            io.put_line((tuple from p2).s);
         catch err invalid_argument_error;
-            put_line('invalid argument or not found (2)');
+            io.put_line('invalid argument or not found (2)');
         catch err name_error;
-            put_line('invalid argument or not found (2)');
+            io.put_line('invalid argument or not found (2)');
         end try;
 
         commit;
@@ -1746,7 +1746,7 @@ test double_rtable {creating a table with the same name twice} -setup $SETUP -cl
             var r real rel { n int, s string } key { n };
             commit;
         catch err element_exists_error;
-            put_line('2nd creation caught');
+            io.put_line('2nd creation caught');
         end try;
 
         begin tx;
@@ -1758,7 +1758,7 @@ test double_rtable {creating a table with the same name twice} -setup $SETUP -cl
         insert r tup { id '01', s 'Test' };
         var tp init tuple from r;
         commit;
-        put_line(tp.id || ' ' || tp.s);
+        io.put_line(tp.id || ' ' || tp.s);
     }
 } -result {2nd creation caught
 01 Test
@@ -1778,14 +1778,14 @@ test serial {system-generated attribute values} -setup $SETUP -cleanup $CLEANUP 
         try ;
             insert r tup {no 2, name 'Tst'};
         catch err element_exists_error;
-            put_line('insert caught');
+            io.put_line('insert caught');
         end try;
         insert r tup{name 'Def'};
         var tp tup same_heading_as(r);
         for tp in r order (no asc);
-            put(tp.no);
-            put(' ');
-            put_line(tp.name);
+            io.put(tp.no);
+            io.put(' ');
+            io.put_line(tp.name);
         end for;
         drop var r;
         commit;
@@ -1807,9 +1807,9 @@ test rename_real {rename table} -setup $SETUP -cleanup $CLEANUP -body {
         var v virtual r where no = 1;
         
         rename var v as v2;
-        put((tuple from v2).no);
-        put(' ');
-        put_line((tuple from v2).name);
+        io.put((tuple from v2).no);
+        io.put(' ');
+        io.put_line((tuple from v2).name);
     }
 } -result {1 yo
 }
@@ -1840,9 +1840,9 @@ test rename_real_syskey {rename table with system key} -setup $SETUP -cleanup $C
         insert r2 tup{};
         var tp tup same_heading_as(r2);
         for tp in r2 order (no asc);
-            put(tp.no);
-            put(' ');
-            put_line(tp.name);
+            io.put(tp.no);
+            io.put(' ');
+            io.put_line(tp.name);
         end for;
         drop var r2;
         commit;
@@ -1880,15 +1880,15 @@ test array_attr {table with array-valued attribute} -setup $SETUP -cleanup $CLEA
         var tp tuple same_heading_as(r);
 
         for tp in r where index_of(names, 'Hydrogen') >= 0 order(no asc);
-            put_line(tp.name);
-            put_line(tp.names[length(tp.names) - 1]);
+            io.put_line(tp.name);
+            io.put_line(tp.names[length(tp.names) - 1]);
         end for;
 
-        put_line('');
+        io.put_line('');
 
         for tp in vr order(no asc);
-            put_line(tp.name);
-            put_line(tp.names[length(tp.names) - 1]);
+            io.put_line(tp.name);
+            io.put_line(tp.names[length(tp.names) - 1]);
         end for;
 
         commit;

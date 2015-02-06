@@ -49,19 +49,19 @@ RDB_add_fcgi_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     fcgi_accept_params[0].typ = &RDB_BOOLEAN;
     fcgi_accept_params[0].update = RDB_TRUE;
 
-    if (RDB_put_upd_op(opmapp, "fcgi_accept", 1, fcgi_accept_params,
+    if (RDB_put_upd_op(opmapp, "fcgi.accept", 1, fcgi_accept_params,
             &op_fcgi_accept, ecp) != RDB_OK)
         return RDB_ERROR;
 
     fcgi_set_exit_status_params[0].typ = &RDB_INTEGER;
     fcgi_set_exit_status_params[0].update = RDB_FALSE;
 
-    if (RDB_put_upd_op(opmapp, "fcgi_set_exit_status", 1,
+    if (RDB_put_upd_op(opmapp, "fcgi.set_exit_status", 1,
             fcgi_set_exit_status_params,
             &op_fcgi_set_exit_status, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (RDB_put_upd_op(opmapp, "fcgi_finish", 0, NULL,
+    if (RDB_put_upd_op(opmapp, "fcgi.finish", 0, NULL,
             &op_fcgi_finish, ecp) != RDB_OK)
         return RDB_ERROR;
 

@@ -42,7 +42,7 @@ test module {Modules} \
             end operator;
  
             operator puts(s string) updates {};
-                put_line(s);
+                io.put_line(s);
             end operator;
 
             module modmod_mod;
@@ -80,112 +80,112 @@ test module {Modules} \
 
         commit;
 
-        put(m.mul2(5));
-        put_line('');
+        io.put(m.mul2(5));
+        io.put_line('');
  
         m.puts('Yip');
 
-        put(m.modmod_mod.dec(17));
-        put_line('');
+        io.put(m.modmod_mod.dec(17));
+        io.put_line('');
 
         var m int init 7;
         call m.modmod_mod.mul2upd(m);
-        put(m);
-        put_line('');
+        io.put(m);
+        io.put_line('');
     }]
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
 
-        put(m.mul2(53));
-        put_line('');
+        io.put(m.mul2(53));
+        io.put_line('');
  
         m.puts('/&;');
 
-        put(m.modmod_mod.dec(10));
-        put_line('');
+        io.put(m.modmod_mod.dec(10));
+        io.put_line('');
 
         var mv int init 22;
         call m.modmod_mod.mul2upd(mv);
-        put(mv);
-        put_line('');
+        io.put(mv);
+        io.put_line('');
         
         try
-            put('Yo'.dec(4));
-            put_line('syntax error expected from read-only op invocation');
+            io.put('Yo'.dec(4));
+            io.put_line('syntax error expected from read-only op invocation');
         catch err syntax_error;
             ;
         end try;
 
         try
             7.puts('yo');
-            put_line('syntax error expected from update op invocation');
+            io.put_line('syntax error expected from update op invocation');
         catch err syntax_error;
             ;
         end try;
 
         var t1v m.t1;
         
-        put(the_comp(t1v)); put_line('');
+        io.put(the_comp(t1v)); io.put_line('');
         
         the_comp(t1v) := 4;
 
-        put(the_comp(t1v)); put_line('');
+        io.put(the_comp(t1v)); io.put_line('');
 
         t1v := m.t1(7);
 
-        put(the_comp(t1v)); put_line('');
+        io.put(the_comp(t1v)); io.put_line('');
 
         drop var t1v;
 
 
         var t2v m.t2;
 
-        put(the_comp1(t2v)); put(' ');
-        put(the_comp2(t2v)); put(' ');
-        put(the_comp3(t2v)); put_line('');
+        io.put(the_comp1(t2v)); io.put(' ');
+        io.put(the_comp2(t2v)); io.put(' ');
+        io.put(the_comp3(t2v)); io.put_line('');
 
         the_comp1(t2v) := 4;
         the_comp2(t2v) := 'foo';
         the_comp3(t2v) := 4.2;
 
-        put(the_comp1(t2v)); put(' ');
-        put(the_comp2(t2v)); put(' ');
-        put(the_comp3(t2v)); put_line('');
+        io.put(the_comp1(t2v)); io.put(' ');
+        io.put(the_comp2(t2v)); io.put(' ');
+        io.put(the_comp3(t2v)); io.put_line('');
 
         t2v := m.pr(5, 'bar', 2.04);
 
-        put(the_comp1(t2v)); put(' ');
-        put(the_comp2(t2v)); put(' ');
-        put(the_comp3(t2v)); put_line('');
+        io.put(the_comp1(t2v)); io.put(' ');
+        io.put(the_comp2(t2v)); io.put(' ');
+        io.put(the_comp3(t2v)); io.put_line('');
 
         drop var t2v;
 
 
         -- Test public table
-        put_line('');
+        io.put_line('');
         begin tx;
 
         insert m.p tup { n 1, s 'blah' };
         insert m.p tup { n 2, s 'blooo' };
 
-        put_line((tuple from (m.p where n = 1)).s);
+        io.put_line((tuple from (m.p where n = 1)).s);
 
         update m.p where n = 2 { s := 'bl o' };
 
-        put_line((tuple from (m.p where n = 2)).s);
+        io.put_line((tuple from (m.p where n = 2)).s);
 
         delete m.p where n = 2;
 
-        put_line((tuple from m.p).s);
+        io.put_line((tuple from m.p).s);
 
         m.p := rel { tup { n 10, s 'abc def' }, tup { n 50, s 'Xy !' } };
 
         var tp tup same_heading_as(m.p);
         for tp in m.p order(n asc);
-            put(tp.n);
-            put(' ');
-            put_line(tp.s);
+            io.put(tp.n);
+            io.put(' ');
+            io.put_line(tp.s);
         end for;
 
         commit;

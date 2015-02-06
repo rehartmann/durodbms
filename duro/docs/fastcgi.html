@@ -42,44 +42,40 @@ A value of FALSE indicates that an error occured and the program should exit.
 <p>A tiny example program:
 
 <pre>
-#!/usr/local/durodbms.0.24/bin/fcgi_durodt
+#!/usr/local/durodbms.0.25/bin/fcgi_durodt
 
 var request_accepted boolean;
 var counter init 0;
 
 while true;
-     fcgi_accept(request_accepted);
+     fcgi.accept(request_accepted);
 
      -- Exit loop if fcgi_accept() did not succeed
      if not request_accepted then
          leave;
      end if;
 
-     put_line('Content-Type: text/html');
-     put_line('');
-     put_line('&lt;html&gt;&lt;title&gt;FCGI Hello&lt;/title&gt;');
-     put_line('&lt;body&gt;');
-     put('&lt;p&gt;Hello! Request number ');
-     put(counter);
-     put(' running on host ');
-     put_line(getenv('SERVER_NAME'));
+     io.put_line('Content-Type: text/html');
+     io.put_line('');
+     io.put_line('<html><title>FCGI Hello</title>');
+     io.put_line('<body>');
+     io.put('<p>Hello! Request number ');
+     io.put(counter);
+     io.put(' running on host ');
+     io.put_line(os.getenv('SERVER_NAME'));
 
      counter := counter + 1;
 end while;
 </pre>
 
 <p>Below a slightly more complex example program which returns
-the name of all tables whose name matches a pattern passed with the request.
+the name of all real and virtual tables whose name matches a pattern passed with the request.
 The programm accesses the database <var>D</var>
 stored in the database environment <var>/var/db/dbenv</var>.
 
 <pre>
-#!/usr/local/durodbms.0.24/bin/fcgi_durodt
+#!/usr/local/durodbms.0.25/bin/fcgi_durodt
 
-/*
- * Connect to the database environment befor the loop
- * so it has to be done only once
- */
 connect('/var/db/dbenv');
 current_db := 'D';
 
@@ -88,41 +84,36 @@ var request_tp tup { pattern string };
 var request_accepted bool;
 
 while true;
-    fcgi_accept(request_accepted);
+    fcgi.accept(request_accepted);
     if not request_accepted then
         leave;
     end if;
 
-    request_method := getenv('REQUEST_METHOD');
+    request_method := os.getenv('REQUEST_METHOD');
 
     if request_method = 'POST' or request_method = 'GET' then
         if request_method = 'GET' then
-            www_form_to_tuple(request_tp, getenv('QUERY_STRING'));
+            www.form_to_tuple(request_tp, os.getenv('QUERY_STRING'));
         else
             var form_data binary;
-            read(form_data, cast_as_int(getenv('CONTENT_LENGTH')));
-            www_form_to_tuple(request_tp, cast_as_string(form_data));
+            read(form_data, cast_as_int(os.getenv('CONTENT_LENGTH')));
+            www.form_to_tuple(request_tp, cast_as_string(form_data));
         end if;
 
-        put_line('Content-Type: text/html');
-        put_line('');
-        put_line('&lt;html&gt;');
-        put_line('&lt;head&gt;');
-        put_line('&lt;title&gt;Tables&lt;/title&gt;');
-        put_line('&lt;body&gt;');
-        put('&lt;p&gt;Tables matching pattern ');
-        put(request_tp.pattern);
-        put_line(':');
+        io.put_line('Content-Type: text/html');
+        io.put_line('');
+        io.put_line('<html>');
+        io.put_line('<head>');
+        io.put_line('<title>Tables</title>');
+        io.put_line('<body>');
+        io.put('<p>Tables matching pattern ');
+        io.put(request_tp.pattern);
+        io.put_line(':');
 
         var tablenames array tuple{tablename string};
 
-        -- Start a transaction before accessing the catalog tables
+        -- Read catalog tables
         begin tx;
-        
-        /*
-         * Read the names of real and virtual tables and convert
-         * the result to an array
-         */
         load tablenames from (sys_rtables { tablename } union sys_vtables { tablename })
                 where the_name(tablename) like request_tp.pattern
                 order (tablename asc);
@@ -130,25 +121,26 @@ while true;
 
         var i int;
         for i := 0 to length(tablenames) - 1;
-            put('&lt;p&gt;');
-            put_line(tablenames[i].tablename);
+            io.put('<p>');
+            io.put_line(tablenames[i].tablename);
         end for;
 
-        put_line('&lt;/html&gt;');
+        io.put_line('</html>');
     else
-        put_line('Status: 405 Method Not Allowed');
-        put_line('');
+        io.put_line('Status: 405 Method Not Allowed');
+        io.put_line('');
     end if;
 end while; 
 </pre>
 
 <p>The program processes both GET and POST requests.
-It uses www_form_to_tuple to convert the query string or form data to a tuple. 
+It uses www.form_to_tuple to convert the query string or form data to a tuple. 
 
 <p>For example, invoking the program using the URL
 http://localhost/fcgi-bin/gettables.td?pattern=*
 (assuming the program is stored under the name getttables.td
 in the fcgi-bin direcory of the local webserver) 
 lists all tables in the database environment <em>/var/db/dbenv</em>.
+Make sure the environment directory and its files are readable and writable by the webserver.
 
 </html>

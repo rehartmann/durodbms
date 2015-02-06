@@ -171,7 +171,7 @@ respectively.
 <p>DuroDBMS supports the usual arithmetical operators. Example:
 
 <pre>
-no db> put_line(cast_as_string(2 + 3 * 4));
+no db> io.put_line(cast_as_string(2 + 3 * 4));
 14
 no db>
 </pre>
@@ -180,7 +180,7 @@ no db>
 Here it is used to convert the integer result to a string.
 In Duro D/T, type conversion is always explicit.
 
-<p>For details on the built-in operator <code>put_line</code>, see the chapter on I/O below.
+<p>For details on the built-in operator <code>io.put_line</code>, see the chapter on I/O below.
 
 <h2 id="comments">Comments</h2>
 
@@ -206,16 +206,16 @@ comment. */
 
 <pre>
 no db> var s string;
-no db> put_line('Please enter a number:'); get_line(s);
+no db> put_line('Please enter a number:'); io.get_line(s);
 Please enter a number:
 2
 no db> var n init cast_as_integer(s);
 no db> if n &lt; 0 then
-no db>     put_line('Negative');
-no db>     put_line('Sign is -');
+no db>     io.put_line('Negative');
+no db>     io.put_line('Sign is -');
 no db> else
-no db>     put_line('Positive');
-no db>     put_line('Sign is +');
+no db>     io.put_line('Positive');
+no db>     io.put_line('Sign is +');
 no db> end if;
 Positive
 Sign is +
@@ -227,19 +227,19 @@ But the following form, which more strictly adheres to <cite>TTM</cite>, is supp
 
 <pre>
 no db> var s string;
-no db> put_line('Please enter a number:'); get_line(s);
+no db> io.put_line('Please enter a number:'); get_line(s);
 Please enter a number:
 -2
 no db> var n init cast_as_integer(s);
 no db> if n &lt; 0 then
 no db>     begin;
-no db>         put_line('Negative');
-no db>         put_line('Sign is -');
+no db>         io.put_line('Negative');
+no db>         io.put_line('Sign is -');
 no db>     end;
 no db> else
 no db>     begin;
-no db>         put_line('Positive');
-no db>         put_line('Sign is +');
+no db>         io.put_line('Positive');
+no db>         io.put_line('Sign is +');
 no db>     end;
 no db> end if;
 Negative
@@ -254,8 +254,8 @@ no db>
 <pre>
 var i integer;
 for i := 1 to 5;
-    put(i);
-    put_line('');
+    io.put(i);
+    io.put_line('');
 end for;
 1
 2
@@ -275,11 +275,11 @@ no db>
 var s string;
 var n integer;
 
-get_line(s);
+io.get_line(s);
 n := cast_as_integer(s);
 while n < 0;
-    put_line('This number is not positive. Please enter again:');
-    get_line(s);
+    io.put_line('This number is not positive. Please enter again:');
+    io.get_line(s);
     n := cast_as_integer(s);
 end while;
 </pre>
@@ -293,7 +293,7 @@ end while;
 no db> var s string;
 no db> while true;
 no db>     put('type "exit" to exit: ');
-no db>     get_line(s);
+no db>     io.get_line(s);
 no db>     if s = 'exit' then
 no db>         leave;
 no db>     end if;
@@ -313,17 +313,17 @@ See <cite>TTM</cite>, chapter 5 for details.
 <pre>
 no db> var s string;
 no db> var n integer;
-no db> put_line('Please enter a number:'); get_line(s);
+no db> io.put_line('Please enter a number:'); get_line(s);
 Please enter a number:
 0
 no db> n := cast_as_integer(s);
 no db> case
 no db>     when n > 0 then
-no db>         put_line('Positive');
+no db>         io.put_line('Positive');
 no db>     when n < 0 then
-no db>         put_line('Negative');
+no db>         io.put_line('Negative');
 no db>     else
-no db>         put_line('Zero');
+no db>         io.put_line('Zero');
 no db> end case;
 Zero
 no db>
@@ -382,7 +382,7 @@ no db> update tp { i := 4, s := 'Four' };
 <p>Accessing tuple attributes:
 
 <pre>
-no db> put_line(tp.s);
+no db> io.put_line(tp.s);
 Four
 no db>
 </pre>
@@ -390,7 +390,7 @@ no db>
 <p>Alternative form:
 
 <pre>
-no db> put_line(s from tp);
+no db> io.put_line(s from tp);
 Four
 no db>
 </pre>
@@ -748,7 +748,7 @@ D> var a array tup same_heading_as(r);
 D> load a from r order();
 D> var i integer;
 D> for i:= 0 to length(a)-1;
-D>   put(a[i]); put_line('');
+D>   io.put(a[i]); io.put_line('');
 D> end for;
 </pre>
 
@@ -761,21 +761,21 @@ using FOR instead of using LOAD:
 <pre>
 D> var tp tup same_heading_as(r);
 D> for tp in r order();
-D>   put(tp); put_line('');
+D>   io.put(tp); io.put_line('');
 D> end for;
 </pre>
 
 <h2 id="io">I/O</h2>
 
-<p>Duro D/T provides several I/O operators.
+<p>Duro D/T provides a number of I/O operators.
 
-<h3>put_line</h3>
+<h3>io.put_line</h3>
 
-<p><code>put_line</code> is an update operator that takes one argument
+<p><code>io.put_line</code> is an update operator that takes one argument
 of type <code>string</code> and prints it on standard output, followed by a newline.
 
 <pre>
-no db> put_line('hello');
+no db> io.put_line('hello');
 hello
 no db>
 </pre>
@@ -784,36 +784,40 @@ no db>
 is optional. The following is also valid:
 
 <pre>
-no db> call put_line('hello');
+no db> call io.put_line('hello');
 hello
 no db>
 </pre>
 
-<h3>put</h3>
+<h3>io.put</h3>
 
 <p><code>put</code> works like <code>put_line</code>, except that its output is not
 followed by a newline. Unlike <code>put_line</code>, it is defined
 for all built-in basic data types and also for tuple and relation arguments:
 
 <pre>
-no db> put('2 + 2 = '); put(2 + 2); put_line('');
+no db> io.put('2 + 2 = '); io.put(2 + 2); io.put_line('');
 2 + 2 = 4
-no db> put(true); put_line('');
+no db> io.put(true); io.put_line('');
 TRUE
-no db> put(tup {a 1, b 'bee'}); put_line('');
+no db> io.put(tup {a 1, b 'bee'}); io.put_line('');
 TUPLE { a 1, b 'bee' }
-no db> put(rel {tup {I 1, C 'foo'}, tup {I 2, C 'bar'}}); put_line('');
+no db> io.put(rel {tup {I 1, C 'foo'}, tup {I 2, C 'bar'}}); io.put_line('');
 RELATION { TUPLE { i 1, c 'foo' }, TUPLE { i 2, c 'bar' }}
 no db>
 </pre>
 
-<h3>get_line</h3>
+<h3>io.get_line</h3>
 
-<p><code>get_line</code> is defined as follows:</p>
+<p><code>io.get_line</code> is defined as follows:</p>
+
+<p>MODULE io;
 
 <p>OPERATOR get_line(line string) UPDATES { line };</p>
 
-<p><code>get_line</code> reads one line from standard input and stores
+<p>END MODULE;
+
+<p><code>io.get_line</code> reads one line from standard input and stores
 it in <code>line</code>, without the trailing newline.</p>
 
 <p>File I/O is also supported. See the <a href="../api/html/io-ops.html">list of I/O operators</a>.
@@ -828,9 +832,9 @@ var l string;
 -- Read input lines
 var lno init 0;
 while true;
-    get_line(l);
+    io.get_line(l);
     -- Leave loop on EOF
-    if eof() then
+    if io.eof() then
         leave;
     end if;
     insert lines tup { lineno lno, line l };
@@ -840,7 +844,7 @@ end while;
 -- Write lines in sorted order
 var lt tup same_heading_as(lines);
 for lt in lines order(line asc);
-    put_line(lt.line);
+    io.put_line(lt.line);
 end for;
 </pre>
 
@@ -918,7 +922,7 @@ D> empno := empno('A1234');
 type_constraint_violation_error: empno
 D> empno := empno('E1234');
 1 element affected.
-D> put_line(the_no(empno));
+D> io.put_line(the_no(empno));
 E1234
 D> 
 </pre>
@@ -997,13 +1001,13 @@ end implement;
 D> var p point;
 D> p := cartesian(1.0, 1.0);
 1 element affected.
-D> put(the_x(p)); put_line('');
+D> io.put(the_x(p)); io.put_line('');
 1.0
-D> put(the_y(p)); put_line('');
+D> io.put(the_y(p)); io.put_line('');
 1.0
-D> put(the_r(p)); put_line('');
+D> io.put(the_r(p)); io.put_line('');
 1.4142135624
-D> put(the_theta(p)); put_line('');
+D> io.put(the_theta(p)); io.put_line('');
 0.7853981634
 D> 
 </pre>

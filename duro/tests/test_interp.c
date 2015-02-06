@@ -39,9 +39,9 @@ main(void)
     assert(Duro_init_interp(&interp, &ec, RDB_db_env(dbp),
             RDB_db_name(dbp)) == RDB_OK);
 
-    if (Duro_dt_execute_str("put_line ('Test');"
+    if (Duro_dt_execute_str("io.put_line ('Test');"
             "begin tx;"
-            "put_line (cast_as_string(count(depts)));"
+            "io.put_line (cast_as_string(count(depts)));"
             "commit;",
             &interp, &ec) != RDB_OK) {
         Duro_print_error(RDB_get_err(&ec));
