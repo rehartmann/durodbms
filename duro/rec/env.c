@@ -1,15 +1,15 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2012 Rene Hartmann.
+ * Copyright (C) 2003, 2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
 #include "env.h"
 #include "recmap.h"
 #include <gen/types.h>
+
 #include <stdlib.h>
-#include <stdarg.h>
 #include <errno.h>
 
 /** @defgroup env Database environment functions 
@@ -75,7 +75,6 @@ open_env(const char *path, RDB_environment **envpp, int bdb_flags)
     
     return RDB_OK;
 }
-
 
 /**
  * RDB_open_env opens a database environment identified by the
@@ -190,7 +189,7 @@ RDB_env_trace(RDB_environment *envp)
 }
 
 /**
- * Raise an error that corresponds to the error code <var>errcode</var>.
+ * Raises an error that corresponds to the error code <var>errcode</var>.
  * <var>errcode</var> can be a POSIX error code,
  * a Berkeley DB error code or an error code from the record layer.
  *
