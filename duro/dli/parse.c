@@ -1603,6 +1603,7 @@ RDB_parse_stmt_string(const char *txt, RDB_exec_context *ecp)
     pret = yyparse();
     yy_delete_buffer(RDB_parse_buffer);
     if (RDB_parse_get_interactive()) {
+        yy_delete_buffer(oldbuf);
         RDB_parse_buffer = yy_scan_string("");
     } else {
         yy_switch_to_buffer(oldbuf);
