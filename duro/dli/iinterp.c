@@ -695,11 +695,11 @@ cleanup:
 
 static int
 Duro_exec_stmt(RDB_parse_node *, Duro_interp *interp, RDB_exec_context *,
-        return_info *);
+        Duro_return_info *);
 
 static int
 exec_stmts(RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context *ecp,
-        return_info *retinfop)
+        Duro_return_info *retinfop)
 {
     int ret;
     while (stmtp != NULL) {
@@ -713,7 +713,7 @@ exec_stmts(RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context *ecp,
 
 static int
 exec_if(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp,
-        return_info *retinfop)
+        Duro_return_info *retinfop)
 {
     RDB_bool b;
     int ret;
@@ -744,7 +744,7 @@ exec_if(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp,
 
 static int
 exec_case(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp,
-        return_info *retinfop)
+        Duro_return_info *retinfop)
 {
     RDB_parse_node *whenp;
     int ret;
@@ -790,7 +790,7 @@ exec_case(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp,
 
 static int
 exec_while(RDB_parse_node *nodep, RDB_parse_node *labelp, Duro_interp *interp,
-        RDB_exec_context *ecp, return_info *retinfop)
+        RDB_exec_context *ecp, Duro_return_info *retinfop)
 {
     int ret;
     RDB_bool b;
@@ -842,7 +842,7 @@ exec_while(RDB_parse_node *nodep, RDB_parse_node *labelp, Duro_interp *interp,
 
 static int
 exec_for(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
-        Duro_interp *interp, RDB_exec_context *ecp, return_info *retinfop)
+        Duro_interp *interp, RDB_exec_context *ecp, Duro_return_info *retinfop)
 {
     int ret;
     RDB_object endval;
@@ -934,7 +934,7 @@ error:
 
 static int
 exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
-        Duro_interp *interp, RDB_exec_context *ecp, return_info *retinfop)
+        Duro_interp *interp, RDB_exec_context *ecp, Duro_return_info *retinfop)
 {
     int ret;
     RDB_expression *tbexp;
@@ -1411,7 +1411,7 @@ exec_typeimpl(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
     }
 
     if (nodep->nextp->val.token == TOK_AS) {
-        return_info retinfo;
+        Duro_return_info retinfo;
 
         ityp = Duro_parse_node_to_type_retry(nodep->nextp->nextp, interp, ecp);
         if (ityp == NULL)
@@ -1459,23 +1459,17 @@ error:
 static void
 free_opdata(RDB_operator *op)
 {
-    int i;
     RDB_exec_context ec;
-    struct Duro_op_data *opdatap = RDB_operator_u_data(op);
+    Duro_op_data *opdatap = RDB_operator_u_data(op);
 
     /* Initialize temporary execution context */
     RDB_init_exec_context(&ec);
 
     /* Delete code */
-    RDB_parse_del_nodelist(opdatap->stmtlistp, &ec);
+    RDB_parse_del_node(opdatap->rootp, &ec);
 
     RDB_destroy_exec_context(&ec);
 
-    /* Delete arguments */
-
-    for (i = 0; i < opdatap->argnamec; i++) {
-        RDB_free(opdatap->argnamev[i]);
-    }
     RDB_free(opdatap->argnamev);
     RDB_free(opdatap);
 }
@@ -1489,8 +1483,8 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     int ret;
     varmap_node vars;
     RDB_parse_node *codestmtp, *attrnodep;
-    struct Duro_op_data *opdatap;
-    return_info retinfo;
+    Duro_op_data *opdatap;
+    Duro_return_info retinfo;
     varmap_node *ovarmapp;
     int isselector;
     RDB_type *getter_utyp = NULL;
@@ -1532,11 +1526,12 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
             attrnodep = attrnodep->nextp->nextp;
         }
 
-        opdatap = RDB_alloc(sizeof(struct Duro_op_data), ecp);
+        opdatap = RDB_alloc(sizeof(Duro_op_data), ecp);
         if (opdatap == NULL) {
             RDB_free(argnamev);
             return RDB_ERROR;
         }
+        opdatap->rootp = codestmtp;
         opdatap->stmtlistp = codestmtp->val.children.firstp->nextp->nextp->nextp->nextp
                 ->nextp->nextp->nextp->nextp->val.children.firstp;
         opdatap->argnamec = argc;
@@ -1640,7 +1635,7 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     RDB_parse_node *codestmtp;
     RDB_parse_node *attrnodep;
     varmap_node *ovarmapp;
-    struct Duro_op_data *opdatap;
+    Duro_op_data *opdatap;
     RDB_operator *parent_op;
     int lineno;
     RDB_type *setter_utyp = NULL;
@@ -1680,11 +1675,12 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
             attrnodep = attrnodep->nextp->nextp;
         }
 
-        opdatap = RDB_alloc(sizeof(struct Duro_op_data), ecp);
+        opdatap = RDB_alloc(sizeof(Duro_op_data), ecp);
         if (opdatap == NULL) {
             RDB_free(argnamev);
             return RDB_ERROR;
         }
+        opdatap->rootp = codestmtp;
         opdatap->stmtlistp = codestmtp->val.children.firstp->nextp->nextp->nextp->nextp
                     ->nextp->nextp->nextp->nextp->nextp->nextp->val.children.firstp;
         opdatap->argnamec = argc;
@@ -2136,7 +2132,7 @@ exec_opdrop(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *
 
 static int
 exec_return(RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context *ecp,
-        return_info *retinfop)
+        Duro_return_info *retinfop)
 {    
     if (stmtp->kind != RDB_NODE_TOK) {
         RDB_expression *retexp;
@@ -2193,7 +2189,7 @@ exec_raise(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
 
 static int
 exec_catch(const RDB_parse_node *catchp, const RDB_type *errtyp,
-        Duro_interp *interp, RDB_exec_context *ecp, return_info *retinfop)
+        Duro_interp *interp, RDB_exec_context *ecp, Duro_return_info *retinfop)
 {
     int ret;
     RDB_object *objp;
@@ -2234,7 +2230,7 @@ error:
 
 static int
 exec_try(const RDB_parse_node *nodep, Duro_interp *interp,
-        RDB_exec_context *ecp, return_info *retinfop)
+        RDB_exec_context *ecp, Duro_return_info *retinfop)
 {
 	int ret;
 	RDB_parse_node *catchp;
@@ -2287,7 +2283,7 @@ exec_try(const RDB_parse_node *nodep, Duro_interp *interp,
 /* Implements both MODULE .. END MODULE and IMPLEMENT MODULE .. END IMPLEMENT. */
 static int
 exec_moduledef(RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context *ecp,
-        return_info *retinfop)
+        Duro_return_info *retinfop)
 {
     int ret;
     RDB_object oldmodname;
@@ -2531,7 +2527,7 @@ exec_leave(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
 
 static int
 Duro_exec_stmt(RDB_parse_node *stmtp, Duro_interp *interp,
-        RDB_exec_context *ecp, return_info *retinfop)
+        RDB_exec_context *ecp, Duro_return_info *retinfop)
 {
     int ret = RDB_OK;
     RDB_parse_node *firstchildp;

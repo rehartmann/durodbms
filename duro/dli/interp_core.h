@@ -24,13 +24,14 @@ enum {
 typedef struct Duro_return_info {
     RDB_type *typ;  /* Return type */
     RDB_object *objp;   /* Return value */
-} return_info;
+} Duro_return_info;
 
-struct Duro_op_data {
+typedef struct {
+    RDB_parse_node *rootp;
     RDB_parse_node *stmtlistp;
     int argnamec;
     char **argnamev;
-};
+} Duro_op_data;
 
 int
 Duro_add_varmap(Duro_interp *, RDB_exec_context *);

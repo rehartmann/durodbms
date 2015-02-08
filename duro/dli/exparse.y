@@ -1054,7 +1054,7 @@ statement: assignment ';' {
     }
     ;
 
-    module_impl:TOK_IMPLEMENT TOK_MODULE TOK_ID ';' module_impl_stmt_list TOK_END TOK_IMPLEMENT ';' {
+    module_impl: TOK_IMPLEMENT TOK_MODULE TOK_ID ';' module_impl_stmt_list TOK_END TOK_IMPLEMENT ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
