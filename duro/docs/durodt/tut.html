@@ -25,6 +25,7 @@
 <li><a href="#user-ops">User-defined operators</a>
 <li><a href="#user-types">User-defined types</a>
 <li><a href="#exception">Exception handling</a>
+<li><a href="#modules">Modules</a>
 <li><a href="#performance">Performance</a>
 </ul>
 
@@ -1072,6 +1073,28 @@ catch err;
 ...
 
 end try;
+</pre>
+
+<h2 id="modules">Modules</h2>
+
+<p>Operators, types, and public tables can be organized in modules.
+
+<p>A module consists of a definition and an (optional) implementation part.
+
+<p>Example:
+
+<pre>
+module mymodule;
+
+    operator myprint(string s) updates {};
+        io.put_line(s);
+    end operator;
+
+end module;
+
+implement module mymodule;
+
+end implement;
 </pre>
 
 <h2 id="performance">Performance</h2>
