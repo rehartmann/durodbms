@@ -6,11 +6,11 @@
 #include <tests/point.h>
 
 /*
- * Defines selector, setters, and getters for type POINT
+ * Defines selector, setters, and getters for type point
  */
 
 int
-POINT(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+point(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *valp)
 {
     i_point ipt;
@@ -22,7 +22,7 @@ POINT(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
 }
 
 int
-POINT_set_X(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+point_set_x(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     i_point *iptp = RDB_obj_irep(argv[0], NULL);
@@ -33,7 +33,7 @@ POINT_set_X(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ec
 }
 
 int
-POINT_get_X(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+point_get_x(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *valp)
 {
     i_point *iptp = RDB_obj_irep((RDB_object *) argv[0], NULL);
@@ -44,7 +44,7 @@ POINT_get_X(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ec
 }
 
 int
-POINT_set_Y(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+point_set_y(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     i_point *iptp = RDB_obj_irep(argv[0], NULL);
@@ -55,7 +55,7 @@ POINT_set_Y(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ec
 }
 
 int
-POINT_get_Y(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+point_get_y(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *valp)
 {
     i_point *iptp = RDB_obj_irep((RDB_object *) argv[0], NULL);
@@ -70,7 +70,7 @@ POINT_get_Y(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ec
  */
 
 int
-POLAR(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+polar(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *valp)
 {
     i_point ipt;
@@ -84,7 +84,7 @@ POLAR(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
 }
 
 int
-POINT_set_THETA(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+point_set_theta(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     i_point *iptp = RDB_obj_irep((RDB_object *) argv[0], NULL);
@@ -98,7 +98,7 @@ POINT_set_THETA(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context
 }
 
 int
-POINT_get_THETA(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+point_get_theta(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *valp)
 {
     i_point *iptp = RDB_obj_irep((RDB_object *) argv[0], NULL);
@@ -109,7 +109,7 @@ POINT_get_THETA(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context
 }
 
 int
-POINT_set_LENGTH(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+point_set_length(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     i_point *iptp = RDB_obj_irep(argv[0], NULL);
@@ -123,7 +123,7 @@ POINT_set_LENGTH(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_contex
 }
 
 int
-POINT_get_LENGTH(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+point_get_length(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *valp)
 {
     i_point *iptp = RDB_obj_irep((RDB_object *) argv[0], NULL);

@@ -5,11 +5,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#ifdef _WIN32
 #define SHLIB "plus"
-#else
-#define SHLIB "libplus"
-#endif
 
 void
 test_defop(RDB_database *dbp, RDB_exec_context *ecp)
@@ -30,11 +26,11 @@ test_defop(RDB_database *dbp, RDB_exec_context *ecp)
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     assert(ret == RDB_OK);
 
-    ret = RDB_create_ro_op("PLUS", 2, plusparamv, &RDB_INTEGER, SHLIB,
+    ret = RDB_create_ro_op("plus", 2, plusparamv, &RDB_INTEGER, SHLIB,
             "RDBU_plus", NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
-    ret = RDB_create_update_op("ADD", 2, addparamv, SHLIB, "RDBU_add",
+    ret = RDB_create_update_op("add", 2, addparamv, SHLIB, "RDBU_add",
             NULL, ecp, &tx);
     assert(ret == RDB_OK);
 

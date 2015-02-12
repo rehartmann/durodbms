@@ -224,13 +224,13 @@ if env['PLATFORM'] == 'win32':
     testbins.append(testenv.SharedLibrary(['tests/point.c', 'tests/point.def'],
             LIBS = env['LIBS'] + ['duro']))
 else:
-    testbins.append(testenv.SharedLibrary(['tests/point.c']))
+    testbins.append(testenv.SharedLibrary(['tests/point.c'], SHLIBPREFIX = ''))
 
 if env['PLATFORM'] == 'win32':
     testbins.append(testenv.SharedLibrary(['tests/plus.c', 'tests/plus.def'],
             LIBS = env['LIBS'] + ['duro']))
 else:
-    testbins.append(testenv.SharedLibrary(['tests/plus.c']))
+    testbins.append(testenv.SharedLibrary(['tests/plus.c'], SHLIBPREFIX = ''))
 
 test_scripts = Split('tests/aggr.test tests/constraints.test tests/convert.test '
         'tests/ctests.test tests/db2.test tests/deedum.test tests/index.test '

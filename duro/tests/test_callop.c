@@ -28,13 +28,13 @@ test_callop(RDB_database *dbp, RDB_exec_context *ecp)
     argv[0] = &arg1;
     argv[1] = &arg2;
 
-    ret = RDB_call_ro_op_by_name("PLUS", 2, argv, ecp, &tx, &retval);
+    ret = RDB_call_ro_op_by_name("plus", 2, argv, ecp, &tx, &retval);
     if (ret != RDB_OK) {
         goto error;
     }
     assert(RDB_obj_int(&retval) == 4);
 
-    ret = RDB_call_update_op_by_name("ADD", 2, argv, ecp, &tx);
+    ret = RDB_call_update_op_by_name("add", 2, argv, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -83,7 +83,7 @@ test_useop(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
     RDB_add_arg(exp, argp);
-    argp = RDB_ro_op("PLUS", ecp);
+    argp = RDB_ro_op("plus", ecp);
     if (argp == NULL) {
         RDB_del_expr(exp, ecp);
         goto error;

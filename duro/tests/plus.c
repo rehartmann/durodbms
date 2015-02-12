@@ -1,7 +1,7 @@
 #include <rel/rdb.h>
 
 /*
- * Implementation of user-defined read-only operator PLUS
+ * Implementation of user-defined read-only operator 'plus'
  */
 int
 RDBU_plus(int argc, RDB_object *argv[], RDB_operator *op,
