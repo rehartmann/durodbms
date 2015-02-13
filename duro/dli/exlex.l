@@ -796,11 +796,15 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
         if (c == EOF)
         {
             char buf[40];
-            if (RDB_parse_interactive)
+            if (RDB_parse_interactive) {
+                yy_delete_buffer(YY_CURRENT_BUFFER);
+                RDB_parse_buffer = yy_scan_string("");
                 sprintf(buf, "unterminated comment");
-            else
+            } else {
                 sprintf(buf, "unterminated comment at line %d", yylineno);
+            }
             RDB_raise_syntax(buf, RDB_parse_ecp);
+            yylval = NULL;
             return TOK_INVALID;
         }
     }
