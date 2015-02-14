@@ -1075,6 +1075,8 @@ catch err;
 end try;
 </pre>
 
+<p>Note that there must at least one statement between CATCH and END TRY.
+
 <h2 id="modules">Modules</h2>
 
 <p>Operators, types, and public tables can be organized in modules.
@@ -1086,13 +1088,18 @@ end try;
 <pre>
 module mymodule;
 
-    operator myprint(string s) updates {};
+    operator myprint(s string) updates {};
         io.put_line(s);
     end operator;
+
+    type mytype possrep { s string } init mymodule.mytype("");
 
 end module;
 
 implement module mymodule;
+
+    implement type mytype;
+    end implement;
 
 end implement;
 </pre>
