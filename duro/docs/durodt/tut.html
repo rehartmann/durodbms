@@ -1082,26 +1082,74 @@ end try;
 <p>Operators, types, and public tables can be organized in modules.
 
 <p>A module consists of a definition and an (optional) implementation part.
+Database tables cannot be part of a module.
+
+<p>In practice, it may be a good idea to clearly distinguish between
+application modules containing application code and public tables on the one hand
+and 'base modules' containing types and operators used in databases on the other,
+avoiding a mutual dependency between databases and modules.
 
 <p>Example:
 
 <pre>
-module mymodule;
+module emp;
 
-    operator myprint(s string) updates {};
-        io.put_line(s);
-    end operator;
-
-    type mytype possrep { s string } init mymodule.mytype("");
+    type empno possrep { no int } init emp.empno(0);
 
 end module;
 
-implement module mymodule;
+implement module emp;
 
-    implement type mytype;
+    implement type empno;
     end implement;
 
 end implement;
+
+var employees real relation { empno emp.empno, name string } key { empno };
+
+module empapp;
+
+    var employees public relation { empno emp.empno, name string } key { empno };
+
+    operator print_employees() updates {};
+        var tp tuple same_heading_as(empapp.employees);
+
+        for tp in empapp.employees order (name asc);
+            io.put(the_no(tp.empno));
+            io.put(' ');
+            io.put_line(tp.name);
+        end for;
+    end operator;
+
+end module;
+
+implement module empapp;
+
+    map employees employees;
+
+end implement;
+</pre>
+
+<p>Operators, types, and public tables contained in a module can be drop
+by surrounding the respective DROP statements by MODULE .. END MODULE;
+
+<p>Example:
+
+<pre>
+module empapp;
+
+    drop operator print_employees;
+    drop var employees;
+
+end module;
+
+drop var employees;
+
+module emp;
+
+    drop type empno;
+
+end module;
 </pre>
 
 <h2 id="performance">Performance</h2>

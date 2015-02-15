@@ -1,7 +1,7 @@
 /*
- * Catalog functions.
+ * Catalog functions and definitions.
  *
- * Copyright (C) 2003, 2014 Rene Hartmann.
+ * Copyright (C) 2003, 2014, 2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -1066,9 +1066,14 @@ delete_vtable(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (exprp == NULL) {
         return RDB_ERROR;
     }
-    ret = RDB_delete(txp->dbp->dbrootp->vtables_tbp, exprp, ecp, txp);
+    ret = (int) RDB_delete(txp->dbp->dbrootp->vtables_tbp, exprp, ecp, txp);
     if (ret == RDB_ERROR)
         goto cleanup;
+    if (ret == 0) {
+        RDB_raise_name(RDB_table_name(tbp), ecp);
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
 
     ret = RDB_delete(txp->dbp->dbrootp->dbtables_tbp, exprp, ecp, txp);
 
@@ -1078,7 +1083,10 @@ cleanup:
     return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
 }
 
-/* Delete a public table from the catalog */
+/*
+ * Delete a public table from the catalog.
+ * Raise RDB_NAME_ERROR if the table does not exist.
+s */
 int
 RDB_cat_delete_ptable(const char *tbname, RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -1097,7 +1105,13 @@ RDB_cat_delete_ptable(const char *tbname, RDB_exec_context *ecp, RDB_transaction
         goto cleanup;
     }
 
-    ret = RDB_delete(txp->dbp->dbrootp->ptables_tbp, exprp, ecp, txp);
+    ret = (int) RDB_delete(txp->dbp->dbrootp->ptables_tbp, exprp, ecp, txp);
+    if (ret == 0) {
+        /* No table entry deleted */
+        RDB_raise_name(tbname, ecp);
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
     if (ret == RDB_ERROR)
         goto cleanup;
 
@@ -1132,8 +1146,14 @@ RDB_cat_delete(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         return delete_rtable(tbp, ecp, txp);
 
     /* Can be a virtual or public table - delete from both catalog tables */
-    if (delete_vtable(tbp, ecp, txp) != RDB_OK)
+    if (delete_vtable(tbp, ecp, txp) == RDB_OK)
+        return RDB_OK;
+
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NAME_ERROR) {
         return RDB_ERROR;
+    }
+
+    /* name_error means it's probable a public table */
     return RDB_cat_delete_ptable(RDB_table_name(tbp), ecp, txp);
 }
 
@@ -2186,8 +2206,6 @@ RDB_cat_get_rtable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
     int keyc;
     RDB_string_vec *keyv;
     RDB_type *tbtyp;
-    int indexc;
-    RDB_tbindex *indexv;
     int defvalc;
     RDB_hashmap *defvalmap = NULL;
     const char *recmapname = NULL;
@@ -2331,16 +2349,17 @@ RDB_cat_get_rtable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
     }
     RDB_free_keys(keyc, keyv);
 
-    indexc = RDB_cat_get_indexes(name, txp->dbp->dbrootp, ecp, txp, &indexv);
-    if (indexc < 0) {
-        ret = indexc;
-        goto error;
-    }
-
     if (!usr) {
         recmapname = RDB_table_name(tbp);
     }
     if (recmapname != NULL) {
+        RDB_tbindex *indexv;
+        int indexc = RDB_cat_get_indexes(name, txp->dbp->dbrootp, ecp, txp, &indexv);
+        if (indexc < 0) {
+            ret = indexc;
+            goto error;
+        }
+
         ret = RDB_open_stored_table(tbp, txp->envp, recmapname,
                 indexc, indexv, ecp, txp);
         if (ret != RDB_OK) {

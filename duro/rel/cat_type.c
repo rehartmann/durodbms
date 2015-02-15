@@ -1,5 +1,5 @@
 /*
- * cat_type.c
+ * Catalog functions dealing with user-defined types.
  *
  *  Created on: 02.09.2012
  *      Author: Rene Hartmann
@@ -599,6 +599,35 @@ error:
     return NULL;
 }
 
+static RDB_bool
+opname_is_selector(const char *opname, const char *typename, const char *repname)
+{
+    char *typelastdotp;
+    size_t opmodlen;
+    char *lastdotp = strrchr(opname, '.');
+    if (lastdotp == NULL) {
+        /* Operator is not in a module, simply compare with rep name */
+        return (RDB_bool) (strcmp(opname, repname) == 0);
+    }
+
+    /* Check if the unqualified operator name equals rep name */
+    if (strcmp(lastdotp + 1, repname) != 0)
+        return RDB_FALSE;
+
+    /* Check if operator module and type module are equal */
+
+    typelastdotp = strrchr(typename, '.');
+    if (typelastdotp == NULL)
+        return RDB_FALSE;
+
+    opmodlen = lastdotp - opname - 1;
+    if (opmodlen != (typelastdotp - typename - 1)) {
+        return RDB_FALSE;
+    }
+
+    return (RDB_bool) (strncmp(opname, typename, opmodlen) == 0);
+}
+
 /*
  * Raise in_use_error if there is a real table with an attribute of type <name>
  */
@@ -695,8 +724,8 @@ RDB_cat_check_type_used(RDB_type *typ, RDB_exec_context *ecp,
             RDB_destroy_obj(&tpl, ecp);
             return RDB_ERROR;
         }
-        if (strcmp(RDB_tuple_get_string(&tpl, "name"),
-                typ->def.scalar.repv[0].name) != 0) {
+        if (!opname_is_selector(RDB_tuple_get_string(&tpl, "name"),
+                RDB_type_name(typ), typ->def.scalar.repv[0].name)) {
             /* Not a selector */
             RDB_raise_in_use(RDB_tuple_get_string(&tpl, "name"), ecp);
             RDB_destroy_obj(&tpl, ecp);

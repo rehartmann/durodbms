@@ -1,7 +1,7 @@
 /*
- * $Id$
+ * Stored table functions.
  *
- * Copyright (C) 2005-2012 Rene Hartmann.
+ * Copyright (C) 2005-2009, 2012-2014 Rene Hartmann.
  * See the file COPYING for redistribution information.
  *
  * Functions for physical storage of tables
@@ -650,19 +650,33 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
 
     if (txp != NULL && !RDB_tx_is_running(txp)) {
         RDB_raise_no_running_tx(ecp);
+
+        /* free indexv because it can't be attached to *tbp */
+        if (indexc > 0) {
+            for (i = 0; i < indexc; i++) {
+                RDB_free_tbindex(&indexv[i]);
+            }
+            RDB_free(indexv);
+        }
         return RDB_ERROR;
     }
 
     tbp->val.tb.stp = RDB_alloc(sizeof(RDB_stored_table), ecp);
     if (tbp->val.tb.stp == NULL) {
+        if (indexc > 0) {
+            for (i = 0; i < indexc; i++) {
+                RDB_free_tbindex(&indexv[i]);
+            }
+            RDB_free(indexv);
+        }
         return RDB_ERROR;
     }
 
-    RDB_init_hashtable(&tbp->val.tb.stp->attrmap, RDB_DFL_MAP_CAPACITY, &hash_str,
-            &str_equals);
-
     tbp->val.tb.stp->indexc = indexc;
     tbp->val.tb.stp->indexv = indexv;
+
+    RDB_init_hashtable(&tbp->val.tb.stp->attrmap, RDB_DFL_MAP_CAPACITY, &hash_str,
+            &str_equals);
 
     ret = key_fnos(tbp, &flenv, NULL, NULL, ecp);
     if (ret != RDB_OK)

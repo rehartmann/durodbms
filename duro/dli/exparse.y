@@ -440,20 +440,7 @@ statement: assignment ';' {
     }
     | var_drop
     | type_drop
-    | TOK_DROP TOK_OPERATOR TOK_ID ';' {
-        $$ = new_parse_inner();
-        if ($$ == NULL) {
-            RDB_parse_del_node($1, RDB_parse_ecp);
-            RDB_parse_del_node($2, RDB_parse_ecp);
-            RDB_parse_del_node($3, RDB_parse_ecp);
-            RDB_parse_del_node($4, RDB_parse_ecp);
-            YYABORT;
-        }
-        RDB_parse_add_child($$, $1);
-        RDB_parse_add_child($$, $2);
-        RDB_parse_add_child($$, $3);
-        RDB_parse_add_child($$, $4);
-    }
+    | op_drop
     | TOK_DROP TOK_CONSTRAINT TOK_ID ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
@@ -996,9 +983,25 @@ statement: assignment ';' {
     | public_var_def
     | type_def
     | module_def
+    | op_drop
     | type_drop
     | var_drop
     ;
+
+    op_drop: TOK_DROP TOK_OPERATOR TOK_ID ';' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            RDB_parse_del_node($4, RDB_parse_ecp);
+            YYABORT;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+    }
 
     type_drop: TOK_DROP TOK_TYPE TOK_ID ';' {
         $$ = new_parse_inner();

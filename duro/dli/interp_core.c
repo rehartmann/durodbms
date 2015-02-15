@@ -188,12 +188,24 @@ int
 Duro_exec_vardrop(const RDB_parse_node *nodep, Duro_interp *interp,
         RDB_exec_context *ecp)
 {
-    const char *varname = RDB_expr_var_name(nodep->exp);
+    RDB_object nameobj;
+    const char *varname;
     RDB_object *objp = NULL;
 
     if (interp->current_foreachp != NULL) {
         RDB_raise_not_supported("Dropping variables not supported in FOR .. IN loops", ecp);
         return RDB_ERROR;
+    }
+
+    RDB_init_obj(&nameobj);
+
+    /* If we're within MODULE, prepend module name */
+    if (*RDB_obj_string(&interp->module_name) != '\0') {
+        if (Duro_module_q_id(&nameobj, RDB_expr_var_name(nodep->exp), interp, ecp) != RDB_OK)
+            goto error;
+        varname = RDB_obj_string(&nameobj);
+    } else {
+        varname = RDB_expr_var_name(nodep->exp);
     }
 
     /* Try to look up local variable */
@@ -202,14 +214,14 @@ Duro_exec_vardrop(const RDB_parse_node *nodep, Duro_interp *interp,
         if (objp != NULL) {
             /* Delete key by putting NULL value */
             if (RDB_hashmap_put(&interp->current_varmapp->map, varname, NULL) != RDB_OK)
-                return RDB_ERROR;
+                goto error;
         }
     }
     if (objp == NULL) {
         objp = RDB_hashmap_get(&interp->root_varmap, varname);
         if (objp != NULL) {
             if (RDB_hashmap_put(&interp->root_varmap, varname, NULL) != RDB_OK)
-                return RDB_ERROR;
+                goto error;
         }
     }
 
@@ -224,15 +236,21 @@ Duro_exec_vardrop(const RDB_parse_node *nodep, Duro_interp *interp,
 
     if (interp->txnp == NULL) {
         RDB_raise_name(varname, ecp);
-        return RDB_ERROR;
+        goto error;
     }
 
     if (RDB_drop_table_by_name(varname, ecp, &interp->txnp->tx) != RDB_OK)
-        return RDB_ERROR;
+        goto error;
 
     if (RDB_parse_get_interactive())
         printf("Table %s dropped.\n", varname);
+
+    RDB_destroy_obj(&nameobj, ecp);
     return RDB_OK;
+
+error:
+    RDB_destroy_obj(&nameobj, ecp);
+    return RDB_ERROR;
 }
 
 int

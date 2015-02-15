@@ -2,7 +2,7 @@
 #define RDB_RDB_H
 
 /*
-$Id$
+Main DuroDBMS header file.
 
 This file is part of DuroDBMS, a relational database management system.
 Copyright (C) 2003-2013 Rene Hartmann.

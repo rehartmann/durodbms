@@ -1,8 +1,6 @@
 #ifndef RDB_TYPEIMPL_H
 #define RDB_TYPEIMPL_H
 
-/* $Id$ */
-
 /*
 This file is part of Duro, a relational database management system.
 Copyright (C) 2003-2013 Rene Hartmann.

@@ -1,8 +1,8 @@
 /*
- * utype.c - functions for user-defined types
+ * Functions for user-defined types.
  *
- *  Created on: 28.10.2012
- *      Author: Rene Hartmann
+ * Copyright (C) 2012-2015 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #include "rdb.h"
@@ -395,12 +395,26 @@ RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 
     if (typ->def.scalar.sysimpl) {
         /* Delete system-generated selector */
-        if (RDB_drop_op(typ->def.scalar.repv[0].name, ecp, txp) != RDB_OK) {
+
+        RDB_object selnameobj;
+
+        RDB_init_obj(&selnameobj);
+
+        if (RDB_possrep_to_selector(&selnameobj, typ->def.scalar.repv[0].name,
+                RDB_type_name(typ), ecp) != RDB_OK)
+        {
+            RDB_destroy_obj(&selnameobj, ecp);
+            return RDB_ERROR;
+        }
+
+        if (RDB_drop_op(RDB_obj_string(&selnameobj), ecp, txp) != RDB_OK) {
             if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR) {
+                RDB_destroy_obj(&selnameobj, ecp);
                 return RDB_ERROR;
             }
             RDB_clear_err(ecp);
         }
+        RDB_destroy_obj(&selnameobj, ecp);
     }
 
     if (RDB_type_is_ordered(typ)) {

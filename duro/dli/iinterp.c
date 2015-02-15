@@ -1,5 +1,5 @@
 /*
- * Function for interpreting statements
+ * Statement interpretation functions.
  *
  * Copyright (C) 2007, 2014 Rene Hartmann.
  * See the file COPYING for redistribution information.
@@ -2076,6 +2076,8 @@ static int
 exec_opdrop(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
 {
     int ret;
+    RDB_object nameobj;
+    const char *opname;
     RDB_transaction tmp_tx;
 
     /*
@@ -2088,6 +2090,17 @@ exec_opdrop(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *
         return RDB_ERROR;
     }
 
+    RDB_init_obj(&nameobj);
+
+    /* If we're within MODULE, prepend module name */
+    if (*RDB_obj_string(&interp->module_name) != '\0') {
+        if (Duro_module_q_id(&nameobj, RDB_expr_var_name(nodep->exp), interp, ecp) != RDB_OK)
+            goto error;
+        opname = RDB_obj_string(&nameobj);
+    } else {
+        opname = RDB_expr_var_name(nodep->exp);
+    }
+
     /*
      * If a transaction is not active, start transaction if a database environment
      * is available
@@ -2097,23 +2110,23 @@ exec_opdrop(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *
 
         if (interp->envp == NULL) {
             RDB_raise_resource_not_found("no connection", ecp);
-            return RDB_ERROR;
+            goto error;
         }
 
         dbp = Duro_get_db(interp, ecp);
         if (dbp == NULL)
-            return RDB_ERROR;
+            goto error;
 
         if (RDB_begin_tx(ecp, &tmp_tx, dbp, NULL) != RDB_OK) {
-            return RDB_ERROR;
+            goto error;
         }
     }
 
-    if (RDB_drop_op(RDB_expr_var_name(nodep->exp), ecp,
+    if (RDB_drop_op(opname, ecp,
             interp->txnp == NULL ? &tmp_tx : &interp->txnp->tx) != RDB_OK) {
         if (interp->txnp == NULL)
             RDB_rollback(ecp, &tmp_tx);
-        return RDB_ERROR;
+        goto error;
     }
 
     if (interp->txnp == NULL) {
@@ -2122,8 +2135,14 @@ exec_opdrop(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *
         ret = RDB_OK;
     }
     if ((ret == RDB_OK) && RDB_parse_get_interactive())
-        printf("Operator %s dropped.\n", RDB_expr_var_name(nodep->exp));
+        printf("Operator %s dropped.\n", opname);
+
+    RDB_destroy_obj(&nameobj, ecp);
     return ret;
+
+error:
+    RDB_destroy_obj(&nameobj, ecp);
+    return RDB_ERROR;
 }
 
 static int
@@ -3115,11 +3134,12 @@ Duro_dt_execute(FILE *infp, Duro_interp *interp, RDB_exec_context *ecp)
         if (Duro_process_stmt(interp, ecp) != RDB_OK) {
             RDB_object *errobjp = RDB_get_err(ecp);
             if (errobjp != NULL) {
+                fprintf(stderr, "error in statement at or near line %d: ", interp->err_line);
                 if (RDB_parse_get_interactive()) {
                     Duro_print_error(errobjp);
                     RDB_parse_flush_buf();
                 } else {
-                    fprintf(stderr, "error in statement at or near line %d: ", interp->err_line);
+
                     goto error;
                 }
                 RDB_clear_err(ecp);
