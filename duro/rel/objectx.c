@@ -1,8 +1,10 @@
 /*
- * pobject.c
+ * objectx.c
  *
  *  Created on: 29.09.2013
- *      Author: Rene Hartmann
+ *
+ * Copyright (C) 2013-2015 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #include "rdb.h"
@@ -888,9 +890,13 @@ RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
                     dstvalp->val.bin.len = srcvalp->val.bin.len;
                 }
             } else {
-                datap = RDB_alloc(srcvalp->val.bin.len, ecp);
-                if (datap == NULL)
-                    return RDB_ERROR;
+                if (srcvalp->val.bin.len == 0) {
+                    datap = NULL;
+                } else {
+                    datap = RDB_alloc(srcvalp->val.bin.len, ecp);
+                    if (datap == NULL)
+                        return RDB_ERROR;
+                }
                 dstvalp->kind = RDB_OB_BIN;
                 dstvalp->val.bin.datap = datap;
                 dstvalp->val.bin.len = srcvalp->val.bin.len;

@@ -1,5 +1,5 @@
 /*
- * $Id$
+ * I/O operators.
  *
  * Copyright (C) 2011-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.

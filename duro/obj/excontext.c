@@ -1,5 +1,5 @@
 /*
- * $Id$
+ * Execution context functions.
  *
  * Copyright (C) 2005, 2013 Rene Hartmann.
  * See the file COPYING for redistribution information.
@@ -17,8 +17,8 @@
  */
 
 /** RDB_init_exec_context initializes the RDB_exec_context structure given by
-<var>ecp</var>. RDB_init_exec_context must be called before any other
-operation can be performed on a RDB_exec_context structure.
+ * <var>ecp</var>. RDB_init_exec_context must be called before any other
+ * operation can be performed on a RDB_exec_context structure.
  */
 void
 RDB_init_exec_context(RDB_exec_context *ecp)
@@ -28,7 +28,7 @@ RDB_init_exec_context(RDB_exec_context *ecp)
 }
 
 /** RDB_destroy_exec_context frees all resources associated with a
-RDB_exec_context.
+ * RDB_exec_context.
  */
 void
 RDB_destroy_exec_context(RDB_exec_context *ecp)
@@ -39,7 +39,8 @@ RDB_destroy_exec_context(RDB_exec_context *ecp)
     RDB_destroy_hashmap(&ecp->pmap);
 }
 
-/** <strong>RDB_raise_err</strong> initializes a RDB_object structure,
+/**
+<strong>RDB_raise_err</strong> initializes a RDB_object structure,
 makes it the error associated with the RDB_exec_context given
 by <var>ecp</var>, and returns a pointer to it.
 A previously raised error is overwritten. 
@@ -57,7 +58,7 @@ A pointer to the error, or NULL if the call fails.
 The call may fail and return NULL if an error was already
 associated with the RDB_exec_context and destroying this error
 failed.
- */
+*/
 RDB_object *
 RDB_raise_err(RDB_exec_context *ecp)
 {

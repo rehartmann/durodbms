@@ -1,7 +1,7 @@
 /*
- * $Id$
+ * Operator map functions.
  *
- * Copyright (C) 2007-2012 Rene Hartmann.
+ * Copyright (C) 2007-2009, 2011-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 

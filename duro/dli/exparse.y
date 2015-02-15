@@ -1,5 +1,5 @@
 /*
- * $Id$
+ * Grammar definition for Duro D/T.
  *
  * Copyright (C) 2004-2009, 2011-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.

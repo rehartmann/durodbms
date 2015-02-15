@@ -4,8 +4,6 @@
 #include <rel/rdb.h>
 
 /*
- * $Id$
- *
  * Copyright (C) 2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */

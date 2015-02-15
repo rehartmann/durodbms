@@ -1,7 +1,7 @@
 /*
- * $Id$
+ * Built-in types.
  *
- * Copyright (C) 2004 Rene Hartmann.
+ * Copyright (C) 2004-2009, 2011-2014 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 

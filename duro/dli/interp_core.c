@@ -1,8 +1,10 @@
 /*
- * interp_core.c
+ * interp_core.c - Interpreter core functionality such as handling of variables
  *
  *  Created on: 24.08.2012
- *      Author: Rene Hartmann
+ *
+ * Copyright (C) 2012-2014 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #include "interp_core.h"

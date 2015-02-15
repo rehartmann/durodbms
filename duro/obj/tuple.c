@@ -1,7 +1,7 @@
 /*
- * $Id$
+ * Tuple functions.
  *
- * Copyright (C) 2003-2013 Rene Hartmann.
+ * Copyright (C) 2003-2009, 2011-2013 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 

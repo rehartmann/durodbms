@@ -1,7 +1,5 @@
 /*
- * $Id$
- *
- * Copyright (C) 2012 Rene Hartmann.
+ * Copyright (C) 2012-2025 Rene Hartmann.
  * See the file COPYING for redistribution information.
  *
  * Main program of Duro D/T, an interpreter for Duro's variant of Tutorial D.

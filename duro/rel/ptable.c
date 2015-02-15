@@ -1,8 +1,10 @@
 /*
- * ptable.c
+ * Public table functions.
  *
  *  Created on: 03.08.2013
- *      Author: rene
+ *
+ * Copyright (C) 2013-2014 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #include <rel/rdb.h>
@@ -92,10 +94,12 @@ RDB_create_public_table_from_type(const char *name,
         goto error;
     }
 
+    RDB_del_nonscalar_type(reltyp, ecp);
     RDB_free(allkey.strv);
     return RDB_OK;
 
 error:
+    RDB_del_nonscalar_type(reltyp, ecp);
     RDB_free(allkey.strv);
     return RDB_ERROR;
 }

@@ -1,7 +1,5 @@
 /*
- * $Id$
- *
- * Copyright (C) 2003-2012 Rene Hartmann.
+ * Copyright (C) 2003-2009, 2011-2014 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 

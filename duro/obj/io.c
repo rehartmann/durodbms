@@ -1,5 +1,5 @@
 /*
- * $Id$
+ * I/O functions and definitions.
  *
  * Copyright (C) 2012 Rene Hartmann.
  * See the file COPYING for redistribution information.

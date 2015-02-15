@@ -1,5 +1,5 @@
 /*
- * $Id$
+ * Catalog functions.
  *
  * Copyright (C) 2003, 2014 Rene Hartmann.
  * See the file COPYING for redistribution information.

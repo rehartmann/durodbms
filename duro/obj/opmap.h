@@ -2,12 +2,10 @@
 #define RDB_OPMAP_H
 
 /*
- * $Id$
- *
- * Copyright (C) 2006-2012 Rene Hartmann.
- * See the file COPYING for redistribution information.
- *
  * Functions for storing operator in a hashmap.
+ *
+ * Copyright (C) 2013-2014 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #include "object.h"

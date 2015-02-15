@@ -1,7 +1,7 @@
 /*
- * $Id$
+ * Database functions.
  *
- * Copyright (C) 2003-2012 Rene Hartmann.
+ * Copyright (C) 2003-2009, 2011-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -1249,6 +1249,12 @@ table_name_dep_check(const char *tbname, RDB_object *tbp,
     RDB_expression *tbexp;
     RDB_object *dtbp = RDB_get_table(tbname, ecp, txp);
     if (dtbp == NULL) {
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NAME_ERROR) {
+            /* If tbname is not found, that's OK
+             * (may happen when tbname is an unimplemented public table)
+             */
+            return RDB_OK;
+        }
         return RDB_ERROR;
     }
 

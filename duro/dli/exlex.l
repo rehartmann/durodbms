@@ -1,7 +1,7 @@
 /*
- * $Id$
+ * Scanner definition for Duro D/T.
  *
- * Copyright (C) 2003-2015 Rene Hartmann.
+ * Copyright (C) 2003-2009, 2012-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 

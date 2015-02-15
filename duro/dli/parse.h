@@ -2,9 +2,7 @@
 #define RDB_PARSE_H
 
 /*
- * $Id$
- *
- * Copyright (C) 2003-2012 Rene Hartmann.
+ * Copyright (C) 2003-2009, 2011-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 

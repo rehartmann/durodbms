@@ -1,7 +1,7 @@
 /*
- * $Id$
+ * Type functions.
  *
- * Copyright (C) 2003-2013 Rene Hartmann.
+ * Copyright (C) 2003-2009, 2011-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 

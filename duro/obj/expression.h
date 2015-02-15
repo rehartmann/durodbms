@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * Copyright (C) 2013 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */

@@ -1,5 +1,5 @@
 /*
- * $Id$
+ * Expression functions.
  *
  * Copyright (C) 2004, 2012 Rene Hartmann.
  * See the file COPYING for redistribution information.

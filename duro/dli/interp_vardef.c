@@ -1,8 +1,11 @@
 /*
- * interp_vardef.c
+ * Interpreter functions for variable definition.
  *
  *  Created on: 16.03.2014
- *      Author: Rene Hartmann
+ *
+ * Copyright (C) 2014 Rene Hartmann.
+ * See the file COPYING for redistribution information.
+ *
  */
 
 #include "interp_core.h"
@@ -511,12 +514,7 @@ Duro_exec_vardef_real(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_conte
         printf("Table %s created.\n", varname);
 
     if (freekeys) {
-        int i;
-
-        for (i = 0; i < keyc; i++) {
-            RDB_free(keyv[i].strv);
-        }
-        RDB_free(keyv);
+        RDB_free_keys(keyc, keyv);
     }
 
     return RDB_OK;
@@ -533,13 +531,7 @@ error:
         }
 
         if (keyv != NULL && freekeys) {
-            int i;
-
-            for (i = 0; i < keyc; i++) {
-                if (keyv[i].strv != NULL)
-                    RDB_free(keyv[i].strv);
-            }
-            RDB_free(keyv);
+            RDB_free_keys(keyc, keyv);
         }
 
         RDB_destroy_exec_context(&ec);
@@ -617,12 +609,7 @@ Duro_exec_vardef_public(RDB_parse_node *nodep, Duro_interp *interp,
         printf("Public table %s created.\n", varname);
 
     if (freekeys) {
-        int i;
-
-        for (i = 0; i < keyc; i++) {
-            RDB_free(keyv[i].strv);
-        }
-        RDB_free(keyv);
+        RDB_free_keys(keyc, keyv);
     }
 
     RDB_destroy_obj(&idobj, ecp);
@@ -633,12 +620,7 @@ error:
         RDB_del_nonscalar_type(tbtyp, ecp);
     }
     if (freekeys) {
-        int i;
-
-        for (i = 0; i < keyc; i++) {
-            RDB_free(keyv[i].strv);
-        }
-        RDB_free(keyv);
+        RDB_free_keys(keyc, keyv);
     }
     RDB_destroy_obj(&idobj, ecp);
     return RDB_ERROR;

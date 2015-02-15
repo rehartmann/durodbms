@@ -1,5 +1,5 @@
 /*
- * $Id$
+ * Interpreter assignment functions
  *
  * Copyright (C) 2012, 2015 Rene Hartmann.
  * See the file COPYING for redistribution information.

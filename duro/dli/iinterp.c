@@ -1,5 +1,5 @@
 /*
- * $Id$
+ * Function for interpreting statements
  *
  * Copyright (C) 2007, 2014 Rene Hartmann.
  * See the file COPYING for redistribution information.
@@ -25,9 +25,8 @@
 
 #include <sys/stat.h>
 #include <errno.h>
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <assert.h>
 
 extern int yylineno;
@@ -327,9 +326,7 @@ evaluate_retry_bool(RDB_expression *exp, Duro_interp *interp,
 static int
 exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
 {
-    int ret;
     int i;
-    int argc;
     RDB_expression *exp;
     RDB_type *argtv[DURO_MAX_LLEN];
     RDB_object *argpv[DURO_MAX_LLEN];
@@ -338,21 +335,19 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
     RDB_parse_node *argp = nodep->nextp->nextp->val.children.firstp;
     const char *opname;
     RDB_object qop_nameobj;
+    int argc = 0;
 
     RDB_init_obj(&qop_nameobj);
 
     if (nodep->kind == RDB_NODE_INNER) {
-        ret = RDB_parse_node_modname(nodep->val.children.firstp, &qop_nameobj, ecp);
-        if (ret != RDB_OK)
-            goto cleanup;
-        ret = RDB_append_string(&qop_nameobj, ".", ecp);
-        if (ret != RDB_OK)
-            goto cleanup;
-        ret = RDB_append_string(&qop_nameobj,
-                        RDB_expr_var_name(nodep->val.children.firstp->nextp->nextp->exp),
-                        ecp);
-        if (ret != RDB_OK)
-            goto cleanup;
+        if (RDB_parse_node_modname(nodep->val.children.firstp, &qop_nameobj, ecp) != RDB_OK)
+            goto error;
+        if (RDB_append_string(&qop_nameobj, ".", ecp) != RDB_OK)
+            goto error;
+        if (RDB_append_string(&qop_nameobj,
+                RDB_expr_var_name(nodep->val.children.firstp->nextp->nextp->exp),
+                ecp) != RDB_OK)
+            goto error;
         opname = RDB_obj_string(&qop_nameobj);
     } else {
         opname = RDB_expr_var_name(nodep->exp);
@@ -361,18 +356,18 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
     /*
      * Get argument types
      */
-    argc = 0;
     while (argp != NULL) {
         if (argc > 0)
             argp = argp->nextp;
         exp = RDB_parse_node_expr(argp, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
         if (exp == NULL)
-            return RDB_ERROR;
+            goto error;
         argtv[argc] = Duro_expr_type_retry(exp, interp, ecp);
         if (argtv[argc] == NULL)
-            return RDB_ERROR;
+            goto error;
 
         argp = argp->nextp;
+        argpv[argc] = NULL;
         argc++;
     }
 
@@ -389,7 +384,7 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
          * will fail
          */
         if (interp->txnp == NULL && interp->envp == NULL) {
-            return RDB_ERROR;
+            goto error;
         }
         RDB_clear_err(ecp);
 
@@ -404,12 +399,12 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
             RDB_transaction tx;
             RDB_database *dbp = Duro_get_db(interp, ecp);
             if (dbp == NULL)
-                return RDB_ERROR;
+                goto error;
             if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
-                return RDB_ERROR;
+                goto error;
             op = RDB_get_update_op(opname, argc, argtv, ecp, &tx);
             if (RDB_commit(ecp, &tx) != RDB_OK)
-                return RDB_ERROR;
+                goto error;
         }
         if (op == NULL) {
             /*
@@ -421,12 +416,8 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
                     && type_mismatch) {
                 RDB_raise_type_mismatch(opname, ecp);
             }
-            return RDB_ERROR;
+            goto error;
         }
-    }
-
-    for (i = 0; i < argc; i++) {
-        argpv[i] = NULL;
     }
 
     argp = nodep->nextp->nextp->val.children.firstp;
@@ -439,7 +430,7 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
             argp = argp->nextp;
         exp = RDB_parse_node_expr(argp, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
         if (exp == NULL)
-            return RDB_ERROR;
+            goto error;
         paramp = RDB_get_parameter(op, i);
         /*
          * paramp may be NULL for n-ary operators
@@ -453,8 +444,7 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
              */
             argpv[i] = Duro_lookup_var(varname, interp, ecp);
             if (argpv[i] == NULL) {
-                ret = RDB_ERROR;
-                goto cleanup;
+                goto error;
             }
         } else {
             if (RDB_expr_is_table_ref(exp)) {
@@ -467,8 +457,7 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
                  */
                 RDB_raise_invalid_argument(
                         "update argument must be a variable", ecp);
-                ret = RDB_ERROR;
-                goto cleanup;
+                goto error;
             }
         }
 
@@ -476,16 +465,14 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
         if (argpv[i] == NULL) {
             RDB_init_obj(&argv[i]);
             if (Duro_evaluate_retry(exp, interp, ecp, &argv[i]) != RDB_OK) {
-                ret = RDB_ERROR;
-                goto cleanup;
+                goto error;
             }
             /* Set type if missing */
             if (RDB_obj_type(&argv[i]) == NULL) {
                 RDB_type *typ = RDB_expr_type(exp, &Duro_get_var_type,
                         NULL, interp->envp, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
                 if (typ == NULL) {
-                    ret = RDB_ERROR;
-                    goto cleanup;
+                    goto error;
                 }
                 RDB_obj_set_typeinfo(&argv[i], typ);
             }
@@ -496,15 +483,24 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
     }
 
     /* Invoke function */
-    ret = RDB_call_update_op(op, argc, argpv, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
+    if (RDB_call_update_op(op, argc, argpv, ecp, interp->txnp != NULL ?
+            &interp->txnp->tx : NULL) != RDB_OK)
+        goto error;
 
-cleanup:
     for (i = 0; i < argc; i++) {
         if (argpv[i] == &argv[i])
             RDB_destroy_obj(&argv[i], ecp);
     }
     RDB_destroy_obj(&qop_nameobj, ecp);
-    return ret;
+    return RDB_OK;
+
+error:
+    for (i = 0; i < argc; i++) {
+        if (argpv[i] == &argv[i])
+            RDB_destroy_obj(&argv[i], ecp);
+    }
+    RDB_destroy_obj(&qop_nameobj, ecp);
+    return RDB_ERROR;
 }
 
 static int
