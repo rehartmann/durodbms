@@ -1,4 +1,9 @@
-/* $Id$ */
+/*
+ * Hashmap functions
+ *
+ * Copyright (C) 2003-2006, 2013 Rene Hartmann.
+ * See the file COPYING for redistribution information.
+ */
 
 #include "hashmap.h"
 #include "types.h"

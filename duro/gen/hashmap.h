@@ -1,7 +1,9 @@
 #ifndef RDB_HASHMAP_H
 #define RDB_HASHMAP_H
 
-/* $Id$ */
+/*
+ * Hashmap
+ */
 
 #include "hashtable.h"
 #include <stdlib.h>

@@ -17,6 +17,7 @@
 #include <gen/hashmap.h>
 #include <gen/hashmapit.h>
 #include <gen/releaseno.h>
+#include <gen/strfns.h>
 #include <rel/rdb.h>
 #include <rel/tostr.h>
 #include <rel/typeimpl.h>
@@ -1485,7 +1486,6 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     int isselector;
     RDB_type *getter_utyp = NULL;
     RDB_operator *parent_op;
-    int lineno;
     Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
 
     if (interp->interrupted) {
@@ -1504,9 +1504,7 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
         if (argnamev == NULL)
             return RDB_ERROR;
 
-        lineno = yylineno;
         codestmtp = RDB_parse_stmt_string(RDB_operator_source(op), ecp);
-        yylineno = lineno;
         if (codestmtp == NULL) {
             RDB_free(argnamev);
             return RDB_ERROR;
@@ -1606,18 +1604,26 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     Duro_destroy_varmap(&vars.map);
 
     switch (ret) {
-        case RDB_OK:
-            RDB_raise_syntax("end of operator reached without RETURN", ecp);
-            ret = RDB_ERROR;
-            break;
-        case DURO_LEAVE:
-            RDB_raise_syntax("unmatched LEAVE", ecp);
-            ret = RDB_ERROR;
-            break;
-        case DURO_RETURN:
-            ret = RDB_OK;
-            break;
+    case RDB_OK:
+        RDB_raise_syntax("end of operator reached without RETURN", ecp);
+        ret = RDB_ERROR;
+        break;
+    case DURO_LEAVE:
+        RDB_raise_syntax("unmatched LEAVE", ecp);
+        ret = RDB_ERROR;
+        break;
+    case DURO_RETURN:
+        ret = RDB_OK;
+        break;
     }
+    if (ret == RDB_ERROR) {
+        RDB_free(interp->err_opname);
+        interp->err_opname = RDB_dup_str(RDB_operator_name(op));
+        if (interp->err_opname == NULL) {
+            RDB_raise_no_memory(ecp);
+        }
+    }
+
     return ret;
 }
 
@@ -1633,7 +1639,6 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     varmap_node *ovarmapp;
     Duro_op_data *opdatap;
     RDB_operator *parent_op;
-    int lineno;
     RDB_type *setter_utyp = NULL;
     Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
 
@@ -1653,9 +1658,7 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
         /*
          * Not available - parse code
          */
-        lineno = yylineno;
         codestmtp = RDB_parse_stmt_string(RDB_operator_source(op), ecp);
-        yylineno = lineno;
         if (codestmtp == NULL) {
             RDB_free(argnamev);
             return RDB_ERROR;
@@ -1736,6 +1739,14 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_raise_syntax("unmatched LEAVE", ecp);
         ret = RDB_ERROR;
     }
+    if (ret == RDB_ERROR) {
+        RDB_free(interp->err_opname);
+        interp->err_opname = RDB_dup_str(RDB_operator_name(op));
+        if (interp->err_opname == NULL) {
+            RDB_raise_no_memory(ecp);
+        }
+    }
+
     return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
 }
 
@@ -1849,7 +1860,7 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     int i;
     const char *opname;
     RDB_object opnameobj; /* Only used when the name is modified */
-    /* const char *modname = RDB_obj_string(&interp->module_name); */
+    RDB_object *lwsp;
     RDB_parse_node *stmtp = parentp->val.children.firstp->nextp;
     RDB_parameter *paramv = NULL;
     int paramc = ((int) RDB_parse_nodelist_length(stmtp->nextp->nextp) + 1) / 3;
@@ -1901,11 +1912,19 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     ro = (RDB_bool)
             (stmtp->nextp->nextp->nextp->nextp->val.token == TOK_RETURNS);
 
-    /* Convert defining code back */
+    /* Strip off leading whitespace and comments, restore it later */
+    lwsp = parentp->val.children.firstp->whitecommp;
+    parentp->val.children.firstp->whitecommp = NULL;
+
+    /*
+     * 'Un-parse' the defining code
+     */
     if (Duro_parse_node_to_obj_string(&code, parentp, ecp,
             interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx) != RDB_OK) {
+        parentp->val.children.firstp->whitecommp = lwsp;
         goto error;
     }
+    parentp->val.children.firstp->whitecommp = lwsp;
 
     if (ro) {
         rtyp = RDB_parse_node_to_type(stmtp->nextp->nextp->nextp->nextp->nextp,
@@ -2315,12 +2334,10 @@ exec_moduledef(RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context *ecp
 
     if (RDB_string_n_to_obj(&oldmodname, RDB_obj_string(&interp->module_name),
             olen, ecp) != RDB_OK) {
-        fprintf(stderr, "module 1\n");
         RDB_raise_fatal(ecp);
         return RDB_ERROR;
     }
     if (RDB_copy_obj(&interp->module_name, &oldmodname, ecp) != RDB_OK) {
-        fprintf(stderr, "module 2\n");
         RDB_raise_fatal(ecp);
         return RDB_ERROR;
     }
@@ -2554,79 +2571,79 @@ Duro_exec_stmt(RDB_parse_node *stmtp, Duro_interp *interp,
     firstchildp = stmtp->val.children.firstp;
     if (firstchildp->kind == RDB_NODE_TOK) {
         switch (firstchildp->val.token) {
-            case TOK_IF:
-                ret = exec_if(firstchildp->nextp, interp, ecp, retinfop);
-                break;
-            case TOK_CASE:
-                ret = exec_case(firstchildp->nextp, interp, ecp, retinfop);
-                break;
-            case TOK_FOR:
-                if (firstchildp->nextp->nextp->val.token == TOK_IN) {
-                    ret = exec_foreach(firstchildp->nextp, NULL, interp, ecp, retinfop);
-                } else {
-                    ret = exec_for(firstchildp->nextp, NULL, interp, ecp, retinfop);
-                }
-                break;
-            case TOK_WHILE:
-                ret = exec_while(firstchildp->nextp, NULL, interp, ecp, retinfop);
-                break;
-            case TOK_OPERATOR:
-                ret = exec_opdef(stmtp, interp, ecp);
-                break;
-            case TOK_TRY:
-                ret = exec_try(firstchildp->nextp, interp, ecp, retinfop);
-                break;
-            case TOK_LEAVE:
-                ret = exec_leave(firstchildp->nextp, interp, ecp);
-                break;
-            case ';':
-                /* Empty statement */
-                ret = RDB_OK;
-                break;
-            case TOK_CALL:
-                ret = exec_call(firstchildp->nextp, interp, ecp);
-                break;
-            case TOK_VAR:
-                if (firstchildp->nextp->nextp->kind == RDB_NODE_TOK) {
-                    switch (firstchildp->nextp->nextp->val.token) {
-                        case TOK_REAL:
-                            ret = Duro_exec_vardef_real(firstchildp->nextp, interp, ecp);
-                            break;
-                        case TOK_VIRTUAL:
-                            ret = Duro_exec_vardef_virtual(firstchildp->nextp, interp, ecp);
-                            break;
-                        case TOK_PRIVATE:
-                            ret = Duro_exec_vardef_private(firstchildp->nextp, interp, ecp);
-                            break;
-                        case TOK_PUBLIC:
-                            ret = Duro_exec_vardef_public(firstchildp->nextp, interp, ecp);
-                            break;
-                        default:
-                            ret = Duro_exec_vardef(firstchildp->nextp, interp, ecp);
-                    }
-                } else {
+        case TOK_IF:
+            ret = exec_if(firstchildp->nextp, interp, ecp, retinfop);
+            break;
+        case TOK_CASE:
+            ret = exec_case(firstchildp->nextp, interp, ecp, retinfop);
+            break;
+        case TOK_FOR:
+            if (firstchildp->nextp->nextp->val.token == TOK_IN) {
+                ret = exec_foreach(firstchildp->nextp, NULL, interp, ecp, retinfop);
+            } else {
+                ret = exec_for(firstchildp->nextp, NULL, interp, ecp, retinfop);
+            }
+            break;
+        case TOK_WHILE:
+            ret = exec_while(firstchildp->nextp, NULL, interp, ecp, retinfop);
+            break;
+        case TOK_OPERATOR:
+            ret = exec_opdef(stmtp, interp, ecp);
+            break;
+        case TOK_TRY:
+            ret = exec_try(firstchildp->nextp, interp, ecp, retinfop);
+            break;
+        case TOK_LEAVE:
+            ret = exec_leave(firstchildp->nextp, interp, ecp);
+            break;
+        case ';':
+        /* Empty statement */
+        ret = RDB_OK;
+        break;
+        case TOK_CALL:
+            ret = exec_call(firstchildp->nextp, interp, ecp);
+            break;
+        case TOK_VAR:
+            if (firstchildp->nextp->nextp->kind == RDB_NODE_TOK) {
+                switch (firstchildp->nextp->nextp->val.token) {
+                case TOK_REAL:
+                    ret = Duro_exec_vardef_real(firstchildp->nextp, interp, ecp);
+                    break;
+                case TOK_VIRTUAL:
+                    ret = Duro_exec_vardef_virtual(firstchildp->nextp, interp, ecp);
+                    break;
+                case TOK_PRIVATE:
+                    ret = Duro_exec_vardef_private(firstchildp->nextp, interp, ecp);
+                    break;
+                case TOK_PUBLIC:
+                    ret = Duro_exec_vardef_public(firstchildp->nextp, interp, ecp);
+                    break;
+                default:
                     ret = Duro_exec_vardef(firstchildp->nextp, interp, ecp);
                 }
+            } else {
+                ret = Duro_exec_vardef(firstchildp->nextp, interp, ecp);
+            }
+            break;
+        case TOK_DROP:
+            switch (firstchildp->nextp->val.token) {
+            case TOK_VAR:
+                ret = Duro_exec_vardrop(firstchildp->nextp->nextp, interp, ecp);
                 break;
-            case TOK_DROP:
-                switch (firstchildp->nextp->val.token) {
-                    case TOK_VAR:
-                        ret = Duro_exec_vardrop(firstchildp->nextp->nextp, interp, ecp);
-                        break;
-                    case TOK_CONSTRAINT:
-                        ret = exec_constrdrop(firstchildp->nextp->nextp, interp, ecp);
-                        break;
-                    case TOK_TYPE:
-                        ret = exec_typedrop(firstchildp->nextp->nextp, interp, ecp);
-                        break;
-                    case TOK_OPERATOR:
-                        ret = exec_opdrop(firstchildp->nextp->nextp, interp, ecp);
-                        break;
-                    case TOK_INDEX:
-                        ret = exec_indexdrop(firstchildp->nextp->nextp, interp, ecp);
-                        break;
-                }
+            case TOK_CONSTRAINT:
+                ret = exec_constrdrop(firstchildp->nextp->nextp, interp, ecp);
                 break;
+            case TOK_TYPE:
+                ret = exec_typedrop(firstchildp->nextp->nextp, interp, ecp);
+                break;
+            case TOK_OPERATOR:
+                ret = exec_opdrop(firstchildp->nextp->nextp, interp, ecp);
+                break;
+            case TOK_INDEX:
+                ret = exec_indexdrop(firstchildp->nextp->nextp, interp, ecp);
+                break;
+            }
+            break;
             case TOK_BEGIN:
                 if (firstchildp->nextp->kind == RDB_NODE_INNER) {
                     /* BEGIN ... END */
@@ -2702,22 +2719,22 @@ Duro_exec_stmt(RDB_parse_node *stmtp, Duro_interp *interp,
         } else {
             /* Loop with label */
             switch (firstchildp->nextp->nextp->val.token) {
-                case TOK_WHILE:
-                    ret = exec_while(firstchildp->nextp->nextp->nextp,
+            case TOK_WHILE:
+                ret = exec_while(firstchildp->nextp->nextp->nextp,
+                        firstchildp, interp, ecp, retinfop);
+                break;
+            case TOK_FOR:
+                if (firstchildp->nextp->nextp->nextp->nextp->val.token == TOK_IN) {
+                    ret = exec_foreach(firstchildp->nextp->nextp->nextp,
                             firstchildp, interp, ecp, retinfop);
-                    break;
-                case TOK_FOR:
-                    if (firstchildp->nextp->nextp->nextp->nextp->val.token == TOK_IN) {
-                        ret = exec_foreach(firstchildp->nextp->nextp->nextp,
-                                firstchildp, interp, ecp, retinfop);
-                    } else {
-                        ret = exec_for(firstchildp->nextp->nextp->nextp,
-                                firstchildp, interp, ecp, retinfop);
-                    }
-                    break;
-                default:
-                    RDB_raise_internal("invalid token", ecp);
-                    ret = RDB_ERROR;
+                } else {
+                    ret = exec_for(firstchildp->nextp->nextp->nextp,
+                            firstchildp, interp, ecp, retinfop);
+                }
+                break;
+            default:
+                RDB_raise_internal("invalid token", ecp);
+                ret = RDB_ERROR;
             }
         }
         if (ret == RDB_ERROR && interp->err_line < 0) {
@@ -2965,6 +2982,8 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
     if (RDB_string_to_obj(&interp->module_name, "", ecp) != RDB_OK)
         goto error;
 
+    interp->err_opname = NULL;
+
     return RDB_OK;
 
 error:
@@ -2987,6 +3006,8 @@ Duro_destroy_interp(Duro_interp *interp)
     RDB_exec_context ec;
 
     RDB_init_exec_context(&ec);
+
+    RDB_free(interp->err_opname);
 
     Duro_destroy_vars(interp);
 
@@ -3134,14 +3155,21 @@ Duro_dt_execute(FILE *infp, Duro_interp *interp, RDB_exec_context *ecp)
         if (Duro_process_stmt(interp, ecp) != RDB_OK) {
             RDB_object *errobjp = RDB_get_err(ecp);
             if (errobjp != NULL) {
-                fprintf(stderr, "error in statement at or near line %d: ", interp->err_line);
-                if (RDB_parse_get_interactive()) {
-                    Duro_print_error(errobjp);
-                    RDB_parse_flush_buf();
-                } else {
-
+                /*
+                 * In non-interactive mode, return with error.
+                 * In interactive mode, print error and continue with next line.
+                 */
+                if (!RDB_parse_get_interactive()) {
                     goto error;
                 }
+
+                /* Show line number only if an operator was invoked */
+                if (interp->err_opname != NULL) {
+                    fprintf(stderr, "error in operator %s at line %d: ", interp->err_opname, interp->err_line);
+                }
+                Duro_print_error(errobjp);
+                RDB_parse_flush_buf();
+                interp->err_line = -1;
                 RDB_clear_err(ecp);
             } else {
                 /* Exit on EOF  */

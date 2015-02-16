@@ -6,9 +6,7 @@ exec wish "$0" ${1+"$@"}
 # Copyright (C) 2004-2012 Rene Hartmann.
 # See the file COPYING for redistribution information.
 
-# $Id$
-
-set duro_version 0.24
+set duro_version 0.25
 
 package require -exact duro $duro_version
 package require Tktable

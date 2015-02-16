@@ -1,7 +1,7 @@
 /*
- * $Id$
+ * Hashtable iterator functions
  *
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2005 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -22,7 +22,7 @@ RDB_hashtable_next(RDB_hashtable_iter *hip)
 
     while (hip->pos < hip->hp->capacity
             && hip->hp->entries[hip->pos] == NULL)
-        hip->pos++;
+        ++hip->pos;
 
     if (hip->pos >= hip->hp->capacity) {
         /* End of hashtable reached */

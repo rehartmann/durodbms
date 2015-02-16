@@ -2,9 +2,6 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
-#
-# $Id$
-#
 # Durodump - tool to dump tables to a file.
 # Copyright (C) 2004-2014 Rene Hartmann.
 # See the file COPYING for redistribution information.

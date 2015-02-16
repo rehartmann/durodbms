@@ -18,6 +18,10 @@ DuroDBMS 0.25
 - I/O, system, and www operators are now in system-provided modules io, sys,
   and www, respectively. 
 
+- Improved error handling in Duro D/T. If an error occurs while executing
+  a user-defined operator, the operator name is shown. The line where
+  the error occured is identified with greater accuracy.
+
 DuroDBMS 0.24
 
 - Added error type type_not_found_error.

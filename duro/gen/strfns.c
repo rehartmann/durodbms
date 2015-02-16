@@ -1,9 +1,7 @@
 /*
- * Copyright (C) 2003-2008 Ren� Hartmann.
+ * Copyright (C) 2003-2008, 2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/*$Id$*/
 
 #include "strfns.h"
 #include <stdlib.h>

@@ -1,9 +1,9 @@
 /*
- * $Id$
+ * Hashmap iterator functions.
  *
- * Copyright (C) 2003-2013 Rene Hartmann.
+ * Copyright (C) 2003, 2005, 2006, 2013 Rene Hartmann.
  * See the file COPYING for redistribution information.
-*/
+ */
 
 #include "hashmapit.h"
 

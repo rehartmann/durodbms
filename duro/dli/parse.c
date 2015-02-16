@@ -27,6 +27,8 @@ void yy_switch_to_buffer(YY_BUFFER_STATE);
 
 extern YY_BUFFER_STATE RDB_parse_buffer;
 
+extern int yylineno;
+
 RDB_parse_node *RDB_parse_resultp;
 RDB_exec_context *RDB_parse_ecp;
 
@@ -1576,7 +1578,10 @@ RDB_parse_stmt_string(const char *txt, RDB_exec_context *ecp)
     int pret;
     RDB_object oldlocaleobj;
     char *oldlocale;
+    int lineno = yylineno;
     YY_BUFFER_STATE oldbuf = RDB_parse_buffer;
+
+    yylineno = 1;
 
     RDB_init_obj(&oldlocaleobj);
 
@@ -1623,9 +1628,11 @@ RDB_parse_stmt_string(const char *txt, RDB_exec_context *ecp)
     }
 
     RDB_destroy_obj(&oldlocaleobj, ecp);
+    yylineno = lineno;
     return RDB_parse_resultp;
 
 error:
     RDB_destroy_obj(&oldlocaleobj, ecp);
+    yylineno = lineno;
     return NULL;
 }

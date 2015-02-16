@@ -1,7 +1,5 @@
 /*
- * $Id$
- *
- * Copyright (C) 2005 Ren� Hartmann.
+ * Copyright (C) 2005 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -66,8 +64,8 @@ RDB_hashtable_put(RDB_hashtable *hp, void *entryp, void *arg)
             return ENOMEM;
     }
 
-    /* If fill ratio is at 80%, rehash */
-    if (hp->entry_count * 10 / hp->capacity >= 8) {
+    /* If fill ratio is at 62.5%, rehash */
+    if (hp->entry_count * 16 / hp->capacity >= 10) {
         void **oldtab = hp->entries;
         int oldcapacity = hp->capacity;
         int i;

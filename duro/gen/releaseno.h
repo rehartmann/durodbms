@@ -1,8 +1,9 @@
 /*
- * releaseno.h
+ * Header file for the release number generated during the build
  *
- *  Created on: 13.10.2012
- *      Author: Rene Hartmann
+ * Copyright (C) 2012 Rene Hartmann.
+ * See the file COPYING for redistribution information.
+ *
  */
 
 #ifndef RELEASENO_H_

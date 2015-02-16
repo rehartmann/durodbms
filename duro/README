@@ -1,9 +1,7 @@
-	README for DuroDBMS 0.23
+	README for DuroDBMS
 
-$Id$
-
-This directory contains the source code of DuroDBMS, a relational database
-management system.
+The parent directory of this contains the source code of DuroDBMS,
+a relational database management system.
 
 The following software is required for compiling and running DuroDBMS:
 
@@ -25,7 +23,7 @@ When DuroDBMS is installed, the Tcl interface is installed as a package in
 the 'lib' subdirectory. The simplest way to make it available to application
 scripts is to add this subdirectory to TCLLIBPATH, e.g.:
 
-    TCLLIBPATH=/usr/local/durodbms.0.24/lib
+    TCLLIBPATH=/usr/local/durodbms.0.25/lib
     export TCLLIBPATH
 
 Tips
@@ -33,8 +31,8 @@ Tips
 If a DuroDBMS process crashes when a transaction is active, it may leave
 the database environment in an inconsistent state, making it impossible to
 access the environment again. In this case, run the Berkeley DB utility
-db_recover to bring the environment back to a consistent state.
-
+db_recover to bring the environment back to a consistent state
+or use connect(<envdir>, true).
 
 DuroDBMS is still under development. Report bugs to
 rhartmann@users.sourceforge.net. 
@@ -42,7 +40,7 @@ rhartmann@users.sourceforge.net.
 -----
 
 This file is part of DuroDBMS, a relational management system.
-Copyright (C) 2003-2014 Rene Hartmann.
+Copyright (C) 2003-2009, 2011-2015 Rene Hartmann.
 
 DuroDBMS is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

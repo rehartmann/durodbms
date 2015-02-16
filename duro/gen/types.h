@@ -1,7 +1,14 @@
 #ifndef RDB_TYPES_H
 #define RDB_TYPES_H
 
-/* $Id$ */
+/*
+ * Definitions for built-in basic data types
+ */
+
+/*
+ * Copyright (C) 2003, 2005, 2007, 2013 Rene Hartmann.
+ * See the file COPYING for redistribution information.
+ */
 
 #include <limits.h>
 #include <float.h>

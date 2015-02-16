@@ -1,12 +1,12 @@
 LIBRARY point
 EXPORTS
-    POINT
-    POINT_set_X
-    POINT_get_X
-    POINT_set_Y
-    POINT_get_Y
-    POLAR
-    POINT_set_THETA
-    POINT_get_THETA
-    POINT_set_LENGTH
-    POINT_get_LENGTH
+    point
+    point_set_x
+    point_get_x
+    point_set_y
+    point_get_y
+    polar
+    point_set_theta
+    point_get_theta
+    point_set_length
+    point_get_length

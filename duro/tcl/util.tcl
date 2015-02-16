@@ -1,10 +1,8 @@
-# $Id$
-
 #
 # Utility procedures for Durotcl
 #
 
-package provide duro 0.24
+package provide duro 0.25
 
 namespace eval duro {
 

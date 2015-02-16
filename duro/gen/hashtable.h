@@ -2,9 +2,9 @@
 #define RDB_HASHTABLE_H
 
 /*
- * $Id$
+ * Hashtable
  *
- * Copyright (C) 2005-2013 Rene Hartmann.
+ * Copyright (C) 2005, 2013 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 

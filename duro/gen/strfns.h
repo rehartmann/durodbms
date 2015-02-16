@@ -1,7 +1,10 @@
 #ifndef RDB_STRFNS_H
 #define RDB_STRFNS_H
 
-/*$Id$*/
+/*
+ * Copyright (C) 2003-2005, 2012, 2013 Rene Hartmann.
+ * See the file COPYING for redistribution information.
+ */
 
 /*
  * Create a copy of string str on the heap, including the

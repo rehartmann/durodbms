@@ -1,7 +1,5 @@
 	README for DuroDBMS
 
-$Id$
-
 This file contains information on the binary Windows release of DuroDBMS, a relational
 database management system.
 
@@ -31,7 +29,7 @@ The Tcl interface can be found in the 'lib' subdirectory.
 The easiest way to make it available to application
 scripts is to add this subdirectory to TCLLIBPATH, e.g.:
 
-    set TCLLIBPATH=C:/durodbms.0.24/lib
+    set TCLLIBPATH=C:/durodbms.0.25/lib
 
 DuroDBMS is still under development. Report bugs to
 rhartmann@users.sourceforge.net or use a Sourceforge tracker

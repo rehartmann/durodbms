@@ -1,7 +1,9 @@
 #ifndef RDB_HASHTABLE_IT_H
 #define RDB_HASHTABLE_IT_H
 
-/* $Id$ */
+/*
+ * Hashtable iterator
+ */
 
 #include "hashtable.h"
 

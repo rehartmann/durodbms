@@ -201,6 +201,11 @@ main(int argc, char *argv[])
     }
 
     if (Duro_dt_execute_path(infilename, &interp, &ec) != RDB_OK) {
+        if (interp.err_opname != NULL) {
+            fprintf(stderr, "error in operator %s at line %d: ", interp.err_opname, interp.err_line);
+        } else {
+            fprintf(stderr, "error at line %d: ", interp.err_line);
+        }
         Duro_print_error(RDB_get_err(&ec));
         Duro_destroy_interp(&interp);
         goto error;

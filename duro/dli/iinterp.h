@@ -64,6 +64,7 @@ typedef struct Duro_interp {
     RDB_object module_name;
 
     int err_line;
+    char *err_opname;
 
     RDB_object prompt;
 

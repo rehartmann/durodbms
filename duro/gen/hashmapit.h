@@ -1,7 +1,9 @@
 #ifndef RDB_HASHMAP_IT_H
 #define RDB_HASHMAP_IT_H
 
-/* $Id$ */
+/*
+ * Hashmap iterator.
+ */
 
 #include "hashmap.h"
 #include "hashtabit.h"
