@@ -26,6 +26,12 @@
 #include <stdio.h>
 #endif
 
+#ifndef USE_READLINE
+    enum {
+        DURO_INPUT_LINE_LENGTH = 256
+    };
+#endif
+
 static Duro_interp interp;
 
 static void
@@ -58,8 +64,6 @@ read_line_interactive(void)
 
     return line;
 #else
-    #define DURO_INPUT_LINE_LENGTH 256
-
     fputs(Duro_dt_prompt(&interp), stdout);
     line = malloc(DURO_INPUT_LINE_LENGTH);
     if (line == NULL)
@@ -69,7 +73,8 @@ read_line_interactive(void)
 }
 
 void
-free_line_interactive(char *line) {
+free_line_interactive(char *line)
+{
     free(line);
 }
 
@@ -115,7 +120,6 @@ completion(const char *text, int start, int end)
 int
 main(int argc, char *argv[])
 {
-    int ret;
     RDB_exec_context ec;
     char *envname = NULL;
     char *dbname = "";
@@ -129,7 +133,10 @@ main(int argc, char *argv[])
      * Install signal handler to catch Control-C
      */
 #ifdef _WIN32
-    signal(SIGINT, handle_sigint);
+    if (signal(SIGINT, handle_sigint) == SIG_ERR) {
+        fprintf(stderr, "signal(): %s\n", strerror(errno));
+        exit(2);
+    }
 #else
     /* POSIX */
     sigact.sa_handler = &handle_sigint;
@@ -170,10 +177,8 @@ main(int argc, char *argv[])
     }
 
     if (envname != NULL) {
-        ret = RDB_open_env(envname, &envp, 0);
-        if (ret != RDB_OK) {
-            ret = RDB_open_env(envname, &envp, RDB_RECOVER);
-            if (ret != RDB_OK) {
+        if (RDB_open_env(envname, &envp, 0) != RDB_OK) {
+            if (RDB_open_env(envname, &envp, RDB_RECOVER) != RDB_OK) {
                 fprintf(stderr, "unable to open environment %s: %s\n", envname,
                     db_strerror(errno));
                 return 1;
@@ -201,10 +206,12 @@ main(int argc, char *argv[])
     }
 
     if (Duro_dt_execute_path(infilename, &interp, &ec) != RDB_OK) {
-        if (interp.err_opname != NULL) {
-            fprintf(stderr, "error in operator %s at line %d: ", interp.err_opname, interp.err_line);
-        } else {
-            fprintf(stderr, "error at line %d: ", interp.err_line);
+        if (interp.err_line > 0) {
+            if (interp.err_opname != NULL) {
+                fprintf(stderr, "error in operator %s at line %d: ", interp.err_opname, interp.err_line);
+            } else {
+                fprintf(stderr, "error at line %d: ", interp.err_line);
+            }
         }
         Duro_print_error(RDB_get_err(&ec));
         Duro_destroy_interp(&interp);

@@ -1001,16 +1001,16 @@ RDB_rename_relation_type(const RDB_type *typ, int renc, const RDB_renaming renv[
 
 /*
  * Return a pointer to the RDB_attr structure that represents
- * the component. typ must be scalar.
+ * the component. *typ must be scalar.
  */
 RDB_attr *
-RDB_get_comp_attr(RDB_type *typ, const char *compname)
+RDB_prop_attr(RDB_type *typ, const char *propname)
 {
     int i, j;
 
     for (i = 0; i < typ->def.scalar.repc; i++) {
         for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
-            if (strcmp(typ->def.scalar.repv[i].compv[j].name, compname) == 0)
+            if (strcmp(typ->def.scalar.repv[i].compv[j].name, propname) == 0)
                 return &typ->def.scalar.repv[i].compv[j];
         }
     }

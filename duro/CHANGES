@@ -1,5 +1,3 @@
-$Id$
-
 Summary of Changes to DuroDBMS
 
 DuroDBMS 0.25
@@ -21,6 +19,8 @@ DuroDBMS 0.25
 - Improved error handling in Duro D/T. If an error occurs while executing
   a user-defined operator, the operator name is shown. The line where
   the error occured is identified with greater accuracy.
+
+- Added type check to RDB_obj_set_property().
 
 DuroDBMS 0.24
 

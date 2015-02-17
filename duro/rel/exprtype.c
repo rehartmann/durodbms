@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * Copyright (C) 2012, 2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
@@ -1245,7 +1243,7 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
                 return NULL;
             }
 
-            attrp = RDB_get_comp_attr(typ, exp->def.op.name);
+            attrp = RDB_prop_attr(typ, exp->def.op.name);
             if (attrp == NULL) {
                 RDB_raise_invalid_argument("component not found", ecp);
                 return NULL;

@@ -168,6 +168,13 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
         the_a(v) := 5;
         io.put(the_a(v)); io.put_line('');
 
+        try
+            the_a(v) := '5';
+            io.put_line('property assignment with wrong source type succeeded');
+        catch err type_mismatch_error;
+            ;
+        end try;
+
         begin tx;
         var v2 t;
         commit;

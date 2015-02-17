@@ -46,7 +46,8 @@ expression = project | where | rename | dyadic_relation_op_inv
     | expression '.' id
     | id FROM expression
     | TUPLE FROM expression
-    | ifthenelse | with.
+    | ifthenelse
+    | with.
 
 project = expression '{' [ALL BUT] [id {',' id}] '}'.
 
@@ -144,10 +145,8 @@ float = digit{digit}'.'digit{digit}('E' | 'e')digit{digit}.
 
 binary = "X'"{hex_digit hex_digit}"'"
 
-id = letter{letter | digit | '_' | '#'}.
+id = letter{letter | digit | '_' | '#'}["'"].
 
 </pre>
-
-<p>$Id$
 
 </html>

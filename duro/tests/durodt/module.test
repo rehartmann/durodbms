@@ -161,7 +161,6 @@ test module {Modules} \
 
         drop var t2v;
 
-
         -- Test public table
         io.put_line('');
         begin tx;
@@ -189,6 +188,78 @@ test module {Modules} \
         end for;
 
         commit;
+
+        -- Drop
+
+        begin tx;
+
+        module m;
+        
+            drop operator mul2;
+ 
+            drop operator puts;
+
+            module modmod_mod;
+                drop operator dec;
+
+                drop operator mul2upd;
+            end module;
+
+            drop type t1;
+
+            drop type t2;
+
+            drop var p;
+
+        end module;
+
+        try
+            var s init io.put(m.mul2(1));
+            io.put_line('calling m.mul2 succeeded');
+        catch err operator_not_found_error;
+            ;
+        end try;
+
+        try
+            var t1v t1;
+            io.put_line('using type t1 succeeded');
+        catch err type_not_found_error;
+            ;
+        end try;
+
+        -- Re-create type with different definition
+
+        module m;
+
+            type t1 possrep pr { comp1 string, comp2 int } init(m.pr('', 0));
+        
+        end module;
+
+        implement module m;
+
+            implement type t1;
+            end implement;
+
+        end implement;
+
+        var t1v m.t1;
+
+        try
+            the_comp1(t1v) := 1;
+            put_line('property assignment with wrong type succeeded');
+        catch err type_mismatch_error;
+            ;
+        end try;
+
+        the_comp1(t1v) := 'foo';
+        the_comp2(t1v) := 76;
+
+        io.put(the_comp1(t1v));
+        io.put(' ');
+        io.put(the_comp2(t1v));
+        io.put_line('');
+
+        commit;
     }
 } -output {10
 Yip
@@ -210,6 +281,7 @@ bl o
 blah
 10 abc def
 50 Xy !
+foo 76
 }
 
 cleanupTests

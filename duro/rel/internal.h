@@ -2,9 +2,7 @@
 #define RDB_INTERNAL_H
 
 /*
- * $Id$
- *
- * Copyright (C) 2003-2012 Rene Hartmann.
+ * Copyright (C) 2003-2009, 2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -254,7 +252,7 @@ RDB_vtexp_to_obj(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *tbp);
 
 RDB_attr *
-RDB_get_comp_attr(RDB_type *, const char *compname);
+RDB_prop_attr(RDB_type *, const char *compname);
 
 int
 RDB_obj_ilen(const RDB_object *, size_t *, RDB_exec_context *);

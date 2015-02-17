@@ -1,7 +1,7 @@
 /*
- * objectx.c
+ * RDB_object functions that involve storage
  *
- *  Created on: 29.09.2013
+ *  Created on: 29.09.2013 by splitting object.c
  *
  * Copyright (C) 2013-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
@@ -706,11 +706,27 @@ RDB_obj_set_property(RDB_object *objp, const char *propname,
 
     if (objp->typ->def.scalar.sysimpl) {
         /* Setter is implemented by the system */
-        if (objp->typ->def.scalar.repv[0].compc == 1) {
-            ret = RDB_destroy_obj(objp, ecp);
-            if (ret != RDB_OK)
-                return RDB_ERROR;
+        RDB_attr *compp;
 
+        if (propvalp->typ == NULL) {
+            RDB_raise_invalid_argument("missing type information", ecp);
+            return RDB_ERROR;
+        }
+
+        compp = RDB_prop_attr(objp->typ, propname);
+        if (compp == NULL) {
+            RDB_raise_invalid_argument("invalid property", ecp);
+            return RDB_ERROR;
+        }
+
+        if (!RDB_type_equals(propvalp->typ, compp->typ)) {
+            RDB_raise_type_mismatch("source type does not match destination property type", ecp);
+            return RDB_ERROR;
+        }
+
+        if (objp->typ->def.scalar.repv[0].compc == 1) {
+            if (RDB_destroy_obj(objp, ecp) != RDB_OK)
+                return RDB_ERROR;
             ret = RDB_copy_obj_data(objp, propvalp, ecp, NULL);
         } else {
             ret = RDB_tuple_set(objp, propname, propvalp, ecp);
