@@ -2210,10 +2210,12 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
      * or if the source of an insert or copy is a table.
      * A subtransaction is also needed for an insert into a table
      * with secondary indexes, because the insert is not atomic
-     * in Berkeley DB 4.5. !! and if a table is inserted
+     * in Berkeley DB 4.5.
+     * A subtx is also needed if a table is inserted.
+     * (It is not checked if there is actually more than tuple in it)
      */
     if (need_tx) {
-        if ((ninsc + nupdc + ndelc + nvdelc + copyc > 1)
+        if ((ninsc + nupdc + ndelc + nvdelc + ncopyc > 1)
                 || (ninsc == 1
                     && ((ninsv[0].tbp->val.tb.stp != NULL
                         && ninsv[0].tbp->val.tb.stp->indexc > 1)

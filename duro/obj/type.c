@@ -472,7 +472,6 @@ RDB_del_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
             RDB_raise_invalid_argument("type is scalar", ecp);
             return RDB_ERROR;
         default:
-            /* !! RDB_raise_internal("invalid type structure", ecp); */
             abort();
     }
     typ->kind = (enum RDB_tp_kind) -1; /* for debugging */
