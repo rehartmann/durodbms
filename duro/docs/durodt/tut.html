@@ -207,7 +207,7 @@ comment. */
 
 <pre>
 no db> var s string;
-no db> put_line('Please enter a number:'); io.get_line(s);
+no db> io.put_line('Please enter a number:'); io.get_line(s);
 Please enter a number:
 2
 no db> var n init cast_as_integer(s);
@@ -293,7 +293,7 @@ end while;
 <pre>
 no db> var s string;
 no db> while true;
-no db>     put('type "exit" to exit: ');
+no db>     io.put('type "exit" to exit: ');
 no db>     io.get_line(s);
 no db>     if s = 'exit' then
 no db>         leave;
@@ -519,7 +519,7 @@ D> insert r3 tup { name 'foo' };
 1 element affected.
 D> insert r3 tup { name 'bar' };
 1 element affected.
-D> put(r3); put_line('');
+D> io.put(r3); io.put_line('');
 RELATION {TUPLE {no 2, name 'bar'}, TUPLE {no 1, name 'foo'}}
 D> 
 </pre>
@@ -792,8 +792,8 @@ no db>
 
 <h3>io.put</h3>
 
-<p><code>put</code> works like <code>put_line</code>, except that its output is not
-followed by a newline. Unlike <code>put_line</code>, it is defined
+<p><code>io.put</code> works like <code>io.put_line</code>, except that its output is not
+followed by a newline. Unlike <code>io.put_line</code>, it is defined
 for all built-in basic data types and also for tuple and relation arguments:
 
 <pre>
@@ -858,7 +858,7 @@ D> operator incr(i integer) returns integer;
 D> return i + 1;
 D> end operator;
 Read-only operator incr created.
-D> put(incr(1)); put_line('');
+D> io.put(incr(1)); io.put_line('');
 2
 D>
 </pre>
@@ -872,7 +872,7 @@ D> end operator;
 Operator inc created.
 D> var n init 1;
 D> inc(n);
-D> put(n); put_line('');
+D> io.put(n); io.put_line('');
 2
 D>
 </pre>
