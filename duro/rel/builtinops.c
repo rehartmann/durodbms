@@ -1,7 +1,7 @@
 /*
- * $Id$
+ * Built-in read-only operators.
  *
- * Copyright (C) 2005-2012 Rene Hartmann.
+ * Copyright (C) 2009, 2011-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -1838,7 +1838,7 @@ RDB_put_global_ro_op(const char *name, int argc, RDB_type **argtv,
         return RDB_ERROR;
     datap->opfn.ro_fp = fp;
 
-    ret =  RDB_put_op(&RDB_builtin_ro_op_map, datap, ecp);
+    ret = RDB_put_op(&RDB_builtin_ro_op_map, datap, ecp);
     if (ret != RDB_OK) {
         RDB_free_op_data(datap, ecp);
         return RDB_ERROR;

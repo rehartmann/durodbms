@@ -1,12 +1,12 @@
 /*
- * iinterp_eval.h
+ * Interpreter evaluation functions.
  *
  *  Created on: 15.03.2014
- *      Author: rene
+ *      Author: Rene Hartmann
  */
 
-#ifndef IINTERP_EVAL_H_
-#define IINTERP_EVAL_H_
+#ifndef INTERP_EVAL_H_
+#define INTERP_EVAL_H_
 
 #include <rel/rdb.h>
 
@@ -19,4 +19,4 @@ Duro_evaluate_retry(RDB_expression *, Duro_interp *, RDB_exec_context *,
 RDB_type *
 Duro_expr_type_retry(RDB_expression *, Duro_interp *, RDB_exec_context *);
 
-#endif /* IINTERP_EVAL_H_ */
+#endif /* INTERP_EVAL_H_ */
