@@ -2,9 +2,7 @@
 #define RDB_TOSTR_H
 
 /*
- * $Id$
- *
- * Copyright (C) 2004-2011 Rene Hartmann.
+ * Copyright (C) 2011-2013 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 

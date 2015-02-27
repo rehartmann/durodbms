@@ -1,9 +1,8 @@
 #ifndef RDB_SERIALIZE_H
 #define RDB_SERIALIZE_H
 
-/* $Id$
- *
- * Copyright (C) 2003-2012 Rene Hartmann.
+/*
+ * Copyright (C) 2003-2007, 2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 

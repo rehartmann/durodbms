@@ -2,11 +2,9 @@
 #define RDB_CURSOR_H
 
 /*
- * Copyright (C) 2003-2012 Rene Hartmann.
+ * Copyright (C) 2003-2004, 2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "recmap.h"
 #include "index.h"

@@ -2,9 +2,7 @@
 #define STABLE_H
 
 /*
- * $Id$
- *
- * Copyright (C) 2007-2012 Rene Hartmann.
+ * Copyright (C) 2007, 2012-2014 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 #include "rdb.h"

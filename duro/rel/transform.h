@@ -2,9 +2,7 @@
 #define TRANSFORM_H
 
 /*
- * $Id$
- *
- * Copyright (C) 2006 Ren� Hartmann.
+ * Copyright (C) 2006, 2012-2013 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 

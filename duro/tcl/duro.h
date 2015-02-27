@@ -1,8 +1,6 @@
 #ifndef RDB_TCL_DURO_H
 #define RDB_TCL_DURO_H
 
-/* $Id$ */
-
 #include <tcl.h>
 #include <rel/rdb.h>
 

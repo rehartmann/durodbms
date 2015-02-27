@@ -2,9 +2,7 @@
 #define UPDATE_H
 
 /*
- * $Id$
- *
- * Copyright (C) 2006-2012 Rene Hartmann.
+ * Copyright (C) 2006, 2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  * 
  * Declares internal functions for updating tables.

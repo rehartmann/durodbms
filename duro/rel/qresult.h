@@ -2,9 +2,7 @@
 #define QRESULT_H
 
 /*
- * $Id$
- *
- * Copyright (C) 2006-2012 Rene Hartmann.
+ * Copyright (C) 2006, 2012-2014 Rene Hartmann.
  * See the file COPYING for redistribution information.
  * 
  * Internal functions for iterating over query results.

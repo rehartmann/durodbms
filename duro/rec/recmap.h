@@ -2,9 +2,7 @@
 #define RDB_RECMAP_H
 
 /*
- * $Id$
- *
- * Copyright (C) 2003-2012 Rene Hartmann.
+ * Copyright (C) 2003-2005, 2009, 2012-2013 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 

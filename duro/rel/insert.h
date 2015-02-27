@@ -2,9 +2,7 @@
 #define INSERT_H
 
 /*
- * $Id$
- *
- * Copyright (C) 2006-2012 Rene Hartmann.
+ * Copyright (C) 2006, 2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  * 
  * Declares an internal function for inserting tuples into tables.

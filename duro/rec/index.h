@@ -2,11 +2,9 @@
 #define RDB_INDEX_H
 
 /*
- * Copyright (C) 2004 Ren� Hartmann.
+ * Copyright (C) 2003-2004 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "recmap.h"
 
