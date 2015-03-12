@@ -19,7 +19,9 @@
 #include "exparse.h"
 #include <ctype.h>
 
-#define COMMENT_BUF_SIZE 10
+enum {
+    COMMENT_BUF_SIZE = 64
+};
 
 extern RDB_exec_context *RDB_parse_ecp;
 
@@ -752,7 +754,7 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
         RDB_string_to_obj(whitecommp, "/*", RDB_parse_ecp);
     } else {
 	    RDB_append_string(whitecommp, "/*", RDB_parse_ecp);
-    }    
+    }
 
     for (;;)
     {
