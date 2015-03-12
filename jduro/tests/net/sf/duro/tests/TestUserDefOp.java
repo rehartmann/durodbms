@@ -54,7 +54,7 @@ public class TestUserDefOp {
     }
 
     @Test
-    public void testReadonly1() throws DException {
+    public void testReadonly1() {
         session.execute("begin tx;");
 
         session.execute("operator test1() returns string extern 'Java'"
@@ -66,7 +66,7 @@ public class TestUserDefOp {
     }
 
     @Test
-    public void testReadonlyNoMethod() throws DException {
+    public void testReadonlyNoMethod() {
         session.execute("begin tx;");
 
         session.execute("operator test1() returns string extern 'Java'"
@@ -92,7 +92,7 @@ public class TestUserDefOp {
     }
 
     @Test
-    public void testReadonlyOp2() throws DException {
+    public void testReadonlyOp2() {
         session.execute("begin tx;");
 
         session.execute("operator test2(p1 string, p2 int, p3 float,"
@@ -116,7 +116,7 @@ public class TestUserDefOp {
     }
 
     @SuppressWarnings("unused")
-    private static String testDException() throws DException {
+    private static String testDException() {
         DSession session = DSession.createSession();
         try {
             throw new DException(session.evaluate("system_error('bar')"));
@@ -126,7 +126,7 @@ public class TestUserDefOp {
     }
 
     @Test
-    public void testReadonlyDExc() throws DException {
+    public void testReadonlyDExc() {
         session.execute("begin tx;");
 
         session.execute("operator test_dex()" + " returns string extern 'Java'"
@@ -167,7 +167,7 @@ public class TestUserDefOp {
     }
 
     @Test
-    public void testUpdateOp1() throws DException {
+    public void testUpdateOp1() {
         session.execute("begin tx;");
 
         session.execute("operator test1u "
@@ -226,7 +226,7 @@ public class TestUserDefOp {
     }
 
     @Test
-    public void testUpdateOpException() throws DException {
+    public void testUpdateOpException() {
         session.execute("begin tx;");
 
         session.execute("operator testuex (a string) updates { a }"
@@ -243,7 +243,7 @@ public class TestUserDefOp {
 
     @SuppressWarnings("unused")
     private static void testUpdateDException(StringBuilder buf)
-            throws DException {
+            {
         DSession session = DSession.createSession();
         try {
             throw new DException(session.evaluate("system_error('bar')"));
@@ -253,7 +253,7 @@ public class TestUserDefOp {
     }
 
     @Test
-    public void testUpdateDExc() throws DException {
+    public void testUpdateDExc() {
         session.execute("begin tx;");
 
         session.execute("operator test_udex(s string) updates { s }"

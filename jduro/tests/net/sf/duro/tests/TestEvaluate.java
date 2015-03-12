@@ -29,7 +29,7 @@ public class TestEvaluate {
     }
 
     @Test
-    public void testInteger() throws DException {
+    public void testInteger() {
         /*
          * !! If a DExcption is thrown, its msg property will not be displayed
          * because tearDown() destroys the interpreter before the error is
@@ -39,28 +39,28 @@ public class TestEvaluate {
     }
 
     @Test
-    public void testString() throws DException {
+    public void testString() {
         assertEquals("Oxygen", session.evaluate("\'Oxy\' || \'gen\'"));
     }
 
     @Test
-    public void testBoolean() throws DException {
+    public void testBoolean() {
         assertEquals(Boolean.TRUE, session.evaluate("true"));
     }
 
     @Test
-    public void testFloat() throws DException {
+    public void testFloat() {
         assertEquals(Double.valueOf(13.1d), session.evaluate("13.1"));
     }
 
     @Test
-    public void testBinary() throws DException {
+    public void testBinary() {
         assertArrayEquals(new byte[] { (byte) 0, (byte) 1, (byte) 0xfc },
                 (byte[]) session.evaluate("X'0001fc'"));
     }
 
     @Test
-    public void testTuple() throws DException {
+    public void testTuple() {
         Tuple t = new Tuple();
         t.setAttribute("s", "Yo");
 
@@ -68,7 +68,7 @@ public class TestEvaluate {
     }
 
     @Test
-    public void testRelation() throws DException {
+    public void testRelation() {
         Tuple t = new Tuple();
         t.setAttribute("s", "Yo");
 
@@ -79,7 +79,7 @@ public class TestEvaluate {
     }
 
     @Test
-    public void testArray() throws DException {
+    public void testArray() {
         byte[][] barr = new byte[2][];
         barr[0] = new byte[] { (byte) 0x40, (byte) 0x41 };
         barr[1] = new byte[] { (byte) 0 };

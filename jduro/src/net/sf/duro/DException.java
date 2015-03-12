@@ -3,7 +3,7 @@ package net.sf.duro;
 /**
  * Signals that a Duro exception has occurred.
  */
-public class DException extends Exception {
+public class DException extends RuntimeException {
 
     private static final long serialVersionUID = -8161811884817880524L;
 

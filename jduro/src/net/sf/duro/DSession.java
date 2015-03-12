@@ -17,17 +17,17 @@ public class DSession {
     private DSession() {
     }
 
-    native private void initInterp() throws DException;
+    native private void initInterp();
 
-    native private void destroyInterp() throws DException;
+    native private void destroyInterp();
 
-    native private void executeI(String s) throws DException,
-            ClassNotFoundException, NoSuchMethodException;
+    native private void executeI(String s)
+            throws ClassNotFoundException, NoSuchMethodException;
 
-    native private Object evaluateI(String expr) throws DException,
-            ClassNotFoundException, NoSuchMethodException;
+    native private Object evaluateI(String expr)
+            throws ClassNotFoundException, NoSuchMethodException;
 
-    native private void setVarI(String name, Object v) throws DException;
+    native private void setVarI(String name, Object v);
 
     /**
      * Creates a DSession.
@@ -36,7 +36,7 @@ public class DSession {
      * @throws DException
      *             if a Duro error occurs
      */
-    static public DSession createSession() throws DException {
+    static public DSession createSession() {
         DSession instance = new DSession();
         synchronized (DSession.class) {
             instance.initInterp();
@@ -50,7 +50,7 @@ public class DSession {
      * @throws DException
      *             If a Duro error occurs
      */
-    public void close() throws DException {
+    public void close() {
         synchronized (DSession.class) {
             destroyInterp();
         }
@@ -118,7 +118,7 @@ public class DSession {
      *             If the code could not be executed.
      * 
      */
-    public void execute(String code) throws DException {
+    public void execute(String code) {
         try {
             synchronized (DSession.class) {
                 executeI(code);
@@ -167,7 +167,7 @@ public class DSession {
      *             If the expression could not be evaluated.
      * 
      */
-    public Object evaluate(String expr) throws DException {
+    public Object evaluate(String expr) {
         try {
             synchronized (DSession.class) {
                 return evaluateI(expr);
@@ -191,7 +191,7 @@ public class DSession {
      * @throws java.lang.IllegalArgumentException
      *             If v does not match the type of the variable.
      */
-    public void setVar(String name, Object v) throws DException {
+    public void setVar(String name, Object v) {
         synchronized (DSession.class) {
             setVarI(name, v);
         }

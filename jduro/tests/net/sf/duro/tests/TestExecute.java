@@ -25,38 +25,38 @@ public class TestExecute {
     }
 
     @Test
-    public void testInteger() throws DException {
+    public void testInteger() {
         session.execute("var n init 343;");
         assertEquals(Integer.valueOf(343), session.evaluate("n"));
     }
 
     @Test
-    public void testString() throws DException {
+    public void testString() {
         session.execute("var s string init 'Crystal';");
         assertEquals("Crystal", session.evaluate("s"));
     }
 
     @Test
-    public void testBoolean() throws DException {
+    public void testBoolean() {
         session.execute("var b boolean;" + "b:= true;");
         assertEquals(Boolean.TRUE, session.evaluate("b"));
     }
 
     @Test
-    public void testFloat() throws DException {
+    public void testFloat() {
         session.execute("var f float;" + "f := 7.8;");
         assertEquals(Double.valueOf(7.8), session.evaluate("f"));
     }
 
     @Test
-    public void testBinary() throws DException {
+    public void testBinary() {
         session.execute("var bin binary init X'01f0';");
         assertArrayEquals(new byte[] { (byte) 1, (byte) 0xf0 },
                 (byte[]) session.evaluate("bin"));
     }
 
     @Test
-    public void testTuple() throws DException {
+    public void testTuple() {
         session.execute("var t tuple { a string };"
                 + "t := tuple { a 'Casa blanca' };");
 

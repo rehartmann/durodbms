@@ -17,14 +17,14 @@ public class TestDB {
     private DSession session;
 
     @Before
-    public void setUp() throws DException {
+    public void setUp() {
         session = DSession.createSession();
         session.execute("create_env('dbenv');"
                 + "create_db('D');");
     }
 
     @After
-    public void tearDown() throws DException {
+    public void tearDown() {
         session.close();
 
         // Delete environment directory
@@ -36,7 +36,7 @@ public class TestDB {
     }
 
     @Test
-    public void test() throws DException {
+    public void test() {
         session.execute("connect('dbenv');"
                 + "current_db := 'D';"
                 + "begin tx;"

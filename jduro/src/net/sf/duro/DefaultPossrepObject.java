@@ -13,10 +13,9 @@ public class DefaultPossrepObject implements PossrepObject {
     private ScalarType type;
 
     private static native void setProperty(String name, DSession session,
-            long ref, Object value) throws DException;
+            long ref, Object value);
 
-    private static native Object getProperty(String name, DSession s, long ref)
-            throws DException;
+    private static native Object getProperty(String name, DSession s, long ref);
 
     private static native Object dispose(DSession dInstance);
 
@@ -49,13 +48,13 @@ public class DefaultPossrepObject implements PossrepObject {
         this.type = null;
     }
 
-    public void setProperty(String name, Object value) throws DException {
+    public void setProperty(String name, Object value) {
         synchronized (DSession.class) {
             setProperty(name, session, ref, value);
         }
     }
 
-    public Object getProperty(String name) throws DException {
+    public Object getProperty(String name) {
         synchronized (DSession.class) {
             return getProperty(name, session, ref);
         }

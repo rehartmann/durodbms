@@ -26,12 +26,12 @@ public class TestSetVar {
     }
 
     @After
-    public void tearDown() throws DException {
+    public void tearDown() {
         session.close();
     }
 
     @Test
-    public void testInteger() throws DException {
+    public void testInteger() {
         session.execute("var n int;");
 
         try {
@@ -52,7 +52,7 @@ public class TestSetVar {
     }
 
     @Test
-    public void testString() throws DException {
+    public void testString() {
         session.execute("var s string;");
         Tuple t = new Tuple();
         t.setAttribute("a", "ui");
@@ -66,7 +66,7 @@ public class TestSetVar {
     }
 
     @Test
-    public void testBoolean() throws DException {
+    public void testBoolean() {
         session.execute("var b boolean;");
         try {
             session.setVar("b", Integer.valueOf(1));
@@ -78,7 +78,7 @@ public class TestSetVar {
     }
 
     @Test
-    public void testFloat() throws DException {
+    public void testFloat() {
         session.execute("var f float;");
         try {
             session.setVar("f", new byte[] { (byte) 1, (byte) 0xf0 });
@@ -92,7 +92,7 @@ public class TestSetVar {
     }
 
     @Test
-    public void testBinary() throws DException {
+    public void testBinary() {
         session.execute("var bin binary;");
         try {
             session.setVar("bin", Boolean.FALSE);
@@ -105,7 +105,7 @@ public class TestSetVar {
     }
 
     @Test
-    public void testTuple() throws DException {
+    public void testTuple() {
         session.execute("var t tuple { a string };");
 
         Tuple t;
@@ -152,7 +152,7 @@ public class TestSetVar {
     }
 
     @Test
-    public void testRelation() throws DException {
+    public void testRelation() {
         session.execute("var rt private relation { a string };");
 
         Tuple t = new Tuple();
@@ -170,7 +170,7 @@ public class TestSetVar {
     }
 
     @Test
-    public void testArray() throws DException {
+    public void testArray() {
         session.execute("var inta array integer;");
         session.execute("var stra array string;");
         session.execute("var strf array float;");

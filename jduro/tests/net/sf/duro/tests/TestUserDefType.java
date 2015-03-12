@@ -32,7 +32,7 @@ public class TestUserDefType {
     }
 
     @After
-    public void tearDown() throws DException {
+    public void tearDown() {
         session.close();
 
         // Delete environment directory
@@ -44,7 +44,7 @@ public class TestUserDefType {
     }
 
     @Test
-    public void testScalarProp() throws DException {
+    public void testScalarProp() {
         session.execute("begin tx;");
         session.execute("type len possrep { l int } constraint l >= 0 init len(0);");
         session.execute("implement type len; end implement;");
@@ -70,7 +70,7 @@ public class TestUserDefType {
     }
 
     @Test
-    public void testNonscalarProp() throws DException {
+    public void testNonscalarProp() {
         session.execute("begin tx;");
         session.execute("type t possrep { a array int, b tup { attr int }, c rel { attr int } }"
                 + " init t (array int(), tup { attr 0 }, rel { tup { attr 0 } });");
