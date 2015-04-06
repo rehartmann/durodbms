@@ -1230,6 +1230,11 @@ parserep_to_rep(const RDB_parse_node *nodep, RDB_possrep *rep,
                 &Duro_get_var_type, NULL, ecp, txp);
         if (rep->compv[i].typ == NULL)
             return RDB_ERROR;
+        if (RDB_type_is_generic(rep->compv[i].typ)) {
+            RDB_raise_syntax("generic type not permitted", ecp);
+            // !! delete rep->compv
+            return RDB_ERROR;
+        }
         np = np->nextp;
         if (np != NULL) /* Skip comma */
         	np = np->nextp;
@@ -1932,6 +1937,12 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
                 interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
         if (rtyp == NULL)
             goto error;
+        if (RDB_type_is_generic(rtyp)) {
+            RDB_raise_syntax("generic type not permitted", ecp);
+            if (!RDB_type_is_scalar(rtyp))
+                RDB_del_nonscalar_type(rtyp, ecp);
+            goto error;
+        }
 
         if (interp->impl_typename != NULL) {
             /*
@@ -2070,6 +2081,9 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
             goto error;
     }
 
+    for (i = 0; i < paramc; i++) {
+        RDB_del_nonscalar_type(paramv[i].typ, ecp);
+    }
     RDB_free(paramv);
     RDB_destroy_obj(&code, ecp);
     if (interp->txnp == NULL) {
@@ -2085,7 +2099,12 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
 error:
     if (interp->txnp == NULL)
         RDB_rollback(ecp, &tmp_tx);
-    RDB_free(paramv);
+    if (paramv != NULL) {
+        for (i = 0; i < paramc; i++) {
+            RDB_del_nonscalar_type(paramv[i].typ, ecp);
+        }
+        RDB_free(paramv);
+    }
     RDB_destroy_obj(&code, ecp);
     RDB_destroy_obj(&opnameobj, ecp);
     return RDB_ERROR;

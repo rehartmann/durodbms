@@ -5,7 +5,7 @@
 Main DuroDBMS header file.
 
 This file is part of DuroDBMS, a relational database management system.
-Copyright (C) 2003-2009, 2011-15 Rene Hartmann.
+Copyright (C) 2003-2009, 2011-2015 Rene Hartmann.
 
 DuroDBMS is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

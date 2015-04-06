@@ -48,25 +48,25 @@ RDB_type_is_valid(const RDB_type *typ)
     int i;
 
     switch (typ->kind) {
-        case RDB_TP_TUPLE:
-            for (i = 0; i < typ->def.tuple.attrc; i++) {
-                if (!RDB_type_is_valid(typ->def.tuple.attrv[i].typ))
-                    return RDB_FALSE;
-            }
-            return RDB_TRUE;
-        case RDB_TP_RELATION:
-        case RDB_TP_ARRAY:
-            return RDB_type_is_valid(typ->def.basetyp);
-        case RDB_TP_SCALAR:
-            /*
-             * If the comparison function not defined for a type with more than one possreps
-             * the type is invalid.
-             */
-            if (typ->def.scalar.repc > 1 && RDB_type_is_ordered(typ)
-                    && typ->compare_op == NULL) {
+    case RDB_TP_TUPLE:
+        for (i = 0; i < typ->def.tuple.attrc; i++) {
+            if (!RDB_type_is_valid(typ->def.tuple.attrv[i].typ))
                 return RDB_FALSE;
-            }
-            return (RDB_bool) (typ->ireplen != RDB_NOT_IMPLEMENTED);
+        }
+        return RDB_TRUE;
+    case RDB_TP_RELATION:
+    case RDB_TP_ARRAY:
+        return RDB_type_is_valid(typ->def.basetyp);
+    case RDB_TP_SCALAR:
+        /*
+         * If the comparison function not defined for a type with more than one possreps
+         * the type is invalid.
+         */
+        if (typ->def.scalar.repc > 1 && RDB_type_is_ordered(typ)
+        && typ->compare_op == NULL) {
+            return RDB_FALSE;
+        }
+        return (RDB_bool) (typ->ireplen != RDB_NOT_IMPLEMENTED);
     }
     abort();
 }
@@ -228,22 +228,27 @@ RDB_new_tuple_type(int attrc, const RDB_attr attrv[],
     }
     for (i = 0; i < attrc; i++) {
         /* Check if name appears twice */
-        for (j = i + 1; j < attrc; j++) {
-            if (strcmp(attrv[i].name, attrv[j].name) == 0) {
-                RDB_raise_invalid_argument("duplicate attribute name", ecp);
+        if (attrv[i].name != NULL) {
+            for (j = i + 1; j < attrc; j++) {
+                if (attrv[j].name != NULL
+                        && strcmp(attrv[i].name, attrv[j].name) == 0) {
+                    RDB_raise_invalid_argument("duplicate attribute name", ecp);
+                    goto error;
+                }
+            }
+
+            tuptyp->def.tuple.attrv[i].typ = RDB_dup_nonscalar_type(
+                    attrv[i].typ, ecp);
+            if (tuptyp->def.tuple.attrv[i].typ == NULL) {
                 goto error;
             }
-        }
-
-        tuptyp->def.tuple.attrv[i].typ = RDB_dup_nonscalar_type(
-                attrv[i].typ, ecp);
-        if (tuptyp->def.tuple.attrv[i].typ == NULL) {
-            goto error;
-        }
-        tuptyp->def.tuple.attrv[i].name = RDB_dup_str(attrv[i].name);
-        if (tuptyp->def.tuple.attrv[i].name == NULL) {
-            RDB_raise_no_memory(ecp);
-            goto error;
+            tuptyp->def.tuple.attrv[i].name = RDB_dup_str(attrv[i].name);
+            if (tuptyp->def.tuple.attrv[i].name == NULL) {
+                RDB_raise_no_memory(ecp);
+                goto error;
+            }
+        } else {
+            tuptyp->def.tuple.attrv[i].name = NULL;
         }
     }
     tuptyp->def.tuple.attrc = attrc;
@@ -454,11 +459,13 @@ RDB_del_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
     switch (typ->kind) {
         case RDB_TP_TUPLE:
             for (i = 0; i < typ->def.tuple.attrc; i++) {
-                RDB_type *attrtyp = typ->def.tuple.attrv[i].typ;
+                if (typ->def.tuple.attrv[i].name != NULL) {
+                    RDB_type *attrtyp = typ->def.tuple.attrv[i].typ;
 
-                RDB_free(typ->def.tuple.attrv[i].name);
-                if (!RDB_type_is_scalar(attrtyp))
-                    ret = RDB_del_nonscalar_type(attrtyp, ecp);
+                    RDB_free(typ->def.tuple.attrv[i].name);
+                    if (!RDB_type_is_scalar(attrtyp))
+                        ret = RDB_del_nonscalar_type(attrtyp, ecp);
+                }
             }
             if (typ->def.tuple.attrc > 0)
                 RDB_free(typ->def.tuple.attrv);
@@ -502,41 +509,41 @@ RDB_type_equals(const RDB_type *typ1, const RDB_type *typ2)
          return (RDB_bool) (strcmp(typ1->name, typ2->name) == 0);
     
     switch (typ1->kind) {
-        case RDB_TP_RELATION:
-        case RDB_TP_ARRAY:
-            return RDB_type_equals(typ1->def.basetyp, typ2->def.basetyp);
-        case RDB_TP_TUPLE:
-            {
-                int i, j;
-                int attrcnt = typ1->def.tuple.attrc;
+    case RDB_TP_RELATION:
+    case RDB_TP_ARRAY:
+        return RDB_type_equals(typ1->def.basetyp, typ2->def.basetyp);
+    case RDB_TP_TUPLE:
+    {
+        int i, j;
+        int attrcnt = typ1->def.tuple.attrc;
 
-                if (attrcnt != typ2->def.tuple.attrc)
-                    return RDB_FALSE;
-                    
-                /* check if all attributes of typ1 also appear in typ2 */
-                for (i = 0; i < attrcnt; i++) {
-                    for (j = 0; j < attrcnt; j++) {
-                        if (RDB_type_equals(typ1->def.tuple.attrv[i].typ,
-                                typ2->def.tuple.attrv[j].typ)
-                                && (strcmp(typ1->def.tuple.attrv[i].name,
+        if (attrcnt != typ2->def.tuple.attrc)
+            return RDB_FALSE;
+
+        /* check if all attributes of typ1 also appear in typ2 */
+        for (i = 0; i < attrcnt; i++) {
+            for (j = 0; j < attrcnt; j++) {
+                if (RDB_type_equals(typ1->def.tuple.attrv[i].typ,
+                        typ2->def.tuple.attrv[j].typ)
+                        && (strcmp(typ1->def.tuple.attrv[i].name,
                                 typ2->def.tuple.attrv[j].name) == 0))
-                            break;
-                    }
-                    if (j >= attrcnt) {
-                        /* not found */
-                        return RDB_FALSE;
-                    }
-                }
-                return RDB_TRUE;
+                    break;
             }
-        default:
-            ;
+            if (j >= attrcnt) {
+                /* not found */
+                return RDB_FALSE;
+            }
+        }
+        return RDB_TRUE;
+    }
+    default:
+        ;
     }
     abort();
 }  
 
 /**
- * Return the name of a type.
+ * Returns the name of a type.
 
 @returns
 
@@ -569,6 +576,44 @@ RDB_type_attr_type(const RDB_type *typ, const char *name)
     if (attrp == NULL)
         return NULL;
     return attrp->typ;
+}
+
+/**
+ * Checks if type *typ1 matches the (possibly generic) type *typ2
+
+@returns
+
+RDB_TRUE if the types are equal, RDB_FALSE otherwise.
+ */
+RDB_bool
+RDB_type_matches(const RDB_type *typ1, const RDB_type *typ2)
+{
+    if (RDB_type_is_generic(typ2)) {
+        int i;
+
+        if (typ1->kind != typ2->kind)
+            return RDB_FALSE;
+
+        /* typ1 and typ2 must be of a tuple or relation type */
+        if (typ1->kind == RDB_TP_RELATION) {
+            return RDB_type_matches(typ1->def.basetyp, typ2->def.basetyp);
+        }
+
+        /* Check if the attributes of typ2 are also attributes of typ1 */
+        for (i = 0; i < typ2->def.tuple.attrc; i++) {
+            if (typ2->def.tuple.attrv[i].name != NULL) {
+                RDB_type *atyp = RDB_type_attr_type(typ1, typ2->def.tuple.attrv[i].name);
+                if (atyp == NULL) {
+                    return RDB_FALSE;
+                }
+                if (!RDB_type_equals(typ2->def.tuple.attrv[i].typ, atyp)) {
+                    return RDB_FALSE;
+                }
+            }
+        }
+        return RDB_TRUE;
+    }
+    return RDB_type_equals(typ1, typ2);
 }
 
 /*
@@ -1507,12 +1552,32 @@ RDB_next_attr_sorted(const RDB_type *typ, const char *lastname) {
 
     for (i = 0; i < typ->def.tuple.attrc; i++) {
         if ((lastname == NULL
-                    || strcmp(typ->def.tuple.attrv[i].name, lastname) > 0)
+                    || strcmp(typ->def.tuple.attrv[i].name != NULL ? typ->def.tuple.attrv[i].name : "", lastname) > 0)
                 && (attridx == -1
-                    || strcmp(typ->def.tuple.attrv[i].name,
-                            typ->def.tuple.attrv[attridx].name) < 0)) {
+                    || strcmp(typ->def.tuple.attrv[i].name != NULL ? typ->def.tuple.attrv[i].name : "",
+                            typ->def.tuple.attrv[attridx].name != NULL ? typ->def.tuple.attrv[attridx].name : "") < 0)) {
             attridx = i;
         }
     }
     return attridx;
+}
+
+RDB_bool
+RDB_type_is_generic(const RDB_type *typ) {
+    int i;
+
+    switch (typ->kind) {
+    case RDB_TP_TUPLE:
+        for (i = typ->def.tuple.attrc - 1; i >= 0; i--) {
+            if (typ->def.tuple.attrv[i].name == NULL)
+                return RDB_TRUE;
+        }
+        return RDB_FALSE;
+    case RDB_TP_RELATION:
+        return RDB_type_is_generic(typ->def.basetyp);
+    case RDB_TP_ARRAY:
+    case RDB_TP_SCALAR:
+        return RDB_FALSE;
+    }
+    abort();
 }

@@ -1,0 +1,108 @@
+#!/bin/sh
+# Execute tclsh from the user's PATH \
+exec tclsh "$0" ${1+"$@"}
+
+#
+# Test generic types
+#
+
+package require tcltest 2.2
+eval ::tcltest::configure $argv
+namespace import ::tcltest::*
+
+set testdir [::tcltest::configure -testdir]
+
+set ::SETUP {
+    removeDirectory dbenv
+    makeDirectory dbenv
+    cd $::tcltest::temporaryDirectory
+    exec $testdir/../../dli/durodt << {
+        CREATE_ENV('dbenv');
+        CREATE_DB('D');
+    }
+}
+
+set ::CLEANUP {
+    removeDirectory dbenv
+}
+
+test declvar {declaring variable} -body {
+    exec $testdir/../../dli/durodt << {
+        try
+            var t tup { * };
+        catch err syntax_error;
+            io.put_line('declaring variable of generic tuple type - caught');
+        end try;
+    }
+} -result {declaring variable of generic tuple type - caught
+}
+
+test ro_op {readonly operator} \
+            -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+
+        operator rop(t tuple { s string, * }) returns string;
+            return t.s;
+        end operator;
+
+        var t1 init tup { s 'yo', x 'xo' };
+
+        io.put_line(rop(t1));
+
+        var t2 init tup { x 'xo' };
+
+        try
+            io.put_line(rop(t2));
+        catch err type_mismatch_error;
+            io.put_line('calling rop() with t2 failed.');
+        end try;
+
+        commit;
+
+        disconnect();
+    }
+} -result {yo
+calling rop() with t2 failed.
+}
+
+test upd_op {readonly operator} \
+            -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+
+        operator uop(s string, t tuple { s string, * }) updates { s };
+            s := t.s;
+        end operator;
+
+        var t1 init tup { s 'yo', x 'xo' };
+
+        var s1 string;
+
+        uop(s1, t1);
+        
+        io.put_line(s1);
+
+        var t2 init tup { x 'xo' };
+
+        try
+            uop(s1, t2);
+        catch err type_mismatch_error;
+            io.put_line('calling uop() with t2 failed.');
+        end try;
+
+        commit;
+
+        disconnect();
+    }
+} -result {yo
+calling uop() with t2 failed.
+}
+
+cleanupTests

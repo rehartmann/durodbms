@@ -382,8 +382,15 @@ Duro_parse_node_to_type_retry(RDB_parse_node *nodep, Duro_interp *interp,
      * Success or error different from NAME_ERROR and OPERATOR_NOT_FOUND_ERROR
      * -> return
      */
-    if (typ != NULL)
+    if (typ != NULL) {
+        if (RDB_type_is_generic(typ)) {
+            if (!RDB_type_is_scalar(typ))
+                RDB_del_nonscalar_type(typ, ecp);
+            RDB_raise_syntax("generic type not permitted", ecp);
+            return NULL;
+        }
         return typ;
+    }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_TYPE_NOT_FOUND_ERROR
             && RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR)
         return NULL;
@@ -409,6 +416,13 @@ Duro_parse_node_to_type_retry(RDB_parse_node *nodep, Duro_interp *interp,
                 NULL, ecp, &tx);
     if (typ == NULL) {
         RDB_commit(ecp, &tx);
+        return NULL;
+    }
+    if (RDB_type_is_generic(typ)) {
+        RDB_raise_syntax("generic type not permitted", ecp);
+        if (!RDB_type_is_scalar(typ)) {
+            RDB_del_nonscalar_type(typ, ecp);
+        }
         return NULL;
     }
     if (RDB_commit(ecp, &tx) != RDB_OK) {

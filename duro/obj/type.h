@@ -144,6 +144,9 @@ RDB_bool
 RDB_type_is_ordered(const RDB_type *);
 
 RDB_bool
+RDB_type_is_generic(const RDB_type *);
+
+RDB_bool
 RDB_type_depends_type(const RDB_type *, const RDB_type *);
 
 RDB_bool
@@ -195,6 +198,9 @@ RDB_del_nonscalar_type(RDB_type *, RDB_exec_context*);
 
 RDB_bool
 RDB_type_equals(const RDB_type *, const RDB_type *);
+
+RDB_bool
+RDB_type_matches(const RDB_type *, const RDB_type *);
 
 RDB_attr *
 RDB_tuple_type_attr(const RDB_type *, const char *attrname);

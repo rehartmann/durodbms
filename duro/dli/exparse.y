@@ -2844,8 +2844,25 @@ ne_id_type_commalist: TOK_ID type {
     }
     ;
 
+id_type_commalist_gen: id_type_commalist {
+        $$ = $1;
+    }
+    | ne_id_type_commalist ',' '*' {
+        $$ = $1;
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+    }
+    | '*' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            YYABORT;
+        }
+        RDB_parse_add_child($$, $1);
+    }
+
 type: qualified_id
-    | TOK_TUPLE '{' id_type_commalist '}' {
+    | TOK_TUPLE '{' id_type_commalist_gen '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);

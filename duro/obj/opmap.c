@@ -112,14 +112,17 @@ RDB_get_op(const RDB_op_map *opmap, const char *name, int argc,
         return NULL;
     }
 
-    /* Find an operator with same signature */
+    /*
+     * Find an operator with same signature, NULL matches all types
+     */
     opep = firstopep;
     while (opep != NULL) {
         if (RDB_operator_param_count(opep->op) == argc) {
             int i;
 
             for (i = 0; (i < argc)
-                    && RDB_type_equals(opep->op->paramv[i].typ, argtv[i]);
+                    && (argtv[i] == NULL || opep->op->paramv[i].typ == NULL
+                        || RDB_type_matches(argtv[i], opep->op->paramv[i].typ));
                  i++);
             if (i == argc) {
                 /* Found */
@@ -130,7 +133,7 @@ RDB_get_op(const RDB_op_map *opmap, const char *name, int argc,
         opep = opep->nextp;
     }
 
-    /* If not, found, search generic operator (argc == RDB_VAR_PARAMS) */
+    /* If not, found, search completely generic operator (argc == RDB_VAR_PARAMS) */
     opep = firstopep;
     while (opep != NULL) {
         if (RDB_operator_param_count(opep->op) == RDB_VAR_PARAMS) {

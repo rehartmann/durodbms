@@ -129,9 +129,13 @@ RDB_new_op_data(const char *name, int paramc, RDB_type *paramtv[], RDB_type *rty
             op->paramv[i].typ = NULL;
         }
         for (i = 0; i < paramc; i++) {
-            op->paramv[i].typ = RDB_dup_nonscalar_type(paramtv[i], ecp);
-            if (op->paramv[i].typ == NULL) {
-                goto error;
+            if (paramtv[i] == NULL) {
+                op->paramv[i].typ = NULL;
+            } else {
+                op->paramv[i].typ = RDB_dup_nonscalar_type(paramtv[i], ecp);
+                if (op->paramv[i].typ == NULL) {
+                    goto error;
+                }
             }
         }
     } else {

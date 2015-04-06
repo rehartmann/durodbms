@@ -880,7 +880,7 @@ parse_heading(RDB_parse_node *nodep, RDB_bool rel, RDB_exec_context *ecp,
     RDB_attr *attrv = NULL;
     RDB_type *typ = NULL;
 
-    attrc = (RDB_parse_nodelist_length(nodep) + 1) / 3;
+    attrc = (RDB_parse_nodelist_length(nodep) + /* 1 */ 2) / 3;
     if (attrc > 0) {
         RDB_expression *exp;
         RDB_parse_node *np = nodep->val.children.firstp;
@@ -894,6 +894,10 @@ parse_heading(RDB_parse_node *nodep, RDB_bool rel, RDB_exec_context *ecp,
         }
 
         for (i = 0; i < attrc; i++) {
+            if (np->kind == RDB_NODE_TOK) {
+                attrv[i].name = NULL;
+                break;
+            }
             exp = RDB_parse_node_expr(np, ecp, txp);
             if (exp == NULL)
                 goto cleanup;
@@ -903,7 +907,11 @@ parse_heading(RDB_parse_node *nodep, RDB_bool rel, RDB_exec_context *ecp,
             attrv[i].typ = RDB_parse_node_to_type(np, NULL, NULL, ecp, txp);
             if (attrv[i].typ == NULL)
                 goto cleanup;
-            if ((i + 1) < attrc)
+            if (RDB_type_is_generic(attrv[i].typ)) {
+                RDB_raise_syntax("generic type not permitted", ecp);
+                goto cleanup;
+            }
+            if (i + 1 < attrc)
                 np = np->nextp->nextp;
         }
     }
@@ -1149,6 +1157,12 @@ inner_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *t
                     if (typ == NULL) {
                         RDB_del_expr(nodep->exp, ecp);
                         return nodep->exp = NULL;
+                    }
+                    if (RDB_type_is_generic(typ)) {
+                        RDB_raise_syntax("generic type not permitted", ecp);
+                        if (!RDB_type_is_scalar(typ))
+                            RDB_del_nonscalar_type(typ, ecp);
+                        return NULL;
                     }
                     arrtyp = RDB_new_array_type(typ, ecp);
                     if (arrtyp == NULL) {
@@ -1472,6 +1486,12 @@ RDB_parse_node_to_type(RDB_parse_node *nodep, RDB_gettypefn *getfnp, void *getar
                         nodep->val.children.firstp->nextp, getfnp, getarg, ecp, txp);
                 if (typ == NULL)
                     return NULL;
+                if (RDB_type_is_generic(typ)) {
+                    RDB_raise_syntax("generic type not permitted", ecp);
+                    if (!RDB_type_is_scalar(typ))
+                        RDB_del_nonscalar_type(typ, ecp);
+                    return NULL;
+                }
                 return RDB_new_array_type(typ, ecp);
             }
             case TOK_SAME_TYPE_AS:

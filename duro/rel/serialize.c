@@ -112,24 +112,25 @@ RDB_serialize_type(RDB_object *valp, int *posp, const RDB_type *typ,
         return RDB_ERROR;
 
     switch (typ->kind) {
-        case RDB_TP_TUPLE:
-        {
-            int i;
-            int attridx;
-            char *lastwritten = NULL;
+    case RDB_TP_TUPLE:
+    {
+        int i;
+        int attridx;
+        char *lastwritten = NULL;
 
-            if (RDB_serialize_int(valp, posp, typ->def.tuple.attrc, ecp) != RDB_OK)
-                return RDB_ERROR;
+        if (RDB_serialize_int(valp, posp, typ->def.tuple.attrc, ecp) != RDB_OK)
+            return RDB_ERROR;
 
-            /*
-             * Write attributes in alphabetical order of their names,
-             * to get a canonical representation of attribute types.
-             * Necessary because types are compares bitwise when searching
-             * for a matching operator.
-             */
-            for (i = 0; i < typ->def.tuple.attrc; i++) {
-                attridx = RDB_next_attr_sorted(typ, lastwritten);
+        /*
+         * Write attributes in alphabetical order of their names,
+         * to get a canonical representation of attribute types.
+         * Necessary because types are compares bitwise when searching
+         * for a matching operator.
+         */
+        for (i = 0; i < typ->def.tuple.attrc; i++) {
+            attridx = RDB_next_attr_sorted(typ, lastwritten);
 
+            if (typ->def.tuple.attrv[attridx].name != NULL) {
                 if (RDB_serialize_str(valp, posp,
                         typ->def.tuple.attrv[attridx].name, ecp) != RDB_OK) {
                     return RDB_ERROR;
@@ -139,15 +140,20 @@ RDB_serialize_type(RDB_object *valp, int *posp, const RDB_type *typ,
                         typ->def.tuple.attrv[attridx].typ, ecp) != RDB_OK) {
                     return RDB_ERROR;
                 }
-                lastwritten = typ->def.tuple.attrv[attridx].name;
+            } else {
+                if (RDB_serialize_str(valp, posp, "", ecp) != RDB_OK) {
+                    return RDB_ERROR;
+                }
             }
-            return RDB_OK;
+            lastwritten = typ->def.tuple.attrv[attridx].name != NULL ? typ->def.tuple.attrv[attridx].name : "";
         }
-        case RDB_TP_RELATION:
-        case RDB_TP_ARRAY:
-            return RDB_serialize_type(valp, posp, typ->def.basetyp, ecp);
-        default:
-            break;
+        return RDB_OK;
+    }
+    case RDB_TP_RELATION:
+    case RDB_TP_ARRAY:
+        return RDB_serialize_type(valp, posp, typ->def.basetyp, ecp);
+    default:
+        break;
     }
     RDB_raise_internal("RDB_serialize_type(): invalid type", ecp);
     return RDB_ERROR;
@@ -482,39 +488,41 @@ RDB_deserialize_type(RDB_object *valp, int *posp, RDB_exec_context *ecp,
     kind = (enum RDB_tp_kind ) ret;
 
     switch (kind) {
-        case RDB_TP_SCALAR:
-            ret = RDB_deserialize_str(valp, posp, ecp, &namp);
-            if (ret != RDB_OK)
-                return NULL;
-            typ = RDB_get_type(namp, ecp, txp);
-            RDB_free(namp);
-            return typ;
-        case RDB_TP_TUPLE:
-        {
-            RDB_int attrc;
-            int i;
+    case RDB_TP_SCALAR:
+        ret = RDB_deserialize_str(valp, posp, ecp, &namp);
+        if (ret != RDB_OK)
+            return NULL;
+        typ = RDB_get_type(namp, ecp, txp);
+        RDB_free(namp);
+        return typ;
+    case RDB_TP_TUPLE:
+    {
+        RDB_int attrc;
+        int i;
 
-            ret = RDB_deserialize_int(valp, posp, ecp, &attrc);
-            typ = RDB_alloc(sizeof (RDB_type), ecp);
-            if (typ == NULL) {
-                return NULL;
-            }
-            typ->name = NULL;
-            typ->kind = RDB_TP_TUPLE;
-            typ->ireplen = RDB_VARIABLE_LEN;
+        ret = RDB_deserialize_int(valp, posp, ecp, &attrc);
+        typ = RDB_alloc(sizeof (RDB_type), ecp);
+        if (typ == NULL) {
+            return NULL;
+        }
+        typ->name = NULL;
+        typ->kind = RDB_TP_TUPLE;
+        typ->ireplen = RDB_VARIABLE_LEN;
 
-            typ->def.tuple.attrv = RDB_alloc(sizeof(RDB_attr) * attrc, ecp);
-            if (typ->def.tuple.attrv == NULL) {
+        typ->def.tuple.attrv = RDB_alloc(sizeof(RDB_attr) * attrc, ecp);
+        if (typ->def.tuple.attrv == NULL) {
+            RDB_free(typ);
+            return NULL;
+        }
+        for (i = 0; i < attrc; i++) {
+            ret = RDB_deserialize_str(valp, posp, ecp,
+                    &typ->def.tuple.attrv[i].name);
+            if (ret != RDB_OK) {
+                RDB_free(typ->def.tuple.attrv);
                 RDB_free(typ);
                 return NULL;
             }
-            for (i = 0; i < attrc; i++) {
-                ret = RDB_deserialize_str(valp, posp, ecp,
-                        &typ->def.tuple.attrv[i].name);
-                if (ret != RDB_OK) {
-                    RDB_free(typ->def.tuple.attrv);
-                    RDB_free(typ);
-                }
+            if (*typ->def.tuple.attrv[i].name != '\0') {
                 typ->def.tuple.attrv[i].typ = RDB_deserialize_type(valp, posp,
                         ecp, txp);
                 if (typ->def.tuple.attrv[i].typ == NULL) {
@@ -522,27 +530,32 @@ RDB_deserialize_type(RDB_object *valp, int *posp, RDB_exec_context *ecp,
                     RDB_free(typ);
                     return NULL;
                 }
-                typ->def.tuple.attrv[i].defaultp = NULL;
+            } else {
+                // Generic tuple type -- replace empty attribute name by NULL
+                RDB_free(typ->def.tuple.attrv[i].name);
+                typ->def.tuple.attrv[i].name = NULL;
             }
-            typ->def.tuple.attrc = attrc;
-            return typ;
+            typ->def.tuple.attrv[i].defaultp = NULL;
         }
-        case RDB_TP_RELATION:
-        case RDB_TP_ARRAY:
-            typ = RDB_alloc(sizeof (RDB_type), ecp);
-            if (typ == NULL) {
-                return NULL;
-            }
-            typ->name = NULL;
-            typ->kind = kind;
-            typ->ireplen = RDB_VARIABLE_LEN;
+        typ->def.tuple.attrc = attrc;
+        return typ;
+    }
+    case RDB_TP_RELATION:
+    case RDB_TP_ARRAY:
+        typ = RDB_alloc(sizeof (RDB_type), ecp);
+        if (typ == NULL) {
+            return NULL;
+        }
+        typ->name = NULL;
+        typ->kind = kind;
+        typ->ireplen = RDB_VARIABLE_LEN;
 
-            typ->def.basetyp = RDB_deserialize_type(valp, posp, ecp, txp);
-            if (typ->def.basetyp == NULL) {
-                RDB_free(typ);
-                return NULL;
-            }
-            return typ;
+        typ->def.basetyp = RDB_deserialize_type(valp, posp, ecp, txp);
+        if (typ->def.basetyp == NULL) {
+            RDB_free(typ);
+            return NULL;
+        }
+        return typ;
     }
     RDB_raise_internal("invalid type during deserialization", ecp);
     return NULL;

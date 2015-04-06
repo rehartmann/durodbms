@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2012 Rene Hartmann.
+ * Copyright (C) 2004, 2013-2014 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -580,6 +580,7 @@ RDB_get_update_op(const char *name, int argc, RDB_type *argtv[],
 /**
  * Return the update operator with the name <var>name</var>
 and the signature given by <var>argc</var> and <var>argtv</var>.
+A value of NULL in argtv matches any type.
 
 If <var>txp</var> is NULL, <var>envp</var> is used to look up the
 operator in memory. If <var>txp</var> is not NULL, <var>envp</var> is ignored.
@@ -950,7 +951,8 @@ RDB_obj_not_equals(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 /*
- * Get operator by name. If txp is NULL and envp is not NULL
+ * Get operator by name and types.
+ * If txp is NULL and envp is not NULL
  * envp will be used to look up the operator in memory.
  * If txp is not NULL, envp is ignored.
  */

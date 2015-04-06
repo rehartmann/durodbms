@@ -442,6 +442,13 @@ Duro_exec_vardef_real(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_conte
                 interp, ecp, &interp->txnp->tx);
         if (tbtyp == NULL)
             return RDB_ERROR;
+        if (RDB_type_is_generic(tbtyp)) {
+            RDB_raise_syntax("generic type not permitted", ecp);
+            if (!RDB_type_is_scalar(tbtyp)) {
+                RDB_del_nonscalar_type(tbtyp, ecp);
+            }
+            return RDB_ERROR;
+        }
         if (nodep->nextp->nextp->nextp->kind == RDB_NODE_INNER
                 && nodep->nextp->nextp->nextp->val.children.firstp != NULL
                 && nodep->nextp->nextp->nextp->val.children.firstp->kind == RDB_NODE_TOK
