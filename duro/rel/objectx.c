@@ -877,7 +877,7 @@ RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
                 if (ret == (RDB_int) RDB_ERROR)
                     return RDB_ERROR;
             }
-            rc = RDB_move_tuples(dstvalp, (RDB_object *) srcvalp, ecp,
+            rc = RDB_move_tuples(dstvalp, (RDB_object *) srcvalp, RDB_DISTINCT, ecp,
                     RDB_table_is_persistent(srcvalp) || srcvalp->val.tb.exp != NULL
                     || RDB_table_is_persistent(dstvalp) ? txp : NULL);
             if (rc == RDB_ERROR)

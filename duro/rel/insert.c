@@ -104,7 +104,7 @@ RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
             }
         } else {
             if (dflp != NULL && RDB_expr_is_serial(dflp->exp)) {
-                RDB_raise_element_exists("explicit value not permitted", ecp);
+                RDB_raise_invalid_argument("explicit value not permitted", ecp);
                 ret = RDB_ERROR;
                 goto cleanup;
             }

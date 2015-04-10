@@ -311,7 +311,7 @@ error:
 
 static int
 node_to_insert(RDB_ma_insert *insp, RDB_parse_node *nodep, Duro_interp *interp,
-        RDB_exec_context *ecp)
+        int flags, RDB_exec_context *ecp)
 {
     RDB_object idobj;
     RDB_expression *srcexp;
@@ -328,6 +328,8 @@ node_to_insert(RDB_ma_insert *insp, RDB_parse_node *nodep, Duro_interp *interp,
     if (insp->tbp == NULL) {
         return RDB_ERROR;
     }
+
+    insp->flags = flags;
 
     /* Only tables are allowed as target */
     if (insp->tbp->typ == NULL
@@ -642,6 +644,7 @@ node_to_multi_assign(const RDB_parse_node *listnodep,
         if (firstp->kind == RDB_NODE_TOK) {
             switch(firstp->val.token) {
                 case TOK_INSERT:
+                case TOK_D_INSERT:
                     if ((*srcobjcp) >= DURO_MAX_LLEN) {
                         RDB_raise_not_supported("too many assigments", ecp);
                         return RDB_ERROR;
@@ -650,7 +653,8 @@ node_to_multi_assign(const RDB_parse_node *listnodep,
                     RDB_init_obj(&srcobjv[(*srcobjcp)++]);
                     insv[(*inscp)].objp = &srcobjv[(*srcobjcp) - 1];
                     if (node_to_insert(&insv[(*inscp)++], firstp->nextp,
-                            interp, ecp) != RDB_OK) {
+                            interp, firstp->val.token == TOK_INSERT ? 0 : RDB_DISTINCT,
+                            ecp) != RDB_OK) {
                         goto error;
                     }
                     break;

@@ -49,6 +49,8 @@ list_to_ins(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
         return ret;
     }
 
+    insp->flags = RDB_DISTINCT;
+
     return TCL_OK;
 }
 

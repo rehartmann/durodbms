@@ -210,7 +210,7 @@ error:
 }
 
 static insert_node *
-new_insert_node(RDB_object *tbp, const RDB_object *srcp, RDB_exec_context *ecp)
+new_insert_node(RDB_object *tbp, const RDB_object *srcp, int flags, RDB_exec_context *ecp)
 {
     int ret;
 
@@ -230,6 +230,7 @@ new_insert_node(RDB_object *tbp, const RDB_object *srcp, RDB_exec_context *ecp)
         return NULL;
     }
     insnp->ins.tbp = tbp;
+    insnp->ins.flags = flags;
     insnp->nextp = NULL;
     return insnp;
 }
@@ -367,11 +368,11 @@ del_copylist(copy_node *copynp, RDB_exec_context *ecp)
 }
 
 static int
-resolve_insert(RDB_object *tbp, const RDB_object *srcp, insert_node **insnpp,
+resolve_insert(RDB_object *tbp, const RDB_object *srcp, int flags, insert_node **insnpp,
                RDB_exec_context *, RDB_transaction *);
 
 static int
-resolve_insert_expr(RDB_expression *, const RDB_object *,
+resolve_insert_expr(RDB_expression *, const RDB_object *, int,
     insert_node **, RDB_exec_context *, RDB_transaction *);
 
 static int
@@ -414,7 +415,7 @@ src_matches_condition(RDB_expression *condp, const RDB_object *srcp,
 }
 
 static int
-resolve_insert_expr(RDB_expression *exp, const RDB_object *srcp,
+resolve_insert_expr(RDB_expression *exp, const RDB_object *srcp, int flags,
     insert_node **insnpp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
@@ -422,9 +423,9 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *srcp,
 
     switch (exp->kind) {
         case RDB_EX_TBP:
-            return resolve_insert(exp->def.tbref.tbp, srcp, insnpp, ecp, txp);
+            return resolve_insert(exp->def.tbref.tbp, srcp, flags, insnpp, ecp, txp);
         case RDB_EX_OBJ:
-            return resolve_insert(&exp->def.obj, srcp, insnpp, ecp, txp);
+            return resolve_insert(&exp->def.obj, srcp, flags, insnpp, ecp, txp);
         case RDB_EX_RO_OP:
             break;
         case RDB_EX_VAR:
@@ -432,7 +433,7 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *srcp,
             tbp = RDB_get_table(exp->def.varname, ecp, txp);
             if (tbp == NULL)
                 return RDB_ERROR;
-            return resolve_insert(tbp, srcp, insnpp, ecp, txp);
+            return resolve_insert(tbp, srcp, flags, insnpp, ecp, txp);
         default:
             RDB_raise_invalid_argument("invalid target table", ecp);
             return RDB_ERROR;
@@ -448,13 +449,13 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *srcp,
            RDB_raise_predicate_violation("where predicate violation", ecp);
            return RDB_ERROR;
         }
-        return resolve_insert_expr(exp->def.op.args.firstp, srcp, insnpp,
+        return resolve_insert_expr(exp->def.op.args.firstp, srcp, flags, insnpp,
                 ecp, txp);
     }
     if (strcmp(exp->def.op.name, "project") == 0
         || strcmp(exp->def.op.name, "remove") == 0) {
-        return resolve_insert_expr(exp->def.op.args.firstp, srcp, insnpp, ecp,
-                txp);
+        return resolve_insert_expr(exp->def.op.args.firstp, srcp, flags, insnpp,
+                ecp, txp);
     }
     if (strcmp(exp->def.op.name, "rename") == 0) {
         RDB_object tpl;
@@ -464,7 +465,8 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *srcp,
             RDB_destroy_obj(&tpl, ecp);
             return RDB_ERROR;
         }
-        ret = resolve_insert_expr(exp->def.op.args.firstp, &tpl, insnpp, ecp, txp);
+        ret = resolve_insert_expr(exp->def.op.args.firstp, &tpl, flags,
+                insnpp, ecp, txp);
         RDB_destroy_obj(&tpl, ecp);
         return ret;
     }
@@ -472,7 +474,8 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *srcp,
         ret = check_extend(srcp, exp, ecp, txp);
         if (ret != RDB_OK)
             return RDB_ERROR;
-        return resolve_insert_expr(exp->def.op.args.firstp, srcp, insnpp, ecp, txp);
+        return resolve_insert_expr(exp->def.op.args.firstp, srcp, flags, insnpp,
+                ecp, txp);
     }
     if (strcmp(exp->def.op.name, "unwrap") == 0) {
         RDB_object tpl;
@@ -483,7 +486,8 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *srcp,
             RDB_destroy_obj(&tpl, ecp);
             return RDB_ERROR;
         }
-        ret = resolve_insert_expr(exp->def.op.args.firstp, &tpl, insnpp, ecp, txp);
+        ret = resolve_insert_expr(exp->def.op.args.firstp, &tpl, flags, insnpp,
+                ecp, txp);
         RDB_destroy_obj(&tpl, ecp);
         return ret;
     }
@@ -496,7 +500,8 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *srcp,
             RDB_destroy_obj(&tpl, ecp);
             return ret;
         }
-        ret = resolve_insert_expr(exp->def.op.args.firstp, &tpl, insnpp, ecp, txp);
+        ret = resolve_insert_expr(exp->def.op.args.firstp, &tpl, flags,
+                insnpp, ecp, txp);
         RDB_destroy_obj(&tpl, ecp);
         return ret;
     }
@@ -506,17 +511,17 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *srcp,
 }
 
 static int
-resolve_insert(RDB_object *tbp, const RDB_object *srcp, insert_node **insnpp,
+resolve_insert(RDB_object *tbp, const RDB_object *srcp, int flags, insert_node **insnpp,
                RDB_exec_context *ecp, RDB_transaction *txp)
 {
   	if (tbp->val.tb.exp == NULL) {
-        *insnpp = new_insert_node(tbp, srcp, ecp);
+        *insnpp = new_insert_node(tbp, srcp, flags, ecp);
         if (*insnpp == NULL)
             return RDB_ERROR;
         return RDB_OK;
     }
 
-    return resolve_insert_expr(tbp->val.tb.exp, srcp, insnpp, ecp, txp);
+    return resolve_insert_expr(tbp->val.tb.exp, srcp, flags, insnpp, ecp, txp);
 }
 
 static int
@@ -946,6 +951,91 @@ resolve_copy(RDB_object *dstp, const RDB_object *srcp, copy_node **copynpp,
     return resolve_copy_expr(dstp->val.tb.exp, srcp, copynpp, ecp, txp);
 }
 
+/* Check if the source relation type matches the destination table */
+static RDB_bool
+source_table_type_matches(const RDB_object *dsttbp, const RDB_type *srctyp) {
+    int i;
+    RDB_attr *attrp;
+    RDB_type *dsttptyp = RDB_base_type(RDB_obj_type(dsttbp));
+
+    /* Every source attribute must appear in the destination */
+    for (i = 0; i < srctyp->def.basetyp->def.tuple.attrc; i++) {
+        attrp = RDB_tuple_type_attr(dsttptyp,
+                srctyp->def.basetyp->def.tuple.attrv[i].name);
+        if (attrp == NULL || !RDB_type_equals(attrp->typ,
+                srctyp->def.basetyp->def.tuple.attrv[i].typ))
+            return RDB_FALSE;
+    }
+
+    /*
+     * Every destination attribute must either appear in the source
+     * or in the default attributes
+     */
+    for (i = 0; i < dsttptyp->def.tuple.attrc; i++) {
+        attrp = RDB_tuple_type_attr(srctyp->def.basetyp,
+                dsttptyp->def.tuple.attrv[i].name);
+        if (attrp != NULL) {
+            /*
+             * If the attribute was found in the source table,
+             * types must match
+             */
+            if (!RDB_type_equals(attrp->typ, dsttptyp->def.tuple.attrv[i].typ))
+                return RDB_FALSE;
+        } else {
+            /* Attribute must appear in default attributes */
+            if (dsttbp->val.tb.default_map == NULL
+                    || RDB_hashmap_get(dsttbp->val.tb.default_map,
+                            dsttptyp->def.tuple.attrv[i].name) == NULL) {
+                return RDB_FALSE;
+            }
+        }
+    }
+    return RDB_TRUE;
+}
+
+static RDB_int
+do_insert(const RDB_ma_insert *insp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_int rc;
+
+    switch (insp->objp->kind) {
+    case RDB_OB_INITIAL:
+    case RDB_OB_TUPLE:
+        if (RDB_insert_real(insp->tbp, insp->objp, ecp, txp)
+                != RDB_OK) {
+            if ((insp->flags & RDB_DISTINCT) != 0
+                    || RDB_obj_type(RDB_get_err(ecp)) != &RDB_ELEMENT_EXISTS_ERROR) {
+                return RDB_ERROR;
+            }
+        }
+        return (RDB_int) 1;
+    case RDB_OB_TABLE:
+        rc = RDB_move_tuples(insp->tbp, insp->objp, insp->flags, ecp,
+                txp);
+        if (rc == RDB_ERROR) {
+            return (RDB_int) RDB_ERROR;
+        }
+        if (rc == 0) {
+            /*
+             * If the source table was empty, check types
+             * (Otherwise the type is checked during insertion of the tuples)
+             */
+            if (!source_table_type_matches(insp->tbp,
+                    RDB_obj_type(insp->objp))) {
+                RDB_raise_type_mismatch(
+                        "Source table type does not match destination", ecp);
+                return (RDB_int) RDB_ERROR;
+            }
+        }
+        return rc;
+    default:
+        RDB_raise_invalid_argument(
+                "INSERT requires tuple or relation argument", ecp);
+        return (RDB_int) RDB_ERROR;
+    }
+}
+
 /*
  * Perform update. *updp->tbp must be a real table.
  */
@@ -1141,10 +1231,7 @@ do_vdelete(const RDB_ma_vdelete *delp, RDB_exec_context *ecp,
     }
     RDB_raise_invalid_argument(
             "DELETE requires tuple or relation argument", ecp);
-    abort();
-    /*
     return RDB_ERROR;
-    */
 }
 
 static int
@@ -1192,8 +1279,8 @@ resolve_inserts(int insc, const RDB_ma_insert *insv, RDB_ma_insert **ninsvp,
         }
 
         if (insv[i].tbp->val.tb.exp != NULL) {
-            if (resolve_insert(insv[i].tbp, insv[i].objp, &insnp, ecp, txp)
-                    != RDB_OK)
+            if (resolve_insert(insv[i].tbp, insv[i].objp, insv[i].flags, &insnp,
+                    ecp, txp) != RDB_OK)
                 goto error;
 
             /* Add inserts to list */
@@ -1949,54 +2036,15 @@ assign_needs_tx(int insc, const RDB_ma_insert insv[],
     return need_tx;
 }
 
-/* Check if the source relation type matches the destination table */
-static RDB_bool
-source_table_type_matches(const RDB_object *dsttbp, const RDB_type *srctyp) {
-    int i;
-    RDB_attr *attrp;
-    RDB_type *dsttptyp = RDB_base_type(RDB_obj_type(dsttbp));
-
-    /* Every source attribute must appear in the destination */
-    for (i = 0; i < srctyp->def.basetyp->def.tuple.attrc; i++) {
-        attrp = RDB_tuple_type_attr(dsttptyp,
-                srctyp->def.basetyp->def.tuple.attrv[i].name);
-        if (attrp == NULL || !RDB_type_equals(attrp->typ,
-                srctyp->def.basetyp->def.tuple.attrv[i].typ))
-            return RDB_FALSE;
-    }
-
-    /*
-     * Every destination attribute must either appear in the source
-     * or in the default attributes
-     */
-    for (i = 0; i < dsttptyp->def.tuple.attrc; i++) {
-        attrp = RDB_tuple_type_attr(srctyp->def.basetyp,
-                dsttptyp->def.tuple.attrv[i].name);
-        if (attrp != NULL) {
-            /*
-             * If the attribute was found in the source table,
-             * types must match
-             */
-            if (!RDB_type_equals(attrp->typ, dsttptyp->def.tuple.attrv[i].typ))
-                return RDB_FALSE;
-        } else {
-            /* Attribute must appear in default attributes */
-            if (dsttbp->val.tb.default_map == NULL
-                    || RDB_hashmap_get(dsttbp->val.tb.default_map,
-                            dsttptyp->def.tuple.attrv[i].name) == NULL) {
-                return RDB_FALSE;
-            }
-        }
-    }
-    return RDB_TRUE;
-}
-
 /**
  * Perform a number of insert, update, delete,
 and copy operations in a single call.
 
 For each of the RDB_ma_insert elements given by <var>insc</var> and <var>insv</var>,
 the tuple or relation *<var>insv</var>[i]->objp is inserted into *<var>insv</var>[i]->tbp.
+If *<var>insv</var>[i].flags is zero, inserting a tuple which is already an element of
+the table succeeds. If *<var>insv</var>[i].flags is RDB_DISTINCT, such an insert will
+result in an element_exists_error.
 
 For each of the RDB_ma_update elements given by <var>updc</var> and <var>updv</var>,
 the attributes given by <var>updv</var>[i]->updc and <var>updv</var>[i]->updv
@@ -2239,8 +2287,6 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
 
     rcount = 0;
     for (i = 0; i < ninsc; i++) {
-        RDB_int rc;
-
         if (RDB_TB_CHECK & ninsv[i].tbp->val.tb.flags) {
             if (RDB_check_table(ninsv[i].tbp, ecp, txp) != RDB_OK) {
                 rcount = RDB_ERROR;
@@ -2248,44 +2294,12 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
             }
         }
 
-        switch (ninsv[i].objp->kind) {
-            case RDB_OB_INITIAL:
-            case RDB_OB_TUPLE:
-                if (RDB_insert_real(ninsv[i].tbp, ninsv[i].objp, ecp, atxp)
-                        != RDB_OK) {
-                    rcount = RDB_ERROR;
-                    goto cleanup;
-                }
-                rcount++;
-                break;
-            case RDB_OB_TABLE:
-                rc = RDB_move_tuples(ninsv[i].tbp, ninsv[i].objp, ecp,
-                        atxp);
-                if (rc == RDB_ERROR) {
-                    rcount = RDB_ERROR;
-                    goto cleanup;
-                }
-                if (rc == 0) {
-                    /*
-                     * If the source table was empty, check types
-                     * (Otherwise the type is checked during insertion of the tuples)
-                     */
-                    if (!source_table_type_matches(ninsv[i].tbp,
-                            RDB_obj_type(ninsv[i].objp))) {
-                        RDB_raise_type_mismatch(
-                                "Source table type does not match destination", ecp);
-                        rcount = RDB_ERROR;
-                        goto cleanup;
-                    }
-                }
-                rcount += rc;
-                break;
-            default:
-                RDB_raise_invalid_argument(
-                        "INSERT requires tuple or relation argument", ecp);
-                rcount = RDB_ERROR;
-                goto cleanup;
+        cnt = do_insert(&ninsv[i], ecp, atxp);
+        if (cnt == RDB_ERROR) {
+            rcount = RDB_ERROR;
+            goto cleanup;
         }
+        rcount += cnt;
     }
     for (i = 0; i < nupdc; i++) {
         if (RDB_TB_CHECK & nupdv[i].tbp->val.tb.flags) {
@@ -2506,6 +2520,7 @@ RDB_insert(RDB_object *tbp, const RDB_object *objp, RDB_exec_context *ecp,
 
     ins.tbp = tbp;
     ins.objp = (RDB_object *) objp;
+    ins.flags = RDB_DISTINCT;
     if (RDB_multi_assign(1, &ins, 0, NULL, 0, NULL, 0, NULL, 0, NULL,
             ecp, txp) == (RDB_int) RDB_ERROR)
         return RDB_ERROR;

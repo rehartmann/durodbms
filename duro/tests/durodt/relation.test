@@ -101,7 +101,7 @@ test insert_delete {creating table, insert, delete} \
         insert r3 tup {n 2, s 'a'};
         insert r3 tup {n 3, s 'a'};
         try
-            insert r3 tup {n 1, s 'a'};
+            d_insert r3 tup {n 1, s 'a'};
         catch err element_exists_error;
             io.put_line('element_exists_error');
         end try;
@@ -1776,7 +1776,7 @@ test serial {system-generated attribute values} -setup $SETUP -cleanup $CLEANUP 
         begin tx;
         try ;
             insert r tup {no 2, name 'Tst'};
-        catch err element_exists_error;
+        catch err invalid_argument_error;
             io.put_line('insert caught');
         end try;
         insert r tup{name 'Def'};

@@ -235,7 +235,7 @@ RDB_table_ilen(const RDB_object *tbp, size_t *lenp, RDB_exec_context *ecp)
  * @returns the number of tuples copied on success, RDB_ERROR on failure
  */
 RDB_int
-RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *ecp,
+RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, int flags, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_object tpl;
@@ -264,7 +264,10 @@ RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *ecp,
         else
             ret = RDB_insert_real(dstp, &tpl, ecp, txp);
         if (ret != RDB_OK) {
-            goto cleanup;
+            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_ELEMENT_EXISTS_ERROR
+                    || (flags & RDB_DISTINCT) != 0) {
+                goto cleanup;
+            }
         }
         count++;
     }

@@ -118,12 +118,18 @@ typedef RDB_type *RDB_gettypefn(const char *, void *);
  * @{
  */
 
+enum {
+    RDB_DISTINCT = 1,
+    RDB_INCLUDED = 2
+};
+
 /**
  * Represents an insert.
  */
 typedef struct {
     RDB_object *tbp;
     RDB_object *objp;
+    int flags;
 } RDB_ma_insert;
 
 typedef struct {
@@ -155,6 +161,7 @@ typedef struct {
 typedef struct {
     RDB_object *tbp;
     RDB_object *objp;
+    int flags;
 } RDB_ma_vdelete;
 
 typedef struct {
@@ -280,7 +287,7 @@ RDB_copy_table(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *,
         RDB_transaction *);
 
 RDB_int
-RDB_move_tuples(RDB_object *, RDB_object *, RDB_exec_context *,
+RDB_move_tuples(RDB_object *, RDB_object *, int, RDB_exec_context *,
         RDB_transaction *);
 
 RDB_int

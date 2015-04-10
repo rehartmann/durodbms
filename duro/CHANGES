@@ -6,6 +6,10 @@ DuroDBMS 0.26
 
 - Java interface: DException now extends RuntimeException.
 
+- Added D_INSERT. RDB_ma_insert now contains a flags field
+  which must be initialized when a pointer to this structure
+  is passed to RDB_multi_assign().
+
 DuroDBMS 0.25
 
 - Added support for modules.

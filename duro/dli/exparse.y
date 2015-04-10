@@ -142,6 +142,7 @@ yyerror(const char *);
 %token TOK_TABLE_DUM "TABLE_DUM"
 %token TOK_ASSIGN ":="
 %token TOK_INSERT "INSERT"
+%token TOK_D_INSERT "D_INSERT"
 %token TOK_DELETE "DELETE"
 %token TOK_UPDATE "UPDATE"
 %token TOK_TYPE "TYPE"
@@ -1660,6 +1661,18 @@ assign: assignable_expression TOK_ASSIGN expression {
         RDB_parse_add_child($$, $3);
     }
     | TOK_INSERT qualified_id expression {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            YYABORT;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+    }
+    | TOK_D_INSERT qualified_id expression {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);

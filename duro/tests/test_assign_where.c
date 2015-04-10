@@ -48,6 +48,7 @@ test_assign_select(RDB_database *dbp, RDB_exec_context *ecp)
 
     mains.tbp = vtbp;
     mains.objp = &tpl;
+    mains.flags = RDB_DISTINCT;
 
     assert(RDB_multi_assign(1, &mains, 0, NULL, 0, NULL, 0, NULL, 0, NULL,
             ecp, &tx) != (RDB_int)RDB_ERROR);

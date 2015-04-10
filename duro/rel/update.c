@@ -280,7 +280,7 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
     /*
      * Insert the records from the temporary table into the original table.
      */
-    if (RDB_move_tuples(tbp, &tmptb, ecp,
+    if (RDB_move_tuples(tbp, &tmptb, RDB_DISTINCT, ecp,
             RDB_table_is_persistent(tbp) ? &tx : NULL) == (RDB_int) RDB_ERROR) {
         rcount = RDB_ERROR;
     }
@@ -1107,8 +1107,8 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
     /*
      * Insert the records from the temporary table into the original table.
      */
-     if (RDB_move_tuples(refexp->def.tbref.tbp, &tmptb, ecp,
-                          &tx) == (RDB_int) RDB_ERROR) {
+     if (RDB_move_tuples(refexp->def.tbref.tbp, &tmptb, RDB_DISTINCT, ecp, &tx)
+             == (RDB_int) RDB_ERROR) {
          rcount = RDB_ERROR;
      }
 
