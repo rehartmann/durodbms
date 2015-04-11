@@ -85,10 +85,22 @@ test insert_delete {creating table, insert, delete} \
             io.put_line('key violation caught (2)');
         end try;
 
-        insert r2 tup{no 2, id '2', str 'xxx'};
+        insert r2 tup {no 2, id '2', str 'xxx'};
 
+        -- Try to delete with only the key matching
+        delete r2 tup { no 1, id '2', str 'yyy' };
+
+        -- r2 must be unchanged
+        if r2 <> rel { tup {no 1, id '1', str 'xxx'},
+                       tup {no 2, id '2', str 'xxx'} } then
+             io.put('invalid value of r2: ');
+             io.put(r2);
+             io.put_line('');
+        end if; 
+
+        -- Try the same with i_delete, must fail
         try
-            delete r2 tup { no 1, id '2', str 'yyy' };
+            i_delete r2 tup { no 1, id '2', str 'yyy' };
             io.put_line('delete of tuple where only key matched succeeded');
         catch err not_found_error;
             ;
@@ -117,7 +129,7 @@ test insert_delete {creating table, insert, delete} \
         io.put(count(r3)); io.put_line(' tuples');
         delete r3 rel { tup {n 1, s 'b'} };
         try
-            delete r3 rel { tup {n 1, s 'b'}, tup {n 2, s 'a'} };
+            i_delete r3 rel { tup {n 1, s 'b'}, tup {n 2, s 'a'} };
         catch err not_found_error;
             io.put_line('2nd delete of same tuple failed');
         end try;

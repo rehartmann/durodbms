@@ -1180,11 +1180,12 @@ do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
 }
 
 static RDB_int
-do_vdelete_rel(RDB_object *destp, RDB_object *srcp, RDB_exec_context *ecp,
+do_vdelete_rel(RDB_object *destp, RDB_object *srcp, int flags, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    RDB_qresult *qrp;
+    RDB_int cnt;
     RDB_object tpl;
+    RDB_qresult *qrp = NULL;
     RDB_int delcount = 0;
 
     RDB_init_obj(&tpl);
@@ -1192,11 +1193,11 @@ do_vdelete_rel(RDB_object *destp, RDB_object *srcp, RDB_exec_context *ecp,
     if (qrp == NULL)
         goto error;
     while (RDB_next_tuple(qrp,  &tpl, ecp, txp) == RDB_OK) {
-        if (RDB_delete_real_tuple(destp, &tpl, ecp, txp)
-                == (RDB_int) RDB_ERROR) {
+        cnt = RDB_delete_real_tuple(destp, &tpl, flags, ecp, txp);
+        if (cnt == (RDB_int) RDB_ERROR) {
             goto error;
         }
-        delcount++;
+        delcount += cnt;
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
         goto error;
@@ -1224,9 +1225,10 @@ do_vdelete(const RDB_ma_vdelete *delp, RDB_exec_context *ecp,
     switch (delp->objp->kind) {
         case RDB_OB_INITIAL:
         case RDB_OB_TUPLE:
-            return RDB_delete_real_tuple(delp->tbp, delp->objp, ecp, txp);
+            return RDB_delete_real_tuple(delp->tbp, delp->objp, delp->flags,
+                    ecp, txp);
         case RDB_OB_TABLE:
-            return do_vdelete_rel(delp->tbp, delp->objp, ecp, txp);
+            return do_vdelete_rel(delp->tbp, delp->objp, delp->flags, ecp, txp);
         default: ;
     }
     RDB_raise_invalid_argument(
@@ -2037,7 +2039,7 @@ assign_needs_tx(int insc, const RDB_ma_insert insv[],
 }
 
 /**
- * Perform a number of insert, update, delete,
+ * Performs a number of insert, update, delete,
 and copy operations in a single call.
 
 For each of the RDB_ma_insert elements given by <var>insc</var> and <var>insv</var>,
@@ -2058,6 +2060,9 @@ are deleted from *<var>delv</var>[i]->tbp.
 For each of the RDB_ma_vdelete elements given by <var>vdelc</var> and <var>vdelv</var>,
 the tuples given by *<var>insv</var>[i]->objp (may be a tuple or a table)
 are deleted from *<var>vdelv</var>[i]->tbp.
+If *<var>vdelv</var>[i].flags is zero, deleting a tuple which is not already an element of
+the table succeeds. If *<var>insv</var>[i].flags is RDB_DISTINCT, such a delete will
+result in an not_found_error.
 
 For each of the RDB_ma_copy elements given by <var>copyc</var> and <var>copyv</var>,
 *<var>copyv</var>[i]->scrp is copied to *<var>copyv</var>[i]->dstp.

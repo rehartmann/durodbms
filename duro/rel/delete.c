@@ -377,7 +377,7 @@ RDB_delete_where_index(RDB_expression *texp, RDB_expression *condp,
 }
 
 RDB_int
-RDB_delete_real_tuple(RDB_object *tbp, RDB_object *tplp, RDB_exec_context *ecp,
+RDB_delete_real_tuple(RDB_object *tbp, RDB_object *tplp, int flags, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;
@@ -390,16 +390,22 @@ RDB_delete_real_tuple(RDB_object *tbp, RDB_object *tplp, RDB_exec_context *ecp,
 
     if (tbp->val.tb.stp == NULL) {
         /* No stored table, so table is empty */
-        RDB_raise_not_found("tuple not found", ecp);
-        return (RDB_int) RDB_ERROR;
+        if ((RDB_INCLUDED & flags) != 0) {
+            RDB_raise_not_found("tuple not found", ecp);
+            return (RDB_int) RDB_ERROR;
+        }
+        return (RDB_int) 0;
     }
 
     /* Check if the table contains the tuple */
     if (RDB_table_contains(tbp, tplp, ecp, txp, &contains) != RDB_OK)
         return (RDB_int) RDB_ERROR;
     if (!contains) {
-        RDB_raise_not_found("tuple not found", ecp);
-        return (RDB_int) RDB_ERROR;
+        if ((RDB_INCLUDED & flags) != 0) {
+            RDB_raise_not_found("tuple not found", ecp);
+            return (RDB_int) RDB_ERROR;
+        }
+        return (RDB_int) 0;
     }
 
     /* Get primary index */
@@ -447,10 +453,6 @@ RDB_delete_real_tuple(RDB_object *tbp, RDB_object *tplp, RDB_exec_context *ecp,
 
     /* Delete using primary index */
     ret = delete_by_uindex(tbp, objpv, indexp, ecp, txp);
-    if (ret == 0) {
-        RDB_raise_not_found("tuple not found", ecp);
-        goto error;
-    }
     if (ret == (RDB_int) RDB_ERROR)
         goto error;
     RDB_free(objpv);

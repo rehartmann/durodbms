@@ -425,7 +425,7 @@ node_to_delete(RDB_ma_delete *delp, RDB_parse_node *nodep, Duro_interp *interp,
 
 static int
 node_to_vdelete(RDB_ma_vdelete *delp, RDB_parse_node *nodep, Duro_interp *interp,
-        RDB_exec_context *ecp)
+        int flags, RDB_exec_context *ecp)
 {
     RDB_object idobj;
     RDB_expression *srcexp;
@@ -459,6 +459,8 @@ node_to_vdelete(RDB_ma_vdelete *delp, RDB_parse_node *nodep, Duro_interp *interp
     if (Duro_evaluate_retry(srcexp, interp, ecp, delp->objp) != RDB_OK) {
         return RDB_ERROR;
     }
+
+    delp->flags = flags;
 
     return RDB_OK;
 }
@@ -727,6 +729,7 @@ node_to_multi_assign(const RDB_parse_node *listnodep,
                     }
                     break;
                 case TOK_DELETE:
+                case TOK_I_DELETE:
                     if (firstp->nextp->nextp == NULL
                             || (firstp->nextp->nextp->nextp != NULL
                                 && firstp->nextp->nextp->nextp->kind
@@ -749,7 +752,8 @@ node_to_multi_assign(const RDB_parse_node *listnodep,
                         RDB_init_obj(&srcobjv[(*srcobjcp)++]);
                         vdelv[(*vdelcp)].objp = &srcobjv[(*srcobjcp) - 1];
                         if (node_to_vdelete(&vdelv[(*vdelcp)++], firstp->nextp,
-                                interp, ecp) != RDB_OK) {
+                                interp, firstp->val.token == TOK_DELETE ? 0 : RDB_INCLUDED,
+                                ecp) != RDB_OK) {
                             goto error;
                         }
                     }
