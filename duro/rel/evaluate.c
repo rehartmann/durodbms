@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * Copyright (C) 2012, 2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
@@ -584,7 +582,7 @@ evaluate_var(const char *varname, RDB_getobjfn *getfnp, void *getdata,
  */
 
 /**
- * Evaluate *exp and store the result in *valp.
+ * Evaluates *exp and stores the result in *valp.
  * If *exp is the invocation of a relational operator,
  * *valp will become a transient virtual table.
  *

@@ -1,7 +1,5 @@
 /*
- * $Id$
- *
- * Copyright (C) 2004, 2013-2014 Rene Hartmann.
+ * Copyright (C) 2004, 2013-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -486,30 +484,6 @@ RDB_call_ro_op_by_name_e(const char *name, int argc, RDB_object *argv[],
             RDB_int_to_obj(retvalp, ret);
             return RDB_OK;
         }
-    } else if (argc == 2 && obj_is_table(argv[1])) {
-        if (strcmp(name, "in") == 0) {
-            RDB_bool b;
-
-            ret = RDB_table_contains(argv[1], argv[0], ecp, txp, &b);
-            if (ret != RDB_OK)
-                return RDB_ERROR;
-
-            RDB_bool_to_obj(retvalp, b);
-            return RDB_OK;
-        }
-        if (strcmp(name, "subset_of") == 0) {
-            RDB_bool res;
-
-            ret = RDB_subset(argv[0], argv[1], ecp, txp, &res);
-            if (ret != RDB_OK)
-                return RDB_ERROR;
-            RDB_bool_to_obj(retvalp, res);
-            return RDB_OK;
-        }
-    }
-    if (argc >= 1 && obj_is_table(argv[0]) && strcmp(name, "to_tuple") == 0
-            && argc == 1) {
-        return RDB_extract_tuple(argv[0], ecp, txp, retvalp);
     }
 
     argtv = valv_to_typev(argc, argv, ecp);

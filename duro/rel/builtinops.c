@@ -1282,6 +1282,37 @@ op_unwrap(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
+op_to_tuple(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    return RDB_extract_tuple(argv[0], ecp, txp, retvalp);
+}
+
+static int
+op_in(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_bool res;
+
+    if (RDB_table_contains(argv[1], argv[0], ecp, txp, &res) != RDB_OK)
+        return RDB_ERROR;
+    RDB_bool_to_obj(retvalp, res);
+    return RDB_OK;
+}
+
+static int
+op_subset_of(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_bool res;
+
+    if (RDB_subset(argv[0], argv[1], ecp, txp, &res) != RDB_OK)
+        return RDB_ERROR;
+    RDB_bool_to_obj(retvalp, res);
+    return RDB_OK;
+}
+
+static int
 op_subscript(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
@@ -1309,7 +1340,7 @@ cast_as_integer_string(int argc, RDB_object *argv[], RDB_operator *op,
     RDB_int_to_obj(retvalp, (RDB_int)
             strtol(argv[0]->val.bin.datap, &endp, 10));
     if (*endp != '\0') {
-        RDB_raise_invalid_argument("conversion to INTEGER failed", ecp);
+        RDB_raise_invalid_argument("conversion to integer failed", ecp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -1850,6 +1881,7 @@ int
 RDB_init_builtin_ops(RDB_exec_context *ecp)
 {
     RDB_type *paramtv[3];
+    RDB_attr genattr;
     int ret;
 
     /*
@@ -2325,11 +2357,11 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
     ret = RDB_put_global_ro_op("unwrap", -1, NULL, NULL, &op_unwrap, ecp);
     if (ret != RDB_OK)
         return ret;
-
+/*
     ret = RDB_put_global_ro_op("union", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
     if (ret != RDB_OK)
         return ret;
-
+*/
     ret = RDB_put_global_ro_op("minus", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
     if (ret != RDB_OK)
         return ret;
@@ -2359,6 +2391,46 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
         return ret;
 
     ret = RDB_put_global_ro_op("ungroup", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    genattr.name = NULL;
+    paramtv[0] = RDB_new_relation_type(1, &genattr, ecp);
+    if (paramtv[0] == NULL) {
+        return RDB_ERROR;
+    }
+    ret = RDB_put_global_ro_op("to_tuple", 1, paramtv, NULL, &op_to_tuple, ecp);
+    RDB_del_nonscalar_type(paramtv[0], ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    genattr.name = NULL;
+    paramtv[0] = RDB_new_tuple_type(1, &genattr, ecp);
+    if (paramtv[0] == NULL) {
+        return RDB_ERROR;
+    }
+    paramtv[1] = RDB_new_relation_type(1, &genattr, ecp);
+    if (paramtv[1] == NULL) {
+        return RDB_ERROR;
+    }
+    ret = RDB_put_global_ro_op("in", 2, paramtv, &RDB_BOOLEAN, &op_in, ecp);
+    RDB_del_nonscalar_type(paramtv[0], ecp);
+    RDB_del_nonscalar_type(paramtv[1], ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    genattr.name = NULL;
+    paramtv[0] = RDB_new_relation_type(1, &genattr, ecp);
+    if (paramtv[0] == NULL) {
+        return RDB_ERROR;
+    }
+    paramtv[1] = RDB_new_relation_type(1, &genattr, ecp);
+    if (paramtv[1] == NULL) {
+        return RDB_ERROR;
+    }
+    ret = RDB_put_global_ro_op("subset_of", 2, paramtv, &RDB_BOOLEAN, &op_subset_of, ecp);
+    RDB_del_nonscalar_type(paramtv[0], ecp);
+    RDB_del_nonscalar_type(paramtv[1], ecp);
     if (ret != RDB_OK)
         return ret;
 
