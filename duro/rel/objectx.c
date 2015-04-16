@@ -785,12 +785,40 @@ int
 RDB_set_init_value(RDB_object *objp, RDB_type *typ, RDB_environment *envp,
         RDB_exec_context *ecp)
 {
-    if (RDB_type_is_relation(typ)) {
+    switch (typ->kind) {
+    case RDB_TP_RELATION:
         return RDB_init_table_from_type(objp, NULL, typ, 0, NULL,
                 0, NULL, ecp);
-    }
+    case RDB_TP_TUPLE:
+    {
+        RDB_type *attrtyp;
+        int i;
 
-    if (RDB_type_is_scalar(typ)) {
+        for (i = 0; i < typ->def.tuple.attrc; i++) {
+            if (RDB_tuple_set(objp, typ->def.tuple.attrv[i].name,
+                    NULL, ecp) != RDB_OK)
+                return RDB_ERROR;
+            attrtyp = RDB_dup_nonscalar_type(typ->def.tuple.attrv[i].typ, ecp);
+            if (attrtyp == NULL)
+                return RDB_ERROR;
+
+            if (RDB_set_init_value(RDB_tuple_get(objp, typ->def.tuple.attrv[i].name),
+                    attrtyp, envp, ecp) != RDB_OK) {
+                if (!RDB_type_is_scalar(attrtyp)) {
+                    RDB_del_nonscalar_type(typ, ecp);
+                }
+                return RDB_ERROR;
+            }
+        }
+        RDB_obj_set_typeinfo(objp, typ);
+        break;
+    }
+    case RDB_TP_ARRAY:
+        RDB_obj_set_typeinfo(objp, typ);
+        if (RDB_set_array_length(objp, (RDB_int) 0, ecp) != RDB_OK)
+            return RDB_ERROR;
+        break;
+    case RDB_TP_SCALAR:
         objp->typ = typ;
 
         if (typ->ireplen == RDB_NOT_IMPLEMENTED) {

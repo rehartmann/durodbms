@@ -403,6 +403,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         }
     }
 
+    /* If-then-else is already handled here so args #2 and #3 can be evaluated lazily */
     if (argc == 3 && strcmp(exp->def.op.name, "if") == 0) {
         return evaluate_if(exp, getfnp, getdata, envp, ecp, txp, valp);
     }

@@ -65,7 +65,7 @@ Duro_exec_vardef(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *e
     RDB_init_obj(objp);
 
     if (initexp == NULL) {
-        if (Duro_init_obj(objp, typ, interp, ecp, txp) != RDB_OK) {
+        if (RDB_set_init_value(objp, typ, interp->envp, ecp) != RDB_OK) {
             goto error;
         }
     } else {

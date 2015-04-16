@@ -545,8 +545,7 @@ exec_length_assign(const RDB_parse_node *nodep, const RDB_expression *argexp,
             if (elemp == NULL)
                 return RDB_ERROR;
 
-            if (Duro_init_obj(elemp, basetyp, interp, ecp,
-                    interp->txnp != NULL ? &interp->txnp->tx : NULL) != RDB_OK)
+            if (RDB_set_init_value(elemp, basetyp, interp->envp, ecp) != RDB_OK)
                 return RDB_ERROR;
         }
     }

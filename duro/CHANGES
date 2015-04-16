@@ -2,6 +2,8 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 0.26
 
+- Fixed a bug in the handling of string literals in user-defined operators.
+
 - Generic tuple types now allowed in operator parameters.
 
 - Java interface: DException now extends RuntimeException.
@@ -9,6 +11,8 @@ DuroDBMS 0.26
 - Added D_INSERT and I_DELETE. RDB_ma_insert and RDB_ma_vdelete
   now contain a flags field which must be initialized when a pointer
   to this structure is passed to RDB_multi_assign().
+
+- Added built-in read-only operators strfind_b() and substr_b().
 
 DuroDBMS 0.25
 

@@ -90,10 +90,6 @@ Duro_get_db(Duro_interp *, RDB_exec_context *);
 RDB_type *
 Duro_parse_node_to_type_retry(RDB_parse_node *, Duro_interp *, RDB_exec_context *);
 
-int
-Duro_init_obj(RDB_object *, RDB_type *, Duro_interp *, RDB_exec_context *,
-        RDB_transaction *);
-
 RDB_object *
 Duro_get_var(const char *, void *);
 

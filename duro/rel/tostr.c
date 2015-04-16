@@ -1,7 +1,7 @@
 /*
- * $Id$
+ * Functions for converting RDB_object to literals.
  *
- * Copyright (C) 2004-2012 Rene Hartmann.
+ * Copyright (C) 2004-2012, 2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -81,21 +81,32 @@ error:
 }
 
 static int
-append_quoted_string(RDB_object *objp, const RDB_object *strp,
+append_quoted_string(RDB_object *objp, const RDB_object *strobjp,
         RDB_exec_context *ecp)
 {
     int ret;
     int i;
-    size_t qlen;
-    char *qstr = RDB_alloc((strp->val.bin.len + 2) * 2, ecp);
+    RDB_bool dquotes;
+    const char *strp = RDB_obj_string(strobjp);
 
-    if (qstr == NULL)
-        return RDB_ERROR;
+    dquotes = (RDB_bool) (strchr(strp, '\'') != NULL
+                          || strchr(strp, '\\') != NULL
+                          || strchr(strp, '\n') != NULL
+                          || strchr(strp, '\r') != NULL
+                          || strchr(strp, '\t') != NULL);
 
-    qstr[0] = '\'';
-    qlen = 1;
-    for (i = 0; i < strp->val.bin.len - 1; i++) {
-        switch (((char *)strp->val.bin.datap)[i]) {
+    if (dquotes) {
+        /* Use ", escape some characters */
+        size_t len = strlen((char *)strobjp->val.bin.datap);
+        char *qstr = RDB_alloc(len * 2 + 3, ecp);
+        size_t qlen = 1;
+
+        if (qstr == NULL)
+            return RDB_ERROR;
+
+        qstr[0] = '"';
+        for (i = 0; i < len; i++) {
+            switch (strp[i]) {
             case '\"':
                 qstr[qlen++] = '\\';
                 qstr[qlen++] = '\"';
@@ -117,15 +128,21 @@ append_quoted_string(RDB_object *objp, const RDB_object *strp,
                 qstr[qlen++] = 't';
                 break;
             default:
-                qstr[qlen++] = ((char *)strp->val.bin.datap)[i];
+                qstr[qlen++] = strp[i];
+            }
         }
+        qstr[qlen++] = '"';
+        qstr[qlen] = '\0';
+        ret = RDB_append_string(objp, qstr, ecp);
+        RDB_free(qstr);
+        return ret;
     }
-    qstr[qlen++] = '\'';
-    qstr[qlen] = '\0';
-
-    ret = RDB_append_string(objp, qstr, ecp);
-    RDB_free(qstr);
-    return ret;
+    /* Use ', no escaping */
+    if (RDB_append_string(objp, "\'", ecp) != RDB_OK)
+            return RDB_ERROR;
+    if (RDB_append_string(objp, strp, ecp) != RDB_OK)
+            return RDB_ERROR;
+    return RDB_append_string(objp, "\'", ecp);
 }
 
 static int

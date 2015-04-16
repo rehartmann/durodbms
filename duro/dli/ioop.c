@@ -11,7 +11,6 @@
 #include <rel/rdb.h>
 #include <rel/tostr.h>
 #include <rel/typeimpl.h>
-#include <util/www.h>
 
 #include <errno.h>
 #include <string.h>
@@ -46,6 +45,7 @@ RDB_object DURO_STDERR_OBJ;
 /** @page io-ops Built-in I/O operators
 
 These operators are only available in Duro D/T.
+They are part of the io module;
 
 OPERATOR put_line(line string) UPDATES {};
 
@@ -75,42 +75,42 @@ OPERATOR read(data binary, count integer) UPDATES {data};
 
 Read up to count bytes from standard input and store it in <var>data</var>.
 
-OPERATOR put_line(ios iostream_id, line string) UPDATES {};
+OPERATOR put_line(ios io.iostream_id, line string) UPDATES {};
 
 Write <var>line</var> to the I/O stream <var>ios</var>, followed by a newline.
 
-OPERATOR put(iostream_id ios, data string) UPDATES {};
+OPERATOR put(ios io.iostream_id, data string) UPDATES {};
 
-OPERATOR put(iostream_id ios, data binary) UPDATES {};
+OPERATOR put(ios io.iostream_id, data binary) UPDATES {};
 
-OPERATOR put(iostream_id ios, data integer) UPDATES {};
+OPERATOR put(ios io.iostream_id, data integer) UPDATES {};
 
-OPERATOR put(iostream_id ios, data float) UPDATES {};
+OPERATOR put(ios io.iostream_id, data float) UPDATES {};
 
-OPERATOR put(iostream_id ios, data boolean) UPDATES {};
+OPERATOR put(ios io.iostream_id, data boolean) UPDATES {};
 
-OPERATOR put(iostream_id ios, data <em>TUPLE</em>) UPDATES {};
+OPERATOR put(ios io.iostream_id, data <em>TUPLE</em>) UPDATES {};
 
-OPERATOR put(iostream_id ios, data <em>RELATION</em>) UPDATES {};
+OPERATOR put(ios io.iostream_id, data <em>RELATION</em>) UPDATES {};
 
-OPERATOR put(iostream_id ios, data <em>ARRAY</em>) UPDATES {};
+OPERATOR put(ios io.iostream_id, data <em>ARRAY</em>) UPDATES {};
 
 Write <var>data</var> to the I/O stream <var>ios</var>.
 
-OPERATOR get_line(iostream_id ios, line string) UPDATES {line};
+OPERATOR get_line(ios io.iostream_id, line string) UPDATES {line};
 
 Read a line from I/O stream <var>ios</var> and store it in line, without the trailing newline.
 
-OPERATOR read(iostream_id ios, data binary, count integer) UPDATES {data};
+OPERATOR read(ios io.iostream_id, data binary, count integer) UPDATES {data};
 
 Read up to count bytes from <var>ios</var> and store it in <var>data</var>.
 
-OPERATOR open(ios iostream_id, string path, string mode) UPDATES {ios};
+OPERATOR open(ios io.iostream_id, string path, string mode) UPDATES {ios};
 
 Open file <var>path</var> in mode <var>mode</var> and store the resulting I/O stream
 in <var>ios</var>.
 
-OPERATOR close(ios iostream_id) UPDATES {};
+OPERATOR close(ios io.iostream_id) UPDATES {};
 
 Close I/O stream <var>ios</var>.
 
@@ -119,7 +119,7 @@ OPERATOR eof() RETURNS boolean;
 Return TRUE if the end-of-file indicator was set while reading
 from standard input.
 
-OPERATOR eof(ios iostream_id) RETURNS boolean;
+OPERATOR eof(ios io.iostream_id) RETURNS boolean;
 
 Return TRUE if the end-of-file indicator was set while reading
 from <var>ios</var>.
@@ -133,7 +133,7 @@ to the value of the pair.
 */
 
 /*
- * Get file number from iostream_id
+ * Get file number from an iostream_id
  */
 static int
 get_iostream_id(const RDB_object *objp, RDB_exec_context *ecp)

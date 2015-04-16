@@ -910,4 +910,47 @@ test parser {Parser} -match glob -body {
     puts $res
 } -output {*syntax_error*}
 
+test strfind {strfind_b operators} -body {
+    exec $testdir/../../dli/durodt << {
+        var s init 'Hoola hoola';    
+    
+        io.put_line(cast_as_string(strfind_b(s, 'ola ')));
+        io.put_line(cast_as_string(strfind_b(s, 'ola', 5)));
+	}
+} -result {2
+8
+}
+
+test substr {substr operators} -body {
+    exec $testdir/../../dli/durodt << {    
+        io.put_line(substr('abcdef', 2, 2));
+        io.put_line(substr_b('abcdef', 3, 2));
+        io.put_line(substr_b('abcdef', 4));
+
+        var s string;
+
+        try
+            s := substr('abcdef', 4, 3);
+            io.put_line('invalid substr() succeeded');
+        catch err invalid_argument_error;
+            ;
+        end try; 
+        try
+            s := substr_b('abcdef', 5, 2);
+            io.put_line('invalid substr_b() (3 args) succeeded');
+        catch err invalid_argument_error;
+            ;
+        end try;
+        try
+            s := substr_b('abcdef', 7);
+            io.put_line('invalid substr_b() (2 args) succeeded');
+        catch err invalid_argument_error;
+            ;
+        end try;            
+	}
+} -result {cd
+de
+ef
+}
+
 cleanupTests

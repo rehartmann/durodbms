@@ -272,7 +272,7 @@ The result of the concatenation of the operands.
 
 <h3 id="op_strlen">OPERATOR strlen</h3>
 
-OPERATOR strlen (string) RETURNS integer;
+OPERATOR strlen (s string) RETURNS integer;
 
 <h4>Description</h4>
 
@@ -280,7 +280,7 @@ The string length operator.
 
 <h4>Return value</h4>
 
-The length of the operand.
+The length of s, in code points.
 
 <hr>
 
@@ -291,19 +291,70 @@ string;
 
 <h4>Description</h4>
 
-The substring operator.
+Extract a substring.
 
 <h4>Return value</h4>
 
 The substring of S with length <var>length</var> starting at position
-START.
+<var>start</var>. <var>length</var> and <var>start</var> are measured
+in code points, according to the current encoding.
 
 <h4>Errors</h4>
 
 <dl>
 <dt>invalid_argument_error
-<dd>START is negative, or START + LENGTH is greater than LENGTH(S).
+<dd><var>start</var> is negative, or <var>start</var> + <var>length</var>
+is greater than strlen(<var>s</var>).
 </dl>
+
+<hr>
+
+<h3 id="substr_b">OPERATOR substr_b</h3>
+
+OPERATOR substr_b(s string, start integer, length integer) RETURNS
+string;
+
+OPERATOR substr_b(s string, start integer) RETURNS
+string;
+
+<h4>Description</h4>
+
+Extracts a substring.
+
+<h4>Return value</h4>
+
+The substring of <var>s</var> with length <var>length</var> starting at position
+<var>start</var>. <var>length</var> and <var>start</var> are measured
+in bytes. If called with 2 arguments, the substring extends to the end of
+<var>s</var>.
+
+<h4>Errors</h4>
+
+<dl>
+<dt>invalid_argument_error
+<dd><var>start</var> or <var>length</var> are negative, or <var>start</var> + <var>length</var>
+is greater than strlen(<var>s</var>).
+</dl>
+
+<hr>
+
+<h3 id="strfind_b">OPERATOR substr</h3>
+
+OPERATOR strfind_b (haystack string, needle string) RETURNS
+integer;
+
+OPERATOR strfind_b (haystack string, needle string, int pos) RETURNS
+integer;
+
+<h4>Description</h4>
+
+Finds the first occurrence of the string <var>needle</var> in the string <var>haystack</var>.
+If called with 3 arguments, it finds the first occurrence after <var>pos</var>,
+where <var>pos</var> is a byte offset.
+
+<h4>Return value</h4>
+
+The position of the substring, in bytes, or -1 if the substring has not been found.
 
 <hr>
 
@@ -1385,7 +1436,7 @@ cast_as_binary(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-length_string(int argc, RDB_object *argv[], RDB_operator *op,
+op_strlen(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     size_t len = mbstowcs(NULL, argv[0]->val.bin.datap, 0);
@@ -1447,6 +1498,75 @@ op_substr(int argc, RDB_object *argv[], RDB_operator *op,
 
     return RDB_string_n_to_obj(retvalp,
             (char *) argv[0]->val.bin.datap + bstart, blen, ecp);
+}
+
+static int
+op_substr_b_remaining(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    const char *strp = RDB_obj_string(argv[0]);
+    int pos = (int) RDB_obj_int(argv[1]);
+    if (pos < 0 || pos > strlen(strp)) {
+        RDB_raise_invalid_argument("invalid substr_b argument", ecp);
+        return RDB_ERROR;
+    }
+
+    return RDB_string_to_obj(retvalp, strp + pos, ecp);
+}
+
+static int
+op_substr_b(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    const char *strp = RDB_obj_string(argv[0]);
+    int pos = (int) RDB_obj_int(argv[1]);
+    RDB_int len = RDB_obj_int(argv[2]);
+
+    if (pos < 0 || len < 0 || pos + len > strlen(strp) ) {
+        RDB_raise_invalid_argument("invalid substr_b argument", ecp);
+        return RDB_ERROR;
+    }
+
+    return RDB_string_n_to_obj(retvalp, strp + pos, (size_t) len, ecp);
+}
+
+static int
+op_strfind_b(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    const char *haystack = RDB_obj_string(argv[0]);
+
+    char *substrp = strstr(haystack, RDB_obj_string(argv[1]));
+
+    if (substrp == NULL) {
+        RDB_int_to_obj(retvalp, (RDB_int) -1);
+    } else {
+        RDB_int_to_obj(retvalp, (RDB_int) (substrp - haystack));
+    }
+    return RDB_OK;
+}
+
+static int
+op_strfind_b_pos(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    char *substrp;
+    const char *haystack = RDB_obj_string(argv[0]);
+    int pos = (int) RDB_obj_int(argv[2]);
+
+    if (pos < 0 || pos > strlen(haystack)) {
+        RDB_raise_invalid_argument("Invalid strfind_b argument", ecp);
+        return RDB_ERROR;
+    }
+
+    substrp = strstr(haystack + pos, RDB_obj_string(argv[1]));
+
+    if (substrp == NULL) {
+        RDB_int_to_obj(retvalp, (RDB_int) -1);
+    } else {
+        RDB_int_to_obj(retvalp, (RDB_int) (substrp - haystack));
+    }
+    return RDB_OK;
 }
 
 static int
@@ -1971,7 +2091,7 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     paramtv[0] = &RDB_STRING;
 
-    ret = RDB_put_global_ro_op("strlen", 1, paramtv, &RDB_INTEGER, &length_string, ecp);
+    ret = RDB_put_global_ro_op("strlen", 1, paramtv, &RDB_INTEGER, &op_strlen, ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -1980,6 +2100,38 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
     paramtv[2] = &RDB_INTEGER;
 
     ret = RDB_put_global_ro_op("substr", 3, paramtv, &RDB_STRING, &op_substr, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    paramtv[0] = &RDB_STRING;
+    paramtv[1] = &RDB_INTEGER;
+    paramtv[2] = &RDB_INTEGER;
+
+    ret = RDB_put_global_ro_op("substr_b", 3, paramtv, &RDB_STRING, &op_substr_b, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    paramtv[0] = &RDB_STRING;
+    paramtv[1] = &RDB_INTEGER;
+
+    ret = RDB_put_global_ro_op("substr_b", 2, paramtv, &RDB_STRING,
+            &op_substr_b_remaining, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    paramtv[0] = &RDB_STRING;
+    paramtv[1] = &RDB_STRING;
+
+    ret = RDB_put_global_ro_op("strfind_b", 2, paramtv, &RDB_INTEGER, &op_strfind_b, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    paramtv[0] = &RDB_STRING;
+    paramtv[1] = &RDB_STRING;
+    paramtv[2] = &RDB_INTEGER;
+
+    ret = RDB_put_global_ro_op("strfind_b", 3, paramtv, &RDB_INTEGER, &op_strfind_b_pos,
+            ecp);
     if (ret != RDB_OK)
         return ret;
 
