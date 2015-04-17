@@ -1,7 +1,7 @@
 /*
  * Built-in types.
  *
- * Copyright (C) 2004-2009, 2011-2014 Rene Hartmann.
+ * Copyright (C) 2004-2009, 2011-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -105,10 +105,16 @@ TYPE internal_error POSSREP { msg string };
 Internal error.
 
 <pre>
-TYPE fatal_error POSSREP { };
+TYPE data_corrupted_error POSSREP { msg string };
 </pre>
 
-Fatal error. This usually indicates data corruption.
+Indicates data corruption.
+
+<pre>
+TYPE run_recovery_error POSSREP { msg string };
+</pre>
+
+Indicates temporary data corruption that requires running Berkeley DB recovery.
 
 */
 
@@ -138,7 +144,8 @@ RDB_type RDB_LOCK_NOT_GRANTED_ERROR;
 RDB_type RDB_DEADLOCK_ERROR;
 RDB_type RDB_RESOURCE_NOT_FOUND_ERROR;
 RDB_type RDB_INTERNAL_ERROR;
-RDB_type RDB_FATAL_ERROR;
+RDB_type RDB_DATA_CORRUPTED_ERROR;
+RDB_type RDB_RUN_RECOVERY_ERROR;
 RDB_type RDB_SYSTEM_ERROR;
 
 RDB_type RDB_SYNTAX_ERROR;
@@ -583,9 +590,20 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
         0,
     };
 
-    static RDB_possrep fatal_rep = {
-        "fatal_error",
-        0,
+    static RDB_attr data_corrupted_comp = { "msg", &RDB_STRING };
+
+    static RDB_possrep data_corrupted_rep = {
+        "data_corrupted_error",
+        1,
+        &data_corrupted_comp
+    };
+
+    static RDB_attr run_recovery_comp = { "msg", &RDB_STRING };
+
+    static RDB_possrep run_recovery_rep = {
+        "run_recovery_error",
+        1,
+        &run_recovery_comp
     };
 
     static RDB_attr syntax_comp = { "msg", &RDB_STRING };
@@ -935,20 +953,39 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
     RDB_DEADLOCK_ERROR.def.scalar.init_val_is_valid = RDB_TRUE;
     RDB_DEADLOCK_ERROR.compare_op = NULL;
 
-    RDB_FATAL_ERROR.kind = RDB_TP_SCALAR;
-    RDB_FATAL_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_FATAL_ERROR.name = "fatal_error";
-    RDB_FATAL_ERROR.def.scalar.builtin = RDB_TRUE;
-    RDB_FATAL_ERROR.def.scalar.ordered = RDB_FALSE;
-    RDB_FATAL_ERROR.def.scalar.repc = 1;
-    RDB_FATAL_ERROR.def.scalar.repv = &fatal_rep;
-    RDB_FATAL_ERROR.def.scalar.arep = &empty_tuple_type;
-    RDB_FATAL_ERROR.def.scalar.constraintp = NULL;
-    RDB_FATAL_ERROR.def.scalar.sysimpl = RDB_TRUE;
-    RDB_FATAL_ERROR.def.scalar.initexp = NULL;
-    RDB_init_obj(&RDB_FATAL_ERROR.def.scalar.init_val);
-    RDB_FATAL_ERROR.def.scalar.init_val_is_valid = RDB_TRUE;
-    RDB_FATAL_ERROR.compare_op = NULL;
+    RDB_DATA_CORRUPTED_ERROR.kind = RDB_TP_SCALAR;
+    RDB_DATA_CORRUPTED_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_DATA_CORRUPTED_ERROR.def.scalar.builtin = RDB_FALSE;
+    RDB_DATA_CORRUPTED_ERROR.name = "data_corrupted_error";
+    RDB_DATA_CORRUPTED_ERROR.def.scalar.ordered = RDB_TRUE;
+    RDB_DATA_CORRUPTED_ERROR.def.scalar.repc = 1;
+    RDB_DATA_CORRUPTED_ERROR.def.scalar.repv = &data_corrupted_rep;
+    RDB_DATA_CORRUPTED_ERROR.def.scalar.arep = &RDB_STRING;
+    RDB_DATA_CORRUPTED_ERROR.def.scalar.constraintp = NULL;
+    RDB_DATA_CORRUPTED_ERROR.def.scalar.initexp = NULL;
+    RDB_DATA_CORRUPTED_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    if (select_e_str(&RDB_DATA_CORRUPTED_ERROR.def.scalar.init_val,
+            &RDB_DATA_CORRUPTED_ERROR, ecp) != RDB_OK)
+        return RDB_ERROR;
+    RDB_DATA_CORRUPTED_ERROR.def.scalar.init_val_is_valid = RDB_TRUE;
+    RDB_DATA_CORRUPTED_ERROR.compare_op = NULL;
+
+    RDB_RUN_RECOVERY_ERROR.kind = RDB_TP_SCALAR;
+    RDB_RUN_RECOVERY_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_RUN_RECOVERY_ERROR.def.scalar.builtin = RDB_FALSE;
+    RDB_RUN_RECOVERY_ERROR.name = "run_recovery_error";
+    RDB_RUN_RECOVERY_ERROR.def.scalar.ordered = RDB_TRUE;
+    RDB_RUN_RECOVERY_ERROR.def.scalar.repc = 1;
+    RDB_RUN_RECOVERY_ERROR.def.scalar.repv = &run_recovery_rep;
+    RDB_RUN_RECOVERY_ERROR.def.scalar.arep = &RDB_STRING;
+    RDB_RUN_RECOVERY_ERROR.def.scalar.constraintp = NULL;
+    RDB_RUN_RECOVERY_ERROR.def.scalar.initexp = NULL;
+    RDB_RUN_RECOVERY_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    if (select_e_str(&RDB_RUN_RECOVERY_ERROR.def.scalar.init_val,
+            &RDB_RUN_RECOVERY_ERROR, ecp) != RDB_OK)
+        return RDB_ERROR;
+    RDB_RUN_RECOVERY_ERROR.def.scalar.init_val_is_valid = RDB_TRUE;
+    RDB_RUN_RECOVERY_ERROR.compare_op = NULL;
 
     RDB_SYNTAX_ERROR.kind = RDB_TP_SCALAR;
     RDB_SYNTAX_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -1072,7 +1109,10 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (RDB_add_type(&RDB_FATAL_ERROR, ecp) != RDB_OK) {
+    if (RDB_add_type(&RDB_DATA_CORRUPTED_ERROR, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+    if (RDB_add_type(&RDB_RUN_RECOVERY_ERROR, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
     if (RDB_add_type(&RDB_SYNTAX_ERROR, ecp) != RDB_OK) {

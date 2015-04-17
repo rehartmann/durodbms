@@ -6,6 +6,8 @@ DuroDBMS 0.26
 
 - Generic tuple types now allowed in operator parameters.
 
+- Replaced fatal_error by data_corruption_error and run_recovery_error.
+
 - Java interface: DException now extends RuntimeException.
 
 - Added D_INSERT and I_DELETE. RDB_ma_insert and RDB_ma_vdelete

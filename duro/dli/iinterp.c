@@ -2353,11 +2353,9 @@ exec_moduledef(RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context *ecp
 
     if (RDB_string_n_to_obj(&oldmodname, RDB_obj_string(&interp->module_name),
             olen, ecp) != RDB_OK) {
-        RDB_raise_fatal(ecp);
         return RDB_ERROR;
     }
     if (RDB_copy_obj(&interp->module_name, &oldmodname, ecp) != RDB_OK) {
-        RDB_raise_fatal(ecp);
         return RDB_ERROR;
     }
 

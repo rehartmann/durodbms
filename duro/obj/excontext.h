@@ -1,8 +1,6 @@
 /*
- * excontext.h
- *
- *  Created on: 29.09.2013
- *      Author: Rene Hartmann
+ * Copyright (C) 2013, 2015 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #ifndef EXCONTEXT_H_
@@ -108,7 +106,10 @@ RDB_object *
 RDB_raise_deadlock(RDB_exec_context *);
 
 RDB_object *
-RDB_raise_fatal(RDB_exec_context *);
+RDB_raise_data_corrupted(const char *, RDB_exec_context *);
+
+RDB_object *
+RDB_raise_run_recovery(const char *, RDB_exec_context *);
 
 RDB_object *
 RDB_raise_syntax(const char *, RDB_exec_context *);

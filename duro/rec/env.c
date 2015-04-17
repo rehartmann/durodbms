@@ -1,7 +1,5 @@
 /*
- * $Id$
- *
- * Copyright (C) 2003, 2012 Rene Hartmann.
+ * Copyright (C) 2003, 2012, 2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -224,10 +222,13 @@ RDB_errcode_to_error(int errcode, RDB_exec_context *ecp)
             RDB_raise_deadlock(ecp);
             break;
         case DB_RUNRECOVERY:
-            RDB_raise_fatal(ecp);
+            RDB_raise_run_recovery("run Berkeley DB database recovery", ecp);
+            break;
+        case DB_SECONDARY_BAD:
+            RDB_raise_data_corrupted("secondary index corrupted", ecp);
             break;
         case RDB_RECORD_CORRUPTED:
-            RDB_raise_fatal(ecp);
+            RDB_raise_data_corrupted("record corrupted", ecp);
             break;
         default:
             RDB_raise_system(db_strerror(errcode), ecp);

@@ -1,7 +1,7 @@
 /*
  * Execution context functions.
  *
- * Copyright (C) 2005, 2013 Rene Hartmann.
+ * Copyright (C) 2005, 2013, 2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -290,14 +290,15 @@ RDB_raise_deadlock(RDB_exec_context *ecp)
 }
 
 RDB_object *
-RDB_raise_fatal(RDB_exec_context *ecp)
+RDB_raise_data_corrupted(const char *msg, RDB_exec_context *ecp)
 {
-    RDB_object *errp = RDB_raise_err(ecp);
-    if (errp == NULL)
-        return NULL;
+    return raise_msg_err(&RDB_DATA_CORRUPTED_ERROR, msg, ecp);
+}
 
-    errp->typ = &RDB_FATAL_ERROR;
-    return errp;
+RDB_object *
+RDB_raise_run_recovery(const char *msg, RDB_exec_context *ecp)
+{
+    return raise_msg_err(&RDB_RUN_RECOVERY_ERROR, msg, ecp);
 }
 
 /**
