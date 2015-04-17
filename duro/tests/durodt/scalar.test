@@ -87,7 +87,9 @@ test scalar_builtin_types_pr {built-in scalar types with possreps} -body {
 
         var internal_err internal_error;
 
-        var fatal_err fatal_error;
+        var run_recovery_err run_recovery_error;
+
+        var data_corrupted_err data_corrupted_error;
 
         var id identifier;
     }

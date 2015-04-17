@@ -280,7 +280,7 @@ The string length operator.
 
 <h4>Return value</h4>
 
-The length of s, in code points.
+The length of <var>s</var>, in code points.
 
 <hr>
 
@@ -291,11 +291,11 @@ string;
 
 <h4>Description</h4>
 
-Extract a substring.
+Extracts a substring.
 
 <h4>Return value</h4>
 
-The substring of S with length <var>length</var> starting at position
+The substring of <var>s</var> with length <var>length</var> starting at position
 <var>start</var>. <var>length</var> and <var>start</var> are measured
 in code points, according to the current encoding.
 
@@ -338,7 +338,7 @@ is greater than strlen(<var>s</var>).
 
 <hr>
 
-<h3 id="strfind_b">OPERATOR substr</h3>
+<h3 id="strfind_b">OPERATOR strfind_b</h3>
 
 OPERATOR strfind_b (haystack string, needle string) RETURNS
 integer;
@@ -365,11 +365,11 @@ OPERATOR like (s string, pattern string) RETURNS boolean;
 <h4>Description</h4>
 
 Pattern matching operator. A period ('.') matches a single character;
-an asterisk ('*') matches multiple characters.
+an asterisk ('*') matches zero or more characters.
 
 <h4>Return value</h4>
 
-RDB_TRUE if s matches pattern, RDB_FALSE otherwise.
+RDB_TRUE if <var>s</var> matches <var>pattern</var>, RDB_FALSE otherwise.
 
 <hr>
 
@@ -383,7 +383,7 @@ The regular expression matching operator.
 
 <h4>Return value</h4>
 
-RDB_TRUE if s matches pattern, RDB_FALSE otherwise.
+RDB_TRUE if <var>s</var> matches <var>pattern</var>, RDB_FALSE otherwise.
 
 <hr>
 
@@ -1045,13 +1045,6 @@ op_array(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-op_vtable_wrapfn(int argc, RDB_object *argv[], RDB_operator *op,
-        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
-{
-    return op_vtable(argc, argv, op, ecp, txp, retvalp);
-}
-
-static int
 op_project(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
@@ -1129,32 +1122,6 @@ op_rename(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-op_rel_binop(int argc, RDB_object *argv[], RDB_operator *op,
-        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
-{
-    RDB_type *typ;
-
-    if (argc != 2) {
-        RDB_raise_invalid_argument("invalid # of arguments", ecp);
-        return RDB_ERROR;
-    }
-
-    typ = RDB_obj_type(argv[0]);
-    if (!RDB_type_is_relation(typ)) {
-        RDB_raise_type_mismatch("relation argument required", ecp);
-        return RDB_ERROR;
-    }
-
-    typ = RDB_obj_type(argv[1]);
-    if (!RDB_type_is_relation(typ)) {
-        RDB_raise_type_mismatch("relation argument required", ecp);
-        return RDB_ERROR;
-    }
-
-    return op_vtable(argc, argv, op, ecp, txp, retvalp);
-}
-
-static int
 op_union(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
@@ -1186,46 +1153,10 @@ op_union(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-op_d_union(int argc, RDB_object *argv[], RDB_operator *op,
-        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
-{
-    RDB_type *typ1, *typ2;
-
-    if (argc != 2) {
-        RDB_raise_invalid_argument("invalid # of arguments", ecp);
-        return RDB_ERROR;
-    }
-
-    typ1 = RDB_obj_type(argv[0]);
-    typ2 = RDB_obj_type(argv[1]);
-
-    /* Check types */
-    if (typ1 == NULL || typ2 == NULL) {
-        RDB_raise_type_mismatch("relation argument required", ecp);
-        return RDB_ERROR;
-    }
-
-    return op_vtable(argc, argv, op, ecp, txp, retvalp);
-}
-
-static int
 op_tclose(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_type *argtyp;
-
-    if (argc != 1) {
-        RDB_raise_invalid_argument("invalid # of arguments", ecp);
-        return RDB_ERROR;
-    }
-
-    argtyp = RDB_obj_type(argv[0]);
-
-    /* Relation UNION - check types */
-    if (argtyp == NULL || !RDB_type_is_relation(argtyp)) {
-        RDB_raise_type_mismatch("relation argument required", ecp);
-        return RDB_ERROR;
-    }
+    RDB_type *argtyp = RDB_obj_type(argv[0]);
 
     if (argtyp->def.basetyp->def.tuple.attrc != 2) {
         RDB_raise_invalid_argument("TCLOSE argument must have 2 attributes",
@@ -2000,9 +1931,11 @@ RDB_put_global_ro_op(const char *name, int argc, RDB_type **argtv,
 int
 RDB_init_builtin_ops(RDB_exec_context *ecp)
 {
+    int ret;
     RDB_type *paramtv[3];
     RDB_attr genattr;
-    int ret;
+    RDB_type *genreltyp = NULL;
+    RDB_type *gentuptyp = NULL;
 
     /*
      * No errors other than no_memory_error may be raised here because the other error
@@ -2474,159 +2407,116 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return RDB_ERROR;
 
-    ret = RDB_put_global_ro_op("join", -1, NULL, NULL, &op_rel_binop, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    ret = RDB_put_global_ro_op("minus", -1, NULL, NULL, &op_rel_binop, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    ret = RDB_put_global_ro_op("semiminus", -1, NULL, NULL, &op_rel_binop, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    ret = RDB_put_global_ro_op("intersect", -1, NULL, NULL, &op_rel_binop, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    ret = RDB_put_global_ro_op("semijoin", -1, NULL, NULL, &op_rel_binop, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    ret = RDB_put_global_ro_op("union", -1, NULL, NULL, &op_union, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    ret = RDB_put_global_ro_op("d_union", -1, NULL, NULL, &op_d_union, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    ret = RDB_put_global_ro_op("wrap", -1, NULL, NULL, &op_wrap, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    ret = RDB_put_global_ro_op("unwrap", -1, NULL, NULL, &op_unwrap, ecp);
-    if (ret != RDB_OK)
-        return ret;
-/*
-    ret = RDB_put_global_ro_op("union", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
-    if (ret != RDB_OK)
-        return ret;
-*/
-    ret = RDB_put_global_ro_op("minus", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    ret = RDB_put_global_ro_op("semiminus", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
-    if (ret != RDB_OK)
-        return RDB_ERROR;
-
-    ret = RDB_put_global_ro_op("intersect", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    ret = RDB_put_global_ro_op("semijoin", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    ret = RDB_put_global_ro_op("divide", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    ret = RDB_put_global_ro_op("tclose", -1, NULL, NULL, &op_tclose, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    ret = RDB_put_global_ro_op("group", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    ret = RDB_put_global_ro_op("ungroup", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
     genattr.name = NULL;
-    paramtv[0] = RDB_new_relation_type(1, &genattr, ecp);
-    if (paramtv[0] == NULL) {
-        return RDB_ERROR;
-    }
-    ret = RDB_put_global_ro_op("to_tuple", 1, paramtv, NULL, &op_to_tuple, ecp);
-    RDB_del_nonscalar_type(paramtv[0], ecp);
-    if (ret != RDB_OK)
-        return ret;
+    genreltyp = RDB_new_relation_type(1, &genattr, ecp);
+    if (genreltyp == NULL)
+        goto error;
+    gentuptyp = RDB_new_tuple_type(1, &genattr, ecp);
+    if (gentuptyp == NULL)
+        goto error;
 
-    genattr.name = NULL;
-    paramtv[0] = RDB_new_tuple_type(1, &genattr, ecp);
-    if (paramtv[0] == NULL) {
-        return RDB_ERROR;
-    }
-    paramtv[1] = RDB_new_relation_type(1, &genattr, ecp);
-    if (paramtv[1] == NULL) {
-        return RDB_ERROR;
-    }
-    ret = RDB_put_global_ro_op("in", 2, paramtv, &RDB_BOOLEAN, &op_in, ecp);
-    RDB_del_nonscalar_type(paramtv[0], ecp);
-    RDB_del_nonscalar_type(paramtv[1], ecp);
-    if (ret != RDB_OK)
-        return ret;
+    paramtv[0] = genreltyp;
+    paramtv[1] = genreltyp;
+    if (RDB_put_global_ro_op("join", 2, paramtv, NULL, &op_vtable, ecp) != RDB_OK)
+        goto error;
 
-    genattr.name = NULL;
-    paramtv[0] = RDB_new_relation_type(1, &genattr, ecp);
-    if (paramtv[0] == NULL) {
-        return RDB_ERROR;
-    }
-    paramtv[1] = RDB_new_relation_type(1, &genattr, ecp);
-    if (paramtv[1] == NULL) {
-        return RDB_ERROR;
-    }
-    ret = RDB_put_global_ro_op("subset_of", 2, paramtv, &RDB_BOOLEAN, &op_subset_of, ecp);
-    RDB_del_nonscalar_type(paramtv[0], ecp);
-    RDB_del_nonscalar_type(paramtv[1], ecp);
-    if (ret != RDB_OK)
-        return ret;
+    if (RDB_put_global_ro_op("minus", 2, paramtv, NULL, &op_vtable, ecp) != RDB_OK)
+        goto error;
+
+    if (RDB_put_global_ro_op("semiminus", 2, paramtv, NULL, &op_vtable, ecp) != RDB_OK)
+        goto error;
+
+    if (RDB_put_global_ro_op("intersect", 2, paramtv, NULL, &op_vtable, ecp) != RDB_OK)
+        goto error;
+
+    if (RDB_put_global_ro_op("semijoin", 2, paramtv, NULL, &op_vtable, ecp) != RDB_OK)
+        goto error;
+
+    if (RDB_put_global_ro_op("d_union", 2, paramtv, NULL, &op_vtable, ecp) != RDB_OK)
+        goto error;
+
+    if (RDB_put_global_ro_op("union", -1, NULL, NULL, &op_union, ecp) != RDB_OK)
+        goto error;
+
+    if (RDB_put_global_ro_op("wrap", -1, NULL, NULL, &op_wrap, ecp) != RDB_OK)
+        goto error;
+
+    if (RDB_put_global_ro_op("unwrap", -1, NULL, NULL, &op_unwrap, ecp) != RDB_OK)
+        goto error;
+
+    if (RDB_put_global_ro_op("divide", -1, NULL, NULL, &op_vtable, ecp) != RDB_OK)
+        goto error;
+
+    paramtv[0] = genreltyp;
+    if (RDB_put_global_ro_op("tclose", 1, paramtv, NULL, &op_tclose, ecp) != RDB_OK)
+        goto error;
+
+    if (RDB_put_global_ro_op("group", -1, NULL, NULL, &op_vtable, ecp) != RDB_OK)
+        goto error;
+
+    if (RDB_put_global_ro_op("ungroup", -1, NULL, NULL, &op_vtable, ecp) != RDB_OK)
+        goto error;
+
+    paramtv[0] = genreltyp;
+    if (RDB_put_global_ro_op("to_tuple", 1, paramtv, NULL, &op_to_tuple, ecp) != RDB_OK)
+        goto error;
+
+    paramtv[0] = gentuptyp;
+    paramtv[1] = genreltyp;
+    if (RDB_put_global_ro_op("in", 2, paramtv, &RDB_BOOLEAN, &op_in, ecp) != RDB_OK)
+        goto error;
+
+    paramtv[0] = genreltyp;
+    paramtv[1] = genreltyp;
+    if (RDB_put_global_ro_op("subset_of", 2, paramtv, &RDB_BOOLEAN, &op_subset_of, ecp) != RDB_OK)
+        goto error;
 
     if (RDB_put_global_ro_op("[]", -1, NULL, NULL, &op_subscript, ecp)
             != RDB_OK) {
-        return RDB_ERROR;
+        goto error;
     }
 
     if (RDB_put_global_ro_op("length", -1, NULL, NULL, &length_array, ecp)
             != RDB_OK) {
-        return RDB_ERROR;
+        goto error;
     }
 
     paramtv[0] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op("sqrt", 1, paramtv, &RDB_FLOAT, &math_sqrt, ecp);
-    if (ret != RDB_OK)
-        return ret;
+    if (RDB_put_global_ro_op("sqrt", 1, paramtv, &RDB_FLOAT, &math_sqrt, ecp) != RDB_OK)
+        goto error;
 
-    ret = RDB_put_global_ro_op("sin", 1, paramtv, &RDB_FLOAT, &math_sin, ecp);
-    if (ret != RDB_OK)
-        return ret;
+    if (RDB_put_global_ro_op("sin", 1, paramtv, &RDB_FLOAT, &math_sin, ecp) != RDB_OK)
+        goto error;
 
-    ret = RDB_put_global_ro_op("cos", 1, paramtv, &RDB_FLOAT, &math_cos, ecp);
-    if (ret != RDB_OK)
-        return ret;
+    if (RDB_put_global_ro_op("cos", 1, paramtv, &RDB_FLOAT, &math_cos, ecp) != RDB_OK)
+        goto error;
 
-    ret = RDB_put_global_ro_op("atan", 1, paramtv, &RDB_FLOAT, &math_atan, ecp);
-    if (ret != RDB_OK)
-        return ret;
+    if (RDB_put_global_ro_op("atan", 1, paramtv, &RDB_FLOAT, &math_atan, ecp) != RDB_OK)
+        goto error;
 
     paramtv[1] = &RDB_FLOAT;
 
-    ret = RDB_put_global_ro_op("atan2", 2, paramtv, &RDB_FLOAT, &math_atan2, ecp);
-    if (ret != RDB_OK)
-        return ret;
+    if (RDB_put_global_ro_op("atan2", 2, paramtv, &RDB_FLOAT, &math_atan2, ecp) != RDB_OK)
+        goto error;
 
     paramtv[0] = &RDB_STRING;
 
-    ret = RDB_put_global_ro_op("os.getenv", 1, paramtv, &RDB_STRING, &op_getenv, ecp);
-    if (ret != RDB_OK)
-        return ret;
+    if (RDB_put_global_ro_op("os.getenv", 1, paramtv, &RDB_STRING, &op_getenv, ecp) != RDB_OK)
+        goto error;
+
+    RDB_del_nonscalar_type(genreltyp, ecp);
+    RDB_del_nonscalar_type(gentuptyp, ecp);
 
     return RDB_OK;
+
+error:
+    if (genreltyp != NULL)
+        RDB_del_nonscalar_type(genreltyp, ecp);
+    if (gentuptyp != NULL)
+        RDB_del_nonscalar_type(gentuptyp, ecp);
+
+    return RDB_ERROR;
 }
 
 /** @addtogroup generic
