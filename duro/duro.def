@@ -28,7 +28,8 @@ RDB_LOCK_NOT_GRANTED_ERROR
 RDB_DEADLOCK_ERROR
 RDB_RESOURCE_NOT_FOUND_ERROR
 RDB_INTERNAL_ERROR
-RDB_FATAL_ERROR 
+RDB_DATA_CORRUPTED_ERROR
+RDB_RUN_RECOVERY_ERROR 
 RDB_SYSTEM_ERROR
 RDB_IN_USE_ERROR
 RDB_db_env
@@ -184,6 +185,8 @@ RDB_raise_lock_not_granted
 RDB_raise_aggregate_undefined
 RDB_raise_version_mismatch
 RDB_raise_syntax
+RDB_raise_data_corrupted
+RDB_raise_run_recovery
 RDB_ec_set_property
 RDB_ec_property
 RDB_evaluate
