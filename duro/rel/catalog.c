@@ -21,7 +21,7 @@
 
 enum {
     MAJOR_VERSION = 0,
-    MINOR_VERSION = 25
+    MINOR_VERSION = 26
 };
 
 /*
@@ -125,7 +125,8 @@ static RDB_attr ro_ops_attrv[] = {
     { "lib", &RDB_STRING, NULL, 0 },
     { "symbol", &RDB_STRING, NULL, 0 },
     { "source", &RDB_STRING, NULL, 0 },
-    { "rtype", &RDB_BINARY, NULL, 0 }
+    { "rtype", &RDB_BINARY, NULL, 0 },
+    { "creation_time", &RDB_DATETIME, NULL, 0 },
 };
 
 static char *ro_ops_keyattrv[] = { "name", "argtypes" };
@@ -137,7 +138,8 @@ static RDB_attr upd_ops_attrv[] = {
     { "lib", &RDB_STRING, NULL, 0 },
     { "symbol", &RDB_STRING, NULL, 0 },
     { "source", &RDB_STRING, NULL, 0 },
-    { "updv", NULL, NULL, 0 } /* type is set to array of BOOLEAN later */
+    { "updv", NULL, NULL, 0 }, /* type is set to array of BOOLEAN later */
+    { "creation_time", &RDB_DATETIME, NULL, 0 }
 };
 
 static char *upd_ops_keyattrv[] = { "name", "argtypes" };
@@ -1557,7 +1559,7 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
-    ret = provide_systable("sys_ro_ops", 6, ro_ops_attrv,
+    ret = provide_systable("sys_ro_ops", 7, ro_ops_attrv,
             1, ro_ops_keyv, create, ecp, txp, dbrootp->envp,
             &dbrootp->ro_ops_tbp);
     if (ret != RDB_OK) {
@@ -1573,7 +1575,7 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
-    ret = provide_systable("sys_upd_ops", 6, upd_ops_attrv,
+    ret = provide_systable("sys_upd_ops", 7, upd_ops_attrv,
             1, upd_ops_keyv, create, ecp, txp, dbrootp->envp,
             &dbrootp->upd_ops_tbp);
     if (ret != RDB_OK) {

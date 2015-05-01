@@ -254,6 +254,23 @@ op_put_bool(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
+op_put_datetime(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    if (printf("%4d-%02d-%02dT%02d:%02d:%02d",
+            argv[0]->val.time.year,
+            argv[0]->val.time.month,
+            argv[0]->val.time.day,
+            argv[0]->val.time.hour,
+            argv[0]->val.time.min,
+            argv[0]->val.time.sec) < 0) {
+        RDB_handle_errcode(errno, ecp, txp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int
 op_put_nonscalar(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -363,6 +380,29 @@ op_put_iostream_bool(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     if (fputs(RDB_obj_bool(argv[1]) ? "TRUE" : "FALSE", iostreams[fno]) == EOF) {
+        RDB_handle_errcode(errno, ecp, txp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int
+op_put_iostream_datetime(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    /* Get file number from arg #1 */
+    int fno = get_iostream_id(argv[0], ecp);
+    if (fno == RDB_ERROR) {
+        return RDB_ERROR;
+    }
+
+    if (fprintf(iostreams[fno], "%4d-%02d-%02dT%02d:%02d:%02d",
+            argv[1]->val.time.year,
+            argv[1]->val.time.month,
+            argv[1]->val.time.day,
+            argv[1]->val.time.hour,
+            argv[1]->val.time.min,
+            argv[1]->val.time.sec) < 0) {
         RDB_handle_errcode(errno, ecp, txp);
         return RDB_ERROR;
     }
@@ -603,12 +643,14 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     static RDB_parameter put_int_params[1];
     static RDB_parameter put_float_params[1];
     static RDB_parameter put_bool_params[1];
+    static RDB_parameter put_datetime_params[1];
 
     static RDB_parameter put_iostream_string_params[2];
     static RDB_parameter put_iostream_binary_params[2];
     static RDB_parameter put_iostream_int_params[2];
     static RDB_parameter put_iostream_float_params[2];
     static RDB_parameter put_iostream_bool_params[2];
+    static RDB_parameter put_iostream_datetime_params[2];
 
     static RDB_parameter get_line_params[1];
     static RDB_parameter read_params[2];
@@ -628,6 +670,8 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     put_float_params[0].typ = &RDB_FLOAT;
     put_float_params[0].update = RDB_FALSE;
     put_bool_params[0].typ = &RDB_BOOLEAN;
+    put_bool_params[0].update = RDB_FALSE;
+    put_datetime_params[0].typ = &RDB_DATETIME;
     put_bool_params[0].update = RDB_FALSE;
 
     put_iostream_string_params[0].typ = &RDB_IOSTREAM_ID;
@@ -650,6 +694,10 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     put_iostream_bool_params[0].update = RDB_FALSE;
     put_iostream_bool_params[1].typ = &RDB_BOOLEAN;
     put_iostream_bool_params[1].update = RDB_FALSE;
+    put_iostream_datetime_params[0].typ = &RDB_IOSTREAM_ID;
+    put_iostream_datetime_params[0].update = RDB_FALSE;
+    put_iostream_datetime_params[1].typ = &RDB_DATETIME;
+    put_iostream_datetime_params[1].update = RDB_FALSE;
 
     get_line_params[0].typ = &RDB_STRING;
     get_line_params[0].update = RDB_TRUE;
@@ -702,6 +750,9 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     if (RDB_put_upd_op(opmapp, "io.put", 1, put_bool_params, &op_put_bool, ecp)
             != RDB_OK)
         return RDB_ERROR;
+    if (RDB_put_upd_op(opmapp, "io.put", 1, put_datetime_params, &op_put_datetime, ecp)
+            != RDB_OK)
+        return RDB_ERROR;
     if (RDB_put_upd_op(opmapp, "io.put", -1, NULL, &op_put_nonscalar, ecp)
             != RDB_OK)
         return RDB_ERROR;
@@ -720,6 +771,9 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
         return RDB_ERROR;
     if (RDB_put_upd_op(opmapp, "io.put", 2, put_iostream_bool_params,
             &op_put_iostream_bool, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_put_upd_op(opmapp, "io.put", 2, put_iostream_datetime_params,
+            &op_put_iostream_datetime, ecp) != RDB_OK)
         return RDB_ERROR;
 
     if (RDB_put_upd_op(opmapp, "io.get_line", 1, get_line_params, &op_get_line, ecp)

@@ -43,4 +43,8 @@ int
 RDB_put_upd_op(RDB_op_map *, const char *, int, RDB_parameter *,
         RDB_upd_op_func *, RDB_exec_context *);
 
+int
+RDB_put_ro_op(RDB_op_map *, const char *, int, RDB_type **,
+        RDB_type *, RDB_ro_op_func *, RDB_exec_context *);
+
 #endif /*RDB_OPMAP_H*/

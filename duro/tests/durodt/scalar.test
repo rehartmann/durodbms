@@ -2,7 +2,6 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
-# $Id$
 #
 # Test scalar definitions and operations
 #
@@ -953,6 +952,44 @@ test substr {substr operators} -body {
 } -result {cd
 de
 ef
+}
+
+test datetime {datetime type} -body {
+    exec $testdir/../../dli/durodt << {
+        var d datetime;
+        d := datetime(1948, 12, 10, 3, 0, 1);
+        io.put_line(cast_as_string(d));
+
+        the_year(d) := 2057;
+        the_month(d) := 3;
+        the_day(d) := 25;
+        the_hour(d) := 18;
+        the_min(d) := 5;
+        the_sec(d) := 7;
+
+        io.put(d);
+        io.put_line('');
+        io.put(the_year(d));
+        io.put_line('');
+        io.put(the_month(d));
+        io.put_line('');
+        io.put(the_day(d));
+        io.put_line('');
+        io.put(the_hour(d));
+        io.put_line('');
+        io.put(the_min(d));
+        io.put_line('');
+        io.put(the_sec(d));
+        io.put_line('');
+    }
+} -result {1948-12-10T03:00:01
+2057-03-25T18:05:07
+2057
+3
+25
+18
+5
+7
 }
 
 cleanupTests

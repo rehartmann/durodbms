@@ -1,8 +1,8 @@
 /*
- * operator.c
+ * Operator functions.
  *
- *  Created on: 04.10.2013
- *      Author: Rene Hartmann
+ * Copyright (C) 2013, 2015 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #include "operator.h"
@@ -77,7 +77,7 @@ RDB_set_operator_u_data(RDB_operator *op, void *u_data)
 }
 
 /**
- * Return the source code of operator *<var>op</var>.
+ * Returns the source code of operator *<var>op</var>.
  *
  * @returns a pointer to the source code, or NULL if no source code
  * was specified when the operator was created.
@@ -87,6 +87,18 @@ RDB_operator_source(const RDB_operator *op)
 {
     const char *srcp = RDB_obj_string(&op->source);
     return *srcp == '\0' ? NULL : srcp;
+}
+
+/**
+ * Returns the time operator *<var>op</var> was created.
+ *
+ * @returns a pointer to the time the operator was created
+ * as an RDB_object of type datetime.
+ */
+RDB_object *
+RDB_operator_creation_time(RDB_operator *op)
+{
+    return &op->cretime;
 }
 
 /**
@@ -112,6 +124,7 @@ RDB_new_op_data(const char *name, int paramc, RDB_type *paramtv[], RDB_type *rty
     }
 
     RDB_init_obj(&op->source);
+    RDB_init_obj(&op->cretime);
     op->name = RDB_dup_str(name);
     if (op->name == NULL) {
         RDB_raise_no_memory(ecp);
@@ -151,6 +164,7 @@ RDB_new_op_data(const char *name, int paramc, RDB_type *paramtv[], RDB_type *rty
 
 error:
     RDB_destroy_obj(&op->source, ecp);
+    RDB_destroy_obj(&op->cretime, ecp);
     if (op->name != NULL)
         RDB_free(op->name);
     if (op->paramv != NULL) {
@@ -186,6 +200,7 @@ RDB_free_op_data(RDB_operator *op, RDB_exec_context *ecp)
     if (op->cleanup_fp != NULL)
         (*op->cleanup_fp) (op);
     ret = RDB_destroy_obj(&op->source, ecp);
+    ret = RDB_destroy_obj(&op->cretime, ecp);
     RDB_free(op);
     return ret;
 }

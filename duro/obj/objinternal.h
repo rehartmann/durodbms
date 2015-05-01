@@ -77,6 +77,7 @@ struct RDB_op_data {
     } opfn;
     void *u_data;
     RDB_op_cleanup_func *cleanup_fp;
+    RDB_object cretime;
 };
 
 int

@@ -2,6 +2,10 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 0.26
 
+- Added type datetime.
+
+- Creation time of user-defined operators is stored in the catalog.
+
 - Fixed a bug in the handling of string literals in user-defined operators.
 
 - Generic tuple types now allowed in operator parameters.

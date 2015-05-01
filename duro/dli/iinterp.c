@@ -1866,6 +1866,7 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     const char *opname;
     RDB_object opnameobj; /* Only used when the name is modified */
     RDB_object *lwsp;
+    RDB_bool subtx = RDB_FALSE;
     RDB_parse_node *stmtp = parentp->val.children.firstp->nextp;
     RDB_parameter *paramv = NULL;
     int paramc = ((int) RDB_parse_nodelist_length(stmtp->nextp->nextp) + 1) / 3;
@@ -1893,6 +1894,7 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
         if (RDB_begin_tx(ecp, &tmp_tx, dbp, NULL) != RDB_OK) {
             goto error;
         }
+        subtx = RDB_TRUE;
     }
 
     paramv = RDB_alloc(paramc * sizeof(RDB_parameter), ecp);
@@ -2086,7 +2088,7 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     }
     RDB_free(paramv);
     RDB_destroy_obj(&code, ecp);
-    if (interp->txnp == NULL) {
+    if (subtx) {
         ret = RDB_commit(ecp, &tmp_tx);
     } else {
         ret = RDB_OK;
@@ -2097,7 +2099,7 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     return ret;
 
 error:
-    if (interp->txnp == NULL)
+    if (subtx)
         RDB_rollback(ecp, &tmp_tx);
     if (paramv != NULL) {
         for (i = 0; i < paramc; i++) {

@@ -9,6 +9,7 @@
 #include "serialize.h"
 #include <gen/strfns.h>
 #include <obj/operator.h>
+#include <obj/builtinscops.h>
 #include <obj/objinternal.h>
 
 #include <string.h>
@@ -113,6 +114,7 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
     RDB_object tpl;
     RDB_object rtypobj;
     RDB_object typesobj;
+    RDB_object cretime;
     RDB_type **paramtv;
     int ret;
     int i;
@@ -144,6 +146,7 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
 
     RDB_init_obj(&tpl);
     RDB_init_obj(&rtypobj);
+    RDB_init_obj(&cretime);
 
     ret = RDB_tuple_set_string(&tpl, "name", name, ecp);
     if (ret != RDB_OK)
@@ -157,6 +160,13 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
         goto cleanup;
 
     ret = RDB_tuple_set_string(&tpl, "source", sourcep != NULL ? sourcep : "", ecp);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = RDB_call_ro_op_by_name("now_utc", 0, NULL, ecp, txp, &cretime);
+    if (ret != RDB_OK)
+        goto cleanup;
+    ret = RDB_tuple_set(&tpl, "creation_time", &cretime, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -187,6 +197,7 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
 cleanup:
     RDB_destroy_obj(&tpl, ecp);
     RDB_destroy_obj(&rtypobj, ecp);
+    RDB_destroy_obj(&cretime, ecp);
     return ret;
 }
 
@@ -254,6 +265,7 @@ RDB_create_update_op(const char *name, int paramc, RDB_parameter paramv[],
     RDB_object updvobj;
     RDB_object updobj;
     RDB_object typesobj;
+    RDB_object cretime;
     int i;
     int ret;
 
@@ -265,6 +277,8 @@ RDB_create_update_op(const char *name, int paramc, RDB_parameter paramv[],
     /*
      * Insert operator data into catalog
      */
+
+    RDB_init_obj(&cretime);
 
     RDB_init_obj(&tpl);
     ret = RDB_tuple_set_string(&tpl, "name", name, ecp);
@@ -278,6 +292,13 @@ RDB_create_update_op(const char *name, int paramc, RDB_parameter paramv[],
         goto cleanup;
 
     ret = RDB_tuple_set_string(&tpl, "source", sourcep != NULL ? sourcep : "", ecp);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = RDB_call_ro_op_by_name("now_utc", 0, NULL, ecp, txp, &cretime);
+    if (ret != RDB_OK)
+        goto cleanup;
+    ret = RDB_tuple_set(&tpl, "creation_time", &cretime, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -316,6 +337,7 @@ RDB_create_update_op(const char *name, int paramc, RDB_parameter paramv[],
 
 cleanup:
     RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&cretime, ecp);
     return ret;
 }
 
@@ -544,10 +566,6 @@ RDB_operator *
 RDB_get_update_op(const char *name, int argc, RDB_type *argtv[],
                 RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    if (txp == NULL) {
-        RDB_raise_no_running_tx(ecp);
-        return NULL;
-    }
     return RDB_get_update_op_e(name, argc, argtv, NULL, ecp, txp);
 }
 
@@ -580,7 +598,9 @@ RDB_get_update_op_e(const char *name, int argc, RDB_type *argtv[],
                 RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_dbroot *dbrootp;
-    RDB_operator *op;
+    RDB_operator *op = RDB_get_op(&RDB_builtin_upd_op_map, name, argc, argtv, ecp);
+    if (op != NULL)
+        return op;
 
     if (txp != NULL) {
         dbrootp = RDB_tx_db(txp)->dbrootp;
@@ -813,29 +833,6 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 
 /*@}*/
 
-int
-RDB_eq_bool(int argc, RDB_object *argv[], RDB_operator *op,
-        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
-{
-    RDB_bool_to_obj(retvalp,
-            (RDB_bool) (argv[0]->val.bool_val == argv[1]->val.bool_val));
-    return RDB_OK;
-}
-
-int
-RDB_eq_binary(int argc, RDB_object *argv[], RDB_operator *op,
-        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
-{
-    if (argv[0]->val.bin.len != argv[1]->val.bin.len)
-        RDB_bool_to_obj(retvalp, RDB_FALSE);
-    else if (argv[0]->val.bin.len == 0)
-        RDB_bool_to_obj(retvalp, RDB_TRUE);
-    else
-        RDB_bool_to_obj(retvalp, (RDB_bool) (memcmp(argv[0]->val.bin.datap,
-            argv[1]->val.bin.datap, argv[0]->val.bin.len) == 0));
-    return RDB_OK;
-}
-
 /* Default equality operator */
 int
 RDB_dfl_obj_equals(int argc, RDB_object *argv[], RDB_operator *op,
@@ -884,7 +881,8 @@ RDB_dfl_obj_equals(int argc, RDB_object *argv[], RDB_operator *op,
             return RDB_eq_bool(2, argv, NULL, ecp, txp, retvalp);
         case RDB_OB_INT:
         case RDB_OB_FLOAT:
-            /* Must not happen, because there must be a comparsion function */
+        case RDB_OB_TIME:
+            /* Must not happen, because there must be a comparison function */
             RDB_raise_internal("missing comparison function", ecp);
             return RDB_ERROR;
         case RDB_OB_BIN:

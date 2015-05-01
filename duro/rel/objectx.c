@@ -1,8 +1,6 @@
 /*
  * RDB_object functions that involve storage
  *
- *  Created on: 29.09.2013 by splitting object.c
- *
  * Copyright (C) 2013-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
@@ -101,6 +99,8 @@ RDB_val_kind(const RDB_type *typ)
                 return RDB_OB_INT;
             if (typ == &RDB_FLOAT)
                 return RDB_OB_FLOAT;
+            if (typ == &RDB_DATETIME)
+                return RDB_OB_TIME;
             if (typ->def.scalar.arep != NULL)
                 return RDB_val_kind(typ->def.scalar.arep);
             return RDB_OB_BIN;
@@ -463,6 +463,8 @@ RDB_obj_irep(RDB_object *valp, size_t *lenp)
             return &valp->val.int_val;
         case RDB_OB_FLOAT:
             return &valp->val.float_val;
+        case RDB_OB_TIME:
+            return &valp->val.time;
         default:
             return valp->val.bin.datap;
     }
@@ -514,6 +516,9 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
             break;
         case RDB_OB_FLOAT:
             memcpy(&valp->val.float_val, datap, sizeof (RDB_float));
+            break;
+        case RDB_OB_TIME:
+            memcpy(&valp->val.time, datap, sizeof (RDB_time));
             break;
         case RDB_OB_BIN:
             valp->val.bin.len = len;
@@ -775,8 +780,6 @@ RDB_obj_set_property(RDB_object *objp, const char *propname,
 /**
  * Set *<var>objp</var> to the initial value of type *<var>typ</var>.
  *
- * If *<var>typ</var> is an array or tuple type, do nothing.
- *
  * A user-defined type may have no INIT value if it has only one possrep.
  * In this case, the selector is called, and <var>txp</var> or,
  * if <var>txp</var> is NULL, <var>envp</var> is used to look up the selector.
@@ -867,6 +870,10 @@ RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
         case RDB_OB_FLOAT:
             dstvalp->kind = srcvalp->kind;
             dstvalp->val.float_val = srcvalp->val.float_val;
+            break;
+        case RDB_OB_TIME:
+            dstvalp->kind = srcvalp->kind;
+            dstvalp->val.time = srcvalp->val.time;
             break;
         case RDB_OB_TUPLE:
             return RDB_copy_tuple(dstvalp, srcvalp, ecp);

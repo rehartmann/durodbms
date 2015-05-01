@@ -58,8 +58,9 @@ gensrc = ['gen/hashmap.c', 'gen/hashmapit.c',
         'gen/strfns.c', 'gen/strdump.c', 'gen/hashtable.c', 'gen/hashtabit.c',
         'gen/releaseno.c']
 
-objsrc = ['obj/object.c', 'obj/excontext.c', 'obj/type.c', 'obj/builtintypes.c', 'obj/io.c',
-        'obj/expression.c', 'obj/key.c', 'obj/tuple.c', 'obj/operator.c']
+objsrc = ['obj/object.c', 'obj/excontext.c', 'obj/type.c', 'obj/builtintypes.c',
+          'obj/io.c','obj/expression.c', 'obj/key.c', 'obj/tuple.c',
+          'obj/operator.c', 'obj/builtinscops.c', 'obj/datetimeops.c']
 
 recsrc = ['rec/cursor.c', 'rec/env.c', 'rec/index.c', 'rec/recmap.c', 'rec/sequence.c']
 
@@ -260,7 +261,8 @@ rec_hdrs = Split('rec/cursor.h rec/env.h rec/dbdefs.h rec/index.h rec/recmap.h '
                  'rec/sequence.h')
 obj_hdrs = Split('obj/object.h obj/excontext.h obj/type.h obj/builtintypes.h '
                 'obj/expression.h obj/operator.h obj/opmap.h obj/tuple.h')
-obj_ihdrs = Split('obj/io.h obj/key.h obj/objinternal.h')
+obj_ihdrs = ['obj/io.h', 'obj/key.h', 'obj/objinternal.h', 'obj/builtinscops.h',
+             'obj/datetimeops.h']
 rel_hdrs = Split('rel/rdb.h rel/typeimpl.h '
                  'rel/optimize.h rel/qresult.h rel/tostr.h ')
 rel_ihdrs = Split('rel/catalog.h rel/cat_type.h rel/cat_op.h '

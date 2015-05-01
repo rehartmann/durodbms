@@ -9,6 +9,7 @@ RDB_INTEGER
 RDB_FLOAT
 RDB_STRING
 RDB_BINARY
+RDB_DATETIME
 RDB_NO_RUNNING_TX_ERROR
 RDB_INVALID_ARGUMENT_ERROR
 RDB_TYPE_MISMATCH_ERROR
@@ -122,6 +123,7 @@ RDB_bool_to_obj
 RDB_int_to_obj
 RDB_float_to_obj
 RDB_string_to_obj
+RDB_tm_to_obj
 RDB_obj_to_string
 RDB_obj_property
 RDB_obj_set_property
@@ -237,6 +239,7 @@ RDB_operator_source
 RDB_operator_name
 RDB_operator_type
 RDB_operator_param_count
+RDB_operator_creation_time
 RDB_is_selector
 RDB_is_getter
 RDB_is_setter

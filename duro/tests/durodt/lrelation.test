@@ -2,7 +2,6 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
-# $Id$
 #
 # Test local (transient) tables
 #

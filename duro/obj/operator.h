@@ -1,8 +1,8 @@
 /*
- * operator.h
+ * Operator functions.
  *
- *  Created on: 04.10.2013
- *      Author: Rene Hartmann
+ * Copyright (C) 2013, 2015 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #ifndef OPERATOR_H_
@@ -90,6 +90,9 @@ RDB_return_type(const RDB_operator *);
 
 const char *
 RDB_operator_source(const RDB_operator *);
+
+RDB_object *
+RDB_operator_creation_time(RDB_operator *);
 
 void *
 RDB_operator_u_data(const RDB_operator *);

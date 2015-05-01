@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003-2009, 2011-2014 Rene Hartmann.
+ * Copyright (C) 2003-2009, 2011-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -108,6 +108,7 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
         case RDB_OB_BOOL:
         case RDB_OB_INT:
         case RDB_OB_FLOAT:
+        case RDB_OB_TIME:
             break;
         case RDB_OB_BIN:
             if (objp->val.bin.len > 0)
@@ -181,7 +182,7 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
 to the boolean value specified by <var>v</var>.
 
 The RDB_object must either be newly initialized or of type
-BOOLEAN.
+boolean.
  */
 void
 RDB_bool_to_obj(RDB_object *valp, RDB_bool v)
@@ -198,7 +199,7 @@ RDB_bool_to_obj(RDB_object *valp, RDB_bool v)
 to the integer value specified by <var>v</var>.
 
 The RDB_object must either be newly initialized or of type
-INTEGER.
+integer.
  */
 void
 RDB_int_to_obj(RDB_object *valp, RDB_int v)
@@ -215,7 +216,7 @@ RDB_int_to_obj(RDB_object *valp, RDB_int v)
 to the RDB_float value specified by <var>v</var>.
 
 The RDB_object must either be newly initialized or of type
-FLOAT.
+float.
  */
 void
 RDB_float_to_obj(RDB_object *valp, RDB_float v)
@@ -225,6 +226,29 @@ RDB_float_to_obj(RDB_object *valp, RDB_float v)
     valp->typ = &RDB_FLOAT;
     valp->kind = RDB_OB_FLOAT;
     valp->val.float_val = v;
+}
+
+/**
+ * Sets the RDB_object *<var>valp</var>
+to the datetime value specified by the arguments year, mon, day, hour, min,
+and sec.
+
+The RDB_object must either be newly initialized or of type
+datetime.
+ */
+void
+RDB_tm_to_obj(RDB_object *valp, const struct tm *tm)
+{
+    assert(valp->kind == RDB_OB_INITIAL || valp->typ == &RDB_DATETIME);
+
+    valp->typ = &RDB_DATETIME;
+    valp->kind = RDB_OB_TIME;
+    valp->val.time.year = (int16_t) tm->tm_year + 1900;
+    valp->val.time.month = tm->tm_mon + 1;
+    valp->val.time.day = tm->tm_mday;
+    valp->val.time.hour = tm->tm_hour;
+    valp->val.time.min = tm->tm_min;
+    valp->val.time.sec = tm->tm_sec;
 }
 
 static int

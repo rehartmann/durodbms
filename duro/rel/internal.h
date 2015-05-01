@@ -103,6 +103,7 @@ extern RDB_hashmap RDB_builtin_type_map;
 extern RDB_exec_context *RDB_cmp_ecp;
 
 extern RDB_op_map RDB_builtin_ro_op_map;
+extern RDB_op_map RDB_builtin_upd_op_map;
 
 /* Internal functions */
 
@@ -265,16 +266,8 @@ RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
                RDB_environment *, RDB_exec_context *, RDB_transaction *txp);
 
 int
-RDB_eq_bool(int, RDB_object *[], RDB_operator *,
-        RDB_exec_context *, RDB_transaction *, RDB_object *);
-
-int
 RDB_dfl_obj_equals(int argc, RDB_object *argv[], RDB_operator *,
         RDB_exec_context *, RDB_transaction *, RDB_object *retvalp);
-
-int
-RDB_eq_binary(int, RDB_object *[], RDB_operator *, RDB_exec_context *,
-        RDB_transaction *, RDB_object *retvalp);
 
 int
 RDB_obj_not_equals(int argc, RDB_object *argv[], RDB_operator *,

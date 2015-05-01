@@ -1,8 +1,6 @@
 /*
- * object.h
- *
- *  Created on: 29.09.2013
- *      Author: rene
+ * Copyright (C) 2013-2015 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #ifndef OBJECT_H_
@@ -13,6 +11,8 @@
 #include <gen/hashmap.h>
 
 #include <stddef.h>
+#include <stdint.h>
+#include <time.h>
 
 enum RDB_obj_kind {
     RDB_OB_INITIAL,
@@ -22,7 +22,8 @@ enum RDB_obj_kind {
     RDB_OB_BIN,
     RDB_OB_TABLE,
     RDB_OB_TUPLE,
-    RDB_OB_ARRAY
+    RDB_OB_ARRAY,
+    RDB_OB_TIME
 };
 
 /**
@@ -41,6 +42,15 @@ typedef struct RDB_exec_context RDB_exec_context;
 typedef struct RDB_object RDB_object;
 
 typedef int RDB_obj_cleanup_func(RDB_object *, RDB_exec_context *);
+
+typedef struct RDB_time {
+    int16_t year;
+    RDB_byte month;
+    RDB_byte day;
+    RDB_byte hour;
+    RDB_byte min;
+    RDB_byte sec;
+} RDB_time;
 
 /**
  * A RDB_object structure carries a value of an arbitrary type,
@@ -65,6 +75,7 @@ struct RDB_object {
         RDB_bool bool_val;
         RDB_int int_val;
         RDB_float float_val;
+        RDB_time time;
         struct {
             void *datap;
             size_t len;
@@ -155,13 +166,13 @@ int
 RDB_free_obj(RDB_object *, RDB_exec_context *);
 
 void
-RDB_bool_to_obj(RDB_object *, RDB_bool v);
+RDB_bool_to_obj(RDB_object *, RDB_bool);
 
 void
-RDB_int_to_obj(RDB_object *, RDB_int v);
+RDB_int_to_obj(RDB_object *, RDB_int);
 
 void
-RDB_float_to_obj(RDB_object *, RDB_float v);
+RDB_float_to_obj(RDB_object *, RDB_float);
 
 int
 RDB_string_to_obj(RDB_object *, const char *, RDB_exec_context *);
@@ -178,6 +189,9 @@ RDB_obj_int(const RDB_object *);
 
 RDB_float
 RDB_obj_float(const RDB_object *);
+
+void
+RDB_tm_to_obj(RDB_object *, const struct tm *);
 
 int
 RDB_append_string(RDB_object *, const char *, RDB_exec_context *);

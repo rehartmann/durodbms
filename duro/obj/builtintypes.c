@@ -123,6 +123,7 @@ RDB_type RDB_INTEGER;
 RDB_type RDB_FLOAT;
 RDB_type RDB_STRING;
 RDB_type RDB_BINARY;
+RDB_type RDB_DATETIME;
 
 RDB_type RDB_NO_RUNNING_TX_ERROR;
 RDB_type RDB_INVALID_ARGUMENT_ERROR;
@@ -194,6 +195,44 @@ compare_string(int argc, RDB_object *argv[], RDB_operator *op,
 {
     RDB_int_to_obj(retvalp,
             (RDB_int) strcoll(argv[0]->val.bin.datap, argv[1]->val.bin.datap));
+    return RDB_OK;
+}
+
+static int
+compare_datetime(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    int d = argv[0]->val.time.year - argv[1]->val.time.year;
+    if (d != 0) {
+        RDB_int_to_obj(retvalp, d);
+        return RDB_OK;
+    }
+
+    d = argv[0]->val.time.month - argv[1]->val.time.month;
+    if (d != 0) {
+        RDB_int_to_obj(retvalp, d);
+        return RDB_OK;
+    }
+
+    d = argv[0]->val.time.day - argv[1]->val.time.day;
+    if (d != 0) {
+        RDB_int_to_obj(retvalp, d);
+        return RDB_OK;
+    }
+
+    d = argv[0]->val.time.hour - argv[1]->val.time.hour;
+    if (d != 0) {
+        RDB_int_to_obj(retvalp, d);
+        return RDB_OK;
+    }
+
+    d = argv[0]->val.time.min - argv[1]->val.time.min;
+    if (d != 0) {
+        RDB_int_to_obj(retvalp, d);
+        return RDB_OK;
+    }
+
+    RDB_int_to_obj(retvalp, argv[0]->val.time.sec - argv[1]->val.time.sec);
     return RDB_OK;
 }
 
@@ -445,6 +484,28 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
      * Add error types
      */
 
+    time_t t;
+
+    static RDB_operator compare_datetime_op = {
+        "cmp",
+        &RDB_DATETIME
+    };
+
+    static RDB_attr datetime_comps[] = {
+            { "year", &RDB_INTEGER },
+            { "month", &RDB_INTEGER },
+            { "day", &RDB_INTEGER },
+            { "hour", &RDB_INTEGER },
+            { "min", &RDB_INTEGER },
+            { "sec", &RDB_INTEGER }
+    };
+
+    static RDB_possrep datetime_rep = {
+        "datetime",
+        6,
+        datetime_comps
+    };
+
     static RDB_possrep no_running_tx_rep = {
         "no_running_tx_error",
         0
@@ -622,15 +683,35 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
         &id_comp
     };
 
+    compare_datetime_op.opfn.ro_fp = &compare_datetime;
+
+    RDB_DATETIME.kind = RDB_TP_SCALAR;
+    RDB_DATETIME.ireplen = sizeof(RDB_time);
+    RDB_DATETIME.name = "datetime";
+    RDB_DATETIME.def.scalar.builtin = RDB_TRUE;
+    RDB_DATETIME.def.scalar.ordered = RDB_FALSE;
+    RDB_DATETIME.def.scalar.repc = 1;
+    RDB_DATETIME.def.scalar.repv = &datetime_rep;
+    RDB_DATETIME.def.scalar.arep = NULL;
+    RDB_DATETIME.def.scalar.constraintp = NULL;
+    RDB_DATETIME.def.scalar.initexp = NULL;
+
+    /* For the selector etc. explicit operators must be invoked */
+    RDB_DATETIME.def.scalar.sysimpl = RDB_FALSE;
+    RDB_init_obj(&RDB_DATETIME.def.scalar.init_val);
+
+    t = (time_t) 0;
+    RDB_tm_to_obj(&RDB_DATETIME.def.scalar.init_val, gmtime(&t));
+    RDB_DATETIME.def.scalar.init_val_is_valid = RDB_TRUE;
+    RDB_DATETIME.compare_op = &compare_datetime_op;
+
     RDB_NO_RUNNING_TX_ERROR.kind = RDB_TP_SCALAR;
     RDB_NO_RUNNING_TX_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_NO_RUNNING_TX_ERROR.name = "no_running_transaction_error";
     RDB_NO_RUNNING_TX_ERROR.def.scalar.builtin = RDB_TRUE;
-    RDB_NO_RUNNING_TX_ERROR.def.scalar.builtin = RDB_FALSE;
     RDB_NO_RUNNING_TX_ERROR.def.scalar.repc = 1;
     RDB_NO_RUNNING_TX_ERROR.def.scalar.repv = &no_running_tx_rep;
     RDB_NO_RUNNING_TX_ERROR.def.scalar.arep = &empty_tuple_type;
-    RDB_NO_RUNNING_TX_ERROR.def.scalar.arep = NULL;
     RDB_NO_RUNNING_TX_ERROR.def.scalar.constraintp = NULL;
     RDB_NO_RUNNING_TX_ERROR.def.scalar.initexp = NULL;
     RDB_NO_RUNNING_TX_ERROR.def.scalar.sysimpl = RDB_TRUE;
@@ -1022,6 +1103,10 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
         return RDB_ERROR;
     RDB_IDENTIFIER.def.scalar.init_val_is_valid = RDB_TRUE;
     RDB_IDENTIFIER.compare_op = NULL;
+
+    if (RDB_add_type(&RDB_DATETIME, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
 
     /*
      * RDB_NO_MEMORY_ERROR was initialized by RDB_init_builtin_basic_types()
