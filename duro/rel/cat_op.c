@@ -51,8 +51,11 @@ tuple_to_operator(const char *name, const RDB_object *tplp,
     if (op == NULL)
         goto error;
 
-    RDB_init_obj(&op->source);
     if (RDB_copy_obj(&op->source, RDB_tuple_get(tplp, "source"), ecp) != RDB_OK)
+        goto error;
+
+    if (RDB_copy_obj(&op->cretime, RDB_tuple_get(tplp, "creation_time"), ecp)
+            != RDB_OK)
         goto error;
 
     libname = RDB_tuple_get_string(tplp, "lib");

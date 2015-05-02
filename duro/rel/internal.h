@@ -261,10 +261,6 @@ RDB_obj_ilen(const RDB_object *, size_t *, RDB_exec_context *);
 void
 RDB_obj_to_irep(void *dstp, const RDB_object *, size_t);
 
-RDB_operator *
-RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
-               RDB_environment *, RDB_exec_context *, RDB_transaction *txp);
-
 int
 RDB_dfl_obj_equals(int argc, RDB_object *argv[], RDB_operator *,
         RDB_exec_context *, RDB_transaction *, RDB_object *retvalp);
