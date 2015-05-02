@@ -2976,6 +2976,8 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
 
     /* Create current_db and implicit_tx in system module */
 
+    if (dbname == NULL)
+        dbname = "";
     if (RDB_string_to_obj(&interp->current_db_obj, dbname, ecp) != RDB_OK) {
         goto error;
     }
@@ -3017,7 +3019,7 @@ error:
 
 /**
  * Release resources allocated during interpreter initialization.
- * Also close the environment that was passed to RDB_init_interp().
+ * If a database environment is connected it will be closed.
  */
 void
 Duro_destroy_interp(Duro_interp *interp)
