@@ -471,7 +471,7 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
             /* Set type if missing */
             if (RDB_obj_type(&argv[i]) == NULL) {
                 RDB_type *typ = RDB_expr_type(exp, &Duro_get_var_type,
-                        NULL, interp->envp, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
+                        interp, interp->envp, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
                 if (typ == NULL) {
                     goto error;
                 }
@@ -1204,8 +1204,8 @@ exec_rollback(Duro_interp *interp, RDB_exec_context *ecp)
 }
 
 static int
-parserep_to_rep(const RDB_parse_node *nodep, RDB_possrep *rep,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+parserep_to_rep(const RDB_parse_node *nodep, Duro_interp *interp, RDB_possrep *rep,
+        RDB_exec_context *ecp)
 {
 	int i;
 	RDB_parse_node *np;
@@ -1227,7 +1227,7 @@ parserep_to_rep(const RDB_parse_node *nodep, RDB_possrep *rep,
         rep->compv[i].name = (char *) RDB_expr_var_name(np->exp);
         np = np->nextp;
         rep->compv[i].typ = (RDB_type *) RDB_parse_node_to_type(np,
-                &Duro_get_var_type, NULL, ecp, txp);
+                &Duro_get_var_type, interp, ecp, &interp->txnp->tx);
         if (rep->compv[i].typ == NULL)
             return RDB_ERROR;
         if (RDB_type_is_generic(rep->compv[i].typ)) {
@@ -1278,7 +1278,7 @@ exec_typedef(const RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context 
 
     nodep = prnodep->val.children.firstp;
     for (i = 0; i < repc; i++) {
-        if (parserep_to_rep(nodep, &repv[i], ecp, &interp->txnp->tx) != RDB_OK)
+        if (parserep_to_rep(nodep, interp, &repv[i], ecp) != RDB_OK)
             goto error;
         nodep = nodep->nextp;
     }
@@ -1909,7 +1909,7 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
             attrnodep = attrnodep->nextp;
 
         paramv[i].typ = RDB_parse_node_to_type(attrnodep->nextp,
-                &Duro_get_var_type, NULL, ecp,
+                &Duro_get_var_type, interp, ecp,
                 interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
         if (paramv[i].typ == NULL)
             goto error;
@@ -1935,7 +1935,7 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
 
     if (ro) {
         rtyp = RDB_parse_node_to_type(stmtp->nextp->nextp->nextp->nextp->nextp,
-                &Duro_get_var_type, NULL, ecp,
+                &Duro_get_var_type, interp, ecp,
                 interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
         if (rtyp == NULL)
             goto error;
@@ -2616,9 +2616,9 @@ Duro_exec_stmt(RDB_parse_node *stmtp, Duro_interp *interp,
             ret = exec_leave(firstchildp->nextp, interp, ecp);
             break;
         case ';':
-        /* Empty statement */
-        ret = RDB_OK;
-        break;
+            /* Empty statement */
+            ret = RDB_OK;
+            break;
         case TOK_CALL:
             ret = exec_call(firstchildp->nextp, interp, ecp);
             break;

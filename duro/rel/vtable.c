@@ -1,11 +1,8 @@
 /*
- * $Id$
+ * Functions for virtual tables
  *
  * Copyright (C) 2004-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
- *
- *
- * Functions for virtual tables
  */
 
 #include "rdb.h"
@@ -143,7 +140,8 @@ all_key(RDB_expression *exp, RDB_environment *envp, RDB_exec_context *ecp,
     int attrc;
     int i;
     RDB_string_vec *keyv;
-    RDB_type *tbtyp = RDB_expr_type_tpltyp(exp, NULL, envp, ecp, txp);
+    RDB_type *tbtyp = RDB_expr_type_tpltyp(exp, NULL, NULL, NULL, envp,
+            ecp, txp);
     if (tbtyp == NULL)
         return NULL;
 
@@ -318,7 +316,8 @@ infer_group_keys(RDB_expression *exp, RDB_exec_context *ecp,
 {
     int i, j;
     RDB_string_vec *newkeyv;
-    RDB_type *tbtyp = RDB_expr_type_tpltyp(exp, NULL, NULL, ecp, NULL);
+    RDB_type *tbtyp = RDB_expr_type_tpltyp(exp, NULL, NULL, NULL, NULL,
+            ecp, NULL);
 
     /*
      * Key consists of all attributes which are not grouped
@@ -429,40 +428,40 @@ RDB_infer_keys(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
        RDB_string_vec **keyvp, RDB_bool *caller_must_freep)
 {
     switch (exp->kind) {
-        case RDB_EX_OBJ:
-            *caller_must_freep = RDB_FALSE;
-            return RDB_table_keys(&exp->def.obj, ecp, keyvp);
-        case RDB_EX_TBP:
-            *caller_must_freep = RDB_FALSE;
-            return RDB_table_keys(exp->def.tbref.tbp, ecp, keyvp);
-        case RDB_EX_RO_OP:
-            break;
-        case RDB_EX_VAR:
-            /* Try to resolve variable via getfnp */
-            if (getfnp != NULL) {
-                RDB_object *srcp = (*getfnp)(exp->def.varname, getdata);
-                if (srcp != NULL) {
-                    *caller_must_freep = RDB_FALSE;
-                    return RDB_table_keys(srcp, ecp, keyvp);
-                }
+    case RDB_EX_OBJ:
+        *caller_must_freep = RDB_FALSE;
+        return RDB_table_keys(&exp->def.obj, ecp, keyvp);
+    case RDB_EX_TBP:
+        *caller_must_freep = RDB_FALSE;
+        return RDB_table_keys(exp->def.tbref.tbp, ecp, keyvp);
+    case RDB_EX_RO_OP:
+        break;
+    case RDB_EX_VAR:
+        /* Try to resolve variable via getfnp */
+        if (getfnp != NULL) {
+            RDB_object *srcp = (*getfnp)(exp->def.varname, getdata);
+            if (srcp != NULL) {
+                *caller_must_freep = RDB_FALSE;
+                return RDB_table_keys(srcp, ecp, keyvp);
             }
+        }
 
-            /* Try to get table */
-            if (txp != NULL) {
-                RDB_object *srcp = RDB_get_table(exp->def.varname, ecp, txp);
-                if (srcp != NULL) {
-                    *caller_must_freep = RDB_FALSE;
-                    return RDB_table_keys(srcp, ecp, keyvp);
-                }
+        /* Try to get table */
+        if (txp != NULL) {
+            RDB_object *srcp = RDB_get_table(exp->def.varname, ecp, txp);
+            if (srcp != NULL) {
+                *caller_must_freep = RDB_FALSE;
+                return RDB_table_keys(srcp, ecp, keyvp);
             }
+        }
 
-            /* Not found */
-            RDB_raise_name(exp->def.varname, ecp);
-            return RDB_ERROR;
-        case RDB_EX_TUPLE_ATTR:
-        case RDB_EX_GET_COMP:
-            RDB_raise_invalid_argument("Expression is not a table", ecp);
-            return RDB_ERROR;            
+        /* Not found */
+        RDB_raise_name(exp->def.varname, ecp);
+        return RDB_ERROR;
+    case RDB_EX_TUPLE_ATTR:
+    case RDB_EX_GET_COMP:
+        RDB_raise_invalid_argument("Expression is not a table", ecp);
+        return RDB_ERROR;
     }
 
     if ((strcmp(exp->def.op.name, "where") == 0)

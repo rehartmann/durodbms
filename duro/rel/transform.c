@@ -1,7 +1,7 @@
 /*
- * $Id$
+ * Functions for query transformation
  *
- * Copyright (C) 2004-2012 Rene Hartmann.
+ * Copyright (C) 2004-2008, 2011-2014 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -1046,7 +1046,8 @@ int
 RDB_expr_to_empty_table(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    RDB_type *typ = RDB_expr_type_tpltyp(exp, NULL, NULL, ecp, txp);
+    RDB_type *typ = RDB_expr_type_tpltyp(exp, NULL, NULL, NULL, NULL,
+            ecp, txp);
     if (typ == NULL)
         return RDB_ERROR;
 
@@ -1079,35 +1080,35 @@ RDB_expr_resolve_tbnames(RDB_expression *exp, RDB_exec_context *ecp,
     RDB_expression *argp;
 
     switch (exp->kind) {
-        case RDB_EX_TUPLE_ATTR:
-        case RDB_EX_GET_COMP:
-            return RDB_expr_resolve_tbnames(exp->def.op.args.firstp,
-                    ecp, txp);
-        case RDB_EX_RO_OP:
-            argp = exp->def.op.args.firstp;
-            while (argp != NULL) {
-                if (RDB_expr_resolve_tbnames(argp, ecp, txp) != RDB_OK)
-                    return RDB_ERROR;
-                argp = argp->nextp;
+    case RDB_EX_TUPLE_ATTR:
+    case RDB_EX_GET_COMP:
+        return RDB_expr_resolve_tbnames(exp->def.op.args.firstp,
+                ecp, txp);
+    case RDB_EX_RO_OP:
+        argp = exp->def.op.args.firstp;
+        while (argp != NULL) {
+            if (RDB_expr_resolve_tbnames(argp, ecp, txp) != RDB_OK)
+                return RDB_ERROR;
+            argp = argp->nextp;
+        }
+        return RDB_OK;
+    case RDB_EX_OBJ:
+    case RDB_EX_TBP:
+        return RDB_OK;
+    case RDB_EX_VAR:
+        if (exp->typ == NULL || RDB_type_is_relation(exp->typ)) {
+            RDB_object *tbp = RDB_get_table(exp->def.varname, ecp, txp);
+            if (tbp == NULL) {
+                RDB_clear_err(ecp);
+                return RDB_OK;
             }
-            return RDB_OK;
-        case RDB_EX_OBJ:
-        case RDB_EX_TBP:
-            return RDB_OK;
-        case RDB_EX_VAR:
-            if (exp->typ == NULL || RDB_type_is_relation(exp->typ)) {
-                RDB_object *tbp = RDB_get_table(exp->def.varname, ecp, txp);
-                if (tbp == NULL) {
-                    RDB_clear_err(ecp);
-                    return RDB_OK;
-                }
 
-                /* Transform into table ref */
-                RDB_free(exp->def.varname);
-                exp->kind = RDB_EX_TBP;
-                exp->def.tbref.tbp = tbp;
-                exp->def.tbref.indexp = NULL;
-            }
+            /* Transform into table ref */
+            RDB_free(exp->def.varname);
+            exp->kind = RDB_EX_TBP;
+            exp->def.tbref.tbp = tbp;
+            exp->def.tbref.indexp = NULL;
+        }
     }
     return RDB_OK;
 }

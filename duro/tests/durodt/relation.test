@@ -1919,4 +1919,26 @@ Z <= 4
 Beryllium
 }
 
+test same_op {operator definition with same_heading_as and same_type_as} \
+             -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+        var r real init rel { tup { no 1, txt 'X' } };
+        var t tup { s string };
+
+        operator op(tr tup same_heading_as(r)) returns same_type_as(t);
+            var rt same_type_as(t);
+            update rt { s := tr.txt };
+            return rt;
+        end operator;
+
+        io.put_line(op(tuple from r).s);
+        commit;
+    }
+} -result {X
+}
+
 cleanupTests

@@ -95,7 +95,7 @@ Duro_expr_type_retry(RDB_expression *exp, Duro_interp *interp, RDB_exec_context 
 
     if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
         return NULL;
-    typ = RDB_expr_type(exp, &Duro_get_var_type, NULL, interp->envp, ecp, &tx);
+    typ = RDB_expr_type(exp, &Duro_get_var_type, interp, interp->envp, ecp, &tx);
     if (typ != NULL) {
         RDB_commit(ecp, &tx);
         return typ;

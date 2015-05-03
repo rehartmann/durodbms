@@ -275,7 +275,8 @@ RDB_obj_to_field(RDB_field *, RDB_object *, RDB_exec_context *);
 #define RDB_pkey_len(tbp) ((tbp)->val.tb.keyv[0].strc)
 
 RDB_type *
-RDB_expr_type_tpltyp(RDB_expression *, const RDB_type *, RDB_environment *,
+RDB_expr_type_tpltyp(RDB_expression *, const RDB_type *,
+        RDB_gettypefn *getfnp, void *getarg, RDB_environment *,
         RDB_exec_context *, RDB_transaction *);
 
 RDB_type *

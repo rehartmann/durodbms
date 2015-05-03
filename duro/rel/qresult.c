@@ -1,7 +1,7 @@
 /*
- * $Id$
+ * Functions for reading tuples using a RDB_qresult structure.
  *
- * Copyright (C) 2003-2013 Rene Hartmann.
+ * Copyright (C) 2003-2009, 2012-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -170,7 +170,7 @@ do_summarize(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg,
                     } else {
                         RDB_expression *exp = argp->def.op.args.firstp;
                         typ = RDB_expr_type_tpltyp(exp, tb1typ->def.basetyp,
-                                NULL, ecp, txp);
+                                NULL, NULL, NULL, ecp, txp);
                         if (typ == NULL) {
                             RDB_destroy_obj(&addval, ecp);
                             ret = RDB_ERROR;
@@ -281,7 +281,7 @@ init_summ_table(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg, RDB_exec_co
                 ret = RDB_tuple_set_float(&tpl, name, 0, ecp);
             } else if (strcmp(opname, "sum") == 0) {
                 typ = RDB_expr_type_tpltyp(opexp->def.op.args.firstp,
-                        tb1typ->def.basetyp, NULL, ecp, txp);
+                        tb1typ->def.basetyp, NULL, NULL, NULL, ecp, txp);
                 if (typ == NULL)
                     goto error;
                 if (typ == &RDB_INTEGER)
@@ -290,7 +290,7 @@ init_summ_table(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg, RDB_exec_co
                     ret = RDB_tuple_set_float(&tpl, name, 0.0, ecp);
             } else if (strcmp(opname, "max") == 0) {
                 typ = RDB_expr_type_tpltyp(opexp->def.op.args.firstp,
-                        tb1typ->def.basetyp, NULL, ecp, txp);
+                        tb1typ->def.basetyp, NULL, NULL, NULL, ecp, txp);
                 if (typ == NULL)
                     goto error;
                 if (typ == &RDB_INTEGER)
@@ -301,7 +301,7 @@ init_summ_table(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg, RDB_exec_co
                 }
             } else if (strcmp(opname, "min") == 0) {
                 typ = RDB_expr_type_tpltyp(opexp->def.op.args.firstp,
-                        tb1typ->def.basetyp, NULL, ecp, txp);
+                        tb1typ->def.basetyp, NULL, NULL, NULL, ecp, txp);
                 if (typ == NULL)
                     goto error;
                 if (typ == &RDB_INTEGER)

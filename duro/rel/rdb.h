@@ -440,7 +440,7 @@ RDB_set_init_value(RDB_object *, RDB_type *, RDB_environment *,
 
 int
 RDB_extend_tuple(RDB_object *, int attrc, const RDB_virtual_attr attrv[],
-                 RDB_exec_context *, RDB_transaction *);
+        RDB_getobjfn *, void *, RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_add_tuple(RDB_object *, const RDB_object *,

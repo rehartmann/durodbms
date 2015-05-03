@@ -413,7 +413,7 @@ Duro_parse_node_to_type_retry(RDB_parse_node *nodep, Duro_interp *interp,
     if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
         return NULL;
     typ = RDB_parse_node_to_type(nodep, &Duro_get_var_type,
-                NULL, ecp, &tx);
+                interp, ecp, &tx);
     if (typ == NULL) {
         RDB_commit(ecp, &tx);
         return NULL;

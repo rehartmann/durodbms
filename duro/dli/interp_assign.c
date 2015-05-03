@@ -299,9 +299,10 @@ tuple_update_to_copy(RDB_ma_copy *copyp, RDB_object *dstp, RDB_parse_node *nodep
     }
 
     if (Duro_evaluate_retry(srcexp, interp, ecp, copyp->srcp) != RDB_OK) {
-        return RDB_ERROR;
+        goto error;
     }
 
+    RDB_del_expr(srcexp, ecp);
     return RDB_OK;
 
 error:
@@ -644,119 +645,119 @@ node_to_multi_assign(const RDB_parse_node *listnodep,
 
         if (firstp->kind == RDB_NODE_TOK) {
             switch(firstp->val.token) {
-                case TOK_INSERT:
-                case TOK_D_INSERT:
+            case TOK_INSERT:
+            case TOK_D_INSERT:
+                if ((*srcobjcp) >= DURO_MAX_LLEN) {
+                    RDB_raise_not_supported("too many assigments", ecp);
+                    return RDB_ERROR;
+                }
+
+                RDB_init_obj(&srcobjv[(*srcobjcp)++]);
+                insv[(*inscp)].objp = &srcobjv[(*srcobjcp) - 1];
+                if (node_to_insert(&insv[(*inscp)++], firstp->nextp,
+                        interp, firstp->val.token == TOK_INSERT ? 0 : RDB_DISTINCT,
+                                ecp) != RDB_OK) {
+                    goto error;
+                }
+                break;
+            case TOK_UPDATE:
+                if ((*updcp) >= DURO_MAX_LLEN) {
+                    RDB_raise_not_supported("too many updates", ecp);
+                    return RDB_ERROR;
+                }
+
+                /* 3rd node must be a token, either WHERE or { */
+                if (firstp->nextp->nextp->val.token == TOK_WHERE) {
+                    /* WHERE condition is present */
+                    updv[(*updcp)].updc = (RDB_parse_nodelist_length(
+                            firstp->nextp->nextp->nextp->nextp->nextp) + 1) / 2;
+                } else {
+                    updv[(*updcp)].updc = (RDB_parse_nodelist_length(
+                            firstp->nextp->nextp->nextp) + 1) / 2;
+                }
+                if ((*attrupdcp) + updv[(*updcp)].updc > DURO_MAX_LLEN) {
+                    RDB_raise_not_supported("too many assigments", ecp);
+                    goto error;
+                }
+
+                dstexp = RDB_parse_node_expr(firstp->nextp, ecp,
+                        interp->txnp != NULL ? &interp->txnp->tx : NULL);
+                if (dstexp == NULL) {
+                    goto error;
+                }
+
+                dstp = resolve_target(dstexp, interp, ecp);
+                if (dstp == NULL) {
+                    return RDB_ERROR;
+                }
+
+                /* Only tables and tuples are allowed as target */
+                if (dstp->typ == NULL
+                        || !(RDB_type_is_relation(dstp->typ)
+                                || RDB_type_is_tuple(dstp->typ))) {
+                    RDB_raise_type_mismatch(
+                            "UPDATE target must be tuple or relation", ecp);
+                    return RDB_ERROR;
+                }
+                if (dstp->typ != NULL && RDB_type_is_tuple(dstp->typ)) {
+                    /*
+                     * Tuple update
+                     */
                     if ((*srcobjcp) >= DURO_MAX_LLEN) {
                         RDB_raise_not_supported("too many assigments", ecp);
                         return RDB_ERROR;
                     }
 
                     RDB_init_obj(&srcobjv[(*srcobjcp)++]);
-                    insv[(*inscp)].objp = &srcobjv[(*srcobjcp) - 1];
-                    if (node_to_insert(&insv[(*inscp)++], firstp->nextp,
-                            interp, firstp->val.token == TOK_INSERT ? 0 : RDB_DISTINCT,
-                            ecp) != RDB_OK) {
+                    copyv[(*copycp)].srcp = &srcobjv[(*srcobjcp) - 1];
+                    if (tuple_update_to_copy(&copyv[(*copycp)++], dstp, firstp->nextp,
+                            interp, ecp) != RDB_OK) {
                         goto error;
                     }
-                    break;
-                case TOK_UPDATE:
+                } else {
                     if ((*updcp) >= DURO_MAX_LLEN) {
                         RDB_raise_not_supported("too many updates", ecp);
                         return RDB_ERROR;
                     }
-
-                    /* 3rd node must be a token, either WHERE or { */
-                    if (firstp->nextp->nextp->val.token == TOK_WHERE) {
-                        /* WHERE condition is present */
-                        updv[(*updcp)].updc = (RDB_parse_nodelist_length(
-                                    firstp->nextp->nextp->nextp->nextp->nextp) + 1) / 2;
-                    } else {
-                        updv[(*updcp)].updc = (RDB_parse_nodelist_length(
-                                    firstp->nextp->nextp->nextp) + 1) / 2;
-                    }
-                    if ((*attrupdcp) + updv[(*updcp)].updc > DURO_MAX_LLEN) {
-                        RDB_raise_not_supported("too many assigments", ecp);
+                    updv[(*updcp)].updv = &attrupdv[(*attrupdcp)];
+                    if (node_to_update(&updv[(*updcp)], dstp, firstp->nextp,
+                            interp, ecp) != RDB_OK) {
                         goto error;
                     }
-
-                    dstexp = RDB_parse_node_expr(firstp->nextp, ecp,
-                            interp->txnp != NULL ? &interp->txnp->tx : NULL);
-                    if (dstexp == NULL) {
-                        goto error;
-                    }
-
-                    dstp = resolve_target(dstexp, interp, ecp);
-                    if (dstp == NULL) {
-                        return RDB_ERROR;
-                    }
-
-                    /* Only tables and tuples are allowed as target */
-                    if (dstp->typ == NULL
-                            || !(RDB_type_is_relation(dstp->typ)
-                                    || RDB_type_is_tuple(dstp->typ))) {
-                        RDB_raise_type_mismatch(
-                                "UPDATE target must be tuple or relation", ecp);
-                        return RDB_ERROR;
-                    }
-                    if (dstp->typ != NULL && RDB_type_is_tuple(dstp->typ)) {
-                        /*
-                         * Tuple update
-                         */
-                        if ((*srcobjcp) >= DURO_MAX_LLEN) {
-                            RDB_raise_not_supported("too many assigments", ecp);
-                            return RDB_ERROR;
-                        }
-
-                        RDB_init_obj(&srcobjv[(*srcobjcp)++]);
-                        copyv[(*copycp)].srcp = &srcobjv[(*srcobjcp) - 1];
-                        if (tuple_update_to_copy(&copyv[(*copycp)++], dstp, firstp->nextp,
-                                interp, ecp) != RDB_OK) {
-                            goto error;
-                        }
-                    } else {
-                        if ((*updcp) >= DURO_MAX_LLEN) {
-                            RDB_raise_not_supported("too many updates", ecp);
-                            return RDB_ERROR;
-                        }
-                        updv[(*updcp)].updv = &attrupdv[(*attrupdcp)];
-                        if (node_to_update(&updv[(*updcp)], dstp, firstp->nextp,
-                                interp, ecp) != RDB_OK) {
-                            goto error;
-                        }
-                        (*attrupdcp) += updv[(*updcp)].updc;
-                        (*updcp)++;
-                    }
-                    break;
-                case TOK_DELETE:
-                case TOK_I_DELETE:
-                    if (firstp->nextp->nextp == NULL
-                            || (firstp->nextp->nextp->nextp != NULL
+                    (*attrupdcp) += updv[(*updcp)].updc;
+                    (*updcp)++;
+                }
+                break;
+            case TOK_DELETE:
+            case TOK_I_DELETE:
+                if (firstp->nextp->nextp == NULL
+                        || (firstp->nextp->nextp->nextp != NULL
                                 && firstp->nextp->nextp->nextp->kind
-                                        != RDB_NODE_TOK)) {
-                        if ((*delcp) >= DURO_MAX_LLEN) {
-                            RDB_raise_not_supported("too many deletes", ecp);
-                            return RDB_ERROR;
-                        }
-                        if (node_to_delete(&delv[(*delcp)++], firstp->nextp,
-                                interp, ecp) != RDB_OK) {
-                            goto error;
-                        }
-                    } else {
-                        /* DELETE <exp> <exp> */
-                        if ((*srcobjcp) >= DURO_MAX_LLEN) {
-                            RDB_raise_not_supported("too many assigments", ecp);
-                            return RDB_ERROR;
-                        }
-
-                        RDB_init_obj(&srcobjv[(*srcobjcp)++]);
-                        vdelv[(*vdelcp)].objp = &srcobjv[(*srcobjcp) - 1];
-                        if (node_to_vdelete(&vdelv[(*vdelcp)++], firstp->nextp,
-                                interp, firstp->val.token == TOK_DELETE ? 0 : RDB_INCLUDED,
-                                ecp) != RDB_OK) {
-                            goto error;
-                        }
+                                != RDB_NODE_TOK)) {
+                    if ((*delcp) >= DURO_MAX_LLEN) {
+                        RDB_raise_not_supported("too many deletes", ecp);
+                        return RDB_ERROR;
                     }
-                    break;
+                    if (node_to_delete(&delv[(*delcp)++], firstp->nextp,
+                            interp, ecp) != RDB_OK) {
+                        goto error;
+                    }
+                } else {
+                    /* DELETE <exp> <exp> */
+                    if ((*srcobjcp) >= DURO_MAX_LLEN) {
+                        RDB_raise_not_supported("too many assigments", ecp);
+                        return RDB_ERROR;
+                    }
+
+                    RDB_init_obj(&srcobjv[(*srcobjcp)++]);
+                    vdelv[(*vdelcp)].objp = &srcobjv[(*srcobjcp) - 1];
+                    if (node_to_vdelete(&vdelv[(*vdelcp)++], firstp->nextp,
+                            interp, firstp->val.token == TOK_DELETE ? 0 : RDB_INCLUDED,
+                                    ecp) != RDB_OK) {
+                        goto error;
+                    }
+                }
+                break;
             }
         } else if (nodep->xdata != NULL) {
             /* xdata is set to NULL when an assignment has been consumed */

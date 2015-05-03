@@ -11,10 +11,10 @@
 
 #include <string.h>
 
-struct chained_type_map {
-    void *arg1;
+struct chained_type_getters {
+    void *getarg1;
     RDB_gettypefn *getfn1p;
-    void *arg2;
+    void *getarg2;
     RDB_gettypefn *getfn2p;
 };
 
@@ -26,13 +26,16 @@ get_tuple_attr_type(const char *attrname, void *arg)
 }
 
 static RDB_type *
-get_chained_map_type(const char *attrname, void *arg) {
-    struct chained_type_map *mapp = arg;
-    RDB_type *typ = (*mapp->getfn1p) (attrname, mapp->arg1);
-    if (typ != NULL)
+get_type_from_chained_getters(const char *attrname, void *arg) {
+    RDB_type *typ;
+    struct chained_type_getters *mapp = arg;
+    if (mapp->getfn1p != NULL) {
+        typ = (*mapp->getfn1p) (attrname, mapp->getarg1);
+    }
+    if (typ != NULL || mapp->getfn2p == NULL)
         return typ;
 
-    return (*mapp->getfn2p) (attrname, mapp->arg2);
+    return (*mapp->getfn2p) (attrname, mapp->getarg2);
 }
 
 static RDB_type *
@@ -130,13 +133,13 @@ where_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         return NULL;
     }
     if (getfnp != NULL) {
-        struct chained_type_map tmap;
-        tmap.arg1 = arg;
-        tmap.getfn1p = getfnp;
-        tmap.arg2 = reltyp->def.basetyp;
-        tmap.getfn2p = get_tuple_attr_type;
-        condtyp = RDB_expr_type(exp->def.op.args.lastp, get_chained_map_type,
-                &tmap, envp, ecp, txp);
+        struct chained_type_getters tgetters;
+        tgetters.getarg1 = arg;
+        tgetters.getfn1p = getfnp;
+        tgetters.getarg2 = reltyp->def.basetyp;
+        tgetters.getfn2p = get_tuple_attr_type;
+        condtyp = RDB_expr_type(exp->def.op.args.lastp, get_type_from_chained_getters,
+                &tgetters, envp, ecp, txp);
     } else {
         condtyp = RDB_expr_type(exp->def.op.args.lastp, get_tuple_attr_type,
                 reltyp->def.basetyp, envp, ecp, txp);
@@ -161,14 +164,22 @@ where_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
  */
 RDB_type *
 RDB_expr_type_tpltyp(RDB_expression *exp, const RDB_type *tpltyp,
+        RDB_gettypefn *getfnp, void *getarg,
         RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    return RDB_expr_type(exp, tpltyp != NULL ? &get_tuple_attr_type : NULL,
-            (RDB_type *) tpltyp, envp, ecp, txp);
+    struct chained_type_getters chgetters;
+
+    chgetters.getfn1p = tpltyp != NULL ? &get_tuple_attr_type : NULL;
+    chgetters.getarg1 = (void *) tpltyp;
+    chgetters.getfn2p = getfnp;
+    chgetters.getarg2 = getarg;
+
+    return RDB_expr_type(exp, get_type_from_chained_getters, &chgetters,
+            envp, ecp, txp);
 }
 
 static RDB_type *
-extend_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
+extend_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
         RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
@@ -185,7 +196,7 @@ extend_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     }
 
     attrc = (argc - 1) / 2;
-    arg1typ = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, envp, ecp, txp);
+    arg1typ = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg, envp, ecp, txp);
     if (arg1typ == NULL)
         return NULL;
 
@@ -206,7 +217,9 @@ extend_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     }
     argp = exp->def.op.args.firstp->nextp;
     for (i = 0; i < attrc; i++) {
-        attrv[i].typ = RDB_expr_type_tpltyp(argp, tpltyp, envp, ecp, txp);
+        attrv[i].typ = RDB_expr_type_tpltyp(argp, tpltyp, getfnp, getarg, envp, ecp, txp);
+        if (attrv[i].typ == NULL)
+            attrv[i].typ = RDB_expr_type(argp, getfnp, getarg, envp, ecp, txp);
         if (attrv[i].typ == NULL) {
             int j;
 
@@ -228,16 +241,16 @@ extend_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         argp = argp->nextp;
     }
     switch (arg1typ->kind) {
-        case RDB_TP_RELATION:
-            typ = RDB_extend_relation_type(arg1typ, attrc, attrv, ecp);
-            break;
-        case RDB_TP_TUPLE:
-            typ = RDB_extend_tuple_type(arg1typ, attrc, attrv, ecp);
-            break;
-        default:
-            RDB_raise_type_mismatch(
-                    "EXTEND requires tuple or relation argument", ecp);
-            typ = NULL;
+    case RDB_TP_RELATION:
+        typ = RDB_extend_relation_type(arg1typ, attrc, attrv, ecp);
+        break;
+    case RDB_TP_TUPLE:
+        typ = RDB_extend_tuple_type(arg1typ, attrc, attrv, ecp);
+        break;
+    default:
+        RDB_raise_type_mismatch(
+                "EXTEND requires tuple or relation argument", ecp);
+        typ = NULL;
     }
     RDB_free(attrv);
     return typ;
@@ -580,16 +593,16 @@ rename_type(const RDB_expression *exp, RDB_type **argtv,
     }
 
     switch (argtv[0]->kind) {
-        case RDB_TP_RELATION:
-            typ = RDB_rename_relation_type(argtv[0], renc, renv, ecp);
-            break;
-        case RDB_TP_TUPLE:
-            typ = RDB_rename_tuple_type(argtv[0], renc, renv, ecp);
-            break;
-        default:
-            RDB_raise_invalid_argument(
-                    "relation or tuple argument required", ecp);
-            typ = NULL;
+    case RDB_TP_RELATION:
+        typ = RDB_rename_relation_type(argtv[0], renc, renv, ecp);
+        break;
+    case RDB_TP_TUPLE:
+        typ = RDB_rename_tuple_type(argtv[0], renc, renv, ecp);
+        break;
+    default:
+        RDB_raise_invalid_argument(
+                "relation or tuple argument required", ecp);
+        typ = NULL;
     }
     RDB_free(renv);
     return typ;
@@ -1062,7 +1075,8 @@ aggr_type(const RDB_expression *exp, const RDB_type *tpltyp,
             RDB_raise_invalid_argument("invalid number of aggregate arguments", ecp);
             return NULL;
         }
-        return RDB_expr_type_tpltyp(exp->def.op.args.firstp, tpltyp, NULL, ecp, txp);
+        return RDB_expr_type_tpltyp(exp->def.op.args.firstp, tpltyp, NULL, NULL,
+                NULL, ecp, txp);
     } else if (strcmp(exp->def.op.name, "any") == 0
             || strcmp(exp->def.op.name, "all") == 0) {
         return &RDB_BOOLEAN;
@@ -1076,7 +1090,7 @@ RDB_check_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
         const RDB_type *checktyp, RDB_environment *envp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_type *typ = RDB_expr_type_tpltyp(exp, tuptyp, envp, ecp, txp);
+    RDB_type *typ = RDB_expr_type_tpltyp(exp, tuptyp, NULL, NULL, envp, ecp, txp);
     if (typ == NULL)
         return RDB_ERROR;
 
@@ -1184,74 +1198,74 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
         return exp->typ;
 
     switch (exp->kind) {
-        case RDB_EX_OBJ:
-            /* Get type from RDB_object */
-            typ = RDB_obj_type(&exp->def.obj);
-            if (typ != NULL)
-                return typ;
-
-            /* No type available - generate type from tuple */
-            if (exp->def.obj.kind == RDB_OB_TUPLE) {
-                exp->typ = RDB_tuple_type(&exp->def.obj, ecp);
-                if (exp->typ == NULL)
-                    return NULL;
-            }
-            if (exp->typ == NULL) {
-                RDB_raise_not_found("missing type information", ecp);
-                return NULL;
-            }
-            return exp->typ;
-        case RDB_EX_TBP:
-            return RDB_obj_type(exp->def.tbref.tbp);
-        case RDB_EX_VAR:
-            exp->typ = var_type(RDB_expr_var_name(exp), getfnp, getarg, ecp, txp);
-            return exp->typ;
-        case RDB_EX_TUPLE_ATTR:
-            typ = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg,
-                    envp, ecp, txp);
-            if (typ == NULL) {
-                RDB_object varnameobj;
-
-                if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NAME_ERROR)
-                    return NULL;
-
-                /* Interpret as qualified variable name */
-                RDB_init_obj(&varnameobj);
-                if (RDB_expr_attr_qid(exp, &varnameobj, ecp) != RDB_OK) {
-                    RDB_destroy_obj(&varnameobj, ecp);
-                    return NULL;
-                }
-                exp->typ = var_type(RDB_obj_string(&varnameobj), getfnp, getarg, ecp, txp);
-                RDB_destroy_obj(&varnameobj, ecp);
-                return exp->typ;
-            }
-            typ = RDB_type_attr_type(typ, exp->def.op.name);
-            if (typ == NULL) {
-                RDB_raise_name(exp->def.op.name, ecp);
-                return NULL;
-            }
+    case RDB_EX_OBJ:
+        /* Get type from RDB_object */
+        typ = RDB_obj_type(&exp->def.obj);
+        if (typ != NULL)
             return typ;
-        case RDB_EX_GET_COMP:
-            typ = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg,
-                    envp, ecp, txp);
-            if (typ == NULL)
+
+        /* No type available - generate type from tuple */
+        if (exp->def.obj.kind == RDB_OB_TUPLE) {
+            exp->typ = RDB_tuple_type(&exp->def.obj, ecp);
+            if (exp->typ == NULL)
+                return NULL;
+        }
+        if (exp->typ == NULL) {
+            RDB_raise_not_found("missing type information", ecp);
+            return NULL;
+        }
+        return exp->typ;
+    case RDB_EX_TBP:
+        return RDB_obj_type(exp->def.tbref.tbp);
+    case RDB_EX_VAR:
+        exp->typ = var_type(RDB_expr_var_name(exp), getfnp, getarg, ecp, txp);
+        return exp->typ;
+    case RDB_EX_TUPLE_ATTR:
+        typ = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg,
+                envp, ecp, txp);
+        if (typ == NULL) {
+            RDB_object varnameobj;
+
+            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NAME_ERROR)
                 return NULL;
 
-            if (!RDB_type_is_scalar(typ)) {
-                RDB_raise_type_mismatch(
-                        "accessing components only possible with scalar types", ecp);
+            /* Interpret as qualified variable name */
+            RDB_init_obj(&varnameobj);
+            if (RDB_expr_attr_qid(exp, &varnameobj, ecp) != RDB_OK) {
+                RDB_destroy_obj(&varnameobj, ecp);
                 return NULL;
             }
-
-            attrp = RDB_prop_attr(typ, exp->def.op.name);
-            if (attrp == NULL) {
-                RDB_raise_invalid_argument("component not found", ecp);
-                return NULL;
-            }
-            return attrp->typ;
-        case RDB_EX_RO_OP:
-            exp->typ = expr_op_type(exp, getfnp, getarg, envp, ecp, txp);
+            exp->typ = var_type(RDB_obj_string(&varnameobj), getfnp, getarg, ecp, txp);
+            RDB_destroy_obj(&varnameobj, ecp);
             return exp->typ;
+        }
+        typ = RDB_type_attr_type(typ, exp->def.op.name);
+        if (typ == NULL) {
+            RDB_raise_name(exp->def.op.name, ecp);
+            return NULL;
+        }
+        return typ;
+    case RDB_EX_GET_COMP:
+        typ = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg,
+                envp, ecp, txp);
+        if (typ == NULL)
+            return NULL;
+
+        if (!RDB_type_is_scalar(typ)) {
+            RDB_raise_type_mismatch(
+                    "accessing components only possible with scalar types", ecp);
+            return NULL;
+        }
+
+        attrp = RDB_prop_attr(typ, exp->def.op.name);
+        if (attrp == NULL) {
+            RDB_raise_invalid_argument("component not found", ecp);
+            return NULL;
+        }
+        return attrp->typ;
+    case RDB_EX_RO_OP:
+        exp->typ = expr_op_type(exp, getfnp, getarg, envp, ecp, txp);
+        return exp->typ;
     }
     abort();
 } /* RDB_expr_type */

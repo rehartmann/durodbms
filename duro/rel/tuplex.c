@@ -1,8 +1,8 @@
 /*
- * tuplef.c
+ * Tuple functions
  *
- *  Created on: 04.10.2013
- *      Author: Rene Hartmann
+ * Copyright (C) 2013-2014 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #include "rdb.h"
@@ -18,6 +18,13 @@
 /** @addtogroup tuple
  * @{
  */
+
+struct chained_obj_getters {
+    RDB_getobjfn *getfn1p;
+    void *getarg1;
+    RDB_getobjfn *getfn2p;
+    void *getarg2;
+};
 
 int
 RDB_add_tuple(RDB_object *tpl1p, const RDB_object *tpl2p,
@@ -107,6 +114,16 @@ RDB_union_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
     return RDB_add_tuple(restplp, tpl2p, ecp, txp);
 }
 
+static RDB_object *
+get_obj_from_chained_args(const char *name, void *arg)
+{
+    struct chained_obj_getters *chgettersp = arg;
+    RDB_object *objp = (*chgettersp->getfn1p) (name, chgettersp->getarg1);
+    if (objp != NULL || chgettersp->getfn2p == NULL)
+        return objp;
+    return (*chgettersp->getfn2p) (name, chgettersp->getarg2);
+}
+
 /**
  * RDB_extend_tuple extends the tuple specified by <var>tplp</var>
 by the attributes specified by <var>attrc</var> and <var>attrv</var>.
@@ -134,15 +151,23 @@ The call may also fail for a @ref system-errors "system error".
  */
 int
 RDB_extend_tuple(RDB_object *tplp, int attrc, const RDB_virtual_attr attrv[],
+                RDB_getobjfn *getfnp, void *getarg,
                 RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     int ret;
     RDB_object obj;
+    struct chained_obj_getters chgetters;
+
+    chgetters.getfn1p = &RDB_tpl_get;
+    chgetters.getarg1 = tplp;
+    chgetters.getfn2p = getfnp;
+    chgetters.getarg2 = getarg;
 
     for (i = 0; i < attrc; i++) {
         RDB_init_obj(&obj);
-        if (RDB_evaluate(attrv[i].exp, &RDB_tpl_get, tplp, NULL, ecp, txp, &obj)
+
+        if (RDB_evaluate(attrv[i].exp, &get_obj_from_chained_args, &chgetters, NULL, ecp, txp, &obj)
                 != RDB_OK) {
             RDB_destroy_obj(&obj, ecp);
             return RDB_ERROR;
