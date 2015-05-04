@@ -2984,8 +2984,8 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
 
     RDB_bool_to_obj(&interp->implicit_tx_obj, RDB_FALSE);
 
-    if (RDB_hashmap_put(&interp->sys_varmap, "current_db", &interp->current_db_obj)
-            != RDB_OK) {
+    if (RDB_hashmap_put(&interp->sys_varmap, "current_db",
+            &interp->current_db_obj) != RDB_OK) {
         RDB_raise_no_memory(ecp);
         goto error;
     }
@@ -3047,6 +3047,8 @@ Duro_destroy_interp(Duro_interp *interp)
     RDB_destroy_hashmap(&interp->uop_info_map);
 
     RDB_destroy_obj(&interp->module_name, &ec);
+
+    RDB_destroy_obj(&interp->current_db_obj, &ec);
 
     if (interp->envp != NULL)
         RDB_close_env(interp->envp);
