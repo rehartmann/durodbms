@@ -1601,11 +1601,15 @@ RDB_parse_stmt_string(const char *txt, RDB_exec_context *ecp)
     char *oldlocale;
     int lineno = yylineno;
     YY_BUFFER_STATE oldbuf;
-    int pbuf_valid = RDB_parse_buffer_valid;
+    int pbuf_was_valid = RDB_parse_buffer_valid;
 
     /* If the parse buffer is valid, save it */
-    if (pbuf_valid)
-        oldbuf = RDB_parse_buffer;
+    if (RDB_parse_buffer_valid) {
+        if (RDB_parse_get_interactive())
+            yy_delete_buffer(RDB_parse_buffer);
+        else
+            oldbuf = RDB_parse_buffer;
+    }
 
     yylineno = 1;
 
@@ -1636,16 +1640,15 @@ RDB_parse_stmt_string(const char *txt, RDB_exec_context *ecp)
     yy_delete_buffer(RDB_parse_buffer);
 
     /* If the parse buffer was valid, restore it */
-    if (pbuf_valid) {
+    if (pbuf_was_valid) {
         if (RDB_parse_get_interactive()) {
-            yy_delete_buffer(oldbuf);
             RDB_parse_buffer = yy_scan_string("");
         } else {
             yy_switch_to_buffer(oldbuf);
             RDB_parse_buffer = oldbuf;
         }
     }
-    RDB_parse_buffer_valid = pbuf_valid;
+    RDB_parse_buffer_valid = pbuf_was_valid;
 
     if (pret != 0) {
         if (RDB_get_err(ecp) == NULL) {
