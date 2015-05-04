@@ -31,6 +31,7 @@ static RDB_read_line_fn *RDB_parse_read_line_fnp;
 static RDB_free_line_fn *RDB_parse_free_line_fnp;
 
 YY_BUFFER_STATE RDB_parse_buffer;
+int RDB_parse_buffer_valid = 0;
 
 int RDB_parse_start_token;
 
@@ -809,6 +810,7 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
             if (RDB_parse_interactive) {
                 yy_delete_buffer(YY_CURRENT_BUFFER);
                 RDB_parse_buffer = yy_scan_string("");
+                RDB_parse_buffer_valid = 1;
                 sprintf(buf, "unterminated comment");
             } else {
                 sprintf(buf, "unterminated comment at line %d", yylineno);
@@ -857,11 +859,13 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
     if (line == NULL) {
         /* provide valid input in case yylex() is called again */
         RDB_parse_buffer = yy_scan_string("");
+        RDB_parse_buffer_valid = 1;
 
         yyterminate();
     }
 
-    RDB_parse_buffer = yy_scan_string(line); 
+    RDB_parse_buffer = yy_scan_string(line);
+    RDB_parse_buffer_valid = 1; 
     (*RDB_parse_free_line_fnp) (line);
 }
 
@@ -909,6 +913,7 @@ RDB_parse_init_buf(FILE *f)
 		RDB_parse_buffer = yy_create_buffer(f, YY_BUF_SIZE);
 		yy_switch_to_buffer(RDB_parse_buffer);
 	}
+    RDB_parse_buffer_valid = 1;
 }
 
 void
@@ -924,4 +929,5 @@ void
 RDB_parse_destroy_buf(void)
 {
     yylex_destroy();
+    RDB_parse_buffer_valid = 0;
 }

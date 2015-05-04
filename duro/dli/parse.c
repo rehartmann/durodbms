@@ -26,6 +26,7 @@ void yy_delete_buffer(YY_BUFFER_STATE);
 void yy_switch_to_buffer(YY_BUFFER_STATE);
 
 extern YY_BUFFER_STATE RDB_parse_buffer;
+extern int RDB_parse_buffer_valid;
 
 extern int yylineno;
 
@@ -1599,7 +1600,12 @@ RDB_parse_stmt_string(const char *txt, RDB_exec_context *ecp)
     RDB_object oldlocaleobj;
     char *oldlocale;
     int lineno = yylineno;
-    YY_BUFFER_STATE oldbuf = RDB_parse_buffer;
+    YY_BUFFER_STATE oldbuf;
+    int pbuf_valid = RDB_parse_buffer_valid;
+
+    /* If the parse buffer is valid, save it */
+    if (pbuf_valid)
+        oldbuf = RDB_parse_buffer;
 
     yylineno = 1;
 
@@ -1608,6 +1614,7 @@ RDB_parse_stmt_string(const char *txt, RDB_exec_context *ecp)
     RDB_parse_ecp = ecp;
 
     RDB_parse_buffer = yy_scan_string(txt);
+    RDB_parse_buffer_valid = 1;
 
     /* Store old LC_NUMERIC locale */
     oldlocale = setlocale(LC_NUMERIC, NULL);
@@ -1627,13 +1634,18 @@ RDB_parse_stmt_string(const char *txt, RDB_exec_context *ecp)
     RDB_parse_start_stmt();
     pret = yyparse();
     yy_delete_buffer(RDB_parse_buffer);
-    if (RDB_parse_get_interactive()) {
-        yy_delete_buffer(oldbuf);
-        RDB_parse_buffer = yy_scan_string("");
-    } else {
-        yy_switch_to_buffer(oldbuf);
-        RDB_parse_buffer = oldbuf;
+
+    /* If the parse buffer was valid, restore it */
+    if (pbuf_valid) {
+        if (RDB_parse_get_interactive()) {
+            yy_delete_buffer(oldbuf);
+            RDB_parse_buffer = yy_scan_string("");
+        } else {
+            yy_switch_to_buffer(oldbuf);
+            RDB_parse_buffer = oldbuf;
+        }
     }
+    RDB_parse_buffer_valid = pbuf_valid;
 
     if (pret != 0) {
         if (RDB_get_err(ecp) == NULL) {
