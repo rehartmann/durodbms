@@ -427,6 +427,9 @@ RDB_commit(RDB_exec_context *, RDB_transaction *);
 int
 RDB_rollback(RDB_exec_context *, RDB_transaction *);
 
+int
+RDB_rollback_all(RDB_exec_context *, RDB_transaction *);
+
 void
 RDB_handle_errcode(int errcode, RDB_exec_context *, RDB_transaction *);
 

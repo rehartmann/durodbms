@@ -120,6 +120,9 @@ connect_op(int argc, RDB_object *argv[], RDB_operator *op,
     int ret;
     Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
 
+    if (txp != NULL && RDB_tx_is_running(txp))
+        RDB_rollback_all(ecp, txp);
+
     /* If a connection exists, close it */
     if (interp->envp != NULL) {
         RDB_close_env(interp->envp);
@@ -189,6 +192,7 @@ disconnect_op(int argc, RDB_object *argv[], RDB_operator *op,
     /* If a transaction is active, abort it */
     if (interp->txnp != NULL) {
         ret = RDB_rollback(ecp, &interp->txnp->tx);
+        RDB_free(interp->txnp);
         interp->txnp = NULL;
         if (ret != RDB_OK)
             return ret;
@@ -1622,10 +1626,11 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
         break;
     }
     if (ret == RDB_ERROR) {
-        RDB_free(interp->err_opname);
-        interp->err_opname = RDB_dup_str(RDB_operator_name(op));
         if (interp->err_opname == NULL) {
-            RDB_raise_no_memory(ecp);
+            interp->err_opname = RDB_dup_str(RDB_operator_name(op));
+            if (interp->err_opname == NULL) {
+                RDB_raise_no_memory(ecp);
+            }
         }
     }
 
@@ -1745,10 +1750,11 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
         ret = RDB_ERROR;
     }
     if (ret == RDB_ERROR) {
-        RDB_free(interp->err_opname);
-        interp->err_opname = RDB_dup_str(RDB_operator_name(op));
         if (interp->err_opname == NULL) {
-            RDB_raise_no_memory(ecp);
+            interp->err_opname = RDB_dup_str(RDB_operator_name(op));
+            if (interp->err_opname == NULL) {
+                RDB_raise_no_memory(ecp);
+            }
         }
     }
 
@@ -2231,14 +2237,29 @@ static int
 exec_raise(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
 {
     RDB_expression *exp;
-    RDB_object *errp = RDB_raise_err(ecp);
-    assert(errp != NULL);
+    RDB_object errobj;
+    RDB_object *errp;
 
     exp = RDB_parse_node_expr(nodep, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
     if (exp == NULL)
         return RDB_ERROR;
 
-    Duro_evaluate_retry(exp, interp, ecp, errp);
+    RDB_init_obj(&errobj);
+    if (Duro_evaluate_retry(exp, interp, ecp, &errobj) != RDB_OK) {
+        goto error;
+    }
+    errp = RDB_raise_err(ecp);
+    if (errp == NULL) {
+        RDB_raise_internal("RDB_raise_err() failed", ecp);
+        goto error;
+    }
+    RDB_copy_obj(errp, &errobj, ecp);
+
+error:
+    RDB_destroy_obj(&errobj, ecp);
+    if (RDB_get_err(ecp) == NULL) {
+        RDB_raise_internal("missing error", ecp);
+    }
     return RDB_ERROR;
 }
 

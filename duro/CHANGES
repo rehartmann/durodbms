@@ -2,6 +2,8 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 0.26
 
+- RDB_rollback_all() is available in rdb.h.
+
 - Added arguments getfnp and getarg to RDB_extend_tuple() for retrieving
   variables.
 

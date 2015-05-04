@@ -1,7 +1,7 @@
 /*
- * $Id$
+ * Transaction functions.
  *
- * Copyright (C) 2003-2012 Rene Hartmann.
+ * Copyright (C) 2003-2009, 2012-2013 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -212,6 +212,8 @@ RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
 
+    txp->txid = NULL;
+
     cleanup_storage(txp);
 
     /*
@@ -226,6 +228,9 @@ RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp)
     return RDB_OK;
 }
 
+/**
+ * Aborts the transaction *<var>txp</var> and all parent transactions.
+ */
 int
 RDB_rollback_all(RDB_exec_context *ecp, RDB_transaction *txp)
 {

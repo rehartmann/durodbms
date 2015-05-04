@@ -107,12 +107,6 @@ extern RDB_op_map RDB_builtin_upd_op_map;
 
 /* Internal functions */
 
-/**
- * Abort transaction and all parent transactions
- */
-int
-RDB_rollback_all(RDB_exec_context *, RDB_transaction *);
-
 int
 RDB_begin_tx_env(RDB_exec_context *, RDB_transaction *, RDB_environment *,
         RDB_transaction *);
