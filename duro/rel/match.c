@@ -1,9 +1,6 @@
 /*
  * Copyright (C) 2005-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
- *
- *
- * $Id$
  */
 
 #include "rdb.h"
@@ -225,62 +222,62 @@ RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
     RDB_qresult *qrp;
 
     switch (exp->kind) {
-        case RDB_EX_OBJ:
-            return RDB_table_matching_tuple(&exp->def.obj, tplp, ecp, txp, resultp);
-        case RDB_EX_TBP:
-            if (exp->def.tbref.tbp->val.tb.stp != NULL
-                    && exp->def.tbref.indexp != NULL) {
-                if (exp->def.tbref.indexp->unique) {
-                    /* Use unique index */
-                    return stored_matching_uindex(exp->def.tbref.tbp, tplp,
-                            exp->def.tbref.indexp, ecp, txp, resultp);
+    case RDB_EX_OBJ:
+        return RDB_table_matching_tuple(&exp->def.obj, tplp, ecp, txp, resultp);
+    case RDB_EX_TBP:
+        if (exp->def.tbref.tbp->val.tb.stp != NULL
+                && exp->def.tbref.indexp != NULL) {
+            if (exp->def.tbref.indexp->unique) {
+                /* Use unique index */
+                return stored_matching_uindex(exp->def.tbref.tbp, tplp,
+                        exp->def.tbref.indexp, ecp, txp, resultp);
+            }
+            return stored_matching_nuindex(exp->def.tbref.tbp, tplp,
+                    exp->def.tbref.indexp, ecp, txp, resultp);
+        }
+        if (exp->def.tbref.tbp->val.tb.exp != NULL) {
+            RDB_expr_matching_tuple(exp->def.tbref.tbp->val.tb.exp, tplp,
+                    ecp, txp, resultp);
+        }
+        if (exp->def.tbref.tbp->val.tb.stp == NULL) {
+            /* Physical table representation has not been created, so table is empty */
+            *resultp = RDB_FALSE;
+            return RDB_OK;
+        }
+        return stored_matching(exp->def.tbref.tbp, tplp, ecp, txp, resultp);
+    case RDB_EX_RO_OP:
+        if (strcmp (exp->def.op.name, "project") == 0
+                && exp->def.op.args.firstp != NULL) {
+            RDB_expression *chexp = exp->def.op.args.firstp;
+            if (chexp->kind == RDB_EX_TBP
+                    && chexp->def.tbref.tbp->val.tb.stp != NULL
+                    && chexp->def.tbref.indexp != NULL) {
+                if (chexp->def.tbref.indexp->unique) {
+                    return stored_matching_uindex(chexp->def.tbref.tbp,
+                            tplp, chexp->def.tbref.indexp,
+                            ecp, txp, resultp);
                 }
-                return stored_matching_nuindex(exp->def.tbref.tbp, tplp,
-                            exp->def.tbref.indexp, ecp, txp, resultp);
+                return stored_matching_nuindex(chexp->def.tbref.tbp,
+                        tplp, chexp->def.tbref.indexp, ecp, txp, resultp);
             }
-            if (exp->def.tbref.tbp->val.tb.exp != NULL) {
-                RDB_expr_matching_tuple(exp->def.tbref.tbp->val.tb.exp, tplp,
-                        ecp, txp, resultp);
-            }
-            if (exp->def.tbref.tbp->val.tb.stp == NULL) {
-                /* Physical table representation has not been created, so table is empty */
-                *resultp = RDB_FALSE;
-                return RDB_OK;
-            }
-            return stored_matching(exp->def.tbref.tbp, tplp, ecp, txp, resultp);
-        case RDB_EX_RO_OP:
-            if (strcmp (exp->def.op.name, "project") == 0
-                    && exp->def.op.args.firstp != NULL) {
-                RDB_expression *chexp = exp->def.op.args.firstp;
-                if (chexp->kind == RDB_EX_TBP
-                        && chexp->def.tbref.tbp->val.tb.stp != NULL
-                        && chexp->def.tbref.indexp != NULL) {
-                    if (chexp->def.tbref.indexp->unique) {
-                        return stored_matching_uindex(chexp->def.tbref.tbp,
-                                tplp, chexp->def.tbref.indexp,
-                                ecp, txp, resultp);
-                    }
-                    return stored_matching_nuindex(chexp->def.tbref.tbp,
-                            tplp, chexp->def.tbref.indexp, ecp, txp, resultp);
-                }
-                return project_matching(exp, tplp, ecp, txp, resultp);
-            }
-            if ((strcmp (exp->def.op.name, "union") == 0
-                 || strcmp (exp->def.op.name, "d_union") == 0)
-                    && exp->def.op.args.firstp != NULL
-                    && exp->def.op.args.firstp->nextp != NULL) {
-                return union_matching(exp, tplp, ecp, txp, resultp);
-            }
-            if ((strcmp (exp->def.op.name, "join") == 0
-                    || strcmp (exp->def.op.name, "semijoin") == 0
-                    || strcmp (exp->def.op.name, "intersect") == 0)
-                    && exp->def.op.args.firstp != NULL
-                    && exp->def.op.args.firstp->nextp != NULL) {
-                return join_matching(exp, tplp, ecp, txp, resultp);
-            }
-            break;
-        default:
-            break;
+            return project_matching(exp, tplp, ecp, txp, resultp);
+        }
+        if ((strcmp (exp->def.op.name, "union") == 0
+                || strcmp (exp->def.op.name, "d_union") == 0)
+                && exp->def.op.args.firstp != NULL
+                && exp->def.op.args.firstp->nextp != NULL) {
+            return union_matching(exp, tplp, ecp, txp, resultp);
+        }
+        if ((strcmp (exp->def.op.name, "join") == 0
+                || strcmp (exp->def.op.name, "semijoin") == 0
+                || strcmp (exp->def.op.name, "intersect") == 0)
+                && exp->def.op.args.firstp != NULL
+                && exp->def.op.args.firstp->nextp != NULL) {
+            return join_matching(exp, tplp, ecp, txp, resultp);
+        }
+        break;
+    default:
+        break;
     }
 
     qrp = RDB_expr_qresult(exp, ecp, txp);

@@ -1,7 +1,5 @@
 /*
- * $Id$
- *
- * Copyright (C) 2004-2012 Rene Hartmann.
+ * Copyright (C) 2004-2009, 2011-2014 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -694,20 +692,20 @@ static unsigned
 table_est_cardinality(const RDB_expression *exp)
 {
     switch(exp->kind) {
-        case RDB_EX_TBP:
-            return exp->def.tbref.tbp->val.tb.stp != NULL ?
-                    exp->def.tbref.tbp->val.tb.stp->est_cardinality : 0;
-        case RDB_EX_OBJ:
-            if (exp->def.obj.kind != RDB_OB_TABLE)
-                return 1;
-            return exp->def.obj.val.tb.stp != NULL ?
-                    exp->def.obj.val.tb.stp->est_cardinality : 0;
-        case RDB_EX_VAR:
-        case RDB_EX_TUPLE_ATTR:
-        case RDB_EX_GET_COMP:
+    case RDB_EX_TBP:
+        return exp->def.tbref.tbp->val.tb.stp != NULL ?
+                exp->def.tbref.tbp->val.tb.stp->est_cardinality : 0;
+    case RDB_EX_OBJ:
+        if (exp->def.obj.kind != RDB_OB_TABLE)
             return 1;
-        case RDB_EX_RO_OP:
-            break;
+        return exp->def.obj.val.tb.stp != NULL ?
+                exp->def.obj.val.tb.stp->est_cardinality : 0;
+    case RDB_EX_VAR:
+    case RDB_EX_TUPLE_ATTR:
+    case RDB_EX_GET_COMP:
+        return 1;
+    case RDB_EX_RO_OP:
+        break;
     }
 
     if (RDB_expr_is_binop(exp, "where")) {
@@ -914,79 +912,79 @@ dup_expr_deep(const RDB_expression *exp, RDB_exec_context *ecp,
     RDB_expression *newexp;
 
     switch (exp->kind) {
-        case RDB_EX_TUPLE_ATTR:
-            newexp = dup_expr_deep(exp->def.op.args.firstp, ecp, txp);
-            if (newexp == NULL)
-                return NULL;
-            newexp = RDB_tuple_attr(newexp, exp->def.op.name, ecp);
-            break;
-        case RDB_EX_GET_COMP:
-            newexp = dup_expr_deep(exp->def.op.args.firstp, ecp, txp);
-            if (newexp == NULL)
-                return NULL;
-            newexp = RDB_expr_comp(newexp, exp->def.op.name, ecp);
-            break;
-        case RDB_EX_RO_OP:
-        {
-            RDB_expression *argp;
+    case RDB_EX_TUPLE_ATTR:
+        newexp = dup_expr_deep(exp->def.op.args.firstp, ecp, txp);
+        if (newexp == NULL)
+            return NULL;
+        newexp = RDB_tuple_attr(newexp, exp->def.op.name, ecp);
+        break;
+    case RDB_EX_GET_COMP:
+        newexp = dup_expr_deep(exp->def.op.args.firstp, ecp, txp);
+        if (newexp == NULL)
+            return NULL;
+        newexp = RDB_expr_comp(newexp, exp->def.op.name, ecp);
+        break;
+    case RDB_EX_RO_OP:
+    {
+        RDB_expression *argp;
 
-            newexp = RDB_ro_op(exp->def.op.name, ecp);
-            argp = exp->def.op.args.firstp;
-            while (argp != NULL) {
-                RDB_expression *nargp = dup_expr_deep(argp, ecp, txp);
-                if (nargp == NULL)
-                    return NULL;
-                RDB_add_arg(newexp, nargp);
-                argp = argp->nextp;
-            }
-            break;
+        newexp = RDB_ro_op(exp->def.op.name, ecp);
+        argp = exp->def.op.args.firstp;
+        while (argp != NULL) {
+            RDB_expression *nargp = dup_expr_deep(argp, ecp, txp);
+            if (nargp == NULL)
+                return NULL;
+            RDB_add_arg(newexp, nargp);
+            argp = argp->nextp;
         }
-        case RDB_EX_OBJ:
-            newexp = RDB_obj_to_expr(&exp->def.obj, ecp);
-            break;
-        case RDB_EX_TBP:
-            if (RDB_TB_CHECK & exp->def.tbref.tbp->val.tb.flags) {
-                if (RDB_check_table(exp->def.tbref.tbp, ecp, txp) != RDB_OK)
-                    return NULL;
-            }
+        break;
+    }
+    case RDB_EX_OBJ:
+        newexp = RDB_obj_to_expr(&exp->def.obj, ecp);
+        break;
+    case RDB_EX_TBP:
+        if (RDB_TB_CHECK & exp->def.tbref.tbp->val.tb.flags) {
+            if (RDB_check_table(exp->def.tbref.tbp, ecp, txp) != RDB_OK)
+                return NULL;
+        }
 
-            if (RDB_table_is_real(exp->def.tbref.tbp)) {
-                newexp = RDB_table_ref(exp->def.tbref.tbp, ecp);
-            } else {
-                newexp = dup_expr_deep(RDB_vtable_expr(exp->def.tbref.tbp),
-                        ecp, txp);
-            }
-            break;
-        case RDB_EX_VAR:
-            /*
-             * Resolve table name.
-             * If the name refers to a virtual table, convert it
-             * to its defining expression
-             */
-            newexp = NULL;
-            if (txp != NULL
-                    && (exp->typ == NULL || RDB_type_is_relation(exp->typ))) {
-                RDB_object *tbp = RDB_get_table(RDB_expr_var_name(exp),
-                        ecp, txp);
-                if (tbp != NULL) {
-                    if (RDB_table_is_real(tbp)) {
-                        newexp = RDB_table_ref(tbp, ecp);
-                    } else {
-                        newexp = dup_expr_deep(RDB_vtable_expr(tbp), ecp, txp);
-                    }
-                    if (newexp == NULL)
-                        return NULL;
-                } else {
-                    if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NAME_ERROR) {
-                        /* Ignore error */
-                    } else {
-                        return NULL;
-                    }
-                }
-            }
-            if (newexp == NULL)
-                newexp = RDB_var_ref(RDB_expr_var_name(exp), ecp);
-            break;
+        if (RDB_table_is_real(exp->def.tbref.tbp)) {
+            newexp = RDB_table_ref(exp->def.tbref.tbp, ecp);
+        } else {
+            newexp = dup_expr_deep(RDB_vtable_expr(exp->def.tbref.tbp),
+                    ecp, txp);
+        }
+        break;
+    case RDB_EX_VAR:
+        /*
+         * Resolve table name.
+         * If the name refers to a virtual table, convert it
+         * to its defining expression
+         */
+         newexp = NULL;
+         if (txp != NULL
+                 && (exp->typ == NULL || RDB_type_is_relation(exp->typ))) {
+             RDB_object *tbp = RDB_get_table(RDB_expr_var_name(exp),
+                     ecp, txp);
+             if (tbp != NULL) {
+                 if (RDB_table_is_real(tbp)) {
+                     newexp = RDB_table_ref(tbp, ecp);
+                 } else {
+                     newexp = dup_expr_deep(RDB_vtable_expr(tbp), ecp, txp);
+                 }
+                 if (newexp == NULL)
+                     return NULL;
+             } else {
+                 if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NAME_ERROR) {
+                     /* Ignore error */
+                 } else {
+                     return NULL;
+                 }
+             }
+         }
+         if (newexp == NULL)
+             newexp = RDB_var_ref(RDB_expr_var_name(exp), ecp);
+         break;
     }
     if (newexp == NULL)
         return NULL;

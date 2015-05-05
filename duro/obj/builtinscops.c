@@ -142,6 +142,14 @@ op_strlen(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
+op_strlen_b(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_int_to_obj(retvalp, (RDB_int) strlen(argv[0]->val.bin.datap));
+    return RDB_OK;
+}
+
+static int
 op_substr(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
@@ -672,7 +680,11 @@ RDB_add_builtin_scalar_ro_ops(RDB_op_map *opmap, RDB_exec_context *ecp)
         return RDB_ERROR;
 
     paramtv[0] = &RDB_STRING;
-    if (RDB_put_ro_op(opmap, "strlen", 1, paramtv, &RDB_INTEGER, &op_strlen, ecp) != RDB_OK)
+    if (RDB_put_ro_op(opmap, "strlen", 1, paramtv, &RDB_INTEGER, &op_strlen,
+            ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_put_ro_op(opmap, "strlen_b", 1, paramtv, &RDB_INTEGER, &op_strlen_b,
+            ecp) != RDB_OK)
         return RDB_ERROR;
 
     paramtv[0] = &RDB_STRING;

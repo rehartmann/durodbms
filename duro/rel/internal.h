@@ -41,8 +41,8 @@ typedef struct RDB_constraint {
 typedef struct RDB_dbroot {
     RDB_environment *envp;
 
-    /* Cached types */
-    RDB_hashmap typemap;
+    /* Cached user-defined types */
+    RDB_hashmap utypemap;
 
     /* Cached operators */
     RDB_op_map ro_opmap;

@@ -279,6 +279,20 @@ The length of <var>s</var>, in code points.
 
 <hr>
 
+<h3 id="op_strlen_b">OPERATOR strlen_b</h3>
+
+OPERATOR strlen_b (s string) RETURNS integer;
+
+<h4>Description</h4>
+
+The string length operator, returning the number of bytes.
+
+<h4>Return value</h4>
+
+The length of <var>s</var>, in bytes.
+
+<hr>
+
 <h3 id="substr">OPERATOR substr</h3>
 
 OPERATOR substr(s string, start integer, length integer) RETURNS

@@ -1,6 +1,4 @@
 /*
- * $Id$
- *
  * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
@@ -11,6 +9,7 @@
 #include <gen/strfns.h>
 #include <gen/hashtabit.h>
 #include <obj/objinternal.h>
+
 #include <string.h>
 
 /*
@@ -229,70 +228,70 @@ RDB_serialize_expr(RDB_object *valp, int *posp, RDB_expression *exp,
         return RDB_ERROR;
 
     switch(exp->kind) {
-        case RDB_EX_OBJ:
-            return serialize_trobj(valp, posp, &exp->def.obj, ecp);
-        case RDB_EX_TBP:
-            return serialize_table(valp, posp, exp->def.tbref.tbp, ecp);
-        case RDB_EX_VAR:
-            return RDB_serialize_str(valp, posp, exp->def.varname, ecp);
-        case RDB_EX_GET_COMP:
-            if (RDB_serialize_expr(valp, posp, exp->def.op.args.firstp, ecp)
-                    != RDB_OK)
-                return RDB_ERROR;
-            return RDB_serialize_str(valp, posp, exp->def.op.name, ecp);
-        case RDB_EX_RO_OP:
-        {
-            RDB_expression *argp;
+    case RDB_EX_OBJ:
+        return serialize_trobj(valp, posp, &exp->def.obj, ecp);
+    case RDB_EX_TBP:
+        return serialize_table(valp, posp, exp->def.tbref.tbp, ecp);
+    case RDB_EX_VAR:
+        return RDB_serialize_str(valp, posp, exp->def.varname, ecp);
+    case RDB_EX_GET_COMP:
+        if (RDB_serialize_expr(valp, posp, exp->def.op.args.firstp, ecp)
+                != RDB_OK)
+            return RDB_ERROR;
+        return RDB_serialize_str(valp, posp, exp->def.op.name, ecp);
+    case RDB_EX_RO_OP:
+    {
+        RDB_expression *argp;
 
-            /* Operator name */
-            if (RDB_serialize_str(valp, posp, exp->def.op.name, ecp) != RDB_OK)
-                return RDB_ERROR;
+        /* Operator name */
+        if (RDB_serialize_str(valp, posp, exp->def.op.name, ecp) != RDB_OK)
+            return RDB_ERROR;
 
-            /* # of arguments */
-            if (RDB_serialize_int (valp, posp,
-                    RDB_expr_list_length(&exp->def.op.args), ecp) != RDB_OK) {
-                return RDB_ERROR;
-            }
-
-            /* Write arg expressions */
-            argp = exp->def.op.args.firstp;
-            while (argp != NULL) {
-                if (RDB_serialize_expr(valp, posp, argp, ecp) != RDB_OK)
-                    return RDB_ERROR;
-                argp = argp->nextp;
-            }
-
-            /*
-             * Serialize type to preserve the type of e.g. RELATION()
-             * Only do this when the number of arguments is zero, because
-             * RDB_expr_type() will not go deeper if type information is already present
-             * and descendants may not get type information.
-             * This can cause in RDB_qresult not working on virtual table
-             * whose definition contain tuple-valued attribute names.
-             */
-
-            if (exp->typ != NULL && exp->def.op.args.firstp == NULL) {
-                if (RDB_serialize_byte(valp, posp, (RDB_byte) RDB_TRUE,
-                        ecp) != RDB_OK)
-                    return RDB_ERROR;
-
-                if (exp->typ != NULL) {
-                    if (RDB_serialize_type(valp, posp, exp->typ, ecp) != RDB_OK)
-                        return RDB_ERROR;
-                }
-            } else {
-                if (RDB_serialize_byte(valp, posp, (RDB_byte) RDB_FALSE,
-                        ecp) != RDB_OK)
-                    return RDB_ERROR;
-            }
-
-            return RDB_OK;
+        /* # of arguments */
+        if (RDB_serialize_int (valp, posp,
+                RDB_expr_list_length(&exp->def.op.args), ecp) != RDB_OK) {
+            return RDB_ERROR;
         }
-        case RDB_EX_TUPLE_ATTR:
-            if (RDB_serialize_expr(valp, posp, exp->def.op.args.firstp, ecp)
-                    != RDB_OK)
+
+        /* Write arg expressions */
+        argp = exp->def.op.args.firstp;
+        while (argp != NULL) {
+            if (RDB_serialize_expr(valp, posp, argp, ecp) != RDB_OK)
                 return RDB_ERROR;
-            return RDB_serialize_str(valp, posp, exp->def.op.name, ecp);
+            argp = argp->nextp;
+        }
+
+        /*
+         * Serialize type to preserve the type of e.g. RELATION()
+         * Only do this when the number of arguments is zero, because
+         * RDB_expr_type() will not go deeper if type information is already present
+         * and descendants may not get type information.
+         * This can cause in RDB_qresult not working on virtual table
+         * whose definition contain tuple-valued attribute names.
+         */
+
+        if (exp->typ != NULL && exp->def.op.args.firstp == NULL) {
+            if (RDB_serialize_byte(valp, posp, (RDB_byte) RDB_TRUE,
+                    ecp) != RDB_OK)
+                return RDB_ERROR;
+
+            if (exp->typ != NULL) {
+                if (RDB_serialize_type(valp, posp, exp->typ, ecp) != RDB_OK)
+                    return RDB_ERROR;
+            }
+        } else {
+            if (RDB_serialize_byte(valp, posp, (RDB_byte) RDB_FALSE,
+                    ecp) != RDB_OK)
+                return RDB_ERROR;
+        }
+
+        return RDB_OK;
+    }
+    case RDB_EX_TUPLE_ATTR:
+        if (RDB_serialize_expr(valp, posp, exp->def.op.args.firstp, ecp)
+                != RDB_OK)
+            return RDB_ERROR;
+        return RDB_serialize_str(valp, posp, exp->def.op.name, ecp);
     }
     /* should never be reached */
     abort();
@@ -621,140 +620,140 @@ RDB_deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         return ret;
     ekind = (enum RDB_expr_kind) ret;
     switch (ekind) {
-        case RDB_EX_OBJ:
-            {
-               RDB_object val;
+    case RDB_EX_OBJ:
+    {
+        RDB_object val;
 
-               RDB_init_obj(&val);
-               ret = deserialize_trobj(valp, posp, ecp, txp, &val);
-               if (ret != RDB_OK) {
-                   RDB_destroy_obj(&val, ecp);
-                   return ret;
-               }
-               *expp = RDB_obj_to_expr(&val, ecp);
-               RDB_destroy_obj(&val, ecp);
-               if (*expp == NULL) {
-                   return RDB_ERROR;
-               }
-            }
-            break;
-        case RDB_EX_TBP:
-            {
-               	RDB_object *tbp = deserialize_table(valp, posp, ecp, txp);
-               	if (tbp == NULL)
-               	    return RDB_ERROR;
-               	*expp = RDB_table_ref(tbp, ecp);
-               	if (*expp == NULL)
-               	    return RDB_ERROR;
-            }
-            break;
-        case RDB_EX_VAR:
-            {
-                char *attrnamp;
-            
-                ret = RDB_deserialize_str(valp, posp, ecp, &attrnamp);
-                if (ret != RDB_OK)
-                    return ret;
-
-                *expp = RDB_var_ref(attrnamp, ecp);
-                RDB_free(attrnamp);
-                if (*expp == NULL)
-                    return RDB_ERROR;
-            }
-            break;
-        case RDB_EX_GET_COMP:
-        {
-            char *name;
-            
-            ret = RDB_deserialize_expr(valp, posp, ecp, txp, &ex1p);
-            if (ret != RDB_OK)
-                return ret;
-            ret = RDB_deserialize_str(valp, posp, ecp, &name);
-            if (ret != RDB_OK) {
-                RDB_del_expr(ex1p, ecp);
-                return ret;
-            }
-            *expp = RDB_create_unexpr(ex1p, RDB_EX_GET_COMP, ecp);
-            if (*expp == NULL)
-                return RDB_ERROR;
-            (*expp)->def.op.name = RDB_dup_str(name);
-            if ((*expp)->def.op.name == NULL) {
-                RDB_del_expr(*expp, ecp);
-                RDB_raise_no_memory(ecp);
-                return RDB_ERROR;
-            }
-            break;
+        RDB_init_obj(&val);
+        ret = deserialize_trobj(valp, posp, ecp, txp, &val);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&val, ecp);
+            return ret;
         }
-        case RDB_EX_RO_OP:
-        {
-            char *name;
-            RDB_int argc;
-            int i;
+        *expp = RDB_obj_to_expr(&val, ecp);
+        RDB_destroy_obj(&val, ecp);
+        if (*expp == NULL) {
+            return RDB_ERROR;
+        }
+    }
+    break;
+    case RDB_EX_TBP:
+    {
+        RDB_object *tbp = deserialize_table(valp, posp, ecp, txp);
+        if (tbp == NULL)
+            return RDB_ERROR;
+        *expp = RDB_table_ref(tbp, ecp);
+        if (*expp == NULL)
+            return RDB_ERROR;
+    }
+    break;
+    case RDB_EX_VAR:
+    {
+        char *attrnamp;
 
-            ret = RDB_deserialize_str(valp, posp, ecp, &name);
-            if (ret != RDB_OK) {
-                return RDB_ERROR;
-            }
+        ret = RDB_deserialize_str(valp, posp, ecp, &attrnamp);
+        if (ret != RDB_OK)
+            return ret;
 
-            ret = RDB_deserialize_int(valp, posp, ecp, &argc);
-            if (ret != RDB_OK) {
-                RDB_free(name);
-                return RDB_ERROR;
-            }
+        *expp = RDB_var_ref(attrnamp, ecp);
+        RDB_free(attrnamp);
+        if (*expp == NULL)
+            return RDB_ERROR;
+    }
+    break;
+    case RDB_EX_GET_COMP:
+    {
+        char *name;
 
-            *expp = RDB_ro_op(name, ecp);
+        ret = RDB_deserialize_expr(valp, posp, ecp, txp, &ex1p);
+        if (ret != RDB_OK)
+            return ret;
+        ret = RDB_deserialize_str(valp, posp, ecp, &name);
+        if (ret != RDB_OK) {
+            RDB_del_expr(ex1p, ecp);
+            return ret;
+        }
+        *expp = RDB_create_unexpr(ex1p, RDB_EX_GET_COMP, ecp);
+        if (*expp == NULL)
+            return RDB_ERROR;
+        (*expp)->def.op.name = RDB_dup_str(name);
+        if ((*expp)->def.op.name == NULL) {
+            RDB_del_expr(*expp, ecp);
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
+        break;
+    }
+    case RDB_EX_RO_OP:
+    {
+        char *name;
+        RDB_int argc;
+        int i;
+
+        ret = RDB_deserialize_str(valp, posp, ecp, &name);
+        if (ret != RDB_OK) {
+            return RDB_ERROR;
+        }
+
+        ret = RDB_deserialize_int(valp, posp, ecp, &argc);
+        if (ret != RDB_OK) {
             RDB_free(name);
-            if (*expp == NULL)
-                return RDB_ERROR;
-
-            for (i = 0; i < argc; i++) {
-                RDB_expression *argp;
-
-                ret = RDB_deserialize_expr(valp, posp, ecp, txp, &argp);
-                if (ret != RDB_OK) {
-                    return RDB_ERROR;
-                }
-                RDB_add_arg(*expp, argp);
-            }
-
-            /*
-             * Restore type if it was stored to preserve
-             * the type of e.g. RELATION()
-             */
-            ret = RDB_deserialize_byte(valp, posp, ecp);
-            if (ret < 0)
-                return RDB_ERROR;
-            if (ret) {
-                RDB_type *typ = RDB_deserialize_type(valp, posp, ecp, txp);
-                if (typ == NULL)
-                    return RDB_ERROR;
-                RDB_set_expr_type(*expp, typ);
-            }
-            break;
+            return RDB_ERROR;
         }
-        case RDB_EX_TUPLE_ATTR:
-        {
-            char *name;
-            
-            ret = RDB_deserialize_expr(valp, posp, ecp, txp, &ex1p);
-            if (ret != RDB_OK)
-                return ret;
-            ret = RDB_deserialize_str(valp, posp, ecp, &name);
+
+        *expp = RDB_ro_op(name, ecp);
+        RDB_free(name);
+        if (*expp == NULL)
+            return RDB_ERROR;
+
+        for (i = 0; i < argc; i++) {
+            RDB_expression *argp;
+
+            ret = RDB_deserialize_expr(valp, posp, ecp, txp, &argp);
             if (ret != RDB_OK) {
-                RDB_del_expr(ex1p, ecp);
-                return ret;
-            }
-            *expp = RDB_create_unexpr(ex1p, RDB_EX_TUPLE_ATTR, ecp);
-            if (*expp == NULL)
-                return RDB_ERROR;
-            (*expp)->def.op.name = RDB_dup_str(name);
-            if ((*expp)->def.op.name == NULL) {
-                RDB_raise_no_memory(ecp);
-                RDB_del_expr(*expp, ecp);
                 return RDB_ERROR;
             }
-            break;
+            RDB_add_arg(*expp, argp);
         }
+
+        /*
+         * Restore type if it was stored to preserve
+         * the type of e.g. RELATION()
+         */
+         ret = RDB_deserialize_byte(valp, posp, ecp);
+        if (ret < 0)
+            return RDB_ERROR;
+        if (ret) {
+            RDB_type *typ = RDB_deserialize_type(valp, posp, ecp, txp);
+            if (typ == NULL)
+                return RDB_ERROR;
+            RDB_set_expr_type(*expp, typ);
+        }
+        break;
+    }
+    case RDB_EX_TUPLE_ATTR:
+    {
+        char *name;
+
+        ret = RDB_deserialize_expr(valp, posp, ecp, txp, &ex1p);
+        if (ret != RDB_OK)
+            return ret;
+        ret = RDB_deserialize_str(valp, posp, ecp, &name);
+        if (ret != RDB_OK) {
+            RDB_del_expr(ex1p, ecp);
+            return ret;
+        }
+        *expp = RDB_create_unexpr(ex1p, RDB_EX_TUPLE_ATTR, ecp);
+        if (*expp == NULL)
+            return RDB_ERROR;
+        (*expp)->def.op.name = RDB_dup_str(name);
+        if ((*expp)->def.op.name == NULL) {
+            RDB_raise_no_memory(ecp);
+            RDB_del_expr(*expp, ecp);
+            return RDB_ERROR;
+        }
+        break;
+    }
     }
     return RDB_OK;
 } /* RDB_deserialize_expr */

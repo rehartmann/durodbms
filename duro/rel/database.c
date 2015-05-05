@@ -87,7 +87,6 @@ free_typemap(RDB_hashmap *typemap, RDB_exec_context *ecp)
             RDB_del_type((RDB_type *) typ, ecp);
         }
     }
-
     RDB_destroy_hashmap_iter(&it);
 
     RDB_destroy_hashmap(typemap);
@@ -116,7 +115,7 @@ free_dbroot(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
 
     RDB_destroy_hashmap(&dbrootp->ptbmap);
 
-    free_typemap(&dbrootp->typemap, ecp);
+    free_typemap(&dbrootp->utypemap, ecp);
 
     RDB_free(dbrootp);
 }
@@ -297,7 +296,7 @@ new_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
     }
     
     dbrootp->envp = envp;
-    RDB_init_hashmap(&dbrootp->typemap, RDB_DFL_MAP_CAPACITY);
+    RDB_init_hashmap(&dbrootp->utypemap, RDB_DFL_MAP_CAPACITY);
     RDB_init_op_map(&dbrootp->ro_opmap);
     RDB_init_op_map(&dbrootp->upd_opmap);
 

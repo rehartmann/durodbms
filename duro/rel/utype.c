@@ -472,7 +472,7 @@ RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
      */
 
     /* Delete type from type map by putting a NULL pointer into it */
-    if (RDB_hashmap_put(&txp->dbp->dbrootp->typemap, name, ntp) != RDB_OK) {
+    if (RDB_hashmap_put(&txp->dbp->dbrootp->utypemap, name, ntp) != RDB_OK) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
@@ -583,7 +583,7 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     /*
      * Search type in dbroot type map
      */
-    typ = RDB_hashmap_get(&txp->dbp->dbrootp->typemap, name);
+    typ = RDB_hashmap_get(&txp->dbp->dbrootp->utypemap, name);
     if (typ != NULL) {
         return typ;
     }
@@ -603,7 +603,7 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     /*
      * Put type into type map
      */
-    ret = RDB_hashmap_put(&txp->dbp->dbrootp->typemap, name, typ);
+    ret = RDB_hashmap_put(&txp->dbp->dbrootp->utypemap, name, typ);
     if (ret != RDB_OK) {
         RDB_raise_no_memory(ecp);
         return NULL;

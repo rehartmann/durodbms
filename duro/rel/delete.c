@@ -1,7 +1,5 @@
 /*
- * $Id$
- *
- * Copyright (C) 2004-2012 Rene Hartmann.
+ * Copyright (C) 2004-2007, 2012-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -49,15 +47,15 @@ delete_by_uindex(RDB_object *tbp, RDB_object *objpv[], RDB_tbindex *indexp,
                 RDB_table_is_persistent(tbp) ? txp->txid : NULL);
     }
     switch (ret) {
-        case RDB_OK:
-            rcount = 1;
-            break;
-        case DB_NOTFOUND:
-            rcount = 0;
-            break;
-        default:
-            RDB_handle_errcode(ret, ecp, txp);
-            rcount = RDB_ERROR;
+    case RDB_OK:
+        rcount = 1;
+        break;
+    case DB_NOTFOUND:
+        rcount = 0;
+        break;
+    default:
+        RDB_handle_errcode(ret, ecp, txp);
+        rcount = RDB_ERROR;
     }
 
 cleanup:

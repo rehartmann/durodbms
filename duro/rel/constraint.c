@@ -1,11 +1,8 @@
 /*
- * $Id$
- *
- * Copyright (C) 2005-2012 Rene Hartmann.
- * See the file COPYING for redistribution information.
- *
- *
  * Functions for declarative integrity constraints
+ *
+ * Copyright (C) 2005-2009, 2011-2015 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #include "rdb.h"
@@ -137,29 +134,29 @@ expr_remove_tick(const RDB_expression *exp)
     size_t lpos;
 
     switch (exp->kind) {
-        case RDB_EX_OBJ:
-        case RDB_EX_TBP:
-        case RDB_EX_TUPLE_ATTR:
-            return;
-        case RDB_EX_GET_COMP:
-            expr_remove_tick(exp->def.op.args.firstp);
-            return;
-        case RDB_EX_VAR:
-            /* If last char is "'", overwrite with null byte */
-            lpos = strlen (exp->def.varname) - 1;
-            if (exp->def.varname[lpos] == '\'')
-                exp->def.varname[lpos] = '\0';
-            return;
-        case RDB_EX_RO_OP:
-        {
-            RDB_expression *argp = exp->def.op.args.firstp;
-            while (argp != NULL) {
-                expr_remove_tick(argp);
-                argp = argp->nextp;
-            }
-
-            return;
+    case RDB_EX_OBJ:
+    case RDB_EX_TBP:
+    case RDB_EX_TUPLE_ATTR:
+        return;
+    case RDB_EX_GET_COMP:
+        expr_remove_tick(exp->def.op.args.firstp);
+        return;
+    case RDB_EX_VAR:
+        /* If last char is "'", overwrite with null byte */
+        lpos = strlen (exp->def.varname) - 1;
+        if (exp->def.varname[lpos] == '\'')
+            exp->def.varname[lpos] = '\0';
+        return;
+    case RDB_EX_RO_OP:
+    {
+        RDB_expression *argp = exp->def.op.args.firstp;
+        while (argp != NULL) {
+            expr_remove_tick(argp);
+            argp = argp->nextp;
         }
+
+        return;
+    }
     }
     /* Should never be reached */
     abort();
@@ -675,65 +672,65 @@ replace_targets(RDB_expression *exp,
     size_t lpos;
 
     switch (exp->kind) {
-        case RDB_EX_TUPLE_ATTR:
-            newexp = replace_targets(exp->def.op.args.firstp, insc, insv,
-                    updc, updv, delc, delv, vdelc, vdelv, copyc, copyv, ecp, txp);
-            if (newexp == NULL)
-                return NULL;
-            return RDB_tuple_attr(newexp, exp->def.op.name, ecp);
-        case RDB_EX_GET_COMP:
-            newexp = replace_targets(exp->def.op.args.firstp, insc, insv,
-                    updc, updv, delc, delv, vdelc, vdelv, copyc, copyv, ecp, txp);
-            if (newexp == NULL)
-                return NULL;
-            return RDB_expr_comp(newexp, exp->def.op.name, ecp);
-        case RDB_EX_RO_OP:
-        {
-            RDB_expression *hexp;
-            RDB_expression *argp;
+    case RDB_EX_TUPLE_ATTR:
+        newexp = replace_targets(exp->def.op.args.firstp, insc, insv,
+                updc, updv, delc, delv, vdelc, vdelv, copyc, copyv, ecp, txp);
+        if (newexp == NULL)
+            return NULL;
+        return RDB_tuple_attr(newexp, exp->def.op.name, ecp);
+    case RDB_EX_GET_COMP:
+        newexp = replace_targets(exp->def.op.args.firstp, insc, insv,
+                updc, updv, delc, delv, vdelc, vdelv, copyc, copyv, ecp, txp);
+        if (newexp == NULL)
+            return NULL;
+        return RDB_expr_comp(newexp, exp->def.op.name, ecp);
+    case RDB_EX_RO_OP:
+    {
+        RDB_expression *hexp;
+        RDB_expression *argp;
 
-            newexp = RDB_ro_op(exp->def.op.name, ecp);
-            argp = exp->def.op.args.firstp;
-            while (argp != NULL) {
-                hexp = replace_targets(argp,
-                        insc, insv, updc, updv, delc, delv, vdelc, vdelv,
-                        copyc, copyv, ecp, txp);
-                if (hexp == NULL)
-                    return NULL;
-                RDB_add_arg(newexp, hexp);
-                argp = argp->nextp;
-            }
-            return newexp;
+        newexp = RDB_ro_op(exp->def.op.name, ecp);
+        argp = exp->def.op.args.firstp;
+        while (argp != NULL) {
+            hexp = replace_targets(argp,
+                    insc, insv, updc, updv, delc, delv, vdelc, vdelv,
+                    copyc, copyv, ecp, txp);
+            if (hexp == NULL)
+                return NULL;
+            RDB_add_arg(newexp, hexp);
+            argp = argp->nextp;
         }
-        case RDB_EX_OBJ:
-            return RDB_obj_to_expr(&exp->def.obj, ecp);
-        case RDB_EX_TBP:
-            if (exp->def.tbref.tbp->val.tb.exp == NULL) {
-                return replace_targets_real(exp->def.tbref.tbp,
-                            insc, insv, updc, updv, delc, delv, vdelc, vdelv,
-                            copyc, copyv, ecp, txp);
-            }
-            return replace_targets(exp->def.tbref.tbp->val.tb.exp, insc, insv,
-                    updc, updv, delc, delv, vdelc, vdelv, copyc, copyv, ecp, txp);
-        case RDB_EX_VAR:
-            /*
-             * Support for transition constraints:
-             * If the table name ends with "'", remove that character and read the table
-             */
-            lpos = strlen(exp->def.varname) - 1;
-            if (exp->def.varname[lpos] == '\'') {
-                char *tbname = RDB_dup_str(exp->def.varname);
-                if (tbname == NULL) {
-                    RDB_raise_no_memory(ecp);
-                    return NULL;
-                }
-                tbname[lpos] = '\0';
-                tbp = RDB_get_table(tbname, ecp, txp);
-                RDB_free(tbname);
-                if (tbp != NULL)
-                    return RDB_table_ref(tbp, ecp);
-            }
-            return RDB_var_ref(exp->def.varname, ecp);
+        return newexp;
+    }
+    case RDB_EX_OBJ:
+        return RDB_obj_to_expr(&exp->def.obj, ecp);
+    case RDB_EX_TBP:
+        if (exp->def.tbref.tbp->val.tb.exp == NULL) {
+            return replace_targets_real(exp->def.tbref.tbp,
+                    insc, insv, updc, updv, delc, delv, vdelc, vdelv,
+                    copyc, copyv, ecp, txp);
+        }
+        return replace_targets(exp->def.tbref.tbp->val.tb.exp, insc, insv,
+                updc, updv, delc, delv, vdelc, vdelv, copyc, copyv, ecp, txp);
+    case RDB_EX_VAR:
+        /*
+         * Support for transition constraints:
+         * If the table name ends with "'", remove that character and read the table
+         */
+         lpos = strlen(exp->def.varname) - 1;
+         if (exp->def.varname[lpos] == '\'') {
+             char *tbname = RDB_dup_str(exp->def.varname);
+             if (tbname == NULL) {
+                 RDB_raise_no_memory(ecp);
+                 return NULL;
+             }
+             tbname[lpos] = '\0';
+             tbp = RDB_get_table(tbname, ecp, txp);
+             RDB_free(tbname);
+             if (tbp != NULL)
+                 return RDB_table_ref(tbp, ecp);
+         }
+         return RDB_var_ref(exp->def.varname, ecp);
     }
     abort();
 }
