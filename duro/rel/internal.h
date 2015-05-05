@@ -375,6 +375,9 @@ int
 RDB_setter_name(const RDB_type *typ, const char *,
         RDB_object *, RDB_exec_context *);
 
+int
+RDB_del_type(RDB_type *, RDB_exec_context *);
+
 RDB_operator *
 RDB_get_cmp_op(RDB_type *, RDB_exec_context *, RDB_transaction *);
 

@@ -307,8 +307,8 @@ error:
     return RDB_ERROR;
 }
 
-static int
-del_type(RDB_type *typ, RDB_exec_context *ecp)
+int
+RDB_del_type(RDB_type *typ, RDB_exec_context *ecp)
 {
     int ret = RDB_OK;
 
@@ -318,6 +318,7 @@ del_type(RDB_type *typ, RDB_exec_context *ecp)
             int i, j;
 
             for (i = 0; i < typ->def.scalar.repc; i++) {
+                RDB_free(typ->def.scalar.repv[i].name);
                 for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
                     RDB_free(typ->def.scalar.repv[i].compv[j].name);
                 }
@@ -331,6 +332,9 @@ del_type(RDB_type *typ, RDB_exec_context *ecp)
         }
         if (typ->def.scalar.init_val_is_valid) {
             ret = RDB_destroy_obj(&typ->def.scalar.init_val, ecp);
+        }
+        if (typ->def.scalar.initexp != NULL) {
+            ret = RDB_del_expr(typ->def.scalar.initexp, ecp);
         }
         RDB_free(typ);
     } else {
@@ -458,8 +462,8 @@ RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     }
     cnt = RDB_delete(txp->dbp->dbrootp->possrepcomps_tbp, wherep, ecp,
             txp);
+    RDB_del_expr(wherep, ecp);
     if (cnt == (RDB_int) RDB_ERROR) {
-        RDB_del_expr(wherep, ecp);
         return RDB_ERROR;
     }
 
@@ -477,7 +481,7 @@ RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
      * Delete RDB_type struct last because name may be identical
      * to typ->name
      */
-    if (del_type(typ, ecp) != RDB_OK)
+    if (RDB_del_type(typ, ecp) != RDB_OK)
         return RDB_ERROR;
 
     return RDB_OK;

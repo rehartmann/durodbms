@@ -1,7 +1,5 @@
 /*
- * $Id$
- *
- * Copyright (C) 2004-2013 Rene Hartmann.
+ * Copyright (C) 2004, 2005, 2007, 2012-2014 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -242,8 +240,6 @@ type_implement_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     ret = RDB_implement_type(Tcl_GetString(objv[2]), irep, (size_t)-1,
             statep->current_ecp, txp);
-    if (irep != NULL && !RDB_type_is_scalar(irep))
-        RDB_del_nonscalar_type(irep, statep->current_ecp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;

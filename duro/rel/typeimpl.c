@@ -57,6 +57,7 @@ create_selector(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
 
     ret = RDB_create_ro_op(RDB_obj_string(&nameobj), compc, paramv, typ,
                 "", "RDB_op_sys_select", typ->name, ecp, txp);
+    RDB_destroy_obj(&nameobj, ecp);
     RDB_free(paramv);
     return ret;
 }

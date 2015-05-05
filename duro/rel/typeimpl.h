@@ -3,7 +3,7 @@
 
 /*
 This file is part of Duro, a relational database management system.
-Copyright (C) 2003-2013 Rene Hartmann.
+Copyright (C) 2003-2005, 2007, 2008, 2012-2015 Rene Hartmann.
 
 Duro is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

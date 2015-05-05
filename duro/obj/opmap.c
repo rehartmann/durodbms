@@ -54,10 +54,8 @@ RDB_destroy_op_map(RDB_op_map *opmap)
     RDB_init_hashmap_iter(&it, &opmap->map);
 
     while (RDB_hashmap_next(&it, &op) != NULL) {
-        struct op_entry *opep = op;
-
-        if (opep != NULL)
-            free_ops(opep, &ec);
+        if (op != NULL)
+            free_ops((struct op_entry *) op, &ec);
     }
 
     RDB_destroy_hashmap_iter(&it);

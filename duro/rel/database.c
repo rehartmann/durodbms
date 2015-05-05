@@ -52,11 +52,51 @@ RDB_db_env(RDB_database *dbp)
 }
 
 static void
+free_typemap(RDB_hashmap *typemap, RDB_exec_context *ecp)
+{
+    RDB_hashmap_iter it;
+    void *typ;
+
+    RDB_init_hashmap_iter(&it, typemap);
+
+    /*
+     * Delete non-scalar actual reps first, because if we free all types
+     * we cannot determine any more if an arep is non-scalar
+     */
+    while (RDB_hashmap_next(&it, &typ) != NULL) {
+        if (typ != NULL) {
+            RDB_type *utyp = (RDB_type *) typ;
+            if (utyp->def.scalar.arep != NULL) {
+                if (!RDB_type_is_scalar(utyp->def.scalar.arep)) {
+                    RDB_del_nonscalar_type(utyp->def.scalar.arep, ecp);
+                }
+
+                /*
+                 * Set arep to NULL so we don't access a scalar type that
+                 * was already freed.
+                 */
+                utyp->def.scalar.arep = NULL;
+            }
+        }
+    }
+    RDB_destroy_hashmap_iter(&it);
+
+    RDB_init_hashmap_iter(&it, typemap);
+    while (RDB_hashmap_next(&it, &typ) != NULL) {
+        if (typ != NULL) {
+            RDB_del_type((RDB_type *) typ, ecp);
+        }
+    }
+
+    RDB_destroy_hashmap_iter(&it);
+
+    RDB_destroy_hashmap(typemap);
+}
+
+static void
 free_dbroot(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
 {
     RDB_constraint *constrp, *nextconstrp;
-
-    RDB_destroy_hashmap(&dbrootp->typemap);
 
     /*
      * Destroy constraints
@@ -75,6 +115,8 @@ free_dbroot(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     RDB_destroy_op_map(&dbrootp->upd_opmap);
 
     RDB_destroy_hashmap(&dbrootp->ptbmap);
+
+    free_typemap(&dbrootp->typemap, ecp);
 
     RDB_free(dbrootp);
 }

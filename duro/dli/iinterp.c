@@ -1321,6 +1321,7 @@ exec_typedef(const RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context 
             if (!RDB_type_is_scalar(repv[i].compv[j].typ))
                 RDB_del_nonscalar_type(repv[i].compv[j].typ, ecp);
         }
+        RDB_free(repv[i].compv);
     }
     RDB_free(repv);
     if (RDB_parse_get_interactive())
