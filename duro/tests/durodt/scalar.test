@@ -911,6 +911,16 @@ test parser {Parser} -match glob -body {
     puts $res
 } -output {*syntax_error*}
 
+test strlen {strlen operators} -body {
+    exec $testdir/../../dli/durodt << {
+        io.put_line(cast_as_string(strlen('Yo ho')));
+        var s string init '%$Yo ho';
+        io.put_line(cast_as_string(strlen_b(s)));
+	}
+} -result {5
+7
+}
+
 test strfind {strfind_b operators} -body {
     exec $testdir/../../dli/durodt << {
         var s init 'Hoola hoola';    
@@ -953,6 +963,8 @@ test substr {substr operators} -body {
 de
 ef
 }
+
+
 
 test datetime {datetime type} -body {
     exec $testdir/../../dli/durodt << {
