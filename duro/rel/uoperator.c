@@ -191,8 +191,13 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
         goto cleanup;
 
     ret = RDB_insert(txp->dbp->dbrootp->ro_ops_tbp, &tpl, ecp, txp);
-    if (ret != RDB_OK)
+    if (ret != RDB_OK) {
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR
+                || RDB_obj_type(RDB_get_err(ecp)) == &RDB_ELEMENT_EXISTS_ERROR) {
+            RDB_raise_element_exists(name, ecp);
+        }
         goto cleanup;
+    }
 
 cleanup:
     RDB_destroy_obj(&tpl, ecp);
@@ -334,6 +339,13 @@ RDB_create_update_op(const char *name, int paramc, RDB_parameter paramv[],
         goto cleanup;
 
     ret = RDB_insert(txp->dbp->dbrootp->upd_ops_tbp, &tpl, ecp, txp);
+    if (ret != RDB_OK) {
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR
+                || RDB_obj_type(RDB_get_err(ecp)) == &RDB_ELEMENT_EXISTS_ERROR) {
+            RDB_raise_element_exists(name, ecp);
+        }
+        goto cleanup;
+    }
 
 cleanup:
     RDB_destroy_obj(&tpl, ecp);
@@ -545,33 +557,6 @@ error:
 /**
  * Return the update operator with the name <var>name</var>
 and the signature given by <var>argc</var> and <var>argtv</var>.
-
-@returns the update operator, or NULL if an error occurred,
-in which case *<var>ecp</var> carries the error information.
-
-@par Errors:
-
-<dl>
-<dt>no_running_tx_error
-<dd>*<var>txp</var> is not a running transaction.
-<dt>operator_not_found_error
-<dd>An update operator that matches the name and arguments could not be
-found.
-</dl>
-
-The call may also fail for a @ref system-errors "system error",
-in which case the transaction may be implicitly rolled back.
- */
-RDB_operator *
-RDB_get_update_op(const char *name, int argc, RDB_type *argtv[],
-                RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    return RDB_get_update_op_e(name, argc, argtv, NULL, ecp, txp);
-}
-
-/**
- * Return the update operator with the name <var>name</var>
-and the signature given by <var>argc</var> and <var>argtv</var>.
 A value of NULL in argtv matches any type.
 
 If <var>txp</var> is NULL, <var>envp</var> is used to look up the
@@ -594,8 +579,9 @@ The call may also fail for a @ref system-errors "system error",
 in which case the transaction may be implicitly rolled back.
  */
 RDB_operator *
-RDB_get_update_op_e(const char *name, int argc, RDB_type *argtv[],
-                RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
+RDB_get_update_op(const char *name, int argc, RDB_type *argtv[],
+                RDB_environment *envp, RDB_exec_context *ecp,
+                RDB_transaction *txp)
 {
     RDB_dbroot *dbrootp;
     RDB_operator *op = RDB_get_op(&RDB_builtin_upd_op_map, name, argc, argtv, ecp);
@@ -651,7 +637,7 @@ RDB_get_update_op_e(const char *name, int argc, RDB_type *argtv[],
 }
 
 /**
- * RDB_call_update_op_by_name invokes the update operator with the name <var>name</var>,
+ * Invokes the update operator with the name <var>name</var>,
 passing the arguments in <var>argc</var> and <var>argv</var>.
 
 The arguments must carry type information.
@@ -693,7 +679,7 @@ RDB_call_update_op_by_name(const char *name, int argc, RDB_object *argv[],
     if (argtv == NULL) {
         return RDB_ERROR;
     }
-    op = RDB_get_update_op(name, argc, argtv, ecp, txp);
+    op = RDB_get_update_op(name, argc, argtv, NULL, ecp, txp);
     RDB_free(argtv);
     if (op == NULL) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_OPERATOR_NOT_FOUND_ERROR) {
@@ -706,7 +692,7 @@ RDB_call_update_op_by_name(const char *name, int argc, RDB_object *argv[],
 }
 
 /**
- * Call the update operator *<var>op</var>,
+ * Calls the update operator *<var>op</var>,
 passing the arguments in <var>argc</var> and <var>argv</var>.
 
 @returns RDB_OK on success, RDB_ERROR if an error occurred.

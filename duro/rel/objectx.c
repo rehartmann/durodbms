@@ -757,7 +757,7 @@ RDB_obj_set_property(RDB_object *objp, const char *propname,
         argtv[0] = RDB_obj_type(argv[0]);
         argtv[1] = RDB_obj_type(argv[1]);
 
-        op = RDB_get_update_op_e(opname, 2, argtv, envp, ecp, txp);
+        op = RDB_get_update_op(opname, 2, argtv, envp, ecp, txp);
         RDB_free(opname);
         if (op == NULL)
             return RDB_ERROR;

@@ -146,6 +146,18 @@ get_iostream_id(const RDB_object *objp, RDB_exec_context *ecp)
     return fno;
 }
 
+/**
+ * Get the FILE * from an iostream_id.
+ */
+FILE *
+Duro_io_iostream_file(const RDB_object *objp, RDB_exec_context *ecp)
+{
+   int fno = get_iostream_id(objp, ecp);
+   if (fno == RDB_ERROR)
+       return NULL;
+   return iostreams[fno];
+}
+
 static int
 op_put_line_iostream_string(int argc, RDB_object *argv[],
         RDB_operator *op, RDB_exec_context *ecp, RDB_transaction *txp)
@@ -521,21 +533,43 @@ op_read_iostream(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-op_close(int argc, RDB_object *argv[], RDB_operator *op,
+op_seek(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    /* Get file number from arg */
     int fno = get_iostream_id(argv[0], ecp);
+    if (fno == RDB_ERROR) {
+        return RDB_ERROR;
+    }
+
+    if (fseek(iostreams[fno], RDB_obj_int(argv[1]), SEEK_SET) == -1) {
+        RDB_errno_to_error(errno, ecp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+int
+Duro_io_close(RDB_object *iostream_obj, RDB_exec_context *ecp)
+{
+    /* Get file number from arg */
+    int fno = get_iostream_id(iostream_obj, ecp);
     if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }
     if (fclose(iostreams[fno]) != 0) {
         iostreams[fno] = NULL;
-        RDB_handle_errcode(errno, ecp, txp);
+        RDB_handle_errcode(errno, ecp, NULL);
         return RDB_ERROR;
     }
     iostreams[fno] = NULL;
     return RDB_OK;
+}
+
+static int
+op_close(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    return Duro_io_close(argv[0], ecp);
 }
 
 /* Initialize *iosp using fno */
@@ -584,7 +618,31 @@ op_open(int argc, RDB_object *argv[], RDB_operator *op,
     return init_iostream(argv[0], fno, ecp);
 }
 
-int
+static int
+op_tmpfile(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, struct RDB_transaction *txp,
+        RDB_object *resultp)
+{
+    int fno;
+
+    /* Open file */
+    FILE *fp = tmpfile();
+    if (fp == NULL) {
+        RDB_handle_errcode(errno, ecp, txp);
+        return RDB_ERROR;
+    }
+
+    /* Get file number */
+    fno = fileno(fp);
+
+    /* Set table entry */
+    iostreams[fno] = fp;
+
+    /* Set argument #1 */
+    return init_iostream(resultp, fno, ecp);
+}
+
+static int
 op_eof(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, struct RDB_transaction *txp,
         RDB_object *resultp)
@@ -593,7 +651,7 @@ op_eof(int argc, RDB_object *argv[], RDB_operator *op,
     return RDB_OK;
 }
 
-int
+static int
 op_eof_iostream(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, struct RDB_transaction *txp,
         RDB_object *resultp)
@@ -657,6 +715,7 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     static RDB_parameter read_iostream_params[3];
     static RDB_parameter get_line_iostream_params[2];
     static RDB_parameter open_paramv[3];
+    static RDB_parameter seek_paramv[2];
     static RDB_parameter close_paramv[1];
 
     static RDB_type *eof_iostream_param_typ;
@@ -723,6 +782,11 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     open_paramv[1].update = RDB_FALSE;
     open_paramv[2].typ = &RDB_STRING;
     open_paramv[2].update = RDB_FALSE;
+
+    seek_paramv[0].typ = &RDB_IOSTREAM_ID;
+    seek_paramv[0].update = RDB_FALSE;
+    seek_paramv[1].typ = &RDB_INTEGER;
+    seek_paramv[1].update = RDB_FALSE;
 
     close_paramv[0].typ = &RDB_IOSTREAM_ID;
     close_paramv[0].update = RDB_FALSE;
@@ -794,11 +858,20 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
             != RDB_OK)
         return RDB_ERROR;
 
+    if (RDB_put_upd_op(opmapp, "io.seek", 2, seek_paramv, &op_seek, ecp)
+            != RDB_OK)
+        return RDB_ERROR;
+
     if (RDB_put_upd_op(opmapp, "io.close", 1, close_paramv, &op_close, ecp)
             != RDB_OK)
         return RDB_ERROR;
 
     eof_iostream_param_typ = &RDB_IOSTREAM_ID;
+
+    if (RDB_put_global_ro_op("io.tmpfile", 0, NULL, &RDB_IOSTREAM_ID,
+            &op_tmpfile, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
 
     if (RDB_put_global_ro_op("io.eof", 0, NULL, &RDB_BOOLEAN, &op_eof, ecp)
             != RDB_OK) {

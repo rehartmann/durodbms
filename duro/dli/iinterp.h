@@ -134,4 +134,10 @@ Duro_dt_put_creop_info(Duro_interp *, const char *, Duro_uop_info *,
 Duro_uop_info *
 Duro_dt_get_creop_info(const Duro_interp *, const char *);
 
+FILE *
+Duro_io_iostream_file(const RDB_object *, RDB_exec_context *);
+
+int
+Duro_io_close(RDB_object *, RDB_exec_context *);
+
 #endif /*IINTERP_H*/

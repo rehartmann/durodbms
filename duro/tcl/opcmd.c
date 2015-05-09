@@ -1,7 +1,5 @@
 /*
- * $Id$
- *
- * Copyright (C) 2003-2012 Rene Hartmann.
+ * Copyright (C) 2003-2009, 2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -294,7 +292,7 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc,
         }
     }
 
-    op = RDB_get_update_op(Tcl_GetString(objv[1]), argc, argtv,
+    op = RDB_get_update_op(Tcl_GetString(objv[1]), argc, argtv, NULL,
             statep->current_ecp, txp);
     if (op == NULL) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);

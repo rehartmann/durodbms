@@ -1,10 +1,8 @@
 /*
- * Statement interpretation functions.
+ * Statement execution functions.
  *
  * Copyright (C) 2007, 2014 Rene Hartmann.
  * See the file COPYING for redistribution information.
- *
- * Statement execution functions.
  */
 
 #include "iinterp.h"
@@ -292,15 +290,15 @@ add_io(Duro_interp *interp, RDB_exec_context *ecp) {
         return RDB_ERROR;
     }
 
-    if (RDB_hashmap_put(&interp->sys_varmap, "stdin", &DURO_STDIN_OBJ) != RDB_OK) {
+    if (RDB_hashmap_put(&interp->sys_varmap, "io.stdin", &DURO_STDIN_OBJ) != RDB_OK) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    if (RDB_hashmap_put(&interp->sys_varmap, "stdout", &DURO_STDOUT_OBJ) != RDB_OK) {
+    if (RDB_hashmap_put(&interp->sys_varmap, "io.stdout", &DURO_STDOUT_OBJ) != RDB_OK) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    if (RDB_hashmap_put(&interp->sys_varmap, "stderr", &DURO_STDERR_OBJ) != RDB_OK) {
+    if (RDB_hashmap_put(&interp->sys_varmap, "io.stderr", &DURO_STDERR_OBJ) != RDB_OK) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
@@ -323,6 +321,57 @@ evaluate_retry_bool(RDB_expression *exp, Duro_interp *interp,
     *resultp = RDB_obj_bool(&result);
     RDB_destroy_obj(&result, ecp);
     return RDB_OK;
+}
+
+static RDB_operator *
+interp_get_op(Duro_interp *interp, const char *opname, int argc,
+        RDB_type *argtv[], RDB_exec_context *ecp) {
+    RDB_operator *op = RDB_get_op(&interp->sys_upd_op_map, opname, argc, argtv, ecp);
+    if (op == NULL) {
+        RDB_bool type_mismatch =
+                (RDB_obj_type(RDB_get_err(ecp)) == &RDB_TYPE_MISMATCH_ERROR);
+
+        /*
+         * If there is transaction and no environment, RDB_get_update_op()
+         * will fail
+         */
+        if (interp->txnp == NULL && interp->envp == NULL) {
+            return NULL;
+        }
+        RDB_clear_err(ecp);
+
+        op = RDB_get_update_op(opname, argc, argtv, interp->envp, ecp,
+                interp->txnp != NULL ? &interp->txnp->tx : NULL);
+        /*
+         * If the operator was not found and no transaction is running start a transaction
+         * for reading the operator from the catalog only
+         */
+        if (op == NULL && RDB_obj_type(RDB_get_err(ecp)) == &RDB_OPERATOR_NOT_FOUND_ERROR
+                && interp->txnp == NULL) {
+            RDB_transaction tx;
+            RDB_database *dbp = Duro_get_db(interp, ecp);
+            if (dbp == NULL)
+                return NULL;
+            if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
+                return NULL;
+            op = RDB_get_update_op(opname, argc, argtv, NULL, ecp, &tx);
+            if (RDB_commit(ecp, &tx) != RDB_OK)
+                return NULL;
+        }
+        if (op == NULL) {
+            /*
+             * If the error is operator_not_found_error but the
+             * previous lookup returned type_mismatch_error,
+             * raise type_mismatch_error
+             */
+            if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_OPERATOR_NOT_FOUND_ERROR
+                    && type_mismatch) {
+                RDB_raise_type_mismatch(opname, ecp);
+            }
+            return NULL;
+        }
+    }
+    return op;
 }
 
 /*
@@ -353,6 +402,7 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
                 RDB_expr_var_name(nodep->val.children.firstp->nextp->nextp->exp),
                 ecp) != RDB_OK)
             goto error;
+
         opname = RDB_obj_string(&qop_nameobj);
     } else {
         opname = RDB_expr_var_name(nodep->exp);
@@ -379,52 +429,39 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
     /*
      * Get operator
      */
-    op = RDB_get_op(&interp->sys_upd_op_map, opname, argc, argtv, ecp);
+    op = interp_get_op(interp, opname, argc, argtv, ecp);
     if (op == NULL) {
-        RDB_bool type_mismatch =
-                (RDB_obj_type(RDB_get_err(ecp)) == &RDB_TYPE_MISMATCH_ERROR);
+        const char *calling_opname;
+        const char *ldotpos;
+        RDB_object opnameobj;
 
         /*
-         * If there is transaction and no environment, RDB_get_update_op_e()
-         * will fail
+         * If not found and we're inside an operator that belongs to a module,
+         * try again with the module name prepended
          */
-        if (interp->txnp == NULL && interp->envp == NULL) {
+        if (interp->inner_op == NULL)
             goto error;
-        }
-        RDB_clear_err(ecp);
+        calling_opname = RDB_operator_name(interp->inner_op);
+        ldotpos = strrchr(calling_opname, '.');
+        if (ldotpos == NULL)
+            goto error;
 
-        op = RDB_get_update_op_e(opname, argc, argtv, interp->envp, ecp,
-                interp->txnp != NULL ? &interp->txnp->tx : NULL);
-        /*
-         * If the operator was not found and no transaction is running start a transaction
-         * for reading the operator from the catalog only
-         */
-        if (op == NULL && RDB_obj_type(RDB_get_err(ecp)) == &RDB_OPERATOR_NOT_FOUND_ERROR
-                && interp->txnp == NULL) {
-            RDB_transaction tx;
-            RDB_database *dbp = Duro_get_db(interp, ecp);
-            if (dbp == NULL)
-                goto error;
-            if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
-                goto error;
-            op = RDB_get_update_op(opname, argc, argtv, ecp, &tx);
-            if (RDB_commit(ecp, &tx) != RDB_OK)
-                goto error;
-        }
-        if (op == NULL) {
-            /*
-             * If the error is operator_not_found_error but the
-             * previous lookup returned type_mismatch_error,
-             * raise type_mismatch_error
-             */
-            if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_OPERATOR_NOT_FOUND_ERROR
-                    && type_mismatch) {
-                RDB_raise_type_mismatch(opname, ecp);
-            }
+        RDB_init_obj(&opnameobj);
+        if (RDB_string_n_to_obj(&opnameobj, calling_opname,
+                ldotpos - calling_opname + 1, ecp) != RDB_OK) {
+            RDB_destroy_obj(&opnameobj, ecp);
             goto error;
         }
+        if (RDB_append_string(&opnameobj, opname, ecp) != RDB_OK) {
+            RDB_destroy_obj(&opnameobj, ecp);
+            goto error;
+        }
+        op = interp_get_op(interp, RDB_obj_string(&opnameobj),
+                    argc, argtv, ecp);
+        RDB_destroy_obj(&opnameobj, ecp);
+        if (op == NULL)
+            goto error;
     }
-
     argp = nodep->nextp->nextp->val.children.firstp;
     i = 0;
     while (argp != NULL) {
@@ -1586,6 +1623,8 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_obj_set_typeinfo(argv[0], getter_utyp->def.scalar.arep);
     }
 
+
+
     parent_op = interp->inner_op;
     interp->inner_op = op;
     ret = exec_stmts(opdatap->stmtlistp, interp, ecp, &retinfo);
@@ -2091,7 +2130,8 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     }
 
     for (i = 0; i < paramc; i++) {
-        RDB_del_nonscalar_type(paramv[i].typ, ecp);
+        if (!RDB_type_is_scalar(paramv[i].typ))
+            RDB_del_nonscalar_type(paramv[i].typ, ecp);
     }
     RDB_free(paramv);
     RDB_destroy_obj(&code, ecp);
@@ -2110,7 +2150,8 @@ error:
         RDB_rollback(ecp, &tmp_tx);
     if (paramv != NULL) {
         for (i = 0; i < paramc; i++) {
-            RDB_del_nonscalar_type(paramv[i].typ, ecp);
+            if (paramv[i].typ != NULL && !RDB_type_is_scalar(paramv[i].typ))
+                RDB_del_nonscalar_type(paramv[i].typ, ecp);
         }
         RDB_free(paramv);
     }
@@ -3211,6 +3252,8 @@ Duro_dt_execute(FILE *infp, Duro_interp *interp, RDB_exec_context *ecp)
                 /* Show line number only if an operator was invoked */
                 if (interp->err_opname != NULL) {
                     fprintf(stderr, "error in operator %s at line %d: ", interp->err_opname, interp->err_line);
+                    RDB_free(interp->err_opname);
+                    interp->err_opname = NULL;
                 }
                 Duro_print_error(errobjp);
                 RDB_parse_flush_buf();

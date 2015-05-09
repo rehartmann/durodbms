@@ -2,7 +2,6 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
-# $Id$
 #
 # Test scalar definitions and operations
 #
@@ -55,25 +54,25 @@ Dd
 
 test stdout_output {stdout output} -match regexp -body {
     exec $testdir/../../dli/durodt << {
-        io.put(stdout, 'Test ');
-        io.put(stdout, 3);
-        io.put(stdout, 1.7);
-        io.put(stdout, TRUE);
-        io.put(stdout, X'444f');
+        io.put(io.stdout, 'Test ');
+        io.put(io.stdout, 3);
+        io.put(io.stdout, 1.7);
+        io.put(io.stdout, TRUE);
+        io.put(io.stdout, X'444f');
 
-        io.put_line(stdout, 'Duro');
+        io.put_line(io.stdout, 'Duro');
     }
 } -result {Test 31.70*TRUEDODuro
 }
 
 test stderr_output {stderr output} -match regexp -body {
     exec $testdir/../../dli/durodt << {
-        io.put(stderr, 'Test ');
-        io.put(stderr, 3);
-        io.put(stderr, 1.7);
-        io.put(stderr, TRUE);
+        io.put(io.stderr, 'Test ');
+        io.put(io.stderr, 3);
+        io.put(io.stderr, 1.7);
+        io.put(io.stderr, TRUE);
 
-        io.put_line(stderr, 'Duro');
+        io.put_line(io.stderr, 'Duro');
     } 2> out.txt
     set f [open out.txt r]
     puts [read $f]
@@ -118,6 +117,23 @@ FALSE
 
 TRUE
 Duro%$-
+}
+
+test tmpfile {temporary file} -match regexp -body {
+    exec $testdir/../../dli/durodt << {
+        var tmpf init io.tmpfile();
+        io.put_line('Abc %&/');
+        io.put_line(' zzz');
+        io.seek(tmpf, 0);
+        var l string;
+        while not io.eof(tmpf);
+            io.get_line(tmpf, l);
+            io.put_line(l);
+        end while;
+        io.close(tmpf);
+    }
+} -result {Abc %&/
+ zzz
 }
 
 cleanupTests

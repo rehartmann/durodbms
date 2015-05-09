@@ -45,6 +45,10 @@ test module {Modules} \
                 io.put_line(s);
             end operator;
 
+            operator call_puts(s string) updates {};
+                puts(s);
+            end operator;
+
             module modmod_mod;
                 operator dec(n int) returns int;
                     return n - 1;
@@ -84,6 +88,7 @@ test module {Modules} \
         io.put_line('');
  
         m.puts('Yip');
+        m.call_puts('Yup');
 
         io.put(m.modmod_mod.dec(17));
         io.put_line('');
@@ -263,6 +268,7 @@ test module {Modules} \
     }
 } -output {10
 Yip
+Yup
 16
 14
 } -result {106

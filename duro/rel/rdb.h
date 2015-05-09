@@ -542,10 +542,6 @@ RDB_get_ro_op(const char *, int, RDB_type *[],
 
 RDB_operator *
 RDB_get_update_op(const char *, int, RDB_type *[],
-               RDB_exec_context *, RDB_transaction *);
-
-RDB_operator *
-RDB_get_update_op_e(const char *, int, RDB_type *[],
                RDB_environment *, RDB_exec_context *, RDB_transaction *);
 
 int
