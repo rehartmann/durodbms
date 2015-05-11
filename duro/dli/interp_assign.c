@@ -844,7 +844,7 @@ Duro_exec_assign(const RDB_parse_node *listnodep, Duro_interp *interp,
     if (cnt == (RDB_int) RDB_ERROR)
         goto error;
 
-    if (RDB_parse_get_interactive()) {
+    if (RDB_parse_get_interactive() && interp->inner_op == NULL) {
         if (cnt == 1) {
             printf("1 element affected.\n");
         } else {

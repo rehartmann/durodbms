@@ -55,6 +55,7 @@ RDB_tx_db
 RDB_begin_tx
 RDB_commit
 RDB_rollback
+RDB_rollback_all
 RDB_insert
 RDB_update
 RDB_delete
@@ -200,7 +201,6 @@ RDB_table_refers
 RDB_table_attrs
 RDB_optimize
 RDB_get_update_op
-RDB_get_update_op_e
 RDB_implement_type
 RDB_init_table
 RDB_init_table_from_type
