@@ -22,6 +22,16 @@ resolve_target(const RDB_expression *exp, Duro_interp *interp, RDB_exec_context 
     if (RDB_expr_kind(exp) == RDB_EX_TUPLE_ATTR) {
         RDB_object idobj;
         RDB_object *resp;
+        RDB_expr_list *arglistp = RDB_expr_op_args((RDB_expression *)exp);
+
+        /* Check if it's a tuple attribute */
+        RDB_object *tplp = resolve_target(RDB_expr_list_get(arglistp, 0), interp, ecp);
+
+        if (tplp != NULL && RDB_is_tuple(tplp)) {
+            resp = RDB_tuple_get(tplp, RDB_expr_op_name(exp));
+            if (resp != NULL)
+                return resp;
+        }
 
         RDB_init_obj(&idobj);
         if (RDB_expr_attr_qid(exp, &idobj, ecp) != RDB_OK) {

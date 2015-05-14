@@ -6,6 +6,11 @@ DuroDBMS 0.26
   user-defined update operator from another operator that belongs to the same
   module.
 
+- Updated tuples using t.attr := v is now supported in addition to
+  UPDATE t { attr := v }.
+
+- Database environments are by default opened with the DB_CREATE flag.
+
 - Dropped RDB_get_update_op_e(). RDB_get_update_op() now has the same signature
   as RDB_get_update_op_e() previously had.
 

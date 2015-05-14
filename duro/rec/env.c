@@ -97,7 +97,7 @@ int
 RDB_open_env(const char *path, RDB_environment **envpp, int flags)
 {
     return open_env(path, envpp, DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN
-            | (flags & RDB_RECOVER ? DB_CREATE | DB_RECOVER : 0));
+            | (flags & RDB_RECOVER ? DB_CREATE | DB_RECOVER : DB_CREATE));
 }
 
 /**

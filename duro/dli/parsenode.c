@@ -241,6 +241,8 @@ RDB_token_name(int tok)
             return "WHERE";
         case TOK_UNION:
             return "UNION";
+        case TOK_D_UNION:
+            return "D_UNION";
         case TOK_INTERSECT:
             return "INTERSECT";
         case TOK_MINUS:
@@ -293,6 +295,8 @@ RDB_token_name(int tok)
             return "DROP";
         case TOK_INIT:
             return "INIT";
+        case TOK_INDEX:
+            return "INDEX";
         case TOK_BEGIN:
             return "BEGIN";
         case TOK_TX:
@@ -377,8 +381,12 @@ RDB_token_name(int tok)
             return ":=";
         case TOK_INSERT:
             return "INSERT";
+        case TOK_D_INSERT:
+            return "D_INSERT";
         case TOK_DELETE:
             return "DELETE";
+        case TOK_I_DELETE:
+            return "I_DELETE";
         case TOK_UPDATE:
             return "UPDATE";
         case TOK_TYPE:

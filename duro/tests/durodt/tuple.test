@@ -2,7 +2,6 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
-# $Id$
 #
 # Test tuple definitions and operations
 #
@@ -78,15 +77,18 @@ test tupleupdexpr {tuple update expression} -body {
 barr
 }
 
-test tupleupdstmt {tuple update statement} -body {
+test tupleupdstmt {tuple update} -body {
     exec $testdir/../../dli/durodt << {
         var t1 init tuple {i 5, s 'bar'};
         update t1 {i := i + 2, s := s || 'r'};
         io.put(t1.i); io.put_line('');
-        io.put(s from t1); io.put_line('');        
+        io.put(s from t1); io.put_line('');
+        t1.i := 15;
+        io.put(t1.i); io.put_line('');                
     }
 } -result {7
 barr
+15
 }
 
 test union {tuple UNION} -body {

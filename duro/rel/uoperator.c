@@ -583,10 +583,14 @@ RDB_get_update_op(const char *name, int argc, RDB_type *argtv[],
                 RDB_environment *envp, RDB_exec_context *ecp,
                 RDB_transaction *txp)
 {
+    RDB_bool type_mismatch = RDB_FALSE;
     RDB_dbroot *dbrootp;
-    RDB_operator *op = RDB_get_op(&RDB_builtin_upd_op_map, name, argc, argtv, ecp);
+    RDB_operator *op = RDB_get_op(&RDB_builtin_upd_op_map, name, argc, argtv,
+            ecp);
     if (op != NULL)
         return op;
+    if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_TYPE_MISMATCH_ERROR)
+        type_mismatch = RDB_TRUE;
 
     if (txp != NULL) {
         dbrootp = RDB_tx_db(txp)->dbrootp;
@@ -609,6 +613,11 @@ RDB_get_update_op(const char *name, int argc, RDB_type *argtv[],
     op = RDB_get_op(&dbrootp->upd_opmap, name, argc, argtv, ecp);
     if (op != NULL)
         return op;
+
+    if (type_mismatch && RDB_obj_type(RDB_get_err(ecp))
+            == &RDB_OPERATOR_NOT_FOUND_ERROR) {
+        RDB_raise_type_mismatch("", ecp);
+    }
 
     /*
      * The operator has not already been loaded into memory, so get it
@@ -669,11 +678,6 @@ RDB_call_update_op_by_name(const char *name, int argc, RDB_object *argv[],
 {
     RDB_operator *op;
     RDB_type **argtv;
-
-    if (!RDB_tx_is_running(txp)) {
-        RDB_raise_no_running_tx(ecp);
-        return RDB_ERROR;
-    }
 
     argtv = valv_to_typev(argc, argv, ecp);
     if (argtv == NULL) {

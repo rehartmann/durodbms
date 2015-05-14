@@ -439,8 +439,10 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
          * If not found and we're inside an operator that belongs to a module,
          * try again with the module name prepended
          */
-        if (interp->inner_op == NULL)
+        if (interp->inner_op == NULL
+                || RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR) {
             goto error;
+        }
         calling_opname = RDB_operator_name(interp->inner_op);
         ldotpos = strrchr(calling_opname, '.');
         if (ldotpos == NULL)
@@ -1623,12 +1625,11 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_obj_set_typeinfo(argv[0], getter_utyp->def.scalar.arep);
     }
 
-
-
     parent_op = interp->inner_op;
     interp->inner_op = op;
     ret = exec_stmts(opdatap->stmtlistp, interp, ecp, &retinfo);
     interp->inner_op = parent_op;
+    interp->err_line = -1;
 
     /* Set type of return value to the user-defined type */
     if (isselector) {
