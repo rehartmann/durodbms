@@ -267,6 +267,29 @@ typedef struct arg_data {
 } arg_info;
 
 static int
+evaluate_var(const char *varname, RDB_getobjfn *getfnp, void *getdata,
+        RDB_exec_context *ecp, RDB_transaction *txp,
+        RDB_object *valp)
+{
+    /* Try to resolve variable via getfnp */
+    if (getfnp != NULL) {
+        RDB_object *srcp = (*getfnp)(varname, getdata);
+        if (srcp != NULL)
+            return RDB_copy_obj(valp, srcp, ecp);
+    }
+
+    /* Try to get table */
+    if (txp != NULL) {
+        RDB_object *srcp = RDB_get_table(varname, ecp, txp);
+
+        if (srcp != NULL)
+            return RDB_copy_obj_data(valp, srcp, ecp, txp);
+    }
+    RDB_raise_name(varname, ecp);
+    return RDB_ERROR;
+}
+
+static int
 evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp,
         RDB_object *valp)
@@ -318,7 +341,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     argc = RDB_expr_list_length(&exp->def.op.args);
 
     /*
-     * Handle aggregate functions except COUNT
+     * Handle aggregate functions except COUNT and '.'
      * First check if there are 2 arguments and the second is a variable name
      */
     if (argc == 2 && exp->def.op.args.firstp->nextp->kind == RDB_EX_VAR) {
@@ -333,7 +356,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             RDB_destroy_obj(&tb, ecp);
             return ret;
         }
-        if (strcmp(exp->def.op.name, "avg") ==  0) {
+        if (strcmp(exp->def.op.name, "avg") == 0) {
             RDB_float res;
 
             RDB_init_obj(&tb);
@@ -346,7 +369,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             }
             return ret;
         }
-        if (strcmp(exp->def.op.name, "min") ==  0) {
+        if (strcmp(exp->def.op.name, "min") == 0) {
             RDB_init_obj(&tb);
             if (RDB_evaluate(exp->def.op.args.firstp, getfnp, getdata, envp,
                     ecp, txp, &tb) != RDB_OK)
@@ -355,7 +378,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             RDB_destroy_obj(&tb, ecp);
             return ret;
         }
-        if (strcmp(exp->def.op.name, "max") ==  0) {
+        if (strcmp(exp->def.op.name, "max") == 0) {
             RDB_init_obj(&tb);
             if (RDB_evaluate(exp->def.op.args.firstp, getfnp, getdata, envp, ecp,
                     txp, &tb) != RDB_OK)
@@ -364,7 +387,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             RDB_destroy_obj(&tb, ecp);
             return ret;
         }
-        if (strcmp(exp->def.op.name, "all") ==  0) {
+        if (strcmp(exp->def.op.name, "all") == 0) {
             RDB_bool res;
 
             RDB_init_obj(&tb);
@@ -378,7 +401,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             }
             return ret;
         }
-        if (strcmp(exp->def.op.name, "any") ==  0) {
+        if (strcmp(exp->def.op.name, "any") == 0) {
             RDB_bool res;
 
             RDB_init_obj(&tb);
@@ -391,6 +414,59 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
                 RDB_bool_to_obj(valp, res);
             }
             return ret;
+        }
+        if (strcmp(exp->def.op.name, ".") == 0) {
+            int ret;
+            RDB_object tpl;
+            RDB_object *attrp;
+            const char *attrname;
+
+            RDB_init_obj(&tpl);
+            ret = RDB_evaluate(exp->def.op.args.firstp, getfnp, getdata, envp, ecp,
+                    txp, &tpl);
+            if (ret != RDB_OK) {
+                RDB_object varnameobj;
+
+                RDB_destroy_obj(&tpl, ecp);
+
+                if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NAME_ERROR)
+                    return RDB_ERROR;
+
+                /* Interpret as qualified variable name */
+                RDB_init_obj(&varnameobj);
+                if (RDB_expr_attr_qid(exp, &varnameobj, ecp) != RDB_OK) {
+                    RDB_destroy_obj(&varnameobj, ecp);
+                    return RDB_ERROR;
+                }
+                ret = evaluate_var(RDB_obj_string(&varnameobj), getfnp, getdata,
+                        ecp, txp, valp);
+                RDB_destroy_obj(&varnameobj, ecp);
+
+                return ret;
+            }
+            if (tpl.kind != RDB_OB_TUPLE) {
+                RDB_destroy_obj(&tpl, ecp);
+                RDB_raise_type_mismatch("tuple required", ecp);
+                return RDB_ERROR;
+            }
+
+            attrname = RDB_expr_var_name(exp->def.op.args.firstp->nextp);
+            if (attrname == NULL) {
+                RDB_raise_invalid_argument("invalid '.' expression", ecp);
+                return RDB_ERROR;
+            }
+            attrp = RDB_tuple_get(&tpl, attrname);
+            if (attrp == NULL) {
+                RDB_destroy_obj(&tpl, ecp);
+                RDB_raise_name(exp->def.op.name, ecp);
+                return RDB_ERROR;
+            }
+            ret = RDB_copy_obj(valp, attrp, ecp);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&tpl, ecp);
+                return RDB_ERROR;
+            }
+            return RDB_destroy_obj(&tpl, ecp);
         }
     }
 
@@ -557,29 +633,6 @@ cleanup:
     return ret;
 }
 
-static int
-evaluate_var(const char *varname, RDB_getobjfn *getfnp, void *getdata,
-        RDB_exec_context *ecp, RDB_transaction *txp,
-        RDB_object *valp)
-{
-    /* Try to resolve variable via getfnp */
-    if (getfnp != NULL) {
-        RDB_object *srcp = (*getfnp)(varname, getdata);
-        if (srcp != NULL)
-            return RDB_copy_obj(valp, srcp, ecp);
-    }
-
-    /* Try to get table */
-    if (txp != NULL) {
-        RDB_object *srcp = RDB_get_table(varname, ecp, txp);
-
-        if (srcp != NULL)
-            return RDB_copy_obj_data(valp, srcp, ecp, txp);
-    }
-    RDB_raise_name(varname, ecp);
-    return RDB_ERROR;
-}
-
 /** @addtogroup expr
  * @{
  */
@@ -630,54 +683,6 @@ RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     }
 
     switch (exp->kind) {
-    case RDB_EX_TUPLE_ATTR:
-    {
-        int ret;
-        RDB_object tpl;
-        RDB_object *attrp;
-
-        RDB_init_obj(&tpl);
-        ret = RDB_evaluate(exp->def.op.args.firstp, getfnp, getdata, envp, ecp,
-                txp, &tpl);
-        if (ret != RDB_OK) {
-            RDB_object varnameobj;
-
-            RDB_destroy_obj(&tpl, ecp);
-
-            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NAME_ERROR)
-                return RDB_ERROR;
-
-            /* Interpret as qualified variable name */
-            RDB_init_obj(&varnameobj);
-            if (RDB_expr_attr_qid(exp, &varnameobj, ecp) != RDB_OK) {
-                RDB_destroy_obj(&varnameobj, ecp);
-                return RDB_ERROR;
-            }
-            ret = evaluate_var(RDB_obj_string(&varnameobj), getfnp, getdata,
-                    ecp, txp, valp);
-            RDB_destroy_obj(&varnameobj, ecp);
-
-            return ret;
-        }
-        if (tpl.kind != RDB_OB_TUPLE) {
-            RDB_destroy_obj(&tpl, ecp);
-            RDB_raise_type_mismatch("tuple required", ecp);
-            return RDB_ERROR;
-        }
-
-        attrp = RDB_tuple_get(&tpl, exp->def.op.name);
-        if (attrp == NULL) {
-            RDB_destroy_obj(&tpl, ecp);
-            RDB_raise_name(exp->def.op.name, ecp);
-            return RDB_ERROR;
-        }
-        ret = RDB_copy_obj(valp, attrp, ecp);
-        if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl, ecp);
-            return RDB_ERROR;
-        }
-        return RDB_destroy_obj(&tpl, ecp);
-    }
     case RDB_EX_GET_COMP:
     {
         int ret;

@@ -12,7 +12,6 @@ enum RDB_expr_kind {
 
     RDB_EX_VAR,
 
-    RDB_EX_TUPLE_ATTR,
     RDB_EX_GET_COMP,
     RDB_EX_RO_OP
 };

@@ -76,17 +76,23 @@ Duro_exec_vardef(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *e
             /* Check type if type was given */
             if (typ != NULL &&
                     !RDB_type_equals(typ, RDB_obj_type(objp))) {
+                if (!RDB_type_is_scalar(typ))
+                    RDB_del_nonscalar_type(typ, ecp);
                 RDB_raise_type_mismatch("", ecp);
                 goto error;
             }
+            if (typ != NULL && !RDB_type_is_scalar(typ))
+                RDB_del_nonscalar_type(typ, ecp);
         } else {
             /* No type available (tuple or array) - set type */
-            typ = Duro_expr_type_retry(initexp, interp, ecp);
-            if (typ == NULL)
-                goto error;
-            typ = RDB_dup_nonscalar_type(typ, ecp);
-            if (typ == NULL)
-                goto error;
+            if (typ == NULL) {
+                typ = Duro_expr_type_retry(initexp, interp, ecp);
+                if (typ == NULL)
+                    goto error;
+                typ = RDB_dup_nonscalar_type(typ, ecp);
+                if (typ == NULL)
+                    goto error;
+            }
             RDB_obj_set_typeinfo(objp, typ);
         }
     }

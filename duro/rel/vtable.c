@@ -1,7 +1,7 @@
 /*
  * Functions for virtual tables
  *
- * Copyright (C) 2004-2012 Rene Hartmann.
+ * Copyright (C) 2004-2009, 2011-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -458,7 +458,6 @@ RDB_infer_keys(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         /* Not found */
         RDB_raise_name(exp->def.varname, ecp);
         return RDB_ERROR;
-    case RDB_EX_TUPLE_ATTR:
     case RDB_EX_GET_COMP:
         RDB_raise_invalid_argument("Expression is not a table", ecp);
         return RDB_ERROR;

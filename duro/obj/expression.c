@@ -68,7 +68,6 @@ RDB_expr_resolve_varname_expr(RDB_expression **expp, const char *varname,
     RDB_expression *argp;
 
     switch ((*expp)->kind) {
-        case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
             return RDB_expr_resolve_varname_expr(&(*expp)->def.op.args.firstp,
                     varname, texp, ecp);
@@ -112,8 +111,7 @@ RDB_expr_resolve_varname_expr(RDB_expression **expp, const char *varname,
 const char *
 RDB_expr_op_name(const RDB_expression *exp)
 {
-    return exp->kind == RDB_EX_RO_OP || exp->kind == RDB_EX_GET_COMP
-            || exp->kind == RDB_EX_TUPLE_ATTR ?
+    return exp->kind == RDB_EX_RO_OP || exp->kind == RDB_EX_GET_COMP ?
             exp->def.op.name : NULL;
 }
 
@@ -123,8 +121,7 @@ RDB_expr_op_name(const RDB_expression *exp)
 RDB_expr_list *
 RDB_expr_op_args(RDB_expression *exp)
 {
-    return exp->kind == RDB_EX_RO_OP || exp->kind == RDB_EX_GET_COMP
-            || exp->kind == RDB_EX_TUPLE_ATTR ?
+    return exp->kind == RDB_EX_RO_OP || exp->kind == RDB_EX_GET_COMP ?
             &exp->def.op.args : NULL;
 }
 
@@ -432,22 +429,24 @@ RDB_tuple_attr(RDB_expression *arg, const char *attrname,
         RDB_exec_context *ecp)
 {
     RDB_expression *exp;
-
-    exp = RDB_create_unexpr(arg, RDB_EX_TUPLE_ATTR, ecp);
-    if (exp == NULL)
+    RDB_expression *arg2 = RDB_var_ref(attrname, ecp);
+    if (arg2 == NULL)
         return NULL;
 
-    exp->def.op.name = RDB_dup_str(attrname);
-    if (exp->def.op.name == NULL) {
-        RDB_raise_no_memory(ecp);
-        RDB_del_expr(exp, ecp);
+    exp = RDB_ro_op(".", ecp);
+    if (exp == NULL) {
+        RDB_del_expr(arg2, ecp);
         return NULL;
     }
+
+    RDB_add_arg(exp, arg);
+    RDB_add_arg(exp, arg2);
+
     return exp;
 }
 
 /**
- * Extract qualified id from attribute expression
+ * Extract qualified id from '.' operator expression
  */
 int
 RDB_expr_attr_qid(const RDB_expression *exp, RDB_object *idobjp, RDB_exec_context *ecp)
@@ -460,10 +459,13 @@ RDB_expr_attr_qid(const RDB_expression *exp, RDB_object *idobjp, RDB_exec_contex
             if (RDB_string_to_obj(idobjp, RDB_expr_var_name(arg1p), ecp) != RDB_OK)
                 return RDB_ERROR;
             break;
-        case RDB_EX_TUPLE_ATTR:
+        case RDB_EX_RO_OP:
+            if (strcmp(arg1p->def.op.name, ".") != 0) {
+                RDB_raise_invalid_argument("invalid usage of \'.\'", ecp);
+                    return RDB_ERROR;
+            }
             if (RDB_expr_attr_qid(arg1p, idobjp, ecp) != RDB_OK)
                 return RDB_ERROR;
-            break;
         default:
             RDB_raise_invalid_argument("invalid usage of \'.\'", ecp);
             return RDB_ERROR;
@@ -471,7 +473,8 @@ RDB_expr_attr_qid(const RDB_expression *exp, RDB_object *idobjp, RDB_exec_contex
 
     if (RDB_append_string(idobjp, ".", ecp) != RDB_OK)
         return RDB_ERROR;
-    return RDB_append_string(idobjp, RDB_expr_op_name(exp), ecp);
+    return RDB_append_string(idobjp,
+            RDB_expr_var_name(RDB_expr_list_get(arglistp, 1)), ecp);
 }
 
 /**
@@ -606,11 +609,6 @@ RDB_dup_expr(const RDB_expression *exp, RDB_exec_context *ecp)
     RDB_expression *newexp;
 
     switch (exp->kind) {
-        case RDB_EX_TUPLE_ATTR:
-            newexp = RDB_dup_expr(exp->def.op.args.firstp, ecp);
-            if (newexp == NULL)
-                return NULL;
-            return RDB_tuple_attr(newexp, exp->def.op.name, ecp);
         case RDB_EX_GET_COMP:
             newexp = RDB_dup_expr(exp->def.op.args.firstp, ecp);
             if (newexp == NULL)
@@ -716,7 +714,6 @@ int
 RDB_drop_expr_children(RDB_expression *exp, RDB_exec_context *ecp)
 {
     switch (exp->kind) {
-        case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
             if (RDB_del_expr(exp->def.op.args.firstp, ecp) != RDB_OK)
                 return RDB_ERROR;
@@ -853,7 +850,6 @@ RDB_destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
             break;
         case RDB_EX_TBP:
             break;
-        case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
             RDB_free(exp->def.op.name);
             break;
@@ -888,7 +884,6 @@ RDB_expr_depends_expr(const RDB_expression *ex1p, const RDB_expression *ex2p)
             return RDB_expr_depends_table(ex2p, ex1p->def.tbref.tbp);
         case RDB_EX_VAR:
             return RDB_FALSE;
-        case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
             return RDB_expr_depends_expr(ex1p->def.op.args.firstp, ex2p);
         case RDB_EX_RO_OP:
@@ -916,7 +911,6 @@ RDB_expr_refers(const RDB_expression *exp, const RDB_object *tbp)
             return RDB_table_refers(exp->def.tbref.tbp, tbp);
         case RDB_EX_VAR:
             return RDB_FALSE;
-        case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
             return RDB_expr_refers(exp->def.op.args.firstp, tbp);
         case RDB_EX_RO_OP:
@@ -944,7 +938,6 @@ RDB_expr_refers_var(const RDB_expression *exp, const char *attrname)
             return RDB_FALSE;
         case RDB_EX_VAR:
             return (RDB_bool) (strcmp(exp->def.varname, attrname) == 0);
-        case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
             return RDB_expr_refers_var(exp->def.op.args.firstp, attrname);
         case RDB_EX_RO_OP:
@@ -1000,29 +993,6 @@ RDB_create_unexpr(RDB_expression *arg, enum RDB_expr_kind kind,
     return exp;
 }
 
-RDB_expression *
-RDB_create_binexpr(RDB_expression *arg1, RDB_expression *arg2,
-        enum RDB_expr_kind kind, RDB_exec_context *ecp)
-{
-    RDB_expression *exp;
-
-    if ((arg1 == NULL) || (arg2 == NULL))
-        return NULL;
-
-    exp = new_expr(ecp);
-    if (exp == NULL) {
-        return NULL;
-    }
-        
-    exp->kind = kind;
-    exp->def.op.args.firstp = arg1;
-    exp->def.op.args.lastp = arg2;
-    arg1->nextp = arg2;
-    arg2->nextp = NULL;
-
-    return exp;
-}
-
 int
 RDB_invrename_expr(RDB_expression *exp, RDB_expression *texp,
         RDB_exec_context *ecp)
@@ -1030,7 +1000,6 @@ RDB_invrename_expr(RDB_expression *exp, RDB_expression *texp,
     RDB_expression *argp;
 
     switch (exp->kind) {
-        case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
             return RDB_invrename_expr(exp->def.op.args.firstp, texp, ecp);
         case RDB_EX_RO_OP:
@@ -1078,7 +1047,6 @@ RDB_resolve_exprnames(RDB_expression **expp, RDB_expression *texp,
     RDB_expression *argp;
 
     switch ((*expp)->kind) {
-        case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
             return RDB_resolve_exprnames(&(*expp)->def.op.args.firstp,
                     texp, ecp);

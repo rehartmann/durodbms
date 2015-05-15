@@ -1,8 +1,9 @@
 /*
- * qr_stored.c
+ * Functions for RDB_qresult structures that iterate over stored
+ * or local tables.
  *
- *  Created on: 23.11.2014
- *      Author: Rene Hartmann
+ * Copyright (C) 2014 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #include "qr_stored.h"
@@ -10,6 +11,10 @@
 #include "qresult.h"
 #include "typeimpl.h"
 
+/*
+ * Initializes an RDB_qresult from a stored table.
+ * Does not initialize matp, this has to be done by the caller.
+ */
 int
 RDB_init_stored_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_expression *exp,
         RDB_exec_context *ecp, RDB_transaction *txp)

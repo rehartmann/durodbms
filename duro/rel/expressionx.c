@@ -1,8 +1,8 @@
 /*
- * expressionx.c
+ * Expression functions involving storage.
  *
- *  Created on: 29.09.2013
- *      Author: Rene Hartmann
+ * Copyright (C) 2013 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #include "rdb.h"
@@ -27,10 +27,6 @@ RDB_expr_resolve_varnames(RDB_expression *exp, RDB_getobjfn *getfnp,
     RDB_object *objp;
 
     switch (exp->kind) {
-        case RDB_EX_TUPLE_ATTR:
-            return RDB_tuple_attr(
-                    RDB_expr_resolve_varnames(exp->def.op.args.firstp, getfnp, getdata, ecp, txp),
-                            exp->def.op.name, ecp);
         case RDB_EX_GET_COMP:
             return RDB_expr_comp(
                     RDB_expr_resolve_varnames(exp->def.op.args.firstp, getfnp, getdata, ecp, txp),
@@ -130,7 +126,6 @@ RDB_expr_equals(const RDB_expression *ex1p, const RDB_expression *ex2p,
             *resp = (RDB_bool)
                     (strcmp (ex1p->def.varname, ex2p->def.varname) == 0);
             break;
-        case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
             ret = RDB_expr_equals(ex1p->def.op.args.firstp,
                     ex2p->def.op.args.firstp, ecp, txp, resp);

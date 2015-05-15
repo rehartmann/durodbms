@@ -99,10 +99,6 @@ RDB_expression *
 RDB_create_unexpr(RDB_expression *, enum RDB_expr_kind,
         RDB_exec_context *);
 
-RDB_expression *
-RDB_create_binexpr(RDB_expression *, RDB_expression *,
-                    enum RDB_expr_kind, RDB_exec_context *);
-
 RDB_bool
 RDB_expr_refers_var(const RDB_expression *, const char *attrname);
 

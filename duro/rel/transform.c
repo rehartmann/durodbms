@@ -453,8 +453,8 @@ swap_project_rename(RDB_expression *texp, RDB_gettypefn *getfnp, void *arg,
         if (proj_attr(texp, RDB_obj_string(&argp->nextp->nextp->def.obj))
                 == NULL) {
             hexp = argp->nextp->nextp->nextp;
-            RDB_del_expr(argp->nextp, ecp);
             RDB_del_expr(argp->nextp->nextp, ecp);
+            RDB_del_expr(argp->nextp, ecp);
             argp->nextp = hexp;
         } else {
             argp = argp->nextp->nextp;
@@ -527,7 +527,7 @@ transform_project_extend(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 {
     int i;
     int expc;
-    RDB_expression **expv;
+    RDB_expression **expv = NULL;
     RDB_expression *argp, *hexp;
     RDB_expression *chexp = exp->def.op.args.firstp;
     int chargc = RDB_expr_list_length(&chexp->def.op.args);
@@ -571,6 +571,7 @@ transform_project_extend(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     chexp->def.op.args.firstp = chexp->def.op.args.lastp = NULL;
     for (i = 0; i < expc; i++)
         RDB_add_arg(chexp, expv[i]);
+    RDB_free(expv);
     if (chexp->typ != NULL) {
         RDB_del_nonscalar_type(chexp->typ, ecp);
         chexp->typ = NULL;
@@ -1080,7 +1081,6 @@ RDB_expr_resolve_tbnames(RDB_expression *exp, RDB_exec_context *ecp,
     RDB_expression *argp;
 
     switch (exp->kind) {
-    case RDB_EX_TUPLE_ATTR:
     case RDB_EX_GET_COMP:
         return RDB_expr_resolve_tbnames(exp->def.op.args.firstp,
                 ecp, txp);

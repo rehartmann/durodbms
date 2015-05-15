@@ -609,7 +609,38 @@ rename_type(const RDB_expression *exp, RDB_type **argtv,
 }
 
 static RDB_type *
-expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
+var_type(const char *varname, RDB_gettypefn *getfnp, void *getarg,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_type *typ;
+    RDB_object *errp;
+
+    if (getfnp != NULL) {
+        RDB_clear_err(ecp);
+        typ = (*getfnp) (varname, getarg);
+        if (typ != NULL) {
+            return RDB_dup_nonscalar_type(typ, ecp);
+        }
+    }
+    if (txp != NULL) {
+        RDB_object *tbp = RDB_get_table(varname, ecp, txp);
+        if (tbp != NULL) {
+            return RDB_dup_nonscalar_type(RDB_obj_type(tbp), ecp);
+        }
+    }
+
+    /*
+     * Handle error - if no error or NOT_FOUND_ERROR has been raised raise NAME_ERROR
+     */
+    errp = RDB_get_err(ecp);
+    if (errp == NULL || RDB_obj_type(errp) == &RDB_NOT_FOUND_ERROR) {
+        RDB_raise_name(varname, ecp);
+    }
+    return NULL;
+}
+
+static RDB_type *
+expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
         RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
@@ -621,7 +652,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 
     /* Transform UPDATE */
     if (strcmp(exp->def.op.name, "update") == 0) {
-        if (RDB_convert_update(exp, getfnp, arg, ecp, txp) != RDB_OK)
+        if (RDB_convert_update(exp, getfnp, getarg, ecp, txp) != RDB_OK)
             return NULL;
     }
 
@@ -629,23 +660,23 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
      * WHERE, EXTEND, etc. require special treatment
      */
     if (strcmp(exp->def.op.name, "where") == 0) {
-        return where_type(exp, getfnp, arg, envp, ecp, txp);
+        return where_type(exp, getfnp, getarg, envp, ecp, txp);
     }
     if (strcmp(exp->def.op.name, "extend") == 0) {
-        return extend_type(exp, getfnp, arg, envp, ecp, txp);
+        return extend_type(exp, getfnp, getarg, envp, ecp, txp);
     }
     if (strcmp(exp->def.op.name, "summarize") == 0) {
         return RDB_summarize_type(&exp->def.op.args, 0, NULL, ecp, txp);
     }
     if (strcmp(exp->def.op.name, "tuple") == 0) {
-        return tuple_type(exp, getfnp, arg, envp, ecp, txp);
+        return tuple_type(exp, getfnp, getarg, envp, ecp, txp);
     }
     if (strcmp(exp->def.op.name, "array") == 0) {
-        return array_type(exp, getfnp, arg, envp, ecp, txp);
+        return array_type(exp, getfnp, getarg, envp, ecp, txp);
     }
 
     if (strcmp(exp->def.op.name, "remove") == 0) {
-        if (RDB_remove_to_project(exp, getfnp, arg, ecp, txp) != RDB_OK)
+        if (RDB_remove_to_project(exp, getfnp, getarg, ecp, txp) != RDB_OK)
             goto error;
     }
 
@@ -672,7 +703,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
         }
 
-        argtyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, envp, ecp, txp);
+        argtyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg, envp, ecp, txp);
         if (argtyp == NULL)
             goto error;
         attrtyp = RDB_type_attr_type(argtyp,
@@ -699,7 +730,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
         }
 
-        argtyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, envp, ecp, txp);
+        argtyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg, envp, ecp, txp);
         if (argtyp == NULL)
             goto error;
         attrtyp = RDB_type_attr_type(argtyp,
@@ -726,7 +757,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
         }
 
-        argtyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, arg, envp, ecp, txp);
+        argtyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg, envp, ecp, txp);
         if (argtyp == NULL)
             goto error;
         attrtyp = RDB_type_attr_type(argtyp,
@@ -737,6 +768,40 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
         }
         return &RDB_BOOLEAN;
+    }
+
+    if (strcmp(exp->def.op.name, ".") == 0 && argc == 2) {
+        const char *attrname;
+        typ = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg,
+                envp, ecp, txp);
+        if (typ == NULL) {
+            RDB_object varnameobj;
+
+            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NAME_ERROR)
+                return NULL;
+
+            /* Interpret as qualified variable name */
+            RDB_init_obj(&varnameobj);
+            if (RDB_expr_attr_qid(exp, &varnameobj, ecp) != RDB_OK) {
+                RDB_destroy_obj(&varnameobj, ecp);
+                return NULL;
+            }
+            typ = var_type(RDB_obj_string(&varnameobj), getfnp, getarg, ecp, txp);
+            RDB_destroy_obj(&varnameobj, ecp);
+            return typ;
+        }
+
+        attrname = RDB_expr_var_name(exp->def.op.args.firstp->nextp);
+        if (attrname == NULL) {
+            RDB_raise_invalid_argument("invalid '.' expression", ecp);
+            return NULL;
+        }
+        typ = RDB_type_attr_type(typ, attrname);
+        if (typ == NULL) {
+            RDB_raise_name(attrname, ecp);
+            return NULL;
+        }
+        return RDB_dup_nonscalar_type(typ, ecp);
     }
 
     /*
@@ -755,7 +820,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
          * The expression may not have a type (e.g. if it's an array).
          * In this case RDB_NOT_FOUND is raised, which is caught.
          */
-        argtv[i] = RDB_expr_type(argp, getfnp, arg, envp, ecp, txp);
+        argtv[i] = RDB_expr_type(argp, getfnp, getarg, envp, ecp, txp);
         if (argtv[i] == NULL) {
             if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
                 goto error;
@@ -1024,37 +1089,6 @@ error:
 }
 
 static RDB_type *
-var_type(const char *varname, RDB_gettypefn *getfnp, void *getarg,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_type *typ;
-    RDB_object *errp;
-
-    if (getfnp != NULL) {
-        RDB_clear_err(ecp);
-        typ = (*getfnp) (varname, getarg);
-        if (typ != NULL) {
-            return RDB_dup_nonscalar_type(typ, ecp);
-        }
-    }
-    if (txp != NULL) {
-        RDB_object *tbp = RDB_get_table(varname, ecp, txp);
-        if (tbp != NULL) {
-            return RDB_dup_nonscalar_type(RDB_obj_type(tbp), ecp);
-        }
-    }
-
-    /*
-     * Handle error - if no error or NOT_FOUND_ERROR has been raised raise NAME_ERROR
-     */
-    errp = RDB_get_err(ecp);
-    if (errp == NULL || RDB_obj_type(errp) == &RDB_NOT_FOUND_ERROR) {
-        RDB_raise_name(varname, ecp);
-    }
-    return NULL;
-}
-
-static RDB_type *
 aggr_type(const RDB_expression *exp, const RDB_type *tpltyp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -1220,31 +1254,6 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
     case RDB_EX_VAR:
         exp->typ = var_type(RDB_expr_var_name(exp), getfnp, getarg, ecp, txp);
         return exp->typ;
-    case RDB_EX_TUPLE_ATTR:
-        typ = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg,
-                envp, ecp, txp);
-        if (typ == NULL) {
-            RDB_object varnameobj;
-
-            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NAME_ERROR)
-                return NULL;
-
-            /* Interpret as qualified variable name */
-            RDB_init_obj(&varnameobj);
-            if (RDB_expr_attr_qid(exp, &varnameobj, ecp) != RDB_OK) {
-                RDB_destroy_obj(&varnameobj, ecp);
-                return NULL;
-            }
-            exp->typ = var_type(RDB_obj_string(&varnameobj), getfnp, getarg, ecp, txp);
-            RDB_destroy_obj(&varnameobj, ecp);
-            return exp->typ;
-        }
-        typ = RDB_type_attr_type(typ, exp->def.op.name);
-        if (typ == NULL) {
-            RDB_raise_name(exp->def.op.name, ecp);
-            return NULL;
-        }
-        return typ;
     case RDB_EX_GET_COMP:
         typ = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg,
                 envp, ecp, txp);

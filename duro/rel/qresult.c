@@ -792,9 +792,9 @@ init_eval_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     if (RDB_evaluate(exp, NULL, NULL, NULL, ecp, txp, qrp->matp) != RDB_OK)
         goto error;
 
-    if (init_qresult(qrp, qrp->matp, ecp, txp) != RDB_OK)
-        goto error;
-    return RDB_OK;
+    qrp->endreached = RDB_FALSE;
+
+    return RDB_init_stored_qresult(qrp, qrp->matp, NULL, ecp, txp);
 
 error:
     RDB_free(qrp->matp);

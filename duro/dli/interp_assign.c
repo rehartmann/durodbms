@@ -19,30 +19,6 @@ resolve_target(const RDB_expression *exp, Duro_interp *interp, RDB_exec_context 
     const char *varname;
     const char *opname = RDB_expr_op_name(exp);
 
-    if (RDB_expr_kind(exp) == RDB_EX_TUPLE_ATTR) {
-        RDB_object idobj;
-        RDB_object *resp;
-        RDB_expr_list *arglistp = RDB_expr_op_args((RDB_expression *)exp);
-
-        /* Check if it's a tuple attribute */
-        RDB_object *tplp = resolve_target(RDB_expr_list_get(arglistp, 0), interp, ecp);
-
-        if (tplp != NULL && RDB_is_tuple(tplp)) {
-            resp = RDB_tuple_get(tplp, RDB_expr_op_name(exp));
-            if (resp != NULL)
-                return resp;
-        }
-
-        RDB_init_obj(&idobj);
-        if (RDB_expr_attr_qid(exp, &idobj, ecp) != RDB_OK) {
-            RDB_destroy_obj(&idobj, ecp);
-            return NULL;
-        }
-        resp = Duro_lookup_var(RDB_obj_string(&idobj), interp, ecp);
-        RDB_destroy_obj(&idobj, ecp);
-        return resp;
-    }
-
     if (opname != NULL) {
         if (strcmp(opname, "[]") == 0
                 && RDB_expr_list_length(RDB_expr_op_args((RDB_expression *) exp)) == 2) {
@@ -79,6 +55,29 @@ resolve_target(const RDB_expression *exp, Duro_interp *interp, RDB_exec_context 
             idx = RDB_obj_int(&idxobj);
             RDB_destroy_obj(&idxobj, ecp);
             return RDB_array_get(arrp, idx, ecp);
+        }
+        if (strcmp(opname, ".") == 0) {
+            RDB_object idobj;
+            RDB_object *resp;
+            RDB_expr_list *arglistp = RDB_expr_op_args((RDB_expression *)exp);
+
+            /* Check if it's a tuple attribute */
+            RDB_object *tplp = resolve_target(RDB_expr_list_get(arglistp, 0), interp, ecp);
+
+            if (tplp != NULL && RDB_is_tuple(tplp)) {
+                resp = RDB_tuple_get(tplp, RDB_expr_var_name(RDB_expr_list_get(arglistp, 1)));
+                if (resp != NULL)
+                    return resp;
+            }
+
+            RDB_init_obj(&idobj);
+            if (RDB_expr_attr_qid(exp, &idobj, ecp) != RDB_OK) {
+                RDB_destroy_obj(&idobj, ecp);
+                return NULL;
+            }
+            resp = Duro_lookup_var(RDB_obj_string(&idobj), interp, ecp);
+            RDB_destroy_obj(&idobj, ecp);
+            return resp;
         }
         RDB_raise_syntax("invalid assignment target", ecp);
         return NULL;

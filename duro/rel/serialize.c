@@ -287,11 +287,6 @@ RDB_serialize_expr(RDB_object *valp, int *posp, RDB_expression *exp,
 
         return RDB_OK;
     }
-    case RDB_EX_TUPLE_ATTR:
-        if (RDB_serialize_expr(valp, posp, exp->def.op.args.firstp, ecp)
-                != RDB_OK)
-            return RDB_ERROR;
-        return RDB_serialize_str(valp, posp, exp->def.op.name, ecp);
     }
     /* should never be reached */
     abort();
@@ -728,29 +723,6 @@ RDB_deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             if (typ == NULL)
                 return RDB_ERROR;
             RDB_set_expr_type(*expp, typ);
-        }
-        break;
-    }
-    case RDB_EX_TUPLE_ATTR:
-    {
-        char *name;
-
-        ret = RDB_deserialize_expr(valp, posp, ecp, txp, &ex1p);
-        if (ret != RDB_OK)
-            return ret;
-        ret = RDB_deserialize_str(valp, posp, ecp, &name);
-        if (ret != RDB_OK) {
-            RDB_del_expr(ex1p, ecp);
-            return ret;
-        }
-        *expp = RDB_create_unexpr(ex1p, RDB_EX_TUPLE_ATTR, ecp);
-        if (*expp == NULL)
-            return RDB_ERROR;
-        (*expp)->def.op.name = RDB_dup_str(name);
-        if ((*expp)->def.op.name == NULL) {
-            RDB_raise_no_memory(ecp);
-            RDB_del_expr(*expp, ecp);
-            return RDB_ERROR;
         }
         break;
     }

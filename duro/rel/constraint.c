@@ -136,7 +136,6 @@ expr_remove_tick(const RDB_expression *exp)
     switch (exp->kind) {
     case RDB_EX_OBJ:
     case RDB_EX_TBP:
-    case RDB_EX_TUPLE_ATTR:
         return;
     case RDB_EX_GET_COMP:
         expr_remove_tick(exp->def.op.args.firstp);
@@ -672,12 +671,6 @@ replace_targets(RDB_expression *exp,
     size_t lpos;
 
     switch (exp->kind) {
-    case RDB_EX_TUPLE_ATTR:
-        newexp = replace_targets(exp->def.op.args.firstp, insc, insv,
-                updc, updv, delc, delv, vdelc, vdelv, copyc, copyv, ecp, txp);
-        if (newexp == NULL)
-            return NULL;
-        return RDB_tuple_attr(newexp, exp->def.op.name, ecp);
     case RDB_EX_GET_COMP:
         newexp = replace_targets(exp->def.op.args.firstp, insc, insv,
                 updc, updv, delc, delv, vdelc, vdelv, copyc, copyv, ecp, txp);
