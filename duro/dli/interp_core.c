@@ -1,7 +1,5 @@
 /*
- * interp_core.c - Interpreter core functionality such as handling of variables
- *
- *  Created on: 24.08.2012
+ * Interpreter core functionality such as handling of variables
  *
  * Copyright (C) 2012-2014 Rene Hartmann.
  * See the file COPYING for redistribution information.
@@ -443,4 +441,38 @@ Duro_module_q_id(RDB_object *dstobjp, const char *id, Duro_interp *interp, RDB_e
     if (RDB_append_string(dstobjp, ".", ecp) != RDB_OK)
         return RDB_ERROR;
     return RDB_append_string(dstobjp, id, ecp);
+}
+
+int
+Duro_nodes_to_seqitv(RDB_seq_item *seqitv, RDB_parse_node *nodep,
+        Duro_interp *interp, RDB_exec_context *ecp)
+{
+    RDB_expression *exp;
+    int i = 0;
+
+    if (nodep != NULL) {
+        for (;;) {
+            /* Get attribute name */
+            exp = RDB_parse_node_expr(nodep->val.children.firstp, ecp,
+                    interp->txnp != NULL ? &interp->txnp->tx : NULL);
+            if (exp == NULL) {
+                return RDB_ERROR;
+            }
+            seqitv[i].attrname = (char *) RDB_expr_var_name(exp);
+
+            /* Get ascending/descending info */
+            seqitv[i].asc = (RDB_bool)
+                    (nodep->val.children.firstp->nextp->val.token == TOK_ASC);
+
+            nodep = nodep->nextp;
+            if (nodep == NULL)
+                break;
+
+            /* Skip comma */
+            nodep = nodep->nextp;
+
+            i++;
+        }
+    }
+    return RDB_OK;
 }

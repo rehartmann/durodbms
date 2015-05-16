@@ -121,8 +121,7 @@ RDB_clear_hashmap(RDB_hashmap *hp)
     RDB_init_hashtable_iter(&hiter, (RDB_hashtable *) &hp->tab);
     while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
         free(entryp->key);
-        entryp->key = NULL;
-        entryp->valuep = NULL;
+        free(entryp);
     }
     RDB_destroy_hashtable_iter(&hiter);
 

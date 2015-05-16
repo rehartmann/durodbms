@@ -13,6 +13,54 @@
 
 #include <string.h>
 
+/*
+ * Resolve a
+ *
+ * Given a.b, first check if a is a variable.
+ * If it is, a must be a tuple and b must a tuple attribute.
+ * It it is not, treat a as a module name.
+ */
+static RDB_object *
+resolve_parse_node_qid(RDB_parse_node *parentp, Duro_interp *interp,
+        RDB_exec_context *ecp)
+{
+    RDB_object idobj;
+    RDB_object *varp = NULL;
+    RDB_parse_node *nodep = parentp->val.children.firstp;
+
+    RDB_init_obj(&idobj);
+    if (RDB_string_to_obj(&idobj, "", ecp) != RDB_OK)
+        goto error;
+    for(;;) {
+        if (varp != NULL) {
+            if (!RDB_is_tuple(varp)) {
+                RDB_raise_invalid_argument("not a tuple", ecp);
+                goto error;
+            }
+            varp = RDB_tuple_get(varp, RDB_expr_var_name(nodep->exp));
+            if (varp == NULL) {
+                RDB_raise_invalid_argument(RDB_expr_var_name(nodep->exp), ecp);
+                goto error;
+            }
+        } else {
+            if (RDB_append_string(&idobj, RDB_expr_var_name(nodep->exp), ecp) != RDB_OK)
+                goto error;
+            varp = Duro_lookup_var(RDB_obj_string(&idobj), interp, ecp);
+        }
+        if (nodep->nextp == NULL)
+            break;
+        if (RDB_append_string(&idobj, ".", ecp) != RDB_OK)
+            goto error;
+        nodep = nodep->nextp->nextp;
+    }
+    RDB_destroy_obj(&idobj, ecp);
+    return varp;
+
+error:
+    RDB_destroy_obj(&idobj, ecp);
+    return NULL;
+}
+
 static RDB_object *
 resolve_target(const RDB_expression *exp, Duro_interp *interp, RDB_exec_context *ecp)
 {
@@ -323,18 +371,9 @@ static int
 node_to_insert(RDB_ma_insert *insp, RDB_parse_node *nodep, Duro_interp *interp,
         int flags, RDB_exec_context *ecp)
 {
-    RDB_object idobj;
     RDB_expression *srcexp;
 
-    RDB_init_obj(&idobj);
-
-    if (RDB_parse_node_qid(nodep, &idobj, ecp) != RDB_OK) {
-        RDB_destroy_obj(&idobj, ecp);
-        return RDB_ERROR;
-    }
-
-    insp->tbp = Duro_lookup_var(RDB_obj_string(&idobj), interp, ecp);
-    RDB_destroy_obj(&idobj, ecp);
+    insp->tbp = resolve_parse_node_qid(nodep, interp, ecp);
     if (insp->tbp == NULL) {
         return RDB_ERROR;
     }
@@ -399,17 +438,7 @@ static int
 node_to_delete(RDB_ma_delete *delp, RDB_parse_node *nodep, Duro_interp *interp,
         RDB_exec_context *ecp)
 {
-    RDB_object idobj;
-
-    RDB_init_obj(&idobj);
-
-    if (RDB_parse_node_qid(nodep, &idobj, ecp) != RDB_OK) {
-        RDB_destroy_obj(&idobj, ecp);
-        return RDB_ERROR;
-    }
-
-    delp->tbp = Duro_lookup_var(RDB_obj_string(&idobj), interp, ecp);
-    RDB_destroy_obj(&idobj, ecp);
+    delp->tbp = resolve_parse_node_qid(nodep, interp, ecp);
     if (delp->tbp == NULL) {
         return RDB_ERROR;
     }
@@ -437,18 +466,9 @@ static int
 node_to_vdelete(RDB_ma_vdelete *delp, RDB_parse_node *nodep, Duro_interp *interp,
         int flags, RDB_exec_context *ecp)
 {
-    RDB_object idobj;
     RDB_expression *srcexp;
 
-    RDB_init_obj(&idobj);
-
-    if (RDB_parse_node_qid(nodep, &idobj, ecp) != RDB_OK) {
-        RDB_destroy_obj(&idobj, ecp);
-        return RDB_ERROR;
-    }
-
-    delp->tbp = Duro_lookup_var(RDB_obj_string(&idobj), interp, ecp);
-    RDB_destroy_obj(&idobj, ecp);
+    delp->tbp = resolve_parse_node_qid(nodep, interp, ecp);
     if (delp->tbp == NULL) {
         return RDB_ERROR;
     }
@@ -871,6 +891,78 @@ error:
         RDB_destroy_obj(&srcobjv[i], ecp);
 
     return RDB_ERROR;
+}
+
+int
+Duro_exec_load(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
+{
+    RDB_object srctb;
+    RDB_object *srctbp;
+    int ret;
+    RDB_expression *tbexp;
+    RDB_object *dstp;
+    const char *srcvarname;
+    int seqitc;
+    RDB_parse_node *seqitnodep;
+    RDB_seq_item *seqitv = NULL;
+
+    RDB_init_obj(&srctb);
+
+    dstp = resolve_parse_node_qid(nodep, interp, ecp);
+    if (dstp == NULL) {
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+
+    tbexp = RDB_parse_node_expr(nodep->nextp->nextp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL);
+    if (tbexp == NULL) {
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+
+    /*
+     * If the expression is a variable reference, look up the variable,
+     * otherwise evaluate the expression
+     */
+    srcvarname = RDB_expr_var_name(tbexp);
+    if (srcvarname != NULL) {
+        srctbp = Duro_lookup_var(srcvarname, interp, ecp);
+        if (srctbp == NULL) {
+            ret = RDB_ERROR;
+            goto cleanup;
+        }
+    } else {
+        if (Duro_evaluate_retry(tbexp, interp, ecp, &srctb) != RDB_OK) {
+            ret = RDB_ERROR;
+            goto cleanup;
+        }
+        srctbp = &srctb;
+    }
+
+    seqitnodep = nodep->nextp->nextp->nextp->nextp->nextp;
+    seqitc = (RDB_parse_nodelist_length(seqitnodep) + 1) / 2;
+    if (seqitc > 0) {
+        seqitv = RDB_alloc(sizeof(RDB_seq_item) * seqitc, ecp);
+        if (seqitv == NULL) {
+            ret = RDB_ERROR;
+            goto cleanup;
+        }
+    }
+    ret = Duro_nodes_to_seqitv(seqitv, seqitnodep->val.children.firstp,
+            interp, ecp);
+    if (ret != RDB_OK) {
+        goto cleanup;
+    }
+
+    ret = RDB_table_to_array(dstp, srctbp, seqitc, seqitv, 0, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL);
+
+cleanup:
+    if (seqitv != NULL)
+        RDB_free(seqitv);
+    RDB_destroy_obj(&srctb, ecp);
+    return ret;
 }
 
 static int

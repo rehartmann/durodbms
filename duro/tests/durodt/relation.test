@@ -963,6 +963,17 @@ test logic {Logic operators} -setup $SETUP -cleanup $CLEANUP -body {
 			io.put(arr[i].b); io.put_line('');			
 		end for;
 
+		io.put_line('');
+
+        -- Tuple attribute as target
+        var tp tuple { a array tuple same_heading_as(t) };
+        load tp.a from t where a=2 order (b asc);
+        for i:= 0 to length(tp.a) - 1;
+			io.put(tp.a[i].a);
+			io.put(' ');
+			io.put(tp.a[i].b); io.put_line('');			
+		end for;        
+        
         commit;
     }
 } -result {invalid order clause
@@ -983,6 +994,9 @@ test logic {Logic operators} -setup $SETUP -cleanup $CLEANUP -body {
 
 1 2
 2 1
+
+2 1
+2 2
 }
 
 test aggregate {Aggregate operators} -setup $SETUP -cleanup $CLEANUP -body {

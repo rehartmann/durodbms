@@ -548,116 +548,6 @@ error:
 }
 
 static int
-nodes_to_seqitv(RDB_seq_item *seqitv, RDB_parse_node *nodep,
-        Duro_interp *interp, RDB_exec_context *ecp)
-{
-    RDB_expression *exp;
-    int i = 0;
-
-    if (nodep != NULL) {
-        for (;;) {
-            /* Get attribute name */
-            exp = RDB_parse_node_expr(nodep->val.children.firstp, ecp,
-                    interp->txnp != NULL ? &interp->txnp->tx : NULL);
-            if (exp == NULL) {
-                return RDB_ERROR;
-            }
-            seqitv[i].attrname = (char *) RDB_expr_var_name(exp);
-
-            /* Get ascending/descending info */
-            seqitv[i].asc = (RDB_bool)
-                    (nodep->val.children.firstp->nextp->val.token == TOK_ASC);
-
-            nodep = nodep->nextp;
-            if (nodep == NULL)
-                break;
-
-            /* Skip comma */
-            nodep = nodep->nextp;
-
-            i++;
-        }
-    }
-    return RDB_OK;
-}
-
-static int
-exec_load(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
-{
-    RDB_object srctb;
-    RDB_object *srctbp;
-    int ret;
-    RDB_expression *tbexp;
-    RDB_object *dstp;
-    const char *srcvarname;
-    int seqitc;
-    RDB_parse_node *seqitnodep;
-    RDB_seq_item *seqitv = NULL;
-
-    RDB_init_obj(&srctb);
-
-    tbexp = RDB_parse_node_expr(nodep, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
-    if (tbexp == NULL) {
-        ret = RDB_ERROR;
-        goto cleanup;
-    }
-    dstp = Duro_lookup_var(RDB_expr_var_name(tbexp), interp, ecp);
-    if (dstp == NULL) {
-        ret = RDB_ERROR;
-        goto cleanup;
-    }
-
-    tbexp = RDB_parse_node_expr(nodep->nextp->nextp, ecp,
-            interp->txnp != NULL ? &interp->txnp->tx : NULL);
-    if (tbexp == NULL) {
-        ret = RDB_ERROR;
-        goto cleanup;
-    }
-
-    /*
-     * If the expression is a variable reference, look up the variable,
-     * otherwise evaluate the expression
-     */
-    srcvarname = RDB_expr_var_name(tbexp);
-    if (srcvarname != NULL) {
-        srctbp = Duro_lookup_var(srcvarname, interp, ecp);
-        if (srctbp == NULL) {
-            ret = RDB_ERROR;
-            goto cleanup;
-        }
-    } else {
-        if (Duro_evaluate_retry(tbexp, interp, ecp, &srctb) != RDB_OK) {
-            ret = RDB_ERROR;
-            goto cleanup;
-        }
-        srctbp = &srctb;
-    }
-
-    seqitnodep = nodep->nextp->nextp->nextp->nextp->nextp;
-    seqitc = (RDB_parse_nodelist_length(seqitnodep) + 1) / 2;
-    if (seqitc > 0) {
-        seqitv = RDB_alloc(sizeof(RDB_seq_item) * seqitc, ecp);
-        if (seqitv == NULL) {
-            ret = RDB_ERROR;
-            goto cleanup;
-        }
-    }
-    ret = nodes_to_seqitv(seqitv, seqitnodep->val.children.firstp, interp, ecp);
-    if (ret != RDB_OK) {
-        goto cleanup;
-    }
-
-    ret = RDB_table_to_array(dstp, srctbp, seqitc, seqitv, 0, ecp,
-            interp->txnp != NULL ? &interp->txnp->tx : NULL);
-
-cleanup:
-    if (seqitv != NULL)
-        RDB_free(seqitv);
-    RDB_destroy_obj(&srctb, ecp);
-    return ret;
-}
-
-static int
 exec_explain(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
 {
     int ret;
@@ -693,7 +583,7 @@ exec_explain(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
         goto cleanup;
     }
 
-    ret = nodes_to_seqitv(seqitv,
+    ret = Duro_nodes_to_seqitv(seqitv,
             nodep->nextp->nextp->nextp->val.children.firstp, interp, ecp);
     if (ret != RDB_OK) {
         goto cleanup;
@@ -1037,7 +927,7 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
             goto error;
     }
     seqitnodep = nodep->nextp->nextp->nextp->nextp->nextp;
-    if (nodes_to_seqitv(seqitv, seqitnodep->val.children.firstp, interp, ecp)
+    if (Duro_nodes_to_seqitv(seqitv, seqitnodep->val.children.firstp, interp, ecp)
                     != RDB_OK) {
         goto error;
     }
@@ -2750,7 +2640,7 @@ Duro_exec_stmt(RDB_parse_node *stmtp, Duro_interp *interp,
                 ret = exec_return(firstchildp->nextp, interp, ecp, retinfop);
                 break;
             case TOK_LOAD:
-                ret = exec_load(firstchildp->nextp, interp, ecp);
+                ret = Duro_exec_load(firstchildp->nextp, interp, ecp);
                 break;
             case TOK_CONSTRAINT:
                 ret = exec_constrdef(firstchildp->nextp, interp, ecp);

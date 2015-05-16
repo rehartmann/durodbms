@@ -850,7 +850,7 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $1);
         RDB_parse_add_child($$, $2);
     }
-    | TOK_LOAD TOK_ID TOK_FROM expression TOK_ORDER '(' order_item_commalist ')' ';' {
+    | TOK_LOAD qualified_id TOK_FROM expression TOK_ORDER '(' order_item_commalist ')' ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
