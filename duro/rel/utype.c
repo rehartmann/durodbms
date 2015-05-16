@@ -253,7 +253,7 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
                 goto error;
             }
 
-            /* Make type name (without module) the possrep name */
+            /* Make type name (without package) the possrep name */
             dp = strrchr(name, '.');
             if (dp == NULL) {
                 prname = (char *) name;

@@ -25,7 +25,7 @@
 <li><a href="#user-ops">User-defined operators</a>
 <li><a href="#user-types">User-defined types</a>
 <li><a href="#exception">Exception handling</a>
-<li><a href="#modules">Modules</a>
+<li><a href="#packages">Packages</a>
 <li><a href="#performance">Performance</a>
 </ul>
 
@@ -812,11 +812,11 @@ no db>
 
 <p><code>io.get_line</code> is defined as follows:</p>
 
-<p>MODULE io;
+<p>PACKAGE io;
 
 <p>OPERATOR get_line(line string) UPDATES { line };</p>
 
-<p>END MODULE;
+<p>END PACKAGE;
 
 <p><code>io.get_line</code> reads one line from standard input and stores
 it in <code>line</code>, without the trailing newline.</p>
@@ -1077,28 +1077,28 @@ end try;
 
 <p>Note that there must at least one statement between CATCH and END TRY.
 
-<h2 id="modules">Modules</h2>
+<h2 id="packages">Packages</h2>
 
-<p>Operators, types, and public tables can be organized in modules.
+<p>Operators, types, and public tables can be organized in packages.
 
-<p>A module consists of a definition and an (optional) implementation part.
-Database tables cannot be part of a module.
+<p>A package consists of a definition and an (optional) implementation part.
+Database tables cannot be part of a package.
 
 <p>In practice, it may be a good idea to clearly distinguish between
-application modules containing application code and public tables on the one hand
-and 'base modules' containing types and operators used in databases on the other,
-avoiding a mutual dependency between databases and modules.
+application packages containing application code and public tables on the one hand
+and 'base packages' containing types and operators used in databases on the other,
+avoiding a mutual dependency between databases and packages.
 
 <p>Example:
 
 <pre>
-module emp;
+package emp;
 
     type empno possrep { no int } init emp.empno(0);
 
-end module;
+end package;
 
-implement module emp;
+implement package emp;
 
     implement type empno;
     end implement;
@@ -1107,7 +1107,7 @@ end implement;
 
 var employees real relation { empno emp.empno, name string } key { empno };
 
-module empapp;
+package empapp;
 
     var employees public relation { empno emp.empno, name string } key { empno };
 
@@ -1121,35 +1121,35 @@ module empapp;
         end for;
     end operator;
 
-end module;
+end package;
 
-implement module empapp;
+implement package empapp;
 
     map employees employees;
 
 end implement;
 </pre>
 
-<p>Operators, types, and public tables contained in a module can be dropped
-by surrounding the respective DROP statements by MODULE .. END MODULE;
+<p>Operators, types, and public tables contained in a package can be dropped
+by surrounding the respective DROP statements by PACKAGE .. END PACKAGE;
 
 <p>Example:
 
 <pre>
-module empapp;
+package empapp;
 
     drop operator print_employees;
     drop var employees;
 
-end module;
+end package;
 
 drop var employees;
 
-module emp;
+package emp;
 
     drop type empno;
 
-end module;
+end package;
 </pre>
 
 <h2 id="performance">Performance</h2>

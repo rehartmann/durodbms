@@ -607,11 +607,11 @@ The IF-THEN-ELSE operator.
 
 <h3 id="op_getenv">OPERATOR getenv</h3>
 
-MODULE os;
+PACKAGE os;
 
 OPERATOR getenv (name string) RETURNS string;
 
-END MODULE;
+END PACKAGE;
 
 <h4>Description</h4>
 

@@ -43,8 +43,8 @@ int RDB_parse_tokens[] = {
     TOK_IF, TOK_IMPLEMENT, TOK_IN, TOK_INDEX, TOK_INIT, TOK_INSERT,
     TOK_INTERSECT, TOK_I_DELETE, TOK_JOIN, TOK_KEY, TOK_LEAVE,
     TOK_LIKE, TOK_LOAD, TOK_MAX, TOK_MATCHING,
-    TOK_MIN, TOK_MINUS, TOK_MODULE, TOK_NOT, TOK_OPERATOR, TOK_OR,
-    TOK_ORDER, TOK_ORDERED, TOK_PER,
+    TOK_MIN, TOK_MINUS, TOK_NOT, TOK_OPERATOR, TOK_OR,
+    TOK_ORDER, TOK_ORDERED, TOK_PACKAGE, TOK_PER,
     TOK_POSSREP, TOK_PRIVATE, TOK_RAISE, TOK_REAL, TOK_REGEX_LIKE,
     TOK_RELATION, TOK_RENAME, TOK_RETURN, TOK_RETURNS,
     TOK_ROLLBACK, TOK_SAME_HEADING_AS, TOK_SAME_TYPE_AS,
@@ -685,7 +685,7 @@ divide_node_expr(RDB_parse_node *argnodep,
 }
 
 int
-RDB_parse_node_modname(RDB_parse_node *nodep, RDB_object *nameobjp, RDB_exec_context *ecp)
+RDB_parse_node_pkgname(RDB_parse_node *nodep, RDB_object *nameobjp, RDB_exec_context *ecp)
 {
     const char *name;
 
@@ -712,7 +712,7 @@ RDB_parse_node_modname(RDB_parse_node *nodep, RDB_object *nameobjp, RDB_exec_con
                 RDB_raise_syntax("identifier expected", ecp);
                 return RDB_ERROR;
             }
-            if (RDB_parse_node_modname(nodep->val.children.firstp, nameobjp, ecp) != RDB_OK) {
+            if (RDB_parse_node_pkgname(nodep->val.children.firstp, nameobjp, ecp) != RDB_OK) {
                 return RDB_ERROR;
             }
             name = RDB_expr_var_name(nodep->val.children.firstp->nextp->nextp->exp);
@@ -740,7 +740,7 @@ ro_op_node_expr(RDB_parse_node *argnodep, RDB_exec_context *ecp,
     RDB_init_obj(&qop_nameobj);
 
     if (argnodep->kind == RDB_NODE_INNER) {
-        if (RDB_parse_node_modname(argnodep->val.children.firstp, &qop_nameobj, ecp) != RDB_OK)
+        if (RDB_parse_node_pkgname(argnodep->val.children.firstp, &qop_nameobj, ecp) != RDB_OK)
             goto error;
         if (RDB_append_string(&qop_nameobj, ".", ecp) != RDB_OK)
             goto error;

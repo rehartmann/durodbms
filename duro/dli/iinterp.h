@@ -60,8 +60,8 @@ typedef struct Duro_interp {
     /* Top-level variables */
     RDB_hashmap root_varmap;
 
-    /* Name of current module */
-    RDB_object module_name;
+    /* Name of current package */
+    RDB_object pkg_name;
 
     int err_line;
     char *err_opname;

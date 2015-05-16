@@ -2,9 +2,8 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
-# $Id$
 #
-# Test database tables and relational operators
+# Test packages
 #
 
 package require tcltest 2.2
@@ -27,7 +26,7 @@ set ::CLEANUP {
     removeDirectory dbenv
 }
 
-test module {Modules} \
+test package {Packages} \
         -setup $SETUP -cleanup $CLEANUP -body {
     puts -nonewline [exec $testdir/../../dli/durodt << {
         connect('dbenv');
@@ -35,7 +34,7 @@ test module {Modules} \
 
         begin tx;
 
-        module m;
+        package m;
         
             operator mul2(n int) returns int;
                 return n * 2;
@@ -49,7 +48,7 @@ test module {Modules} \
                 puts(s);
             end operator;
 
-            module modmod_mod;
+            package modmod_pkg;
                 operator dec(n int) returns int;
                     return n - 1;
                 end operator;
@@ -57,7 +56,7 @@ test module {Modules} \
                 operator mul2upd(n int) updates {n};
                     n := n * 2;
                 end operator;
-            end module;
+            end package;
 
             type t1 possrep { comp int } init(m.t1(0));
 
@@ -66,11 +65,11 @@ test module {Modules} \
 
             var p public relation { n int, s string } key { n };
 
-        end module;
+        end package;
 
         var r real rel { n int, s string } key { n };
 
-        implement module m;
+        implement package m;
         
             implement type t1;
             end implement;
@@ -90,11 +89,11 @@ test module {Modules} \
         m.puts('Yip');
         m.call_puts('Yup');
 
-        io.put(m.modmod_mod.dec(17));
+        io.put(m.modmod_pkg.dec(17));
         io.put_line('');
 
         var m int init 7;
-        call m.modmod_mod.mul2upd(m);
+        call m.modmod_pkg.mul2upd(m);
         io.put(m);
         io.put_line('');
     }]
@@ -107,11 +106,11 @@ test module {Modules} \
  
         m.puts('/&;');
 
-        io.put(m.modmod_mod.dec(10));
+        io.put(m.modmod_pkg.dec(10));
         io.put_line('');
 
         var mv int init 22;
-        call m.modmod_mod.mul2upd(mv);
+        call m.modmod_pkg.mul2upd(mv);
         io.put(mv);
         io.put_line('');
         
@@ -198,17 +197,17 @@ test module {Modules} \
 
         begin tx;
 
-        module m;
+        package m;
         
             drop operator mul2;
  
             drop operator puts;
 
-            module modmod_mod;
+            package modmod_pkg;
                 drop operator dec;
 
                 drop operator mul2upd;
-            end module;
+            end package;
 
             drop type t1;
 
@@ -216,7 +215,7 @@ test module {Modules} \
 
             drop var p;
 
-        end module;
+        end package;
 
         try
             var s init io.put(m.mul2(1));
@@ -234,13 +233,13 @@ test module {Modules} \
 
         -- Re-create type with different definition
 
-        module m;
+        package m;
 
             type t1 possrep pr { comp1 string, comp2 int } init(m.pr('', 0));
         
-        end module;
+        end package;
 
-        implement module m;
+        implement package m;
 
             implement type t1;
             end implement;

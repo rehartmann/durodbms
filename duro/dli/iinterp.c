@@ -394,7 +394,7 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
     RDB_init_obj(&qop_nameobj);
 
     if (nodep->kind == RDB_NODE_INNER) {
-        if (RDB_parse_node_modname(nodep->val.children.firstp, &qop_nameobj, ecp) != RDB_OK)
+        if (RDB_parse_node_pkgname(nodep->val.children.firstp, &qop_nameobj, ecp) != RDB_OK)
             goto error;
         if (RDB_append_string(&qop_nameobj, ".", ecp) != RDB_OK)
             goto error;
@@ -436,8 +436,8 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
         RDB_object opnameobj;
 
         /*
-         * If not found and we're inside an operator that belongs to a module,
-         * try again with the module name prepended
+         * If not found and we're inside an operator that belongs to a package,
+         * try again with the package name prepended
          */
         if (interp->inner_op == NULL
                 || RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR) {
@@ -1232,9 +1232,9 @@ exec_typedef(const RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context 
             goto error;
     }
 
-    /* If we're within MODULE, prepend module name */
-    if (*RDB_obj_string(&interp->module_name) != '\0') {
-        if (Duro_module_q_id(&nameobj, RDB_expr_var_name(stmtp->exp), interp, ecp) != RDB_OK)
+    /* If we're within PACKAGE, prepend package name */
+    if (*RDB_obj_string(&interp->pkg_name) != '\0') {
+        if (Duro_package_q_id(&nameobj, RDB_expr_var_name(stmtp->exp), interp, ecp) != RDB_OK)
             goto error;
         namp = RDB_obj_string(&nameobj);
     } else {
@@ -1297,9 +1297,9 @@ exec_typedrop(const RDB_parse_node *nodep, Duro_interp *interp,
 
     RDB_init_obj(&nameobj);
 
-    /* If we're within MODULE, prepend module name */
-    if (*RDB_obj_string(&interp->module_name) != '\0') {
-        if (Duro_module_q_id(&nameobj, RDB_expr_var_name(nodep->exp), interp, ecp) != RDB_OK)
+    /* If we're within PACKAGE, prepend package name */
+    if (*RDB_obj_string(&interp->pkg_name) != '\0') {
+        if (Duro_package_q_id(&nameobj, RDB_expr_var_name(nodep->exp), interp, ecp) != RDB_OK)
             goto error;
         namp = RDB_obj_string(&nameobj);
     } else {
@@ -1362,8 +1362,8 @@ exec_typeimpl(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
 
     RDB_init_obj(&nameobj);
 
-    if (*RDB_obj_string(&interp->module_name) != '\0') {
-        if (Duro_module_q_id(&nameobj, RDB_expr_var_name(nodep->exp), interp, ecp) != RDB_OK)
+    if (*RDB_obj_string(&interp->pkg_name) != '\0') {
+        if (Duro_package_q_id(&nameobj, RDB_expr_var_name(nodep->exp), interp, ecp) != RDB_OK)
             goto error;
         namp = RDB_obj_string(&nameobj);
     } else {
@@ -1692,7 +1692,7 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
 }
 
-/* Define read-only operator, prepend module name */
+/* Define read-only operator, prepend package name */
 static int
 create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type *rtyp,
                  const char *libname, const char *symname,
@@ -1701,12 +1701,12 @@ create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type *rty
 {
     RDB_object opnameobj;
 
-    if (*RDB_obj_string(&interp->module_name) == '\0') {
+    if (*RDB_obj_string(&interp->pkg_name) == '\0') {
         return RDB_create_ro_op(name, paramc, paramv, rtyp,
                 libname, symname, sourcep, ecp, txp);
     }
     RDB_init_obj(&opnameobj);
-    if (Duro_module_q_id(&opnameobj, name, interp, ecp) != RDB_OK)
+    if (Duro_package_q_id(&opnameobj, name, interp, ecp) != RDB_OK)
         goto error;
 
     if (RDB_create_ro_op(RDB_obj_string(&opnameobj), paramc, paramv, rtyp,
@@ -1739,7 +1739,7 @@ ro_opdef_extern(const char *opname, RDB_type *rtyp,
             extname, interp, ecp, txp);
 }
 
-/* Define  operator, prepend module name */
+/* Define  operator, prepend package name */
 static int
 create_update_op(const char *name, int paramc, RDB_parameter paramv[],
                  const char *libname, const char *symname,
@@ -1748,12 +1748,12 @@ create_update_op(const char *name, int paramc, RDB_parameter paramv[],
 {
     RDB_object opnameobj;
 
-    if (*RDB_obj_string(&interp->module_name) == '\0') {
+    if (*RDB_obj_string(&interp->pkg_name) == '\0') {
         return RDB_create_update_op(name, paramc, paramv,
                 libname, symname, sourcep, ecp, txp);
     }
     RDB_init_obj(&opnameobj);
-    if (RDB_string_to_obj(&opnameobj, RDB_obj_string(&interp->module_name), ecp) != RDB_OK)
+    if (RDB_string_to_obj(&opnameobj, RDB_obj_string(&interp->pkg_name), ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(&opnameobj, ".", ecp) != RDB_OK)
         goto error;
@@ -2071,9 +2071,9 @@ exec_opdrop(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *
 
     RDB_init_obj(&nameobj);
 
-    /* If we're within MODULE, prepend module name */
-    if (*RDB_obj_string(&interp->module_name) != '\0') {
-        if (Duro_module_q_id(&nameobj, RDB_expr_var_name(nodep->exp), interp, ecp) != RDB_OK)
+    /* If we're within PACKAGE, prepend package name */
+    if (*RDB_obj_string(&interp->pkg_name) != '\0') {
+        if (Duro_package_q_id(&nameobj, RDB_expr_var_name(nodep->exp), interp, ecp) != RDB_OK)
             goto error;
         opname = RDB_obj_string(&nameobj);
     } else {
@@ -2289,33 +2289,34 @@ exec_try(const RDB_parse_node *nodep, Duro_interp *interp,
     return ret;
 }
 
-/* Implements both MODULE .. END MODULE and IMPLEMENT MODULE .. END IMPLEMENT. */
+/* Implements both PACKAGE .. END PACKAGE and IMPLEMENT PACKAGE .. END IMPLEMENT. */
 static int
-exec_moduledef(RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context *ecp,
+exec_packagedef(RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context *ecp,
         Duro_return_info *retinfop)
 {
     int ret;
-    RDB_object oldmodname;
-    size_t olen = strlen(RDB_obj_string(&interp->module_name));
-    RDB_init_obj(&oldmodname);
+    RDB_object oldpkgname;
+    size_t olen = strlen(RDB_obj_string(&interp->pkg_name));
+
+    RDB_init_obj(&oldpkgname);
 
     if (olen > 0) {
-        RDB_append_string(&interp->module_name, ".", ecp);
+        RDB_append_string(&interp->pkg_name, ".", ecp);
     }
-    RDB_append_string(&interp->module_name, RDB_expr_var_name(stmtp->exp), ecp);
+    RDB_append_string(&interp->pkg_name, RDB_expr_var_name(stmtp->exp), ecp);
 
     ret = exec_stmts(stmtp->nextp->nextp->val.children.firstp,
             interp, ecp, retinfop);
 
-    if (RDB_string_n_to_obj(&oldmodname, RDB_obj_string(&interp->module_name),
+    if (RDB_string_n_to_obj(&oldpkgname, RDB_obj_string(&interp->pkg_name),
             olen, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (RDB_copy_obj(&interp->module_name, &oldmodname, ecp) != RDB_OK) {
+    if (RDB_copy_obj(&interp->pkg_name, &oldpkgname, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 
-    RDB_destroy_obj(&oldmodname, ecp);
+    RDB_destroy_obj(&oldpkgname, ecp);
     return ret;
 }
 
@@ -2494,8 +2495,8 @@ exec_map(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
 
     RDB_init_obj(&idobj);
 
-    if (*RDB_obj_string(&interp->module_name) != '\0') {
-        if (Duro_module_q_id(&idobj, RDB_expr_var_name(nodep->exp), interp, ecp)
+    if (*RDB_obj_string(&interp->pkg_name) != '\0') {
+        if (Duro_package_q_id(&idobj, RDB_expr_var_name(nodep->exp), interp, ecp)
                 != RDB_OK) {
             goto error;
         }
@@ -2662,7 +2663,7 @@ Duro_exec_stmt(RDB_parse_node *stmtp, Duro_interp *interp,
                 if (firstchildp->nextp->val.token == TOK_TYPE) {
                     ret = exec_typeimpl(firstchildp->nextp->nextp, interp, ecp);
                 } else {
-                    ret = exec_moduledef(firstchildp->nextp->nextp, interp, ecp, retinfop);
+                    ret = exec_packagedef(firstchildp->nextp->nextp, interp, ecp, retinfop);
                 }
                 break;
             case TOK_MAP:
@@ -2671,8 +2672,8 @@ Duro_exec_stmt(RDB_parse_node *stmtp, Duro_interp *interp,
             case TOK_RENAME:
                 ret = Duro_exec_rename(firstchildp->nextp->nextp, interp, ecp);
                 break;
-            case TOK_MODULE:
-                ret = exec_moduledef(firstchildp->nextp, interp, ecp, retinfop);
+            case TOK_PACKAGE:
+                ret = exec_packagedef(firstchildp->nextp, interp, ecp, retinfop);
                 break;
             default:
                 RDB_raise_internal("invalid token", ecp);
@@ -2899,7 +2900,7 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
     RDB_init_obj(&interp->current_db_obj);
     RDB_init_obj(&interp->implicit_tx_obj);
 
-    RDB_init_obj(&interp->module_name);
+    RDB_init_obj(&interp->pkg_name);
 
     if (RDB_put_upd_op(&interp->sys_upd_op_map, "exit", 0, NULL, &exit_op, ecp) != RDB_OK)
         goto error;
@@ -2928,7 +2929,7 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
             ecp) != RDB_OK)
         goto error;
 
-    /* Create current_db and implicit_tx in system module */
+    /* Create current_db and implicit_tx in system package */
 
     if (dbname == NULL)
         dbname = "";
@@ -2954,7 +2955,7 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
         goto error;
     }
 
-    if (RDB_string_to_obj(&interp->module_name, "", ecp) != RDB_OK)
+    if (RDB_string_to_obj(&interp->pkg_name, "", ecp) != RDB_OK)
         goto error;
 
     interp->err_opname = NULL;
@@ -2966,7 +2967,7 @@ error:
     RDB_destroy_obj(&interp->implicit_tx_obj, ecp);
 
     RDB_destroy_op_map(&interp->sys_upd_op_map);
-    RDB_destroy_obj(&interp->module_name, ecp);
+    RDB_destroy_obj(&interp->pkg_name, ecp);
     RDB_destroy_hashmap(&interp->uop_info_map);
     return RDB_ERROR;
 }
@@ -3000,7 +3001,7 @@ Duro_destroy_interp(Duro_interp *interp)
 
     RDB_destroy_hashmap(&interp->uop_info_map);
 
-    RDB_destroy_obj(&interp->module_name, &ec);
+    RDB_destroy_obj(&interp->pkg_name, &ec);
 
     RDB_destroy_obj(&interp->current_db_obj, &ec);
 

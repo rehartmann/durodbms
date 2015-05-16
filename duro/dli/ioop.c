@@ -45,7 +45,7 @@ RDB_object DURO_STDERR_OBJ;
 /** @page io-ops Built-in I/O operators
 
 These operators are only available in Duro D/T.
-They are part of the io module;
+They are part of the io package;
 
 OPERATOR put_line(line string) UPDATES {};
 

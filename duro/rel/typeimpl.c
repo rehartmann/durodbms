@@ -1,8 +1,8 @@
 /*
- * typeimpl.c
+ * Type implementation functions
  *
- *  Created on: 02.12.2014
- *      Author: rene
+ * Copyright (C) 2014-2015 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #include "typeimpl.h"
@@ -14,7 +14,7 @@
 
 /*
  * Turn a possrep name into selector by copying it,
- * prepending the module name if necessary
+ * prepending the package name if necessary
  */
 int
 RDB_possrep_to_selector(RDB_object *selnameobjp, const char *repname,

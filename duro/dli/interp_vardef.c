@@ -566,8 +566,8 @@ Duro_exec_vardef_public(RDB_parse_node *nodep, Duro_interp *interp,
 
     RDB_init_obj(&idobj);
 
-    if (*RDB_obj_string(&interp->module_name) != '\0') {
-        if (Duro_module_q_id(&idobj, RDB_expr_var_name(nodep->exp), interp, ecp)
+    if (*RDB_obj_string(&interp->pkg_name) != '\0') {
+        if (Duro_package_q_id(&idobj, RDB_expr_var_name(nodep->exp), interp, ecp)
                 != RDB_OK) {
             goto error;
         }

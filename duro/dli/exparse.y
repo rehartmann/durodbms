@@ -167,7 +167,7 @@ yyerror(const char *);
 %token TOK_INDEX "INDEX"
 %token TOK_EXPLAIN "EXPLAIN"
 %token TOK_MAP "MAP"
-%token TOK_MODULE "MODULE"
+%token TOK_PACKAGE "PACKAGE"
 %token TOK_INVALID "invalid"
 
 %left TOK_FROM TOK_ELSE ','
@@ -968,23 +968,23 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $3);
     }
     | type_impl
-    | module_def
-    | module_impl
+    | package_def
+    | package_impl
     ;
 
-    mod_stmt_list: /* empty */ {
+    pkg_stmt_list: /* empty */ {
         $$ = new_parse_inner();
     }
-    | mod_stmt_list mod_stmt {
+    | pkg_stmt_list pkg_stmt {
        	$$ = $1;
         RDB_parse_add_child($$, $2);
     }
  
-    mod_stmt: ro_op_def
+    pkg_stmt: ro_op_def
     | update_op_def
     | public_var_def
     | type_def
-    | module_def
+    | package_def
     | op_drop
     | type_drop
     | var_drop
@@ -1037,7 +1037,7 @@ statement: assignment ';' {
     }
     ;
 
-    module_def: TOK_MODULE TOK_ID ';' mod_stmt_list TOK_END TOK_MODULE ';' {
+    package_def: TOK_PACKAGE TOK_ID ';' pkg_stmt_list TOK_END TOK_PACKAGE ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -1059,7 +1059,7 @@ statement: assignment ';' {
     }
     ;
 
-    module_impl: TOK_IMPLEMENT TOK_MODULE TOK_ID ';' module_impl_stmt_list TOK_END TOK_IMPLEMENT ';' {
+    package_impl: TOK_IMPLEMENT TOK_PACKAGE TOK_ID ';' package_impl_stmt_list TOK_END TOK_IMPLEMENT ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -1082,15 +1082,15 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $8);
     }
 
-    module_impl_stmt_list: /* empty */ {
+    package_impl_stmt_list: /* empty */ {
         $$ = new_parse_inner();
     }
-    | module_impl_stmt_list module_impl_stmt {
+    | package_impl_stmt_list package_impl_stmt {
        	$$ = $1;
         RDB_parse_add_child($$, $2);
     }
  
-    module_impl_stmt: type_impl
+    package_impl_stmt: type_impl
     | map_def
     ;
 

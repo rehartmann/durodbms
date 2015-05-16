@@ -2,15 +2,21 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 0.26
 
-- Duro D/T: It is now possible to omit the module name when calling a
+- Duro D/T: Replaced MODULE by PACKAGE.
+
+- Duro D/T: It is now possible to omit the package name when calling a
   user-defined update operator from another operator that belongs to the same
-  module.
+  package.
 
 - Duro D/T: Updating tuples using t.attr := v is now supported in addition to
   UPDATE t { attr := v }.
 
-- Duro D/T: Tuple attributes are now allowed as a target in INSERT, UPDATE,
-  and LOAD.
+- Duro D/T: Added D_INSERT and I_DELETE. RDB_ma_insert and RDB_ma_vdelete
+  now contain a flags field which must be initialized when a pointer
+  to the respective structure is passed to RDB_multi_assign().
+
+- Duro D/T: Tuple attributes are now allowed as a target in INSERT, D_INSERT,
+  DELETE, I_DELETE, and LOAD.
 
 - Database environments are by default opened with the DB_CREATE flag.
 
@@ -33,10 +39,6 @@ DuroDBMS 0.26
 - Replaced fatal_error by data_corruption_error and run_recovery_error.
 
 - Java interface: DException now extends RuntimeException.
-
-- Added D_INSERT and I_DELETE. RDB_ma_insert and RDB_ma_vdelete
-  now contain a flags field which must be initialized when a pointer
-  to the respective structure is passed to RDB_multi_assign().
 
 - Added built-in read-only operators strfind_b(), substr_b(), and strlen_b().
 

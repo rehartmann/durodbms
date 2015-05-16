@@ -1,8 +1,8 @@
 /*
  * Catalog functions dealing with user-defined types.
  *
- *  Created on: 02.09.2012
- *      Author: Rene Hartmann
+ * Copyright (C) 2012-2015 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #include "cat_type.h"
@@ -606,7 +606,7 @@ opname_is_selector(const char *opname, const char *typename, const char *repname
     size_t opmodlen;
     char *lastdotp = strrchr(opname, '.');
     if (lastdotp == NULL) {
-        /* Operator is not in a module, simply compare with rep name */
+        /* Operator is not in a package, simply compare with rep name */
         return (RDB_bool) (strcmp(opname, repname) == 0);
     }
 
@@ -614,7 +614,7 @@ opname_is_selector(const char *opname, const char *typename, const char *repname
     if (strcmp(lastdotp + 1, repname) != 0)
         return RDB_FALSE;
 
-    /* Check if operator module and type module are equal */
+    /* Check if operator package and type package are equal */
 
     typelastdotp = strrchr(typename, '.');
     if (typelastdotp == NULL)

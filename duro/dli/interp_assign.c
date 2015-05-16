@@ -14,11 +14,11 @@
 #include <string.h>
 
 /*
- * Resolve a
+ * Resolve a qualified intentifier.
  *
  * Given a.b, first check if a is a variable.
  * If it is, a must be a tuple and b must a tuple attribute.
- * It it is not, treat a as a module name.
+ * It it is not, treat a as a package name.
  */
 static RDB_object *
 resolve_parse_node_qid(RDB_parse_node *parentp, Duro_interp *interp,

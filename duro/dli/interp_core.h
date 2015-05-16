@@ -94,7 +94,7 @@ RDB_object *
 Duro_get_var(const char *, void *);
 
 int
-Duro_module_q_id(RDB_object *, const char *, Duro_interp *, RDB_exec_context *);
+Duro_package_q_id(RDB_object *, const char *, Duro_interp *, RDB_exec_context *);
 
 int
 Duro_nodes_to_seqitv(RDB_seq_item *, RDB_parse_node *,

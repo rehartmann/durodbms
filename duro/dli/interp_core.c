@@ -120,7 +120,7 @@ lookup_transient_var(Duro_interp *interp, const char *name, varmap_node *varmapp
     if (objp != NULL)
         return objp;
 
-    /* Search in system Duro_module */
+    /* Search in system varmap */
     return RDB_hashmap_get(&interp->sys_varmap, name);
 }
 
@@ -197,9 +197,9 @@ Duro_exec_vardrop(const RDB_parse_node *nodep, Duro_interp *interp,
 
     RDB_init_obj(&nameobj);
 
-    /* If we're within MODULE, prepend module name */
-    if (*RDB_obj_string(&interp->module_name) != '\0') {
-        if (Duro_module_q_id(&nameobj, RDB_expr_var_name(nodep->exp), interp, ecp) != RDB_OK)
+    /* If we're within PACKAGE, prepend package name */
+    if (*RDB_obj_string(&interp->pkg_name) != '\0') {
+        if (Duro_package_q_id(&nameobj, RDB_expr_var_name(nodep->exp), interp, ecp) != RDB_OK)
             goto error;
         varname = RDB_obj_string(&nameobj);
     } else {
@@ -432,11 +432,11 @@ Duro_parse_node_to_type_retry(RDB_parse_node *nodep, Duro_interp *interp,
     return typ;
 }
 
-/* Prepend id with module name */
+/* Prepend id with package name */
 int
-Duro_module_q_id(RDB_object *dstobjp, const char *id, Duro_interp *interp, RDB_exec_context *ecp)
+Duro_package_q_id(RDB_object *dstobjp, const char *id, Duro_interp *interp, RDB_exec_context *ecp)
 {
-    if (RDB_string_to_obj(dstobjp, RDB_obj_string(&interp->module_name), ecp) != RDB_OK)
+    if (RDB_string_to_obj(dstobjp, RDB_obj_string(&interp->pkg_name), ecp) != RDB_OK)
         return RDB_ERROR;
     if (RDB_append_string(dstobjp, ".", ecp) != RDB_OK)
         return RDB_ERROR;
