@@ -2,7 +2,6 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
-# $Id$
 #
 # Test public tables
 #
@@ -18,8 +17,8 @@ set ::SETUP {
     makeDirectory dbenv
     cd $::tcltest::temporaryDirectory
     exec $testdir/../../dli/durodt << {
-        CREATE_ENV('dbenv');
-        CREATE_DB('D');
+        create_env('dbenv');
+        create_db('D');
     }
 }
 
@@ -52,6 +51,14 @@ test create {creating and populating public table} -setup $SETUP -cleanup $CLEAN
         catch err name_error;
             io.put_line('name error caught');
         end try;
+
+        -- Must reconnect before accessing p again
+        commit;
+        disconnect();
+
+        connect('dbenv');
+        current_db:='D';
+        begin tx;
 
         map p r1;
 

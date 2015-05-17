@@ -18,6 +18,12 @@
 #include <string.h>
 #include <ctype.h>
 
+/*
+ * Marker object indicating that a previous search for a table has failed.
+ * Must not be accessed.
+ */
+static RDB_object null_tb;
+
 /** @defgroup db Database functions
  * \#include <rel/rdb.h>
  * @{
@@ -193,7 +199,7 @@ table_refs(RDB_database *dbp, RDB_object *tbp)
         }
 
         rtbp = datap != NULL ? (RDB_object *) datap : NULL;
-    } while (rtbp == NULL || (tbp == rtbp) || !RDB_table_refers(rtbp, tbp));
+    } while (rtbp == NULL || rtbp == &null_tb || (tbp == rtbp) || !RDB_table_refers(rtbp, tbp));
     RDB_destroy_hashmap_iter(&it);
     return RDB_TRUE;
 }
@@ -215,7 +221,7 @@ find_del_table(RDB_database *dbp)
         }
 
         tbp = (RDB_object *) datap;
-    } while (tbp == NULL || !RDB_table_is_user(tbp) || table_refs(dbp, tbp));
+    } while (tbp == NULL || tbp == &null_tb || !RDB_table_is_user(tbp) || table_refs(dbp, tbp));
     RDB_destroy_hashmap_iter(&it);
     return tbp;
 }
@@ -1025,7 +1031,7 @@ create_table(const char *name, RDB_type *reltyp,
     RDB_transaction tx;
 
     RDB_object *tbp = RDB_hashmap_get(&txp->dbp->tbmap, name);
-    if (tbp != NULL) {
+    if (tbp != NULL && tbp != &null_tb) {
         /* Table found - check if it exists in the catalog */
         if ((RDB_TB_CHECK & tbp->val.tb.flags) && (RDB_check_table(tbp, ecp, txp) != RDB_OK)) {
             /* Table no longer valid - recycle its RDB_object structure */
@@ -1231,6 +1237,11 @@ A pointer to the table, or NULL if an error occurred.
 
 The call may also fail for a @ref system-errors "system error",
 in which case the transaction may be implicitly rolled back.
+
+If a call failed with a name_error, subsequent attempts to get the
+same table from the same connection will also fail.
+This is to prevent multiple attempts to read the same table from
+the catalog.
 */
 RDB_object *
 RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
@@ -1243,6 +1254,11 @@ RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     while (dbp != NULL) {
         tbp = RDB_hashmap_get(&dbp->tbmap, name);
         if (tbp != NULL) {
+            if (tbp == &null_tb) {
+                /* A previous search has already failed */
+                RDB_raise_name(name, ecp);
+                return NULL;
+            }
             /* Found */
             return tbp;
         }
@@ -1277,6 +1293,8 @@ RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     }
 
     RDB_free_obj(tbp, ecp);
+    if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NAME_ERROR)
+        RDB_hashmap_put(&txp->dbp->tbmap, name, &null_tb);
     return NULL;
 }
 
@@ -1887,7 +1905,7 @@ RDB_set_user_tables_check(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_hashmap_iter(&it, &dbp->tbmap);
     while (RDB_hashmap_next(&it, &datap) != NULL) {
-        if (datap != NULL) {
+        if (datap != NULL && datap != &null_tb) {
             tbp = datap;
             if (RDB_table_is_user(tbp)) {
                 if (tbp->val.tb.stp != NULL) {
