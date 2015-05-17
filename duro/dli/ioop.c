@@ -45,11 +45,11 @@ RDB_object DURO_STDERR_OBJ;
 /** @page io-ops Built-in I/O operators
 
 These operators are only available in Duro D/T.
-They are part of the io package;
+They are part of the io package.
 
 OPERATOR put_line(line string) UPDATES {};
 
-Write <var>line</var> to standard output, followed by a newline.
+Writes <var>line</var> to standard output, followed by a newline.
 
 OPERATOR put(data string) UPDATES {};
 
@@ -65,19 +65,20 @@ OPERATOR put(data <em>RELATION</em>) UPDATES {};
 
 OPERATOR put(data <em>ARRAY</em>) UPDATES {};
 
-Write <var>data</var> to standard output.
+Writes <var>data</var> to standard output.
 
 OPERATOR get_line(line string) UPDATES {line};
 
-Read a line from standard input and store it in line, without the trailing newline.
+Reads a line from standard input and stores it in <var>line</var>,
+without the trailing newline.
 
 OPERATOR read(data binary, count integer) UPDATES {data};
 
-Read up to count bytes from standard input and store it in <var>data</var>.
+Reads up to count bytes from standard input and stores it in <var>data</var>.
 
 OPERATOR put_line(ios io.iostream_id, line string) UPDATES {};
 
-Write <var>line</var> to the I/O stream <var>ios</var>, followed by a newline.
+Writes <var>line</var> to the I/O stream <var>ios</var>, followed by a newline.
 
 OPERATOR put(ios io.iostream_id, data string) UPDATES {};
 
@@ -95,38 +96,49 @@ OPERATOR put(ios io.iostream_id, data <em>RELATION</em>) UPDATES {};
 
 OPERATOR put(ios io.iostream_id, data <em>ARRAY</em>) UPDATES {};
 
-Write <var>data</var> to the I/O stream <var>ios</var>.
+Writes <var>data</var> to the I/O stream <var>ios</var>.
 
 OPERATOR get_line(ios io.iostream_id, line string) UPDATES {line};
 
-Read a line from I/O stream <var>ios</var> and store it in line, without the trailing newline.
+Reads a line from I/O stream <var>ios</var> and store it in line, without the trailing newline.
 
 OPERATOR read(ios io.iostream_id, data binary, count integer) UPDATES {data};
 
-Read up to count bytes from <var>ios</var> and store it in <var>data</var>.
+Reads up to count bytes from <var>ios</var> and store it in <var>data</var>.
 
-OPERATOR open(ios io.iostream_id, string path, string mode) UPDATES {ios};
+OPERATOR open(ios io.iostream_id, path string, mode string) UPDATES {ios};
 
-Open file <var>path</var> in mode <var>mode</var> and store the resulting I/O stream
+Opens file <var>path</var> in mode <var>mode</var> and store the resulting I/O stream
 in <var>ios</var>.
 
 OPERATOR close(ios io.iostream_id) UPDATES {};
 
-Close I/O stream <var>ios</var>.
+Closes the I/O stream <var>ios</var>.
+
+OPERATOR seek(ios io.iostream_id, pos integer) UPDATES {};
+
+Sets the file position indicator for stream <var>ios</var> to <var>pos</var>.
 
 OPERATOR eof() RETURNS boolean;
 
-Return TRUE if the end-of-file indicator was set while reading
+Returns TRUE if the end-of-file indicator was set while reading
 from standard input.
 
 OPERATOR eof(ios io.iostream_id) RETURNS boolean;
 
-Return TRUE if the end-of-file indicator was set while reading
+Returns TRUE if the end-of-file indicator was set while reading
 from <var>ios</var>.
 
-OPERATOR www_form_to_tuple(tp <em>TUPLE</em>, form_data string) UPDATES {tp};
+OPERATOR tmpfile() RETURNS io.iostream_id;
 
-Convert WWW form data to a tuple.
+Opens a unique temporary file for reading and writing and returns an I/O stream.
+The file is automatically deleted when it is closed.
+
+The following operator is part of the www package.
+
+OPERATOR form_to_tuple(tp <em>TUPLE</em>, form_data string) UPDATES {tp};
+
+Converts WWW form data to a tuple.
 For each name/value pair set the value of the corresponding tuple attribute
 to the value of the pair.
 
