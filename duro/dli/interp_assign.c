@@ -7,7 +7,6 @@
 
 #include "interp_assign.h"
 #include "interp_core.h"
-#include "interp_eval.h"
 #include "exparse.h"
 #include <rel/tostr.h>
 
@@ -90,7 +89,8 @@ resolve_target(const RDB_expression *exp, Duro_interp *interp, RDB_exec_context 
 
             /* Get second argument, which must be INTEGER */
             RDB_init_obj(&idxobj);
-            if (Duro_evaluate_retry(RDB_expr_list_get(arglistp, 1), interp, ecp,
+            if (RDB_evaluate(RDB_expr_list_get(arglistp, 1), &Duro_get_var, interp, interp->envp, ecp,
+                    interp->txnp != NULL ? &interp->txnp->tx : NULL,
                     &idxobj) != RDB_OK) {
                 RDB_destroy_obj(&idxobj, ecp);
                 return NULL;
@@ -160,7 +160,8 @@ comp_node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
     RDB_possrep *possrep;
     RDB_object **argpv = NULL;
     RDB_object *argv = NULL;
-    RDB_type *typ = Duro_expr_type_retry(RDB_expr_list_get(RDB_expr_op_args(dstexp), 0), interp, ecp);
+    RDB_type *typ = RDB_expr_type(RDB_expr_list_get(RDB_expr_op_args(dstexp), 0), &Duro_get_var_type, interp,
+                interp->envp, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
     if (typ == NULL)
         return RDB_ERROR;
 
@@ -182,7 +183,9 @@ comp_node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
     }
 
     i = comp_idx(possrep, RDB_expr_op_name(dstexp));
-    if (Duro_evaluate_retry(srcexp, interp, ecp, &argv[i]) != RDB_OK)
+    if (RDB_evaluate(srcexp, &Duro_get_var, interp, interp->envp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL,
+            &argv[i]) != RDB_OK)
         goto error;
     argpv[i] = &argv[i];
 
@@ -216,7 +219,8 @@ comp_node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
                             interp->txnp != NULL ? &interp->txnp->tx : NULL);
                     if (srcexp == NULL)
                         goto error;
-                    if (Duro_evaluate_retry(srcexp, interp, ecp,
+                    if (RDB_evaluate(srcexp, &Duro_get_var, interp, interp->envp, ecp,
+                            interp->txnp != NULL ? &interp->txnp->tx : NULL,
                             &argv[i]) != RDB_OK)
                         goto error;
                     argpv[i] = &argv[i];
@@ -287,7 +291,9 @@ node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep, Duro_interp *interp,
         return comp_node_to_copy(copyp, nodep, dstexp, srcexp, interp, ecp);
     }
 
-    if (Duro_evaluate_retry(srcexp, interp, ecp, copyp->srcp) != RDB_OK) {
+    if (RDB_evaluate(srcexp, &Duro_get_var, interp, interp->envp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL,
+            copyp->srcp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -355,7 +361,9 @@ tuple_update_to_copy(RDB_ma_copy *copyp, RDB_object *dstp, RDB_parse_node *nodep
         ap = ap->nextp;
     }
 
-    if (Duro_evaluate_retry(srcexp, interp, ecp, copyp->srcp) != RDB_OK) {
+    if (RDB_evaluate(srcexp, &Duro_get_var, interp, interp->envp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL,
+            copyp->srcp) != RDB_OK) {
         goto error;
     }
 
@@ -392,7 +400,9 @@ node_to_insert(RDB_ma_insert *insp, RDB_parse_node *nodep, Duro_interp *interp,
         return RDB_ERROR;
     }
 
-    if (Duro_evaluate_retry(srcexp, interp, ecp, insp->objp) != RDB_OK) {
+    if (RDB_evaluate(srcexp, &Duro_get_var, interp, interp->envp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL,
+            insp->objp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -486,7 +496,9 @@ node_to_vdelete(RDB_ma_vdelete *delp, RDB_parse_node *nodep, Duro_interp *interp
         return RDB_ERROR;
     }
 
-    if (Duro_evaluate_retry(srcexp, interp, ecp, delp->objp) != RDB_OK) {
+    if (RDB_evaluate(srcexp, &Duro_get_var, interp, interp->envp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL,
+            delp->objp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -551,7 +563,9 @@ exec_length_assign(const RDB_parse_node *nodep, const RDB_expression *argexp,
             interp->txnp != NULL ? &interp->txnp->tx : NULL);
     if (srcexp == NULL)
         return RDB_ERROR;
-    if (Duro_evaluate_retry(srcexp, interp, ecp, &lenobj) != RDB_OK) {
+    if (RDB_evaluate(srcexp, &Duro_get_var, interp, interp->envp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL,
+            &lenobj) != RDB_OK) {
         RDB_destroy_obj(&lenobj, ecp);
         return RDB_ERROR;
     }
@@ -606,7 +620,9 @@ exec_the_assign_set(const RDB_parse_node *nodep, const RDB_expression *opexp,
         return RDB_ERROR;
 
     RDB_init_obj(&srcobj);
-    if (Duro_evaluate_retry(srcexp, interp, ecp, &srcobj) != RDB_OK) {
+    if (RDB_evaluate(srcexp, &Duro_get_var, interp, interp->envp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL,
+            &srcobj) != RDB_OK) {
         RDB_destroy_obj(&srcobj, ecp);
         return RDB_ERROR;
     }
@@ -933,7 +949,9 @@ Duro_exec_load(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp
             goto cleanup;
         }
     } else {
-        if (Duro_evaluate_retry(tbexp, interp, ecp, &srctb) != RDB_OK) {
+        if (RDB_evaluate(tbexp, &Duro_get_var, interp, interp->envp, ecp,
+                interp->txnp != NULL ? &interp->txnp->tx : NULL,
+                &srctb) != RDB_OK) {
             ret = RDB_ERROR;
             goto cleanup;
         }

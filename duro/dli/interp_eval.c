@@ -1,14 +1,23 @@
 /*
- * iinterp_eval.c
- *
- *  Created on: 15.03.2014
- *      Author: Rene Hartmann
+ * Copyright (C) 2014-2015 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #include <rel/rdb.h>
 #include "interp_eval.h"
 #include "iinterp.h"
 #include "interp_core.h"
+
+/**
+ * Evaluate expression.
+ */
+int
+Duro_evaluate(RDB_expression *exp, Duro_interp *interp,
+        RDB_exec_context *ecp, RDB_object *resultp)
+{
+    return RDB_evaluate(exp, &Duro_get_var, interp, interp->envp, ecp,
+                interp->txnp != NULL ? &interp->txnp->tx : NULL, resultp);
+}
 
 /**
  * Evaluate expression.

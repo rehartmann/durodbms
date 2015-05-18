@@ -8,7 +8,6 @@
 #include "iinterp.h"
 #include "interp_core.h"
 #include "interp_assign.h"
-#include "interp_eval.h"
 #include "ioop.h"
 #include "exparse.h"
 #include "parse.h"
@@ -305,24 +304,6 @@ add_io(Duro_interp *interp, RDB_exec_context *ecp) {
     return RDB_OK;
 }
 
-static int
-evaluate_retry_bool(RDB_expression *exp, Duro_interp *interp,
-        RDB_exec_context *ecp, RDB_bool *resultp)
-{
-    int ret;
-    RDB_object result;
-
-    RDB_init_obj(&result);
-    ret = Duro_evaluate_retry(exp, interp, ecp, &result);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&result, ecp);
-        return ret;
-    }
-    *resultp = RDB_obj_bool(&result);
-    RDB_destroy_obj(&result, ecp);
-    return RDB_OK;
-}
-
 static RDB_operator *
 interp_get_op(Duro_interp *interp, const char *opname, int argc,
         RDB_type *argtv[], RDB_exec_context *ecp) {
@@ -417,7 +398,9 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
         exp = RDB_parse_node_expr(argp, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
         if (exp == NULL)
             goto error;
-        argtv[argc] = Duro_expr_type_retry(exp, interp, ecp);
+        argtv[argc] = RDB_expr_type(exp, &Duro_get_var_type, interp,
+                interp->envp, ecp,
+                interp->txnp != NULL ? &interp->txnp->tx : NULL);
         if (argtv[argc] == NULL)
             goto error;
 
@@ -508,7 +491,8 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
         /* If the expression has not been resolved as a variable, evaluate it */
         if (argpv[i] == NULL) {
             RDB_init_obj(&argv[i]);
-            if (Duro_evaluate_retry(exp, interp, ecp, &argv[i]) != RDB_OK) {
+            if (RDB_evaluate(exp, &Duro_get_var, interp, interp->envp, ecp,
+                    interp->txnp != NULL ? &interp->txnp->tx : NULL, &argv[i]) != RDB_OK) {
                 goto error;
             }
             /* Set type if missing */
@@ -652,8 +636,8 @@ exec_if(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp,
     if (condp == NULL)
         return RDB_ERROR;
 
-    if (evaluate_retry_bool(condp, interp, ecp, &b)
-            != RDB_OK) {
+    if (RDB_evaluate_bool(condp, &Duro_get_var, interp, interp->envp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL, &b) != RDB_OK) {
         return RDB_ERROR;
     }
     if (Duro_add_varmap(interp, ecp) != RDB_OK)
@@ -692,7 +676,8 @@ exec_case(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp,
         if (condp == NULL)
             return RDB_ERROR;
 
-        if (evaluate_retry_bool(condp, interp, ecp, &b)
+        if (RDB_evaluate_bool(condp, &Duro_get_var, interp, interp->envp, ecp,
+                interp->txnp != NULL ? &interp->txnp->tx : NULL, &b)
                 != RDB_OK) {
             return RDB_ERROR;
         }
@@ -729,7 +714,8 @@ exec_while(RDB_parse_node *nodep, RDB_parse_node *labelp, Duro_interp *interp,
         return RDB_ERROR;
 
     for(;;) {
-        if (evaluate_retry_bool(condp, interp, ecp, &b) != RDB_OK)
+        if (RDB_evaluate_bool(condp, &Duro_get_var, interp, interp->envp, ecp,
+                interp->txnp != NULL ? &interp->txnp->tx : NULL, &b) != RDB_OK)
             return RDB_ERROR;
         if (!b)
             return RDB_OK;
@@ -793,15 +779,18 @@ exec_for(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
             interp->txnp != NULL ? &interp->txnp->tx : NULL);
     if (fromexp == NULL)
         return RDB_ERROR;
-    if (Duro_evaluate_retry(fromexp, interp, ecp, varp) != RDB_OK) {
+    if (RDB_evaluate(fromexp, &Duro_get_var, interp, interp->envp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL, varp) != RDB_OK) {
         return RDB_ERROR;
     }
+
     toexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp->nextp, ecp,
             interp->txnp != NULL ? &interp->txnp->tx : NULL);
     if (toexp == NULL)
         return RDB_ERROR;
     RDB_init_obj(&endval);
-    if (Duro_evaluate_retry(toexp, interp, ecp, &endval) != RDB_OK) {
+    if (RDB_evaluate(toexp, &Duro_get_var, interp, interp->envp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL, &endval) != RDB_OK) {
         goto error;
     }
     if (RDB_obj_type(&endval) != &RDB_INTEGER) {
@@ -889,7 +878,9 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
     if (tbexp == NULL)
         return RDB_ERROR;
 
-    tbtyp = Duro_expr_type_retry(tbexp, interp, ecp);
+    tbtyp = RDB_expr_type(tbexp, &Duro_get_var_type, interp,
+                interp->envp, ecp,
+                interp->txnp != NULL ? &interp->txnp->tx : NULL);
     if (tbtyp == NULL)
         return RDB_ERROR;
     if (!RDB_type_is_relation(tbtyp)) {
@@ -913,7 +904,8 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
         if (it.tbp == NULL)
             goto error;
     } else {
-        if (Duro_evaluate_retry(tbexp, interp, ecp, &tb) != RDB_OK) {
+        if (RDB_evaluate(tbexp, &Duro_get_var, interp, interp->envp, ecp,
+                interp->txnp != NULL ? &interp->txnp->tx : NULL, &tb) != RDB_OK) {
             goto error;
         }
         it.tbp = &tb;
@@ -2144,7 +2136,9 @@ exec_return(RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context *ecp,
         /*
          * Typecheck
          */
-        rtyp = Duro_expr_type_retry(retexp, interp, ecp);
+        rtyp = RDB_expr_type(retexp, &Duro_get_var_type, interp,
+                    interp->envp, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
+
         if (rtyp == NULL)
             return RDB_ERROR;
         if (!RDB_type_equals(rtyp, retinfop->typ)) {
@@ -2155,7 +2149,9 @@ exec_return(RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context *ecp,
         /*
          * Evaluate expression
          */
-        if (Duro_evaluate_retry(retexp, interp, ecp, retinfop->objp) != RDB_OK)
+        if (RDB_evaluate(retexp, &Duro_get_var, interp, interp->envp, ecp,
+                interp->txnp != NULL ? &interp->txnp->tx : NULL,
+                retinfop->objp) != RDB_OK)
             return RDB_ERROR;
     } else {
         if (retinfop != NULL) {

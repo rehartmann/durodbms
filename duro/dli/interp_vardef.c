@@ -1,11 +1,8 @@
 /*
  * Interpreter functions for variable definition.
  *
- *  Created on: 16.03.2014
- *
- * Copyright (C) 2014 Rene Hartmann.
+ * Copyright (C) 2014-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
- *
  */
 
 #include "interp_core.h"
@@ -69,7 +66,9 @@ Duro_exec_vardef(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *e
             goto error;
         }
     } else {
-        if (Duro_evaluate_retry(initexp, interp, ecp, objp) != RDB_OK) {
+        if (RDB_evaluate(initexp, &Duro_get_var, interp, interp->envp, ecp,
+                interp->txnp != NULL ? &interp->txnp->tx : NULL,
+                objp) != RDB_OK) {
             goto error;
         }
         if (RDB_obj_type(objp) != NULL) {
@@ -160,7 +159,8 @@ parse_default(RDB_parse_node *defaultattrnodep,
             if ((*attrvp)[i].defaultp == NULL)
                 goto error;
 
-            if (Duro_evaluate_retry(exp, interp, ecp,
+            if (RDB_evaluate(exp, &Duro_get_var, interp, interp->envp, ecp,
+                    interp->txnp != NULL ? &interp->txnp->tx : NULL,
                     RDB_expr_obj((*attrvp)[i].defaultp)) != RDB_OK)
                 goto error;
         }
@@ -367,7 +367,9 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, Duro_interp *interp,
     RDB_free(default_attrv);
 
     if (initexp != NULL) {
-        if (Duro_evaluate_retry(initexp, interp, ecp, tbp) != RDB_OK) {
+        if (RDB_evaluate(initexp, &Duro_get_var, interp, interp->envp, ecp,
+                interp->txnp != NULL ? &interp->txnp->tx : NULL,
+                tbp) != RDB_OK) {
             goto error;
         }
     }

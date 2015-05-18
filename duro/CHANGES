@@ -18,6 +18,8 @@ DuroDBMS 0.26
 - Duro D/T: Tuple attributes are now allowed as a target in INSERT, D_INSERT,
   DELETE, I_DELETE, and LOAD.
 
+- Added function Duro_evaluate() which does not start a transaction.
+
 - Database environments are by default opened with the DB_CREATE flag.
 
 - Dropped RDB_get_update_op_e(). RDB_get_update_op() now has the same signature
