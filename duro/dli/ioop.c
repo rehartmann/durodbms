@@ -1,7 +1,7 @@
 /*
  * I/O operators.
  *
- * Copyright (C) 2011-2012 Rene Hartmann.
+ * Copyright (C) 2009, 2011-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  *
  * I/O operators
@@ -677,7 +677,7 @@ op_eof_iostream(int argc, RDB_object *argv[], RDB_operator *op,
     return RDB_OK;
 }
 
-int
+static int
 op_www_form_to_tuple(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {

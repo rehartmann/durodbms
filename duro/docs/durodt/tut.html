@@ -22,6 +22,7 @@
 <li><a href="#arrays">Arrays</a>
 <li><a href="#for_in">FOR .. IN</a>
 <li><a href="#io">I/O</a>
+<li><a href="#datetime">Date and time</a>
 <li><a href="#user-ops">User-defined operators</a>
 <li><a href="#user-types">User-defined types</a>
 <li><a href="#exception">Exception handling</a>
@@ -883,6 +884,40 @@ D>
 D> drop operator incr;
 Operator incr dropped.
 D>
+</pre>
+
+<h2 id="datetime">Date and time</h2>
+
+<p>DuroDBMS provides a time datetime which is defined as follows:
+
+<pre>
+TYPE datetime
+POSSREP {
+    year integer,
+    month integer,
+    day integer,
+    hour integer,
+    min integer,
+    sec integer
+}; 
+</pre>
+
+<p>The read-only operators now() and now_utc() which return the current time.
+now() returns the current time as a local time whereas now_utc() returns the UTC time.
+
+<p>Example:
+
+<pre>
+no db> var d datetime;
+no db> d := now();
+1 element affected.
+no db> io.put_line(cast_as_string(d));
+2015-05-18T14:15:29
+no db> d := now_utc();
+1 element affected.
+no db> io.put_line(cast_as_string(d));
+2015-05-18T12:15:51
+no db> 
 </pre>
 
 <h2 id="user-types">User-defined types</h2>

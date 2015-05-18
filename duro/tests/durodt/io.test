@@ -106,6 +106,10 @@ test file_input {File input} -body {
         io.open(is, 'in.txt', 'r');
         VAR bin binary;
         io.read(is, bin, 7);
+        io.put(bin); io.put_line('');
+
+        io.seek(is, 4);
+        io.read(is, bin, 2);
         io.close(is);
         io.put(bin); io.put_line('');
     }]
@@ -117,6 +121,7 @@ FALSE
 
 TRUE
 Duro%$-
+%$
 }
 
 test tmpfile {temporary file} -match regexp -body {

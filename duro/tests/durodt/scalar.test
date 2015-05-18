@@ -964,8 +964,6 @@ de
 ef
 }
 
-
-
 test datetime {datetime type} -body {
     exec $testdir/../../dli/durodt << {
         var d datetime;
@@ -993,6 +991,18 @@ test datetime {datetime type} -body {
         io.put_line('');
         io.put(the_sec(d));
         io.put_line('');
+
+        -- 2000 is a leap year
+        d := datetime(2000, 2, 29, 0, 0, 0);
+
+        -- 2100 is not a leap year
+        try
+        	d := datetime(2100, 2, 29, 0, 0, 0);
+        	io.put_line('2100-02-29 was accepted');
+        catch err type_constraint_violation_error;
+            ;
+        end try;
+        
     }
 } -result {1948-12-10T03:00:01
 2057-03-25T18:05:07

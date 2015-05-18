@@ -20,6 +20,18 @@
 #include <assert.h>
 #include <stdio.h>
 
+/**@defgroup generic Scalar and generic functions
+ * @{
+ */
+
+/**
+ * Allocates <var>size</var> bytes of memory.
+ *
+ * If allocation fails, NULL is returned and an error valued is stored in *<var>ecp</var>.
+ *
+ * @returns
+ * A pointer to the memory allocated, or NULL if the allocation failed.
+ */
 void *
 RDB_alloc(size_t size, RDB_exec_context *ecp)
 {
@@ -31,6 +43,14 @@ RDB_alloc(size_t size, RDB_exec_context *ecp)
     return p;
 }
 
+/**
+ * Changes the sie of the memory block pointed to by <var>p</var> by <var>size</var> bytes.
+ *
+ * If the operation fails, NULL is returned and an error valued is stored in *<var>ecp</var>.
+ *
+ * @returns
+ * A pointer to the allocated memory.
+ */
 void *
 RDB_realloc(void *p, size_t size, RDB_exec_context *ecp)
 {
@@ -42,6 +62,9 @@ RDB_realloc(void *p, size_t size, RDB_exec_context *ecp)
     return p;
 }
 
+/**
+ * Frees the memory pointed to by <var>p</var>.
+ */
 void
 RDB_free(void *p)
 {
@@ -66,10 +89,6 @@ RDB_free_obj(RDB_object *objp, RDB_exec_context *ecp)
     RDB_free(objp);
     return ret;
 }
-
-/**@defgroup generic Scalar and generic functions
- * @{
- */
 
 /**
  * RDB_init_obj initializes the RDB_object structure pointed to by
@@ -104,74 +123,74 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
     }
 
     switch (objp->kind) {
-        case RDB_OB_INITIAL:
-        case RDB_OB_BOOL:
-        case RDB_OB_INT:
-        case RDB_OB_FLOAT:
-        case RDB_OB_TIME:
-            break;
-        case RDB_OB_BIN:
-            if (objp->val.bin.len > 0)
-                RDB_free(objp->val.bin.datap);
-            break;
-        case RDB_OB_TUPLE:
-        {
-            RDB_hashtable_iter it;
-            tuple_entry *entryp;
+    case RDB_OB_INITIAL:
+    case RDB_OB_BOOL:
+    case RDB_OB_INT:
+    case RDB_OB_FLOAT:
+    case RDB_OB_TIME:
+        break;
+    case RDB_OB_BIN:
+        if (objp->val.bin.len > 0)
+            RDB_free(objp->val.bin.datap);
+        break;
+    case RDB_OB_TUPLE:
+    {
+        RDB_hashtable_iter it;
+        tuple_entry *entryp;
 
-            RDB_init_hashtable_iter(&it, (RDB_hashtable *) &objp->val.tpl_tab);
-            while ((entryp = RDB_hashtable_next(&it)) != NULL) {
-                RDB_destroy_obj(&entryp->obj, ecp);
-                RDB_free(entryp->key);
+        RDB_init_hashtable_iter(&it, (RDB_hashtable *) &objp->val.tpl_tab);
+        while ((entryp = RDB_hashtable_next(&it)) != NULL) {
+            RDB_destroy_obj(&entryp->obj, ecp);
+            RDB_free(entryp->key);
+            RDB_free(entryp);
+        }
+        RDB_destroy_hashtable_iter(&it);
+        RDB_destroy_hashtable(&objp->val.tpl_tab);
+        break;
+    }
+    case RDB_OB_ARRAY:
+    {
+        if (objp->val.arr.elemv != NULL) {
+            int i;
+
+            for (i = 0; i < objp->val.arr.capacity; i++)
+                RDB_destroy_obj(&objp->val.arr.elemv[i], ecp);
+            RDB_free(objp->val.arr.elemv);
+        }
+
+        break;
+    }
+    case RDB_OB_TABLE:
+        if (objp->val.tb.keyv != NULL) {
+            RDB_free_keys(objp->val.tb.keyc, objp->val.tb.keyv);
+        }
+
+        /* It could be a scalar type with a relation actual rep */
+        if (objp->typ != NULL && !RDB_type_is_scalar(objp->typ))
+            RDB_del_nonscalar_type(objp->typ, ecp);
+
+        RDB_free(objp->val.tb.name);
+
+        if (objp->val.tb.exp != NULL) {
+            if (RDB_del_expr(objp->val.tb.exp, ecp) != RDB_OK)
+                return RDB_ERROR;
+        }
+        if (objp->val.tb.default_map != NULL) {
+            RDB_hashmap_iter hiter;
+            void *valp;
+
+            RDB_init_hashmap_iter(&hiter, objp->val.tb.default_map);
+            while (RDB_hashmap_next(&hiter, &valp) != NULL) {
+                RDB_attr_default *entryp = valp;
+                RDB_del_expr(entryp->exp, ecp);
                 RDB_free(entryp);
             }
-            RDB_destroy_hashtable_iter(&it);
-            RDB_destroy_hashtable(&objp->val.tpl_tab);
-            break;
+            RDB_destroy_hashmap_iter(map);
+            RDB_destroy_hashmap(objp->val.tb.default_map);
+            RDB_free(objp->val.tb.default_map);
         }
-        case RDB_OB_ARRAY:
-        {
-            if (objp->val.arr.elemv != NULL) {
-                int i;
 
-                for (i = 0; i < objp->val.arr.capacity; i++)
-                    RDB_destroy_obj(&objp->val.arr.elemv[i], ecp);
-                RDB_free(objp->val.arr.elemv);
-            }
-
-            return RDB_OK;
-        }
-        case RDB_OB_TABLE:
-            if (objp->val.tb.keyv != NULL) {
-                RDB_free_keys(objp->val.tb.keyc, objp->val.tb.keyv);
-            }
-
-            /* It could be a scalar type with a relation actual rep */ 
-            if (objp->typ != NULL && !RDB_type_is_scalar(objp->typ))
-                RDB_del_nonscalar_type(objp->typ, ecp);
-            
-            RDB_free(objp->val.tb.name);
-            
-            if (objp->val.tb.exp != NULL) {
-                if (RDB_del_expr(objp->val.tb.exp, ecp) != RDB_OK)
-                    return RDB_ERROR;
-            }
-            if (objp->val.tb.default_map != NULL) {
-                RDB_hashmap_iter hiter;
-                void *valp;
-
-                RDB_init_hashmap_iter(&hiter, objp->val.tb.default_map);
-                while (RDB_hashmap_next(&hiter, &valp) != NULL) {
-                    RDB_attr_default *entryp = valp;
-                    RDB_del_expr(entryp->exp, ecp);
-                    RDB_free(entryp);
-                }
-                RDB_destroy_hashmap_iter(map);
-                RDB_destroy_hashmap(objp->val.tb.default_map);
-                RDB_free(objp->val.tb.default_map);
-            }
-
-            break;
+        break;
     }
 
     return RDB_OK;
@@ -229,26 +248,24 @@ RDB_float_to_obj(RDB_object *valp, RDB_float v)
 }
 
 /**
- * Sets the RDB_object *<var>valp</var>
-to the datetime value specified by the arguments year, mon, day, hour, min,
-and sec.
-
-The RDB_object must either be newly initialized or of type
-datetime.
+ * Sets the RDB_object *<var>objp</var>
+ * to the datetime value specified by the argument <var>tm</var>.
+ * The *<var>objp</var> must either be newly initialized or of type
+ * datetime.
  */
 void
-RDB_tm_to_obj(RDB_object *valp, const struct tm *tm)
+RDB_tm_to_obj(RDB_object *objp, const struct tm *tm)
 {
-    assert(valp->kind == RDB_OB_INITIAL || valp->typ == &RDB_DATETIME);
+    assert(objp->kind == RDB_OB_INITIAL || objp->typ == &RDB_DATETIME);
 
-    valp->typ = &RDB_DATETIME;
-    valp->kind = RDB_OB_TIME;
-    valp->val.time.year = (int16_t) tm->tm_year + 1900;
-    valp->val.time.month = tm->tm_mon + 1;
-    valp->val.time.day = tm->tm_mday;
-    valp->val.time.hour = tm->tm_hour;
-    valp->val.time.min = tm->tm_min;
-    valp->val.time.sec = tm->tm_sec;
+    objp->typ = &RDB_DATETIME;
+    objp->kind = RDB_OB_TIME;
+    objp->val.time.year = (int16_t) tm->tm_year + 1900;
+    objp->val.time.month = tm->tm_mon + 1;
+    objp->val.time.day = tm->tm_mday;
+    objp->val.time.hour = tm->tm_hour;
+    objp->val.time.min = tm->tm_min;
+    objp->val.time.sec = tm->tm_sec;
 }
 
 static int
@@ -297,7 +314,7 @@ RDB_string_to_obj(RDB_object *valp, const char *str, RDB_exec_context *ecp)
 }
 
 /**
- * Set *<var>valp</var> to the string that begins at <var>str</var>
+ * Sets *<var>valp</var> to the string that begins at <var>str</var>
  * limited to a length of <var>n</var> bytes.
 <var>valp</var> must either be newly initialized or of type
 string.
@@ -315,7 +332,7 @@ RDB_string_n_to_obj(RDB_object *valp, const char *str, size_t n,
 }
 
 /**
- * Append the string <var>str</var> to *<var>objp</var>.
+ * Appends the string <var>str</var> to *<var>objp</var>.
 
 *<var>objp</var> must be of type string.
 

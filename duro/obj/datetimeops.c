@@ -14,12 +14,114 @@
 #define snprintf sprintf_s
 #endif
 
+static int datetime_check_month(int m, RDB_exec_context *ecp)
+{
+    if (m < 1 || m > 12) {
+        RDB_raise_type_constraint_violation("datetime: month", ecp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static RDB_bool is_leap_year(int y) {
+    if (y % 400 == 0)
+        return RDB_TRUE;
+    return y % 4 == 0 && y % 100 != 0 ? RDB_TRUE : RDB_FALSE;
+}
+
+static int datetime_check_day(int y, int m, int d, RDB_exec_context *ecp)
+{
+    int days;
+
+    switch(m) {
+    case 1:
+    case 3:
+    case 5:
+    case 7:
+    case 8:
+    case 10:
+    case 12:
+        days = 31;
+        break;
+    case 4:
+    case 6:
+    case 9:
+    case 11:
+        days = 30;
+        break;
+    case 2:
+        /* Ignore Gregorian leap year rule for years before 1924 */
+        if (y < 1924) {
+            days = y % 4 == 0 ? 29 : 28;
+        } else {
+            days = is_leap_year(y) ? 29 : 28;
+        }
+        break;
+    }
+
+    if (d < 1 || d > days) {
+        RDB_raise_type_constraint_violation("datetime: day", ecp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int datetime_check_hour(int h, RDB_exec_context *ecp)
+{
+    if (h < 0 || h > 23) {
+        RDB_raise_type_constraint_violation("datetime: hour", ecp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int datetime_check_minute(int m, RDB_exec_context *ecp)
+{
+    if (m < 0 || m > 59) {
+        RDB_raise_type_constraint_violation("datetime: minute", ecp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int datetime_check_second(int sec, RDB_exec_context *ecp)
+{
+    if (sec < 0 || sec > 60) {
+        RDB_raise_type_constraint_violation("datetime: minute", ecp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+/** @page datetime-ops Built-in datetime operators
+ *
+ * operator now() returns datetime;
+ *
+ * operator now_utc() returns datetime;
+ *
+ * Returns the time as a datetime.
+ * now() returns the time according to the current timezone.
+ * now_utc() returns the time as UTC.
+ */
+
 /* Selector of type datetime */
 static int
 datetime(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     struct tm tm;
+
+    if (datetime_check_month(RDB_obj_int(argv[1]), ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (datetime_check_day(RDB_obj_int(argv[0]), RDB_obj_int(argv[1]),
+            RDB_obj_int(argv[2]), ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (datetime_check_hour(RDB_obj_int(argv[3]), ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (datetime_check_minute(RDB_obj_int(argv[4]), ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (datetime_check_second(RDB_obj_int(argv[5]), ecp) != RDB_OK)
+        return RDB_ERROR;
 
     tm.tm_year = RDB_obj_int(argv[0]) - 1900;
     tm.tm_mon = RDB_obj_int(argv[1]) - 1;
@@ -107,7 +209,7 @@ now_datetime(int argc, RDB_object *argv[], RDB_operator *op,
 
     tm = localtime(&t);
     if (tm == NULL) {
-        RDB_raise_system("gmtime() failed", ecp);
+        RDB_raise_system("localtime() failed", ecp);
         return RDB_ERROR;
     }
 
@@ -144,6 +246,9 @@ static int
 datetime_set_month(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    if (datetime_check_month(RDB_obj_int(argv[1]), ecp) != RDB_OK)
+        return RDB_ERROR;
+
     argv[0]->val.time.month = RDB_obj_int(argv[1]);
     return RDB_OK;
 }
@@ -152,6 +257,10 @@ static int
 datetime_set_day(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    if (datetime_check_day(argv[0]->val.time.year, argv[0]->val.time.month,
+            RDB_obj_int(argv[1]), ecp) != RDB_OK)
+        return RDB_ERROR;
+
     argv[0]->val.time.day = RDB_obj_int(argv[1]);
     return RDB_OK;
 }
@@ -160,6 +269,9 @@ static int
 datetime_set_hour(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    if (datetime_check_hour(RDB_obj_int(argv[1]), ecp) != RDB_OK)
+        return RDB_ERROR;
+
     argv[0]->val.time.hour = RDB_obj_int(argv[1]);
     return RDB_OK;
 }
@@ -168,6 +280,9 @@ static int
 datetime_set_min(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    if (datetime_check_minute(RDB_obj_int(argv[1]), ecp) != RDB_OK)
+        return RDB_ERROR;
+
     argv[0]->val.time.min = RDB_obj_int(argv[1]);
     return RDB_OK;
 }
@@ -176,6 +291,9 @@ static int
 datetime_set_sec(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    if (datetime_check_second(RDB_obj_int(argv[1]), ecp) != RDB_OK)
+        return RDB_ERROR;
+
     argv[0]->val.time.sec = RDB_obj_int(argv[1]);
     return RDB_OK;
 }

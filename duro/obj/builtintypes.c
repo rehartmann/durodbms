@@ -24,8 +24,32 @@
 <tr><td>integer<td>RDB_INTEGER<td>RDB_int
 <tr><td>float<td>RDB_FLOAT<td>RDB_float
 <tr><td>string<td>RDB_STRING<td>char *
-<tr><td>binary<td>RDB_BINARY<td>&nbsp;-
+<tr><td>binary<td>RDB_BINARY<td>RDB_byte *
 </table>
+
+@section date-time-types Date and time types
+
+<pre>
+TYPE datetime
+POSSREP {
+    year integer,
+    month integer,
+    day integer,
+    hour integer,
+    min integer,
+    sec integer
+};
+</pre>
+
+@section io-types I/O types
+
+<pre>
+PACKAGE io;
+
+TYPE iostream_id POSSREP { id integer };
+
+END PACKAGE;
+</pre>
 
 @section error-types Error types
 
