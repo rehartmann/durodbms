@@ -83,6 +83,8 @@ test package {Packages} \
 
         commit;
 
+        begin tx;
+
         io.put(m.mul2(5));
         io.put_line('');
  
@@ -96,10 +98,14 @@ test package {Packages} \
         call m.modmod_pkg.mul2upd(m);
         io.put(m);
         io.put_line('');
+
+        commit;
     }]
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
+
+        begin tx;
 
         io.put(m.mul2(53));
         io.put_line('');
@@ -164,6 +170,8 @@ test package {Packages} \
         io.put(the_comp3(t2v)); io.put_line('');
 
         drop var t2v;
+
+        commit;
 
         -- Test public table
         io.put_line('');

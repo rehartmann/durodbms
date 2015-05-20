@@ -9,14 +9,16 @@
 
 <h2>DuroDBMS expression syntax</h2>
 
-<p>The language for DuroDBMS expressions is a subset of Tutorial D, as defined
+<p>The language for DuroDBMS expressions is a dialect of Tutorial D, as defined
 in <cite>TTM</cite>, third edition and <cite>Database Explorations</cite>,
 with a number of differences. The most important are:
 
 <ol>
-<li>DuroDBMS uses a dot ('.') operator for tuple attribute extraction, in addition to FROM.
+<li>DuroDBMS uses a dot ('.') operator for tuple attribute access
+(FROM is supported too, but only for read acess)
+and for specifying a package to which an identifier refers.
 <li>DuroDBMS supports LIKE and REGEX_LIKE operators for pattern matching.
-<li>DuroDBMS uses the keyword SUBSET_OF for the subset operator
+<li>DuroDBMS uses the keywords SUBSET_OF for the subset operator
 and IN for the element-of operator.
 <li>DuroDBMS supports both single ("'") and double quotes ('"') as delimiters in string literals.
 </ol>
@@ -43,11 +45,19 @@ expression = project | where | rename | dyadic_relation_op_inv
     | count_inv
     | aggregate_inv
     | '(' expression ')'
-    | expression '.' id
+    | assignable_expression
     | id FROM expression
     | TUPLE FROM expression
     | ifthenelse
     | with.
+
+assignable_expression = [expression '.'] id
+    | ro_op_inv
+    | array_subscript_inv.
+
+ro_op_inv = [expression '.'] id '(' expression_commalist ')'.
+
+array_subscript_inv = expression '[' expression ']'. 
 
 project = expression '{' [ALL BUT] [id {',' id}] '}'.
 
@@ -108,30 +118,33 @@ ifthenelse = IF expression THEN expression ELSE expression.
 
 count_inv = COUNT '(' expression ')'.
 
-aggregate_inv = summary_type '(' ne_expression_list ')'.
-
-op_inv = id '(' expression_list ')'.
+aggregate_inv = summary_type '(' ne_expression_commalist ')'.
 
 literal = string | integer | decimal | float | binary | TRUE | FALSE
-        | RELATION '{' id_type_list '}' '{' expression_list '}'
-        | RELATION '{' ne_expression_list '}'
+        | RELATION '{' id_type_commalist '}' '{' expression_commalist '}'
+        | RELATION '{' ne_expression_commalist '}'
         | TABLE_DEE | TABLE_DUM
         | TUPLE '{' tuple_item_list '}'
-        | ARRAY type '{' expression_list '}'
-        | ARRAY '{' ne_expression_list '}'
+        | ARRAY type '(' expression_commalist ')'
+        | ARRAY '(' ne_expression_commalist ')'
 
 tuple_item_list = [id expression {',' id expression}].
 
-expression_list = [ne_expression_list].
+expression_commalist = [ne_expression_commalist].
 
-ne_expression_list = expression {',' expression}.
+ne_expression_commalist = expression {',' expression}.
 
-type = id | TUPLE '{' id_type_list '}' | RELATION '{' id_type_list '}'
+id_type_commalist = [id type {',' id type}].
+
+type = qualified_id
+        | TUPLE '{' id_type_commalist '}'
+        | TUPLE '{' id_type_commalist ',' '*' '}'
+        | RELATION '{' id_type_commalist '}'
         | ARRAY type | SAME_TYPE_AS '(' expression ')'
         | TUPLE SAME_HEADING_AS '(' expression ')'
         | RELATION SAME_HEADING_AS '(' expression ')'.
 
-id_type_list = [id type {',' id type}].
+qualified_id = [qualified_id '.'] id.
 
 string = '"'{esc_char}'"' | "'"{character}"'".
 

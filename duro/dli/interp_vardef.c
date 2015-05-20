@@ -6,7 +6,6 @@
  */
 
 #include "interp_core.h"
-#include "interp_eval.h"
 #include <gen/strfns.h>
 #include <obj/key.h>
 #include "exparse.h"
@@ -85,7 +84,7 @@ Duro_exec_vardef(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *e
         } else {
             /* No type available (tuple or array) - set type */
             if (typ == NULL) {
-                typ = Duro_expr_type_retry(initexp, interp, ecp);
+                typ = Duro_expr_type(initexp, interp, ecp);
                 if (typ == NULL)
                     goto error;
                 typ = RDB_dup_nonscalar_type(typ, ecp);
@@ -276,7 +275,7 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, Duro_interp *interp,
         if (initexp == NULL)
             return RDB_ERROR;
         keylistnodep = nodep->nextp->nextp->nextp->nextp;
-        tbtyp = Duro_expr_type_retry(initexp, interp, ecp);
+        tbtyp = Duro_expr_type(initexp, interp, ecp);
         if (tbtyp == NULL) {
             return RDB_ERROR;
         }

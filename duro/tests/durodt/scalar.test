@@ -706,7 +706,7 @@ test defroop {read-only user-defined operators} -setup $SETUP -cleanup $CLEANUP 
 
         commit;
 
-        -- Test without tx
+        begin tx;
 
         io.put(fib(6)); io.put_line('');
 
@@ -721,6 +721,8 @@ test defroop {read-only user-defined operators} -setup $SETUP -cleanup $CLEANUP 
         end operator;
         
         io.put_line(test4params(1, 'x', 5, true));
+        
+        commit;
     }
 } -result {a = 1, b = 1, c = 8, d = 15
 .madA m'I ,madaM

@@ -1028,7 +1028,7 @@ JNICALL Java_net_sf_duro_DSession_evaluateI(JNIEnv *env, jobject obj,
     }
 
     RDB_init_obj(&result);
-    if (Duro_evaluate_retry(exp, &sessionp->interp, &sessionp->ec,
+    if (Duro_evaluate(exp, &sessionp->interp, &sessionp->ec,
             &result) != RDB_OK) {
         JDuro_throw_exception_from_error(env, sessionp,
                 "expression evaluation failed", &sessionp->ec);
@@ -1038,7 +1038,7 @@ JNICALL Java_net_sf_duro_DSession_evaluateI(JNIEnv *env, jobject obj,
     /* If the expression type is missing, try to get it */
     if (RDB_obj_type(&result) == NULL
             && !RDB_is_tuple(&result)) {
-        RDB_type *typ = Duro_expr_type_retry(exp, &sessionp->interp, &sessionp->ec);
+        RDB_type *typ = Duro_expr_type(exp, &sessionp->interp, &sessionp->ec);
         if (typ == NULL) {
             JDuro_throw_exception_from_error(env, sessionp,
                     "getting expression type failed", &sessionp->ec);

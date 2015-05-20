@@ -2174,7 +2174,7 @@ exec_raise(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
         return RDB_ERROR;
 
     RDB_init_obj(&errobj);
-    if (Duro_evaluate_retry(exp, interp, ecp, &errobj) != RDB_OK) {
+    if (Duro_evaluate(exp, interp, ecp, &errobj) != RDB_OK) {
         goto error;
     }
     errp = RDB_raise_err(ecp);

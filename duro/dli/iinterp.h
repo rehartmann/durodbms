@@ -1,8 +1,6 @@
 #ifndef IINTERP_H
 #define IINTERP_H
 
-#include "interp_eval.h"
-
 #include <rel/rdb.h>
 #include <obj/opmap.h>
 #include "parse.h"
@@ -117,6 +115,13 @@ Duro_dt_get_type_str(RDB_environment *, const char *, RDB_object *,
 
 RDB_object *
 Duro_lookup_var(const char *, Duro_interp *, RDB_exec_context *);
+
+int
+Duro_evaluate(RDB_expression *, Duro_interp *, RDB_exec_context *,
+        RDB_object *);
+
+RDB_type *
+Duro_expr_type(RDB_expression *, Duro_interp *, RDB_exec_context *);
 
 const char*
 Duro_dt_prompt(Duro_interp *);

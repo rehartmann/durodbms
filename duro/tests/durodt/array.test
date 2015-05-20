@@ -2,7 +2,6 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
-# $Id$
 #
 # Test tuple definitions and operations
 #
@@ -79,6 +78,8 @@ test arraysel {array selectors and index_of} -body {
         catch err syntax_error;
             io.put_line('assignment: syntax error');
         end try;
+
+        io.put(array(1, 2, 3)[1]); io.put_line('');        
 	}
 } -result {2
 2
@@ -97,6 +98,7 @@ type mismatch 1
 type mismatch 2
 one
 assignment: syntax error
+2
 }    
 
 test ptarray {array from private table} -body {
