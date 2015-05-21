@@ -270,9 +270,9 @@ rel_ihdrs = Split('rel/catalog.h rel/cat_type.h rel/cat_op.h '
         'rel/insert.h rel/transform.h rel/internal.h rel/stable.h '
         'rel/update.h rel/qr_stored.h rel/qr_join.h rel/qr_tclose.h '
         'rel/pexpr.h')
-dli_hdrs = ['dli/parse.h', 'dli/parsenode.h', 'dli/iinterp.h', 'dli/interp_eval.h']
+dli_hdrs = ['dli/parse.h', 'dli/parsenode.h', 'dli/iinterp.h']
 dli_ihdrs = ['dli/exparse.h', 'dli/iinterp.h', 'dli/interp_core.h',
-        'dli/interp_assign.h', 'dli/interp_eval.h', 'dli/interp_vardef.h',
+        'dli/interp_assign.h', 'dli/interp_vardef.h',
         'dli/ioop.h', 'dli/fcgi.h']
 durotcl_hdrs = ['tcl/duro.h']
 testlib_hdrs = ['tests/point.h']
