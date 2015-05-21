@@ -2233,7 +2233,7 @@ get_table_dbs(RDB_object *tbp, RDB_object *arrp, RDB_exec_context *ecp, RDB_tran
     return ret;
 }
 
-/* Add a table to all databases in memory to which it belongs */
+/* Adds a table to all databases in memory to which it belongs */
 static int
 add_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -2253,42 +2253,13 @@ add_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     for (i = 0; i < len; i++) {
         RDB_database *dbp;
         RDB_object *tp = RDB_array_get(&arr, (RDB_int) i, ecp);
-        if (tbp == NULL)
+        if (tp == NULL)
             goto error;
-/*
-        printf("table %s, db %s\n", RDB_table_name(tbp),
-                RDB_tuple_get_string(tp, "dbname"));
-*/
         dbp = RDB_get_db_from_env(RDB_tuple_get_string(tp, "dbname"), txp->dbp->dbrootp->envp, ecp);
         if (dbp == NULL)
             goto error;
         if (RDB_assoc_table_db(tbp, dbp, ecp) != RDB_OK)
             goto error;
-#ifdef RAUS
-        /* Insert table into db if the db is in the list */
-        RDB_database *dbp = txp->dbp->dbrootp->first_dbp;
-        while (dbp != NULL) {
-            RDB_object *tbp = RDB_array_get(&arr, (RDB_int) i, ecp);
-            if (tbp == NULL)
-                goto error;
-
-            if (RDB_assoc_table_db(tbp, RDB_get_db_from_env(RDB_tuple_get_string(tbp, "dbname"),
-                    txp->dbp->dbrootp->envp, ecp), ecp) != RDB_OK)
-                goto error;
-
-/*
-            if (strcmp(RDB_db_name(dbp), RDB_tuple_get_string(tbp, "dbname")) == 0)
-                break;
-            dbp = dbp->nextdbp;
-*/
-        }
-        /*
-        if (dbp != NULL) {
-            if (RDB_assoc_table_db(tbp, dbp, ecp) != RDB_OK)
-                goto error;
-        }
-        */
-#endif
     }
 
     RDB_destroy_obj(&arr, ecp);
@@ -2299,7 +2270,7 @@ error:
     return RDB_ERROR;
 }
 
-/* Read a real table from the catalog */
+/* Reads a real table from the catalog */
 static int
 RDB_cat_get_rtable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         RDB_transaction *txp)
