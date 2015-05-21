@@ -45,13 +45,12 @@ expression = project | where | rename | dyadic_relation_op_inv
     | count_inv
     | aggregate_inv
     | '(' expression ')'
-    | assignable_expression
     | id FROM expression
     | TUPLE FROM expression
     | ifthenelse
     | with.
 
-assignable_expression = [expression '.'] id
+var_expression = [expression '.'] id
     | ro_op_inv
     | array_subscript_inv.
 
@@ -97,8 +96,6 @@ unwrap = expression UNWRAP '(' [id {',' id}] ')'.
 group  = expression GROUP '{' [id {',' id}] '}' AS id.
 
 ungroup = expression UNGROUP id.
-
-var_expression = id | op_inv | var_expression '[' expression ']'.
 
 with = WITH '(' [id ':=' expression {',' id ':=' expression}] ')' ':' expression.
 

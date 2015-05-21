@@ -1649,7 +1649,7 @@ assignment: assign {
         RDB_parse_add_child($$, $3);
     }
 
-assign: assignable_expression TOK_ASSIGN expression {
+assign: var_expression TOK_ASSIGN expression {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -1733,7 +1733,7 @@ assign: assignable_expression TOK_ASSIGN expression {
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
     }
-    | TOK_UPDATE assignable_expression '{' ne_id_assign_commalist '}' {
+    | TOK_UPDATE var_expression '{' ne_id_assign_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -1749,7 +1749,7 @@ assign: assignable_expression TOK_ASSIGN expression {
         RDB_parse_add_child($$, $4);
         RDB_parse_add_child($$, $5);
     }
-    | TOK_UPDATE assignable_expression TOK_WHERE expression '{' ne_id_assign_commalist '}' {
+    | TOK_UPDATE var_expression TOK_WHERE expression '{' ne_id_assign_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -1797,7 +1797,7 @@ id_assign: TOK_ID TOK_ASSIGN expression {
         RDB_parse_add_child($$, $3);
     }
 
-assignable_expression: TOK_ID
+var_expression: TOK_ID
     | dot_invocation
     | ro_op_invocation /* For THE_ and LENGTH operators */
     | expression '[' expression ']' {
@@ -2385,7 +2385,7 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
     }
-    | assignable_expression
+    | var_expression
     | TOK_RELATION '{' ne_expression_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
@@ -2470,7 +2470,7 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
-    } 
+    }
     | TOK_ARRAY type '(' expression_commalist ')' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
