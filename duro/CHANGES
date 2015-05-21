@@ -25,6 +25,8 @@ DuroDBMS 0.26
 
 - Added function Duro_evaluate() which does not start a transaction.
 
+- Changed RDB_add_table() which now takes an optional RDB_database argument.
+
 - Database environments are by default opened with the DB_CREATE flag.
 
 - Dropped RDB_get_update_op_e(). RDB_get_update_op() now has the same signature

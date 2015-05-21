@@ -268,7 +268,7 @@ RDB_set_table_name(RDB_object *, const char *, RDB_exec_context *,
         RDB_transaction *);
 
 int
-RDB_add_table(RDB_object *, RDB_exec_context *, RDB_transaction *);
+RDB_add_table(RDB_object *, RDB_database *, RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_insert(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *,

@@ -775,6 +775,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
         typ = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg,
                 envp, ecp, txp);
         if (typ == NULL) {
+            RDB_exec_context ec;
             RDB_object varnameobj;
 
             if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NAME_ERROR)
@@ -782,10 +783,13 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
 
             /* Interpret as qualified variable name */
             RDB_init_obj(&varnameobj);
-            if (RDB_expr_attr_qid(exp, &varnameobj, ecp) != RDB_OK) {
+            RDB_init_exec_context(&ec);
+            if (RDB_expr_attr_qid(exp, &varnameobj, &ec) != RDB_OK) {
+                RDB_destroy_exec_context(&ec);
                 RDB_destroy_obj(&varnameobj, ecp);
                 return NULL;
             }
+            RDB_destroy_exec_context(&ec);
             typ = var_type(RDB_obj_string(&varnameobj), getfnp, getarg, ecp, txp);
             RDB_destroy_obj(&varnameobj, ecp);
             return typ;

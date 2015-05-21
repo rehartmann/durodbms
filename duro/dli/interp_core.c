@@ -174,7 +174,7 @@ Duro_exec_vardef_virtual(RDB_parse_node *nodep, Duro_interp *interp,
     }
     if (RDB_set_table_name(tbp, varname, ecp, &interp->txnp->tx) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_add_table(tbp, ecp, &interp->txnp->tx) != RDB_OK)
+    if (RDB_add_table(tbp, NULL, ecp, &interp->txnp->tx) != RDB_OK)
         return RDB_ERROR;
 
     if (RDB_parse_get_interactive())

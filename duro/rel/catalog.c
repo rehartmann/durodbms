@@ -201,8 +201,8 @@ error:
     return RDB_ERROR;
 }
 
-static int
-dbtables_insert(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+int
+RDB_cat_dbtables_insert(RDB_object *tbp, RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object tpl;
     RDB_object tbnameobj;
@@ -217,7 +217,7 @@ dbtables_insert(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (RDB_tuple_set(&tpl, "tablename", &tbnameobj, ecp) != RDB_OK) {
         goto error;
     }
-    if (RDB_tuple_set_string(&tpl, "dbname", txp->dbp->name, ecp) != RDB_OK) {
+    if (RDB_tuple_set_string(&tpl, "dbname", RDB_db_name(dbp), ecp) != RDB_OK) {
         goto error;
     }
 
@@ -800,7 +800,7 @@ RDB_cat_insert(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
      * Add the table into the database by inserting the table/DB pair
      * into sys_dbtables.
      */
-    return dbtables_insert(tbp, ecp, txp);
+    return RDB_cat_dbtables_insert(tbp, RDB_tx_db(txp), ecp, txp);
 }
 
 /* Insert a public table into the catalog */
@@ -1712,51 +1712,51 @@ RDB_cat_create_db(RDB_exec_context *ecp, RDB_transaction *txp)
              * The catalog table already exists, but not in this database,
              * so associate it with this database too
              */
-            ret = dbtables_insert(txp->dbp->dbrootp->table_attr_tbp, ecp, txp);
+            ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->table_attr_tbp, RDB_tx_db(txp), ecp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = dbtables_insert(txp->dbp->dbrootp->table_attr_defvals_tbp, ecp, txp);
+            ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->table_attr_defvals_tbp, RDB_tx_db(txp), ecp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = dbtables_insert(txp->dbp->dbrootp->rtables_tbp, ecp, txp);
+            ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->rtables_tbp, RDB_tx_db(txp), ecp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = dbtables_insert(txp->dbp->dbrootp->vtables_tbp, ecp, txp);
+            ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->vtables_tbp, RDB_tx_db(txp), ecp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = dbtables_insert(txp->dbp->dbrootp->ptables_tbp, ecp, txp);
+            ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->ptables_tbp, RDB_tx_db(txp), ecp, txp);
             if (ret != RDB_OK)
                 return ret;
-            ret = dbtables_insert(txp->dbp->dbrootp->table_recmap_tbp, ecp, txp);
+            ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->table_recmap_tbp, RDB_tx_db(txp), ecp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = dbtables_insert(txp->dbp->dbrootp->dbtables_tbp, ecp, txp);
+            ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->dbtables_tbp, RDB_tx_db(txp), ecp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = dbtables_insert(txp->dbp->dbrootp->keys_tbp, ecp, txp);
+            ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->keys_tbp, RDB_tx_db(txp), ecp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = dbtables_insert(txp->dbp->dbrootp->types_tbp, ecp, txp);
+            ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->types_tbp, RDB_tx_db(txp), ecp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = dbtables_insert(txp->dbp->dbrootp->possrepcomps_tbp, ecp, txp);
+            ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->possrepcomps_tbp, RDB_tx_db(txp), ecp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = dbtables_insert(txp->dbp->dbrootp->ro_ops_tbp, ecp, txp);
+            ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->ro_ops_tbp, RDB_tx_db(txp), ecp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = dbtables_insert(txp->dbp->dbrootp->upd_ops_tbp, ecp, txp);
+            ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->upd_ops_tbp, RDB_tx_db(txp), ecp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = dbtables_insert(txp->dbp->dbrootp->indexes_tbp, ecp, txp);
-            if (ret != RDB_OK) 
-                return ret;
-
-            ret = dbtables_insert(txp->dbp->dbrootp->constraints_tbp, ecp, txp);
+            ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->indexes_tbp, RDB_tx_db(txp), ecp, txp);
             if (ret != RDB_OK) 
                 return ret;
 
-            ret = dbtables_insert(txp->dbp->dbrootp->version_info_tbp, ecp, txp);
+            ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->constraints_tbp, RDB_tx_db(txp), ecp, txp);
+            if (ret != RDB_OK) 
+                return ret;
+
+            ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->version_info_tbp, RDB_tx_db(txp), ecp, txp);
         }
         return ret;
     }
@@ -2189,6 +2189,116 @@ error:
     return NULL;
 }
 
+static RDB_expression *
+tb_dbs_query(RDB_object *tbp, RDB_exec_context *ecp, RDB_dbroot *dbrootp)
+{
+    RDB_expression *argp;
+    RDB_expression *exp = RDB_ro_op("where", ecp);
+    if (exp == NULL) {
+        return NULL;
+    }
+    argp = RDB_table_ref(dbrootp->dbtables_tbp, ecp);
+    if (argp == NULL) {
+        RDB_del_expr(exp, ecp);
+        return NULL;
+    }
+    RDB_add_arg(exp, argp);
+    argp = tablename_id_eq_expr(RDB_table_name(tbp), ecp);
+    if (argp == NULL) {
+        RDB_del_expr(exp, ecp);
+        return NULL;
+    }
+    RDB_add_arg(exp, argp);
+    return exp;
+}
+
+static int
+get_table_dbs(RDB_object *tbp, RDB_object *arrp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret;
+    RDB_object *tb_dbs_tbp = NULL;
+    RDB_expression *exp = tb_dbs_query(tbp, ecp, txp->dbp->dbrootp);
+
+    if (exp == NULL)
+        return RDB_ERROR;
+
+    tb_dbs_tbp = RDB_expr_to_vtable(exp, ecp, txp);
+    if (tb_dbs_tbp == NULL) {
+        RDB_del_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+
+    ret = RDB_table_to_array(arrp, tb_dbs_tbp, 0, NULL, 0, ecp, txp);
+    RDB_drop_table(tb_dbs_tbp, ecp, txp);
+    return ret;
+}
+
+/* Add a table to all databases in memory to which it belongs */
+static int
+add_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_object arr;
+    int i;
+    RDB_int len;
+
+    RDB_init_obj(&arr);
+
+    if (get_table_dbs(tbp, &arr, ecp, txp) != RDB_OK)
+        goto error;
+
+    len = RDB_array_length(&arr, ecp);
+    if (len == (RDB_int) RDB_ERROR)
+        goto error;
+
+    for (i = 0; i < len; i++) {
+        RDB_database *dbp;
+        RDB_object *tp = RDB_array_get(&arr, (RDB_int) i, ecp);
+        if (tbp == NULL)
+            goto error;
+/*
+        printf("table %s, db %s\n", RDB_table_name(tbp),
+                RDB_tuple_get_string(tp, "dbname"));
+*/
+        dbp = RDB_get_db_from_env(RDB_tuple_get_string(tp, "dbname"), txp->dbp->dbrootp->envp, ecp);
+        if (dbp == NULL)
+            goto error;
+        if (RDB_assoc_table_db(tbp, dbp, ecp) != RDB_OK)
+            goto error;
+#ifdef RAUS
+        /* Insert table into db if the db is in the list */
+        RDB_database *dbp = txp->dbp->dbrootp->first_dbp;
+        while (dbp != NULL) {
+            RDB_object *tbp = RDB_array_get(&arr, (RDB_int) i, ecp);
+            if (tbp == NULL)
+                goto error;
+
+            if (RDB_assoc_table_db(tbp, RDB_get_db_from_env(RDB_tuple_get_string(tbp, "dbname"),
+                    txp->dbp->dbrootp->envp, ecp), ecp) != RDB_OK)
+                goto error;
+
+/*
+            if (strcmp(RDB_db_name(dbp), RDB_tuple_get_string(tbp, "dbname")) == 0)
+                break;
+            dbp = dbp->nextdbp;
+*/
+        }
+        /*
+        if (dbp != NULL) {
+            if (RDB_assoc_table_db(tbp, dbp, ecp) != RDB_OK)
+                goto error;
+        }
+        */
+#endif
+    }
+
+    RDB_destroy_obj(&arr, ecp);
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&arr, ecp);
+    return RDB_ERROR;
+}
+
 /* Read a real table from the catalog */
 static int
 RDB_cat_get_rtable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
@@ -2369,7 +2479,7 @@ RDB_cat_get_rtable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         }
     }
 
-    if (RDB_assoc_table_db(tbp, txp->dbp, ecp) != RDB_OK)
+    if (add_table(tbp, ecp, txp) != RDB_OK)
         goto error;
 
     tbp->val.tb.default_map = defvalmap;
@@ -2495,7 +2605,7 @@ RDB_cat_get_vtable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         tbp->val.tb.flags &= ~RDB_TB_USER;
     }
 
-    if (RDB_assoc_table_db(tbp, txp->dbp, ecp) != RDB_OK)
+    if (add_table(tbp, ecp, txp) != RDB_OK)
         goto error;
 
     if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {

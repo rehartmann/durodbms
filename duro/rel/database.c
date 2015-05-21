@@ -1247,22 +1247,17 @@ RDB_object *
 RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object *tbp;
-    RDB_database *dbp;
 
-    /* Search table in all databases */
-    dbp = txp->dbp->dbrootp->first_dbp;
-    while (dbp != NULL) {
-        tbp = RDB_hashmap_get(&dbp->tbmap, name);
-        if (tbp != NULL) {
-            if (tbp == &null_tb) {
-                /* A previous search has already failed */
-                RDB_raise_name(name, ecp);
-                return NULL;
-            }
-            /* Found */
-            return tbp;
+    /* Search table in databases */
+    tbp = RDB_hashmap_get(&txp->dbp->tbmap, name);
+    if (tbp != NULL) {
+        if (tbp == &null_tb) {
+            /* A previous search has already failed */
+            RDB_raise_name(name, ecp);
+            return NULL;
         }
-        dbp = dbp->nextdbp;
+        /* Found */
+        return tbp;
     }
 
     /* Search public table in db root */
@@ -1756,8 +1751,10 @@ RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
 }
 
 /**
-RDB_add_table adds the table specified by <var>tbp</var> to the
-database the transaction specified by <var>txp</var> interacts with.
+ * If dbp is not NULL, RDB_add_table adds the table *<var>tbp</var> to the
+ * database *<var>dbp</var>.
+If dbp is NULL, the table is added to the catalog and to the database
+the transaction specified by <var>txp</var> interacts with.
 
 If an error occurs, an error value is left in *<var>ecp</var>.
 
@@ -1789,7 +1786,8 @@ The call may also fail for a @ref system-errors "system error",
 in which case the transaction may be implicitly rolled back.
 */
 int
-RDB_add_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+RDB_add_table(RDB_object *tbp, RDB_database *dbp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     if (tbp->val.tb.name == NULL) {
         RDB_raise_invalid_argument("missing table name", ecp);
@@ -1808,11 +1806,18 @@ RDB_add_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
 
-    if (RDB_cat_insert(tbp, ecp, txp) != RDB_OK)
-        return RDB_ERROR;
+    if (dbp == NULL) {
+        if (RDB_cat_insert(tbp, ecp, txp) != RDB_OK)
+            return RDB_ERROR;
+    } else {
+        if (RDB_cat_dbtables_insert(tbp, dbp, ecp, txp) != RDB_OK)
+            return RDB_ERROR;
+    }
 
-    if (RDB_assoc_table_db(tbp, txp->dbp, ecp) != RDB_OK)
+    if (RDB_assoc_table_db(tbp, dbp == NULL ? RDB_tx_db(txp) : dbp, ecp)
+            != RDB_OK) {
         return RDB_ERROR;
+    }
 
     tbp->val.tb.flags |= RDB_TB_PERSISTENT;
 

@@ -259,7 +259,7 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
 
     if (persistent) {
-        ret = RDB_add_table(tbp, statep->current_ecp, txp);
+        ret = RDB_add_table(tbp, NULL, statep->current_ecp, txp);
         if (ret != RDB_OK) {
             Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
             RDB_clear_err(statep->current_ecp);
@@ -507,19 +507,22 @@ table_add_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 {
     int ret;
     char *name;
+    char *dbname;
     char *txstr;
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
+    RDB_database *dbp;
     RDB_object *tbp;
 
-    if (objc != 4) {
-        Tcl_WrongNumArgs(interp, 2, objv, "tablename tx");
+    if (objc != 5) {
+        Tcl_WrongNumArgs(interp, 2, objv, "tablename dbname tx");
         return TCL_ERROR;
     }
 
     name = Tcl_GetString(objv[2]);
+    dbname = Tcl_GetString(objv[3]);
 
-    txstr = Tcl_GetString(objv[3]);
+    txstr = Tcl_GetString(objv[4]);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
     if (entryp == NULL) {
         Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
@@ -532,7 +535,13 @@ table_add_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    ret = RDB_add_table(tbp, statep->current_ecp, txp);
+    dbp = RDB_get_db_from_env(dbname, RDB_db_env(RDB_tx_db(txp)), statep->current_ecp);
+    if (dbp == NULL) {
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
+        return TCL_ERROR;
+    }
+
+    ret = RDB_add_table(tbp, dbp, statep->current_ecp, txp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;

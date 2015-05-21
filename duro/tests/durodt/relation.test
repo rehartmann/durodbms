@@ -17,8 +17,8 @@ set ::SETUP {
     makeDirectory dbenv
     cd $::tcltest::temporaryDirectory
     exec $testdir/../../dli/durodt << {
-        CREATE_ENV('dbenv');
-        CREATE_DB('D');
+        create_env('dbenv');
+        create_db('D');
     }
 }
 
@@ -1953,6 +1953,34 @@ test same_op {operator definition with same_heading_as and same_type_as} \
         commit;
     }
 } -result {X
+}
+
+test 2dbs {2 databases} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        create_db('D2');
+        current_db := 'D';
+        begin tx;
+        var r real init rel { tup { s 'y' } };
+        commit;
+        disconnect();
+        
+        connect('dbenv');
+        current_db := 'D';
+        begin tx;
+        io.put_line((tuple from r).s);
+        commit;
+        current_db := 'D2';
+        begin tx;
+        try
+            io.put_line((tuple from r).s);
+            io.put_line('accessing r in db D2 succeeded');
+        catch err name_error;
+            ;
+        end try;
+        commit;
+    }
+} -result {y
 }
 
 cleanupTests

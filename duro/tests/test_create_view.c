@@ -1,5 +1,3 @@
-/* $Id$ */
-
 #include <rel/rdb.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -43,7 +41,7 @@ create_view1(RDB_database *dbp, RDB_exec_context *ecp)
     
     ret = RDB_set_table_name(vtbp, "SALARIES", ecp, &tx);
     assert(ret == RDB_OK);
-    ret = RDB_add_table(vtbp, ecp, &tx);
+    ret = RDB_add_table(vtbp, NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
     assert(RDB_commit(ecp, &tx) == RDB_OK);
@@ -83,7 +81,7 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
 
     ret = RDB_set_table_name(vtbp, "EMPS1H", ecp, &tx);
     assert(ret == RDB_OK);
-    ret = RDB_add_table(vtbp, ecp, &tx);
+    ret = RDB_add_table(vtbp, NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
     assert(RDB_commit(ecp, &tx) == RDB_OK);
@@ -123,7 +121,7 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
     
     ret = RDB_set_table_name(vtbp, "EMPS1S", ecp, &tx);
     assert(ret == RDB_OK);
-    ret = RDB_add_table(vtbp, ecp, &tx);
+    ret = RDB_add_table(vtbp, NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
     assert(RDB_commit(ecp, &tx) == RDB_OK);
@@ -195,7 +193,7 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
     assert(vtbp != NULL);
 
     assert(RDB_set_table_name(vtbp, "EMPS1S2", ecp, &tx) == RDB_OK);
-    assert(RDB_add_table(vtbp, ecp, &tx) == RDB_OK);
+    assert(RDB_add_table(vtbp, NULL, ecp, &tx) == RDB_OK);
 
     assert(RDB_commit(ecp, &tx) == RDB_OK);
 }

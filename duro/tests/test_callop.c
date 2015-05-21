@@ -1,5 +1,3 @@
-/* $Id$ */
-
 #include <rel/rdb.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -111,7 +109,7 @@ test_useop(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    ret = RDB_add_table(vtbp, ecp, &tx);
+    ret = RDB_add_table(vtbp, NULL, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
     }

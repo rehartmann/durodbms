@@ -50,6 +50,8 @@ typedef struct RDB_dbroot {
 
     /* List of databases */
     RDB_database *first_dbp;
+
+    /* List of constraints */
     RDB_constraint *first_constrp;
     RDB_bool constraints_read;
 

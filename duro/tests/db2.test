@@ -2,7 +2,6 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
-# $Id$
 #
 # Test adding real table to a second database
 #
@@ -26,12 +25,9 @@ test db2 {two databases} -setup $SETUP -body {
        {INTATTR integer}
        {STRATTR string}
     } {{INTATTR}} $tx
-    
-    duro::commit $tx
-    
+
     # Add table to database #2
-    set tx [duro::begin $dbenv TEST2]
-    duro::table add T1 $tx
+    duro::table add T1 TEST2 $tx
     
     duro::commit $tx
     
