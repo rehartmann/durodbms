@@ -42,7 +42,7 @@ A value of FALSE indicates that an error occured and the program should exit.
 <p>A tiny example program:
 
 <pre>
-#!/usr/local/durodbms.0.25/bin/fcgi_durodt
+#!/usr/local/durodbms.0.26/bin/fcgi_durodt
 
 var request_accepted boolean;
 var counter init 0;
@@ -93,11 +93,11 @@ while true;
 
     if request_method = 'POST' or request_method = 'GET' then
         if request_method = 'GET' then
-            www.form_to_tuple(request_tp, os.getenv('QUERY_STRING'));
+            net.form_to_tuple(request_tp, os.getenv('QUERY_STRING'));
         else
             var form_data binary;
             read(form_data, cast_as_int(os.getenv('CONTENT_LENGTH')));
-            www.form_to_tuple(request_tp, cast_as_string(form_data));
+            net.form_to_tuple(request_tp, cast_as_string(form_data));
         end if;
 
         io.put_line('Content-Type: text/html');
@@ -134,7 +134,7 @@ end while;
 </pre>
 
 <p>The program processes both GET and POST requests.
-It uses www.form_to_tuple to convert the query string or form data to a tuple. 
+It uses net.form_to_tuple to convert the query string or form data to a tuple. 
 
 <p>For example, invoking the program using the URL
 http://localhost/fcgi-bin/gettables.td?pattern=*

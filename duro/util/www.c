@@ -59,7 +59,7 @@ urldecode (char *srcp)
  * using atoi() (integer) or atof() (float).
  */
 int
-RDB_www_form_to_tuple(RDB_object *tplp, const char *srcp,
+RDB_net_form_to_tuple(RDB_object *tplp, const char *srcp,
         RDB_exec_context *ecp)
 {
     char *startp, *endp;

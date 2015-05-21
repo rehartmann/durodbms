@@ -576,6 +576,6 @@ RDB_drop_constraint(const char *name, RDB_exec_context *,
         RDB_transaction *);
 
 int
-RDB_www_form_to_tuple(RDB_object *, const char *, RDB_exec_context *);
+RDB_net_form_to_tuple(RDB_object *, const char *, RDB_exec_context *);
 
 #endif

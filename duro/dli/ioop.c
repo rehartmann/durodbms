@@ -134,7 +134,7 @@ OPERATOR tmpfile() RETURNS io.iostream_id;
 Opens a unique temporary file for reading and writing and returns an I/O stream.
 The file is automatically deleted when it is closed.
 
-The following operator is part of the www package.
+The following operator is part of the 'net' package.
 
 OPERATOR form_to_tuple(tp <em>TUPLE</em>, form_data string) UPDATES {tp};
 
@@ -678,7 +678,7 @@ op_eof_iostream(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-op_www_form_to_tuple(int argc, RDB_object *argv[], RDB_operator *op,
+op_net_form_to_tuple(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /*
@@ -702,7 +702,7 @@ op_www_form_to_tuple(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_raise_type_mismatch("string required", ecp);
         return RDB_ERROR;
     }
-    return RDB_www_form_to_tuple(argv[0], RDB_obj_string(argv[1]), ecp);
+    return RDB_net_form_to_tuple(argv[0], RDB_obj_string(argv[1]), ecp);
 }
 
 int
@@ -895,8 +895,8 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    if (RDB_put_upd_op(opmapp, "www.form_to_tuple", RDB_VAR_PARAMS, NULL,
-            &op_www_form_to_tuple, ecp) != RDB_OK)
+    if (RDB_put_upd_op(opmapp, "net.form_to_tuple", RDB_VAR_PARAMS, NULL,
+            &op_net_form_to_tuple, ecp) != RDB_OK)
        return RDB_ERROR;
 
     RDB_init_obj(&DURO_STDIN_OBJ);
