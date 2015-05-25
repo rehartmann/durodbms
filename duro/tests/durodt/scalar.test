@@ -885,7 +885,7 @@ test www {Web operators} -body {
     exec $testdir/../../dli/durodt << {
 	    var tp init tup {aa 'x', b 'x', n 1, f 2.0}; 
 
-	    www.form_to_tuple(tp, 'aa=Y%2Bx+z&f=1.2&n=2'); 
+	    net.form_to_tuple(tp, 'aa=Y%2Bx+z&f=1.2&n=2'); 
 
 	    io.put_line(tp.aa);
 	    io.put_line(tp.b);
@@ -894,8 +894,8 @@ test www {Web operators} -body {
 
         -- Check that invalid input does not crash the decoder 
 
-	    www.form_to_tuple(tp, 'aa=%fg&b=%5');
-	    www.form_to_tuple(tp, 'n=$&aa=%5');
+	    net.form_to_tuple(tp, 'aa=%fg&b=%5');
+	    net.form_to_tuple(tp, 'n=$&aa=%5');
 	}
 } -result {Y+x z
 x
