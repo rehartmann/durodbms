@@ -855,9 +855,16 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
 
     yy_delete_buffer(YY_CURRENT_BUFFER);
 
+    whitecommp = RDB_alloc(sizeof (RDB_object), RDB_parse_ecp);
+    if (whitecommp == NULL)
+        yyterminate();
+    RDB_init_obj(whitecommp);
+    if (RDB_string_to_obj(whitecommp, "\n", RDB_parse_ecp) != RDB_OK)
+        yyterminate();
+
     line = (*RDB_parse_read_line_fnp) ();
     if (line == NULL) {
-        /* provide valid input in case yylex() is called again */
+        /* Provide valid input in case yylex() is called again */
         RDB_parse_buffer = yy_scan_string("");
         RDB_parse_buffer_valid = 1;
 

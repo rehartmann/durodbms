@@ -1646,6 +1646,9 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     parent_op = interp->inner_op;
     interp->inner_op = op;
+
+    interp->err_line = -1;
+
     ret = exec_stmts(opdatap->stmtlistp, interp, ecp, NULL);
     interp->inner_op = parent_op;
 
@@ -3100,8 +3103,10 @@ Duro_dt_execute(FILE *infp, Duro_interp *interp, RDB_exec_context *ecp)
 {
     interp->interrupted = 0;
 
-    /* Initialize error line */
+    /* Initialize error line and operator */
     interp->err_line = -1;
+    RDB_free(interp->err_opname);
+    interp->err_opname = NULL;
 
     if (isatty(fileno(infp))) {
         RDB_parse_set_interactive(RDB_TRUE);
@@ -3170,6 +3175,11 @@ Duro_dt_execute_str(const char *instr, Duro_interp *interp,
 {
     YY_BUFFER_STATE buf;
     interp->interrupted = 0;
+
+    /* Initialize error line and operator */
+    interp->err_line = -1;
+    RDB_free(interp->err_opname);
+    interp->err_opname = NULL;
 
     RDB_parse_set_interactive(RDB_FALSE);
 
