@@ -1,0 +1,6 @@
+eclipse.preferences.version=1
+environment/project/cdt.managedbuild.config.gnu.exe.debug.2087456159/CFLAGS/delimiter=\:
+environment/project/cdt.managedbuild.config.gnu.exe.debug.2087456159/CFLAGS/operation=append
+environment/project/cdt.managedbuild.config.gnu.exe.debug.2087456159/CFLAGS/value=-g -Wall -Wdeclaration-after-statement -Werror
+environment/project/cdt.managedbuild.config.gnu.exe.debug.2087456159/append=true
+environment/project/cdt.managedbuild.config.gnu.exe.debug.2087456159/appendContributed=true

@@ -26,6 +26,17 @@ static FCGX_Stream *fcgi_out;
 static FCGX_Stream *fcgi_err;
 static RDB_bool headers_sent;
 
+/* Return codes */
+enum {
+    DR_ERR_INIT_BUILTINS = 25,
+    DR_ERR_INIT_INTERP = 26,
+    DR_ERR_INIT_OP = 27,
+    DR_ERR_DECL = 28,
+    DR_ERR_CONFIG = 29,
+    DR_ERR_CONNECT = 30,
+    DR_ERR_REQUEST = 31
+};
+
 static void
 log_err(Duro_interp *interpp, RDB_exec_context *ecp, FCGX_Stream *err)
 {
@@ -366,7 +377,8 @@ error:
     return ret;
 }
 
-int main(void)
+int
+main(void)
 {
     int ret;
     FCGX_Stream *in, *out, *err;
@@ -378,49 +390,58 @@ int main(void)
     RDB_init_exec_context(&ec);
 
     if (RDB_init_builtin(&ec) != RDB_OK) {
-        fputs("Unable to initialize built-ins\n", stderr);
+        ret = DR_ERR_INIT_BUILTINS;
         goto error;
     }
 
     if (Duro_init_interp(&interp, &ec, NULL, "") != RDB_OK) {
-        fputs("Unable to initialize interpreter\n", stderr);
+        ret = DR_ERR_INIT_INTERP;
         goto error;
     }
 
     param.typ = &RDB_STRING;
     param.update = RDB_FALSE;
     if (RDB_put_upd_op(&interp.sys_upd_op_map, "net.put_line", 1, &param,
-            &op_net_put_line, &ec) != RDB_OK)
-       goto error;
+            &op_net_put_line, &ec) != RDB_OK) {
+        ret = DR_ERR_INIT_OP;
+        goto error;
+    }
     if (RDB_put_upd_op(&interp.sys_upd_op_map, "net.put_err_line", 1, &param,
-            &op_net_put_err_line, &ec) != RDB_OK)
-       goto error;
+            &op_net_put_err_line, &ec) != RDB_OK) {
+        ret = DR_ERR_INIT_OP;
+        goto error;
+    }
 
     if (RDB_put_upd_op(&interp.sys_upd_op_map, "net.put", 1, &param,
-            &op_net_put, &ec) != RDB_OK)
-       goto error;
+            &op_net_put, &ec) != RDB_OK) {
+        ret = DR_ERR_INIT_OP;
+        goto error;
+    }
     if (RDB_put_upd_op(&interp.sys_upd_op_map, "net.put_err", 1, &param,
-            &op_net_put_err, &ec) != RDB_OK)
-       goto error;
+            &op_net_put_err, &ec) != RDB_OK) {
+        ret = DR_ERR_INIT_OP;
+        goto error;
+    }
 
     if (Duro_dt_execute_str("var path_info string; var dbenv string;", &interp, &ec) != RDB_OK) {
-        fputs("Declaration of path_info failed\n", stderr);
+        ret = DR_ERR_DECL;
         goto error;
     }
 
     if (Duro_dt_execute_path("dreisam/config.td", &interp, &ec) != RDB_OK) {
-        fputs("Execution of config file failed\n", stderr);
+        ret = DR_ERR_CONFIG;
         goto error;
     }
 
     if (Duro_dt_execute_str("connect(dbenv);", &interp, &ec) != RDB_OK) {
-        fputs("Connecting to database environment failed\n", stderr);
+        ret = DR_ERR_CONNECT;
         goto error;
     }
 
-    while ((ret = FCGX_Accept(&in, &out, &err, &envp)) >= 0) {
+    while (FCGX_Accept(&in, &out, &err, &envp) >= 0) {
         if (process_request(&interp, &ec, envp, in, out, err) != RDB_OK) {
             FCGX_Finish();
+            ret = DR_ERR_REQUEST;
             goto error;
         }
     }
@@ -436,5 +457,5 @@ error:
 
     RDB_destroy_exec_context(&ec);
 
-    return EXIT_FAILURE;
+    return ret;
 }

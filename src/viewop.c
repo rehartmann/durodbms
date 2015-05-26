@@ -202,6 +202,10 @@ Dr_provide_view_op(RDB_object *viewopnamep, Duro_interp *interpp,
                 interpp, ecp, err) != RDB_OK) {
             goto error;
         }
+        view_op = RDB_get_update_op(RDB_obj_string(viewopnamep), 1,
+                &viewargtyp, interpp->envp, ecp, &interpp->txnp->tx);
+        if (view_op == NULL)
+            goto error;
     } else {
         RDB_bool isnewer;
 
@@ -225,6 +229,8 @@ Dr_provide_view_op(RDB_object *viewopnamep, Duro_interp *interpp,
             }
             view_op = RDB_get_update_op(RDB_obj_string(viewopnamep), 1,
                     &viewargtyp, interpp->envp, ecp, &interpp->txnp->tx);
+            if (view_op == NULL)
+                goto error;
         }
     }
     if (Duro_dt_tx(interpp) != NULL) {

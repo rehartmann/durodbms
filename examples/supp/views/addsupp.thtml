@@ -1,0 +1,7 @@
+<head>
+<title>Supplier created</title>
+<body>
+<p>The supplier {$ m.sname $} was created.
+<p><a href="/addsupp.html">Create another supplier</a>
+<p><a href="/fcgi-bin/dreisam.fcgi/listsupps">List all suppliers</a>
+</html>
