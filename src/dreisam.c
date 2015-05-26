@@ -348,9 +348,11 @@ error:
     /*
      * If there is a syntax error in the template,
      * or the template was not found
+     * or an operator was not found
      * return RDB_OK so the process won't exit
      */
     if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_SYNTAX_ERROR
+            || RDB_obj_type(RDB_get_err(ecp)) == &RDB_OPERATOR_NOT_FOUND_ERROR
             || RDB_obj_type(RDB_get_err(ecp)) == &RDB_RESOURCE_NOT_FOUND_ERROR)
         ret = RDB_OK;
 

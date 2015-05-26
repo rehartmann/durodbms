@@ -79,7 +79,7 @@ create_view_op(const char *viewopname, Duro_interp *interpp,
 
     /* Execute operator creation */
     if (Duro_dt_execute(viewopfile, interpp, ecp) != RDB_OK) {
-        FCGX_FPrintF(err, "Error defining operator %s at line %d\n",
+        FCGX_FPrintF(err, "Error defining view operator %s at line %d\n",
                 viewopname, interpp->err_line);
         Duro_io_close(&opstrm, ecp);
         goto error;
@@ -241,11 +241,14 @@ Dr_provide_view_op(RDB_object *viewopnamep, Duro_interp *interpp,
 
 error:
     if (interpp->txnp != NULL) {
-        /* Preserve the error in *ecp */
+        /* Preserve the error in *ecp and err_line */
         RDB_exec_context ec;
+        int err_line = interpp->err_line;
+
         RDB_init_exec_context(&ec);
         Duro_dt_execute_str("commit;", interpp, &ec);
         RDB_destroy_exec_context(&ec);
+        interpp->err_line = err_line;
     }
     return NULL;
 }
