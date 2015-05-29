@@ -1833,6 +1833,8 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     if (paramv == NULL) {
         goto error;
     }
+    for (i = 0; i < paramc; i++)
+        paramv[i].typ = NULL;
 
     attrnodep = stmtp->nextp->nextp->val.children.firstp;
     for (i = 0; i < paramc; i++) {

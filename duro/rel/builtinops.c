@@ -367,6 +367,20 @@ The position of the substring, in bytes, or -1 if the substring has not been fou
 
 <hr>
 
+<h3 id="op_starts_with">OPERATOR starts_with</h3>
+
+OPERATOR starts_with (s string, prefix string) RETURNS boolean;
+
+<h4>Description</h4>
+
+Tests if string <var>s</var> starts with string <var>prefix</var>.
+
+<h4>Return value</h4>
+
+TRUE if <var>s</var> starts with <var>prefix</var>, FALSE otherwise
+
+<hr>
+
 <h3 id="op_like">OPERATOR like</h3>
 
 OPERATOR like (s string, pattern string) RETURNS boolean;
@@ -378,7 +392,7 @@ an asterisk ('*') matches zero or more characters.
 
 <h4>Return value</h4>
 
-RDB_TRUE if <var>s</var> matches <var>pattern</var>, RDB_FALSE otherwise.
+TRUE if <var>s</var> matches <var>pattern</var>, RDB_FALSE otherwise.
 
 <hr>
 
@@ -392,7 +406,7 @@ The regular expression matching operator.
 
 <h4>Return value</h4>
 
-RDB_TRUE if <var>s</var> matches <var>pattern</var>, RDB_FALSE otherwise.
+TRUE if <var>s</var> matches <var>pattern</var>, RDB_FALSE otherwise.
 
 <hr>
 
@@ -470,7 +484,7 @@ Checks if a table is empty.
 
 <h4>Return value</h4>
 
-RDB_TRUE if the relation-valued operand is empty, RDB_FALSE
+TRUE if the relation-valued operand is empty, RDB_FALSE
 otherwise.
 
 <hr>
@@ -499,7 +513,7 @@ Checks if a table contains a given tuple.
 
 <h4>Return value</h4>
 
-RDB_TRUE if <var>r</var> contains <var>t</var>, RDB_FALSE otherwise.
+TRUE if <var>r</var> contains <var>t</var>, RDB_FALSE otherwise.
 
 <hr>
 
@@ -513,7 +527,7 @@ Checks if a table is a subset of another table.
 
 <h4>Return value</h4>
 
-RDB_TRUE if the <var>R1</var> is a subset of <var>R2</var>, RDB_FALSE otherwise.
+TRUE if the <var>R1</var> is a subset of <var>R2</var>, RDB_FALSE otherwise.
 
 <hr>
 
@@ -601,7 +615,7 @@ The IF-THEN-ELSE operator.
 
 <h4>Return value</h4>
 
-<var>V1</var> if <var>B</var> is RDB_TRUE, <var>V2</var> otherwise.
+<var>V1</var> if <var>B</var> is TRUE, <var>V2</var> otherwise.
 
 <hr>
 
