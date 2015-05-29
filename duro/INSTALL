@@ -10,7 +10,7 @@ scons install
 
 SCons is available from www.scons.org.
 
-To compile DuroDBMS, you need GNU Libtool, Berkeley DB (5.3 recommended) and Tcl (8.1 or later).
+To compile DuroDBMS, you need GNU Libtool, Berkeley DB (6.1 recommended) and Tcl (8.1 or later).
 
 Building the JNI interface requires Java Development Kit 7. 
 
@@ -22,20 +22,20 @@ pass this directory to SCons using the bdbhome variable, so
 if Berkeley DB is located in /usr instead of /usr/local,
 you may use:
 
-scons bdbhome=/usr/BerkeleyDB5.3
+scons bdbhome=/usr/BerkeleyDB.6.1
 
 The location of Berkeley DB may also be specified using
 the environment. With Visual C++, the variables LIB and INCLUDE
 can be used.
 
-By default, DuroDBMS is installed in C:\duro.0.25 on Windows, and
-/usr/local/duro.0.25 on all other systems.
+By default, DuroDBMS is installed in C:\duro.0.26 on Windows, and
+/usr/local/duro.0.26 on all other systems.
 You can specify a different directory by passing an installdir
 variable to scons, e. g.:
 
 scons installdir=/usr install
 
-This will install DuroDBMS in /usr/duro.0.25.
+This will install DuroDBMS in /usr/duro.0.26.
 
 To build DuroDBMS without Tcl support, use:
 

@@ -3,10 +3,10 @@
 exec wish "$0" ${1+"$@"}
 
 # Duroadmin - GUI administration tool for Duro.
-# Copyright (C) 2004-2012 Rene Hartmann.
+# Copyright (C) 2004-2009, 2012-2014 Rene Hartmann.
 # See the file COPYING for redistribution information.
 
-set duro_version 0.25
+set duro_version 0.26
 
 package require -exact duro $duro_version
 package require Tktable

@@ -3,7 +3,7 @@
 exec tclsh "$0" ${1+"$@"}
 
 # Durodump - tool to dump tables to a file.
-# Copyright (C) 2004-2014 Rene Hartmann.
+# Copyright (C) 2012, 2014 Rene Hartmann.
 # See the file COPYING for redistribution information.
 #
 # Synopsis
