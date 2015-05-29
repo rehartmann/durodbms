@@ -7,8 +7,8 @@ var net_actions real relation { path string, opname string } key { path };
 package net;
 
 operator send_headers() updates {};
-    if not resp_headers_sent then
-        resp_headers_sent := true;
+    if resp_headers_state = 0 then
+        resp_headers_state := 1;
 
         if resp_status <> '' then
             net.put_line('Status: ' || resp_status);
@@ -20,6 +20,7 @@ operator send_headers() updates {};
         end for;
 
         net.put_line('');
+        resp_headers_state := 2;
     end if;
 end operator;
 

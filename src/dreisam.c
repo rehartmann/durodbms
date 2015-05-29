@@ -34,9 +34,18 @@ enum {
     DR_ERR_GET_OP = 32
 };
 
+/* Header output states */
+enum {
+    DR_HEADERS_NOT_SENT = 0,
+    DR_HEADERS_SENDING = 1,
+    DR_HEADERS_SENT = 2
+};
+
 static FCGX_Stream *fcgi_out;
 static FCGX_Stream *fcgi_err;
 static RDB_operator *send_headers_op;
+static RDB_object *headers_state;
+static const char *request_method;
 
 static const char *
 sc_reason(int code) {
@@ -205,6 +214,13 @@ op_net_put_line(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     send_headers(ecp);
+
+    /* Don't send response body if the request method is HEAD */
+    if (strcmp(request_method, "HEAD") == 0
+            && RDB_obj_int(headers_state) == DR_HEADERS_SENT) {
+        return RDB_OK;
+    }
+
     if (FCGX_PutS(RDB_obj_string(argv[0]), fcgi_out) == -1)
         goto error;
     if (FCGX_PutS("\n", fcgi_out) == -1)
@@ -222,6 +238,12 @@ op_net_put(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     send_headers(ecp);
+
+    if (strcmp(request_method, "HEAD") == 0
+            && RDB_obj_int(headers_state) == DR_HEADERS_SENT) {
+        return RDB_OK;
+    }
+
     if (FCGX_PutS(RDB_obj_string(argv[0]), fcgi_out) == -1) {
         RDB_errcode_to_error(errno, ecp);
         return RDB_ERROR;
@@ -235,6 +257,7 @@ op_net_put_err_line(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     send_headers(ecp);
+
     if (FCGX_PutS(RDB_obj_string(argv[0]), fcgi_err) == -1)
         goto error;
     if (FCGX_PutS("\n", fcgi_err) == -1)
@@ -252,6 +275,7 @@ op_net_put_err(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     send_headers(ecp);
+
     if (FCGX_PutS(RDB_obj_string(argv[0]), fcgi_err) == -1) {
         RDB_errcode_to_error(errno, ecp);
         return RDB_ERROR;
@@ -275,18 +299,12 @@ static int
 send_error_response(int status, const char *msg, FCGX_Stream *out, RDB_exec_context *ecp)
 {
     int cnt;
-    RDB_exec_context ec;
-    RDB_object *headers_sent;
     Duro_interp *interpp = RDB_ec_property(ecp, "INTERP");
 
     if (interpp == NULL)
         return RDB_ERROR;
 
-    RDB_init_exec_context(&ec);
-    headers_sent = Duro_lookup_var("resp_headers_sent", interpp, &ec);
-    RDB_destroy_exec_context(&ec);
-
-    if (RDB_obj_bool(headers_sent))
+    if (RDB_obj_int(headers_state) != DR_HEADERS_NOT_SENT)
         return 0;
     cnt = FCGX_FPrintF(out,
               "Status: %d %s\n"
@@ -299,7 +317,7 @@ send_error_response(int status, const char *msg, FCGX_Stream *out, RDB_exec_cont
               "<html>\n",
               status, sc_reason(status), msg, msg);
     if (cnt > 0)
-        RDB_bool_to_obj(headers_sent, RDB_TRUE);
+        RDB_int_to_obj(headers_state, DR_HEADERS_SENT);
     return cnt;
 }
 
@@ -357,7 +375,8 @@ post_req_to_model(RDB_object *modelp, RDB_exec_context *ecp,
 
 static int
 process_request(Duro_interp *interpp, RDB_exec_context *ecp,
-        FCGX_ParamArray envp, FCGX_Stream *in, FCGX_Stream *out, FCGX_Stream *err)
+        FCGX_ParamArray envp, FCGX_Stream *in, FCGX_Stream *out,
+        FCGX_Stream *err)
 {
     int ret;
     RDB_object viewopname;
@@ -365,7 +384,6 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
     RDB_object *argv[2];
     RDB_operator *controller_op;
     const char *path_info;
-    const char *request_method;
     RDB_operator *view_op;
 
     RDB_init_obj(&viewopname);
@@ -373,10 +391,12 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
 
     if (Duro_dt_execute_str("resp_status := ''; "
             "resp_headers := array ('Content-type: text/html; charset=utf-8'); "
-            "resp_headers_sent := FALSE;",
+            "resp_headers_state := 0;",
             interpp, ecp) != RDB_OK) {
         goto error;
     }
+
+    headers_state = Duro_lookup_var("resp_headers_state", interpp, ecp);
 
     path_info = FCGX_GetParam("PATH_INFO", envp);
     if (path_info == NULL)
@@ -440,7 +460,8 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
     if (request_method == NULL)
         request_method = "";
 
-    if (strcmp(request_method, "GET") == 0) {
+    if (strcmp(request_method, "GET") == 0
+            || strcmp(request_method, "HEAD") == 0) {
         char *query_string = FCGX_GetParam("QUERY_STRING", envp);
         if (RDB_net_form_to_tuple(&model, query_string, ecp) != RDB_OK)
             goto error;
@@ -595,7 +616,7 @@ main(void)
             "var dbenv string; "
             "var resp_status string; "
             "var resp_headers array string; "
-            "var resp_headers_sent boolean;",
+            "var resp_headers_state int;",
             &interp, &ec) != RDB_OK) {
         ret = DR_ERR_DECL;
         goto error;
