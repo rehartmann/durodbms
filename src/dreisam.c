@@ -13,6 +13,7 @@
 
 #include "getaction.h"
 #include "viewop.h"
+#include "sreason.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -47,133 +48,6 @@ static RDB_operator *send_headers_op;
 static RDB_object *headers_state;
 static const char *request_method;
 
-static const char *
-sc_reason(int code) {
-    switch (code) {
-    case 100:
-        return "Continue";
-    case 101:
-        return "Switching Protocols";
-    case 102:
-        return "Processing";
-    case 200:
-        return "OK";
-    case 201:
-        return "Created";
-    case 202:
-        return "Accepted";
-    case 203:
-        return "Non-Authoritative Information";
-    case 204:
-        return "No Content";
-    case 205:
-        return "Reset Content";
-    case 206:
-        return "Partial Content";
-    case 207:
-        return "Multi-Status";
-    case 208:
-        return "Already Reported";
-    case 226:
-        return "IM Used";
-    case 300:
-        return "Multiple Choices";
-    case 301:
-        return "Moved Permanently";
-    case 302:
-        return "Found";
-    case 303:
-        return "See Other";
-    case 304:
-        return "Not Modified";
-    case 305:
-        return "Use Proxy";
-    case 307:
-        return "Temporary Redirect";
-    case 308:
-        return "Permanent Redirect";
-    case 400:
-        return "Bad Request";
-    case 401:
-        return "Unauthorized";
-    case 402:
-        return "Payment Required";
-    case 403:
-        return "Forbidden";
-    case 404:
-        return "Not Found";
-    case 405:
-        return "Method Not Allowed";
-    case 406:
-        return "Not Acceptable";
-    case 407:
-        return "Proxy Authentication Required";
-    case 408:
-        return "Request Time-out";
-    case 409:
-        return "Conflict";
-    case 410:
-        return "Gone";
-    case 411:
-        return "Length Required";
-    case 412:
-        return "Precondition Failed";
-    case 413:
-        return "Request Entity Too Large";
-    case 414:
-        return "Request-URL Too Long";
-    case 415:
-        return "Unsupported Media Type";
-    case 416:
-        return "Requested range not satisfiable";
-    case 417:
-        return "Expectation Failed  ";
-    case 420:
-        return "Policy Not Fulfilled";
-    case 421:
-        return "There are too many connections from your internet address";
-    case 422:
-        return "Unprocessable Entity";
-    case 423:
-        return "Locked";
-    case 424:
-        return "Failed Dependency";
-    case 425:
-        return "Unordered Collection";
-    case 426:
-        return "Upgrade Required";
-    case 428:
-        return "Precondition Required";
-    case 429:
-        return "Too Many Requests";
-    case 431:
-        return "Request Header Fields Too Large";
-    case 500:
-        return "Internal Server Error";
-    case 501:
-        return "Not Implemented";
-    case 502:
-        return "Bad Gateway";
-    case 503:
-        return "Service Unavailable";
-    case 504:
-        return "Gateway Time-out";
-    case 505:
-        return "HTTP Version not supported";
-    case 506:
-        return "Variant Also Negotiates";
-    case 507:
-        return "Insufficient Storage";
-    case 508:
-        return "Loop Detected";
-    case 509:
-        return "Bandwidth Limit Exceeded";
-    case 510:
-        return "Not Extended";
-    }
-    return "";
-}
-
 static void
 log_err(Duro_interp *interpp, RDB_exec_context *ecp, FCGX_Stream *err)
 {
@@ -201,10 +75,12 @@ log_err(Duro_interp *interpp, RDB_exec_context *ecp, FCGX_Stream *err)
 static int
 send_headers(RDB_exec_context *ecp)
 {
-    if (RDB_call_update_op(send_headers_op, 0, NULL, ecp, NULL)
-            != RDB_OK) {
-        FCGX_PutS("Sending headers failed\n", fcgi_err);
-        return RDB_ERROR;
+    if (RDB_obj_int(headers_state) == 0) {
+        if (RDB_call_update_op(send_headers_op, 0, NULL, ecp, NULL)
+                != RDB_OK) {
+            FCGX_PutS("Sending headers failed\n", fcgi_err);
+            return RDB_ERROR;
+        }
     }
     return RDB_OK;
 }
@@ -288,7 +164,7 @@ static int
 op_net_status_reason(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
-    return RDB_string_to_obj(retvalp, sc_reason(RDB_obj_int(argv[0])), ecp);
+    return RDB_string_to_obj(retvalp, Dr_sc_reason(RDB_obj_int(argv[0])), ecp);
 }
 
 /*
@@ -315,7 +191,7 @@ send_error_response(int status, const char *msg, FCGX_Stream *out, RDB_exec_cont
               "<title>%s</title>\n"
               "<p>%s\n"
               "<html>\n",
-              status, sc_reason(status), msg, msg);
+              status, Dr_sc_reason(status), msg, msg);
     if (cnt > 0)
         RDB_int_to_obj(headers_state, DR_HEADERS_SENT);
     return cnt;
@@ -379,14 +255,14 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
         FCGX_Stream *err)
 {
     int ret;
-    RDB_object viewopname;
+    RDB_object viewname;
     RDB_object model;
     RDB_object *argv[2];
-    RDB_operator *controller_op;
+    RDB_operator *action_op;
     const char *path_info;
     RDB_operator *view_op;
 
-    RDB_init_obj(&viewopname);
+    RDB_init_obj(&viewname);
     RDB_init_obj(&model);
 
     if (Duro_dt_execute_str("resp_status := ''; "
@@ -396,28 +272,16 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
         goto error;
     }
 
-    headers_state = Duro_lookup_var("resp_headers_state", interpp, ecp);
-
     path_info = FCGX_GetParam("PATH_INFO", envp);
     if (path_info == NULL)
         path_info = "";
 
-    /*
-     * The initial view name is taken from path_info, with the leading
-     * slash removed, and preceded by 't.' so it will match the view operator
-     * generated from a template.
-     */
-    RDB_string_to_obj(&viewopname, "t.", ecp);
-    if (path_info[0] == '/') {
-        if (RDB_append_string(&viewopname, path_info + 1, ecp) != RDB_OK)
-            goto error;
-    } else {
-        if (RDB_append_string(&viewopname, path_info, ecp) != RDB_OK)
-            goto error;
-    }
+    request_method = FCGX_GetParam("REQUEST_METHOD", envp);
+    if (request_method == NULL)
+        request_method = "";
 
-    controller_op = Dr_get_action_op(path_info, interpp, ecp);
-    if (controller_op == NULL) {
+    action_op = Dr_get_action_op(path_info, interpp, ecp);
+    if (action_op == NULL) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
             FCGX_FPrintF(out,
                     "Status: 404 Not found\n"
@@ -450,15 +314,20 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
         goto error;
     }
 
-    if (RDB_set_init_value(&model, RDB_get_parameter(controller_op, 0)->typ,
+    /* Get view from path info without leading slash */
+    if (path_info[0] == '/') {
+        if (RDB_string_to_obj(&viewname, path_info + 1, ecp) != RDB_OK)
+            goto error;
+    } else {
+        if (RDB_string_to_obj(&viewname, path_info, ecp) != RDB_OK)
+            goto error;
+    }
+
+    if (RDB_set_init_value(&model, RDB_get_parameter(action_op, 0)->typ,
             interpp->envp, ecp) != RDB_OK) {
         FCGX_PutS("Initializing the model failed\n", err);
         goto error;
     }
-
-    request_method = FCGX_GetParam("REQUEST_METHOD", envp);
-    if (request_method == NULL)
-        request_method = "";
 
     if (strcmp(request_method, "GET") == 0
             || strcmp(request_method, "HEAD") == 0) {
@@ -493,22 +362,23 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
     fcgi_err = err;
 
     argv[0] = &model;
-    argv[1] = &viewopname;
-    if (RDB_call_update_op(controller_op, 2, argv, ecp, NULL)
+    argv[1] = &viewname;
+    if (RDB_call_update_op(action_op, 2, argv, ecp, NULL)
             != RDB_OK) {
-        FCGX_PutS("Invoking controller operator failed\n", err);
+        FCGX_PutS("Invoking action operator failed\n", err);
         goto error;
     }
 
-    if (*RDB_obj_string(&viewopname) != '\0') {
-        view_op = Dr_provide_view_op(&viewopname, interpp, ecp, err);
+    if (*RDB_obj_string(&viewname) != '\0') {
+        view_op = Dr_provide_view_op(RDB_obj_string(&viewname), interpp, ecp,
+                err);
         if (view_op == NULL)
             goto error;
 
         argv[0] = &model;
         if (RDB_call_update_op(view_op, 1, argv, ecp, NULL) != RDB_OK) {
             FCGX_FPrintF(err, "Invoking view operator %s failed\n",
-                    RDB_obj_string(&viewopname));
+                    RDB_obj_string(&viewname));
             log_err(interpp, ecp, err);
             send_error_response(500, "processing the request failed", out, ecp);
 
@@ -519,7 +389,7 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
         send_headers(ecp);
     }
 
-    RDB_destroy_obj(&viewopname, ecp);
+    RDB_destroy_obj(&viewname, ecp);
     RDB_destroy_obj(&model, ecp);
     return RDB_OK;
 
@@ -541,7 +411,7 @@ error:
     send_error_response(500, "An error occurred while processing the request",
             out, ecp);
 
-    RDB_destroy_obj(&viewopname, ecp);
+    RDB_destroy_obj(&viewname, ecp);
     RDB_destroy_obj(&model, ecp);
     return ret;
 }
@@ -618,6 +488,12 @@ main(void)
             "var resp_headers array string; "
             "var resp_headers_state int;",
             &interp, &ec) != RDB_OK) {
+        ret = DR_ERR_DECL;
+        goto error;
+    }
+
+    headers_state = Duro_lookup_var("resp_headers_state", &interp, &ec);
+    if (headers_state == NULL) {
         ret = DR_ERR_DECL;
         goto error;
     }

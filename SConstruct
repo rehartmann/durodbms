@@ -7,7 +7,8 @@ env = Environment(ENV = os.environ, tools = ['default', 'textfile'])
 if (os.environ.has_key('CFLAGS')):
     env.Replace(CCFLAGS = os.environ['CFLAGS'])
 
-dreisam = env.Program('dreisam.fcgi', ['src/dreisam.c', 'src/getaction.c', 'src/viewop.c'],
+dreisam = env.Program('dreisam.fcgi', ['src/dreisam.c', 'src/getaction.c',
+                      'src/viewop.c', 'src/sreason.c'],
             CPPPATH = ['/usr/local/BerkeleyDB.6.1/include',
                        '/usr/local/durodbms.0.26/include'],
             LINKFLAGS = ['-g'],

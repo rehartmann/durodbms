@@ -7,25 +7,27 @@ var net_actions real relation { path string, opname string } key { path };
 package net;
 
 operator send_headers() updates {};
-    if resp_headers_state = 0 then
-        resp_headers_state := 1;
+    resp_headers_state := 1;
 
-        if resp_status <> '' then
-            net.put_line('Status: ' || resp_status);
-        end if;
-
-        var i int;
-        for i := 0 to length(resp_headers) - 1;
-            net.put_line(resp_headers[i]);
-        end for;
-
-        net.put_line('');
-        resp_headers_state := 2;
+    if resp_status <> '' then
+        net.put_line('Status: ' || resp_status);
     end if;
+
+    var i int;
+    for i := 0 to length(resp_headers) - 1;
+        net.put_line(resp_headers[i]);
+    end for;
+
+    net.put_line('');
+    resp_headers_state := 2;
+end operator;
+
+operator set_status(status int, reason string) updates {};
+    resp_status := cast_as_string(status) || ' ' || reason;
 end operator;
 
 operator set_status(status int) updates {};
-    resp_status := cast_as_string(status) || ' ' || net.status_reason(status);
+    set_status(status, net.status_reason(status));
 end operator;
 
 operator set_header(name string, value string) updates {};

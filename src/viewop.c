@@ -28,7 +28,7 @@ template_path(const char *viewnamep, RDB_object *tnameobjp,
  * viewopname is passed without the module name.
  */
 static int
-create_view_op(const char *viewopname, Duro_interp *interpp,
+create_view_op(const char *viewname, Duro_interp *interpp,
         RDB_exec_context *ecp, FCGX_Stream *err)
 {
     RDB_object *argv[3];
@@ -41,14 +41,14 @@ create_view_op(const char *viewopname, Duro_interp *interpp,
     RDB_init_obj(&tfilename);
     RDB_init_obj(&opstrm);
 
-    if (RDB_string_to_obj(&viewopnameobj, viewopname, ecp) != RDB_OK)
+    if (RDB_string_to_obj(&viewopnameobj, viewname, ecp) != RDB_OK)
         goto error;
     if (RDB_call_ro_op_by_name("io.tmpfile", 0, NULL, ecp, Duro_dt_tx(interpp),
             &opstrm) != RDB_OK) {
         FCGX_PutS("Creating temporary file failed\n", err);
         goto error;
     }
-    if (template_path(viewopname, &tfilename, ecp) != RDB_OK) {
+    if (template_path(viewname, &tfilename, ecp) != RDB_OK) {
         Duro_io_close(&opstrm, ecp);
         goto error;
     }
@@ -80,7 +80,7 @@ create_view_op(const char *viewopname, Duro_interp *interpp,
     /* Execute operator creation */
     if (Duro_dt_execute(viewopfile, interpp, ecp) != RDB_OK) {
         FCGX_FPrintF(err, "Error defining view operator %s at line %d\n",
-                viewopname, interpp->err_line);
+                viewname, interpp->err_line);
         Duro_io_close(&opstrm, ecp);
         goto error;
     }
@@ -105,8 +105,8 @@ error:
 
 /* Check if the template has been modified */
 static int
-template_is_newer(RDB_operator *view_op, Duro_interp *interpp,
-        RDB_bool *resp, RDB_exec_context *ecp)
+template_is_newer(RDB_operator *view_op, const char *viewname,
+        Duro_interp *interpp, RDB_bool *resp, RDB_exec_context *ecp)
 {
     struct stat statbuf;
     struct tm *modtm;
@@ -123,7 +123,7 @@ template_is_newer(RDB_operator *view_op, Duro_interp *interpp,
      * Get template modificaton time
      */
 
-    if (template_path(RDB_operator_name(view_op) + MOD_PREFIX_LEN, &tpath, ecp) != RDB_OK)
+    if (template_path(viewname, &tpath, ecp) != RDB_OK)
         goto error;
 
     if (stat(RDB_obj_string(&tpath), &statbuf) == -1) {
@@ -167,49 +167,49 @@ error:
 
 /*
  * Creates the view operator given by *viewopname if necessary
- * The operator name must start with ".net"
  */
 RDB_operator *
-Dr_provide_view_op(RDB_object *viewopnamep, Duro_interp *interpp,
+Dr_provide_view_op(const char *viewname, Duro_interp *interpp,
         RDB_exec_context *ecp, FCGX_Stream *err)
 {
+    RDB_exec_context ec;
+    RDB_object viewopname;
     RDB_type *viewargtyp = NULL;
     /* Try to get the view operator without a tx */
-    RDB_operator *view_op = RDB_get_update_op(RDB_obj_string(viewopnamep), 1,
+    RDB_operator *view_op;
+
+    RDB_init_obj(&viewopname);
+
+    if (RDB_string_to_obj(&viewopname, "t.", ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&viewopname, viewname, ecp) != RDB_OK)
+        goto error;
+
+    view_op = RDB_get_update_op(RDB_obj_string(&viewopname), 1,
             &viewargtyp, interpp->envp, ecp, NULL);
 
     if (view_op == NULL) {
         /* Retry with tx */
         if (Duro_dt_execute_str("begin tx;", interpp, ecp) != RDB_OK)
             goto error;
-        view_op = RDB_get_update_op(RDB_obj_string(viewopnamep), 1,
+        view_op = RDB_get_update_op(RDB_obj_string(&viewopname), 1,
                     &viewargtyp, interpp->envp, ecp, &interpp->txnp->tx);
-    }
-
-    /* If the operator name does not start with "t.", don't (re-)create it */
-    if (strncmp(RDB_obj_string(viewopnamep), "t.", MOD_PREFIX_LEN) != 0) {
-        if (interpp->txnp != NULL) {
-            if (Duro_dt_execute_str("commit;", interpp, ecp) != RDB_OK)
-                return NULL;
-        }
-        return view_op;
     }
 
     if (view_op == NULL) {
         FCGX_FPrintF(err, "View operator not found, creating...\n");
 
-        if (create_view_op(RDB_obj_string(viewopnamep) + MOD_PREFIX_LEN,
-                interpp, ecp, err) != RDB_OK) {
+        if (create_view_op(viewname, interpp, ecp, err) != RDB_OK) {
             goto error;
         }
-        view_op = RDB_get_update_op(RDB_obj_string(viewopnamep), 1,
+        view_op = RDB_get_update_op(RDB_obj_string(&viewopname), 1,
                 &viewargtyp, interpp->envp, ecp, &interpp->txnp->tx);
         if (view_op == NULL)
             goto error;
     } else {
         RDB_bool isnewer;
 
-        if (template_is_newer(view_op, interpp, &isnewer, ecp) != RDB_OK)
+        if (template_is_newer(view_op, viewname, interpp, &isnewer, ecp) != RDB_OK)
             goto error;
         if (isnewer) {
             FCGX_PutS("template is newer, recreating view\n", err);
@@ -219,15 +219,14 @@ Dr_provide_view_op(RDB_object *viewopnamep, Duro_interp *interpp,
                     goto error;
             }
 
-            if (RDB_drop_op(RDB_obj_string(viewopnamep), ecp, Duro_dt_tx(interpp)) != RDB_OK) {
+            if (RDB_drop_op(RDB_obj_string(&viewopname), ecp, Duro_dt_tx(interpp)) != RDB_OK) {
                 goto error;
             }
 
-            if (create_view_op(RDB_obj_string(viewopnamep) + MOD_PREFIX_LEN,
-                    interpp, ecp, err) != RDB_OK) {
+            if (create_view_op(viewname, interpp, ecp, err) != RDB_OK) {
                 goto error;
             }
-            view_op = RDB_get_update_op(RDB_obj_string(viewopnamep), 1,
+            view_op = RDB_get_update_op(RDB_obj_string(&viewopname), 1,
                     &viewargtyp, interpp->envp, ecp, &interpp->txnp->tx);
             if (view_op == NULL)
                 goto error;
@@ -237,18 +236,20 @@ Dr_provide_view_op(RDB_object *viewopnamep, Duro_interp *interpp,
         if (Duro_dt_execute_str("commit;", interpp, ecp) != RDB_OK)
             return NULL;
     }
+    RDB_destroy_obj(&viewopname, ecp);
     return view_op;
 
 error:
+    /* Preserve the error in *ecp and err_line */
+    RDB_init_exec_context(&ec);
     if (interpp->txnp != NULL) {
-        /* Preserve the error in *ecp and err_line */
-        RDB_exec_context ec;
+        /* Preserve err_line */
         int err_line = interpp->err_line;
 
-        RDB_init_exec_context(&ec);
         Duro_dt_execute_str("commit;", interpp, &ec);
-        RDB_destroy_exec_context(&ec);
         interpp->err_line = err_line;
     }
+    RDB_destroy_obj(&viewopname, &ec);
+    RDB_destroy_exec_context(&ec);
     return NULL;
 }

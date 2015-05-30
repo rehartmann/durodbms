@@ -1,6 +1,6 @@
 #
 # Set up directories and database for the suppliers example.
-# This script be run from the directory it is in.
+# This script must be run from the directory it is in.
 #
 # Afterwards, the database environment directory (/var/www/fcgi-bin/dreisam/data/dbenv by default)
 # and all files in it must be made readable and writable by the webserver.

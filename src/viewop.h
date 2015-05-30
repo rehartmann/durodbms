@@ -14,7 +14,7 @@ enum {
 };
 
 RDB_operator *
-Dr_provide_view_op(RDB_object *, Duro_interp *,
+Dr_provide_view_op(const char *, Duro_interp *,
         RDB_exec_context *, FCGX_Stream *);
 
 #endif /* VIEWOP_H_ */
