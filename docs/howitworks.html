@@ -1,0 +1,89 @@
+<html>
+<head>
+<title>Dreisam &ndash; how it works</title>
+<body>
+
+<h1>Dreisam &ndash; how it works</h1>
+
+<h2>Introduction</h2>
+
+<p>Dreisam is a MVC application framworks inspired by frameworks like Spring MVC and Rails.
+
+<p>Dreisam works by serving FastCGI requests. To run Dreisam applications, FastCGI must be enabled in the webserver.
+
+<p>The FastCGI request are processed by the front controller dreisam.fcgi which is placed in the fcgi-bin directory.
+
+<p>At startup, dreisam.fcgi reads the configuration file fcgi-bin/dreisam/config.td and
+connects to a database environment.
+
+<p>An example configuration file looks like this:
+
+<pre>
+dbenv := 'dreisam/data/dbenv';
+current_db := 'SDB';
+</pre>
+
+<p>This means that the database environment directory is fcgi-bin/dreisam/data/dbenv and that the default database is SDB.
+
+<p>The database environment directory and all its files must be readable and writable by the webserver.
+
+<p>The simplest way to achieve this is to make the user under which the webserver runs the owner of the directory and its files.
+You then probably have to issue a 'sudo' to access the database from your user.
+
+<p>The script td/setup.td creates the necessary table and operators for processing requests. td/template.td contains the operators for template processing.
+
+<h2>A simple hello application</h2>
+
+<p>Let's create a small application which receives a name with the request and sends a hello message back.
+
+<p>First, we need an action. For an action there must be an entry in the net_actions table and an update operator.
+
+<p>So let's create both:
+
+<pre>
+insert net_actions tup { path '/hello', opname 'hello' };
+
+operator hello (model tup { name string }, view string) updates { model, view };
+    ; -- Do nothing
+end operator;
+</pre>
+
+<p>This maps the path /hello to the action operator <em>hello</em>.
+
+<p>The action operator receives the request data in the <var>model</var> argument and a view name in
+the <var>view</var> argument.
+
+<p>The view name passed to the operator is the path without the leading slash, so it is simply 'hello'.
+
+<p>In this simple example, both the model and the view don't have to be modified, so the operator
+body doesn't do anything. The semicolon is there because at least one statement is required.
+
+<p>When the action has been executed, the front controller maps the view name to a template and processes the template using the model. For a view named 'hello', the template is hello.thtml.
+
+<p>As templates are located in fcgi-bin/dreisam/views, let's create the following hello.thml right there:
+
+<pre>
+&lt;html&gt;
+&lt;head&gt;
+&lt;title&gt;Hello&lt;/title&gt;
+&lt;body&gt;
+
+&lt;p&gt;Hello {$ m.name $}!
+
+&lt;/html&gt;
+</pre>
+
+<p>If we now issue a GET request by entering the following line into the browser's location field:
+
+<pre>
+http://localhost/fcgi-bin/dreisam.fcgi/hello?name=John
+</pre>
+
+<p>we get:
+
+<pre>
+Hello John!
+</pre>
+
+</html>
+
