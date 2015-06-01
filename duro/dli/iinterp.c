@@ -1157,7 +1157,13 @@ parserep_to_rep(const RDB_parse_node *nodep, Duro_interp *interp, RDB_possrep *r
             return RDB_ERROR;
         if (RDB_type_is_generic(rep->compv[i].typ)) {
             RDB_raise_syntax("generic type not permitted", ecp);
-            // !! delete rep->compv
+            for (i = 0; i < rep->compc; i++) {
+                if (!RDB_type_is_scalar(rep->compv[i].typ)) {
+                    RDB_del_nonscalar_type(rep->compv[i].typ, ecp);
+                }
+            }
+            RDB_free(rep->compv);
+            rep->compv = NULL;
             return RDB_ERROR;
         }
         np = np->nextp;
@@ -1252,10 +1258,13 @@ exec_typedef(const RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context 
 
 error:
     for (i = 0; i < repc; i++) {
-        for (j = 0; j < repv[i].compc; j++) {
-            if (repv[i].compv[j].typ != NULL
-                    && !RDB_type_is_scalar(repv[i].compv[j].typ))
-                RDB_del_nonscalar_type(repv[i].compv[j].typ, ecp);
+        if (repv[i].compv != NULL) {
+            for (j = 0; j < repv[i].compc; j++) {
+                if (repv[i].compv[j].typ != NULL
+                        && !RDB_type_is_scalar(repv[i].compv[j].typ))
+                    RDB_del_nonscalar_type(repv[i].compv[j].typ, ecp);
+            }
+            RDB_free(repv[i].compv);
         }
     }
     RDB_free(repv);

@@ -141,6 +141,17 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
         type t
             possrep { a integer, b integer }
             init t(0, 0);
+
+        -- Test invalid possrep
+        try
+            type invt possrep {
+                t1 tup { a int },
+                t2 tup { * }
+            } init ut(0);
+            io.put_line(io.stderr, 'invalid possrep was accepted');
+        catch err syntax_error;
+            ;
+        end try;
         commit;
     }
     exec $testdir/../../dli/durodt -e dbenv -d D << {
