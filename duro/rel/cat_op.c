@@ -1,8 +1,8 @@
 /*
- * cat_op.c
+ * Catalog functions for user-defined operators.
  *
- *  Created on: 02.09.2012
- *      Author: Rene Hartmann
+ * Copyright (C) 2012-2015 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #include "cat_op.h"
@@ -115,9 +115,9 @@ RDB_cat_load_ro_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp
     RDB_int opcount = 0;
 
     /*
-     * Create virtual table sys_ro_ops WHERE name=<name>
+     * Create virtual table sys_ro_ops WHERE opname=<name>
      */
-    exp = RDB_eq(RDB_var_ref("name", ecp),
+    exp = RDB_eq(RDB_var_ref("opname", ecp),
             RDB_string_to_expr(name, ecp), ecp);
     if (exp == NULL) {
         RDB_del_expr(exp, ecp);
@@ -242,7 +242,7 @@ RDB_cat_load_upd_op(const char *name, RDB_exec_context *ecp,
     /*
      * Create virtual table sys_upd_ops WHERE name=<name>
      */
-    exp = RDB_eq(RDB_var_ref("name", ecp),
+    exp = RDB_eq(RDB_var_ref("opname", ecp),
             RDB_string_to_expr(name, ecp), ecp);
     if (exp == NULL) {
         RDB_del_expr(exp, ecp);

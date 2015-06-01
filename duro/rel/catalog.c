@@ -120,7 +120,7 @@ static RDB_string_vec possrepcomps_keyv[] = {
 };
 
 static RDB_attr ro_ops_attrv[] = {
-    { "name", &RDB_STRING, NULL, 0 },
+    { "opname", &RDB_STRING, NULL, 0 },
     { "argtypes", NULL, NULL, 0 }, /* type is set to array of BINARY later */
     { "lib", &RDB_STRING, NULL, 0 },
     { "symbol", &RDB_STRING, NULL, 0 },
@@ -129,11 +129,11 @@ static RDB_attr ro_ops_attrv[] = {
     { "creation_time", &RDB_DATETIME, NULL, 0 },
 };
 
-static char *ro_ops_keyattrv[] = { "name", "argtypes" };
+static char *ro_ops_keyattrv[] = { "opname", "argtypes" };
 static RDB_string_vec ro_ops_keyv[] = { { 2, ro_ops_keyattrv } };
 
 static RDB_attr upd_ops_attrv[] = {
-    { "name", &RDB_STRING, NULL, 0 },
+    { "opname", &RDB_STRING, NULL, 0 },
     { "argtypes", NULL, NULL, 0 }, /* type is set to array of BINARY later */
     { "lib", &RDB_STRING, NULL, 0 },
     { "symbol", &RDB_STRING, NULL, 0 },
@@ -142,22 +142,22 @@ static RDB_attr upd_ops_attrv[] = {
     { "creation_time", &RDB_DATETIME, NULL, 0 }
 };
 
-static char *upd_ops_keyattrv[] = { "name", "argtypes" };
+static char *upd_ops_keyattrv[] = { "opname", "argtypes" };
 static RDB_string_vec upd_ops_keyv[] = { { 2, upd_ops_keyattrv } };
 
 static RDB_attr indexes_attrv[] = {
-    { "name", &RDB_STRING, NULL, 0 },
+    { "idxname", &RDB_STRING, NULL, 0 },
     { "tablename", &RDB_IDENTIFIER, NULL, 0 },
     { "attrs", NULL, NULL, 0 }, /* type is set to an array type later */
     { "unique", &RDB_BOOLEAN, 0 },
     { "ordered", &RDB_BOOLEAN, 0 }
 };
 
-static char *indexes_keyattrv[] = { "name" };
+static char *indexes_keyattrv[] = { "idxname" };
 static RDB_string_vec indexes_keyv[] = { { 1, indexes_keyattrv } };
 
 static RDB_attr indexes_attrs_attrv[] = {
-    { "name", &RDB_IDENTIFIER, NULL, 0 },
+    { "attrname", &RDB_IDENTIFIER, NULL, 0 },
     { "asc", &RDB_BOOLEAN, NULL, 0 }
 };
 
@@ -600,7 +600,7 @@ RDB_cat_insert_index(const char *name, int attrc, const RDB_seq_item attrv[],
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_tuple_set_string(&tpl, "name", name, ecp);
+    ret = RDB_tuple_set_string(&tpl, "idxname", name, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -615,7 +615,7 @@ RDB_cat_insert_index(const char *name, int attrc, const RDB_seq_item attrv[],
         ret = string_to_id(&attrnameobj, attrv[i].attrname, ecp);
         if (ret != RDB_OK)
             goto cleanup;
-        ret = RDB_tuple_set(&attrtpl, "name", &attrnameobj, ecp);
+        ret = RDB_tuple_set(&attrtpl, "attrname", &attrnameobj, ecp);
         if (ret != RDB_OK)
             goto cleanup;
         ret = RDB_tuple_set_bool(&attrtpl, "asc", attrv[i].asc, ecp);
@@ -700,7 +700,7 @@ RDB_cat_index_tablename(const char *name, RDB_object *tbnamep,
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
-    argp = RDB_attr_eq_strval("name", name, ecp);
+    argp = RDB_attr_eq_strval("idxname", name, ecp);
     if (argp == NULL) {
         RDB_del_expr(exp, ecp);
         return RDB_ERROR;
@@ -735,7 +735,7 @@ RDB_cat_delete_index(const char *name, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;
-    RDB_expression *wherep = RDB_attr_eq_strval("name", name, ecp);
+    RDB_expression *wherep = RDB_attr_eq_strval("idxname", name, ecp);
     if (wherep == NULL) {
         return RDB_ERROR;
     }
@@ -1220,7 +1220,7 @@ RDB_cat_get_indexes(const char *tablename, RDB_dbroot *dbrootp,
                 goto cleanup;
             }
 
-            idxname = RDB_tuple_get_string(tplp, "name");
+            idxname = RDB_tuple_get_string(tplp, "idxname");
             if (idxname[0] != '\0') {
                 indexp->name = RDB_dup_str(idxname);
                 if (indexp->name == NULL) {
@@ -1253,7 +1253,7 @@ RDB_cat_get_indexes(const char *tablename, RDB_dbroot *dbrootp,
                 }
 
                 indexp->attrv[j].attrname = RDB_dup_str(RDB_tuple_get_string(
-                        attrtplp, "name"));
+                        attrtplp, "attrname"));
                 if (indexp->attrv[j].attrname == NULL) {
                     RDB_raise_no_memory(ecp);
                     ret = RDB_ERROR;

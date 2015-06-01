@@ -148,7 +148,7 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
     RDB_init_obj(&rtypobj);
     RDB_init_obj(&cretime);
 
-    ret = RDB_tuple_set_string(&tpl, "name", name, ecp);
+    ret = RDB_tuple_set_string(&tpl, "opname", name, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -286,7 +286,7 @@ RDB_create_update_op(const char *name, int paramc, RDB_parameter paramv[],
     RDB_init_obj(&cretime);
 
     RDB_init_obj(&tpl);
-    ret = RDB_tuple_set_string(&tpl, "name", name, ecp);
+    ret = RDB_tuple_set_string(&tpl, "opname", name, ecp);
     if (ret != RDB_OK)
         goto cleanup;
     ret = RDB_tuple_set_string(&tpl, "lib", libname, ecp);
@@ -754,7 +754,7 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
-    argp = RDB_attr_eq_strval("name", name, ecp);
+    argp = RDB_attr_eq_strval("opname", name, ecp);
     if (argp == NULL) {
         RDB_del_expr(exp, ecp);
         return RDB_ERROR;
@@ -784,7 +784,7 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
             return RDB_ERROR;
 
         /* Delete all versions of update operator from the database */
-        exp = RDB_attr_eq_strval("name", name, ecp);
+        exp = RDB_attr_eq_strval("opname", name, ecp);
         if (exp == NULL) {
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
@@ -806,7 +806,7 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
             return RDB_ERROR;
 
         /* Delete all versions of update operator from the database */
-        exp = RDB_attr_eq_strval("name", name, ecp);
+        exp = RDB_attr_eq_strval("opname", name, ecp);
         if (exp == NULL) {
             return RDB_ERROR;
         }

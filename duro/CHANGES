@@ -44,6 +44,9 @@ DuroDBMS 0.26
 
 - Creation time of user-defined operators is stored in the catalog.
 
+- Renamed catalog attributes: name in sys_upd_ops and sys_ro_ops is now opname,
+  name in sys_indexes is now idxname.
+
 - Fixed a bug in the handling of string literals in user-defined operators.
 
 - Generic tuple types now allowed in operator parameters.

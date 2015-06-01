@@ -720,14 +720,14 @@ RDB_cat_check_type_used(RDB_type *typ, RDB_exec_context *ecp,
              * No system-generated selector,
              * so a read-only operator is not acceptible
              */
-            RDB_raise_in_use(RDB_tuple_get_string(&tpl, "name"), ecp);
+            RDB_raise_in_use(RDB_tuple_get_string(&tpl, "opname"), ecp);
             RDB_destroy_obj(&tpl, ecp);
             return RDB_ERROR;
         }
-        if (!opname_is_selector(RDB_tuple_get_string(&tpl, "name"),
+        if (!opname_is_selector(RDB_tuple_get_string(&tpl, "opname"),
                 RDB_type_name(typ), typ->def.scalar.repv[0].name)) {
             /* Not a selector */
-            RDB_raise_in_use(RDB_tuple_get_string(&tpl, "name"), ecp);
+            RDB_raise_in_use(RDB_tuple_get_string(&tpl, "opname"), ecp);
             RDB_destroy_obj(&tpl, ecp);
             return RDB_ERROR;
         }
