@@ -1206,6 +1206,9 @@ exec_typedef(const RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context 
     repv = RDB_alloc(repc * sizeof(RDB_possrep), ecp);
     if (repv == NULL)
         goto error;
+    for (i = 0; i < repc; i++) {
+        repv[i].compv = NULL;
+    }
 
     nodep = prnodep->val.children.firstp;
     for (i = 0; i < repc; i++) {
@@ -1257,17 +1260,19 @@ exec_typedef(const RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context 
     return RDB_OK;
 
 error:
-    for (i = 0; i < repc; i++) {
-        if (repv[i].compv != NULL) {
-            for (j = 0; j < repv[i].compc; j++) {
-                if (repv[i].compv[j].typ != NULL
-                        && !RDB_type_is_scalar(repv[i].compv[j].typ))
-                    RDB_del_nonscalar_type(repv[i].compv[j].typ, ecp);
+    if (repv != NULL) {
+        for (i = 0; i < repc; i++) {
+            if (repv[i].compv != NULL) {
+                for (j = 0; j < repv[i].compc; j++) {
+                    if (repv[i].compv[j].typ != NULL
+                            && !RDB_type_is_scalar(repv[i].compv[j].typ))
+                        RDB_del_nonscalar_type(repv[i].compv[j].typ, ecp);
+                }
+                RDB_free(repv[i].compv);
             }
-            RDB_free(repv[i].compv);
         }
+        RDB_free(repv);
     }
-    RDB_free(repv);
     RDB_destroy_obj(&nameobj, ecp);
     return RDB_ERROR;
 }
