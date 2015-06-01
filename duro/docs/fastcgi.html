@@ -57,9 +57,9 @@ while true;
 
      io.put_line('Content-Type: text/html');
      io.put_line('');
-     io.put_line('<html><title>FCGI Hello</title>');
-     io.put_line('<body>');
-     io.put('<p>Hello! Request number ');
+     io.put_line('&lt;html&gt;&lt;title&gt;FCGI Hello&lt;/title&gt;');
+     io.put_line('&lt;body&gt;');
+     io.put('&lt;p&gt;Hello! Request number ');
      io.put(counter);
      io.put(' running on host ');
      io.put_line(os.getenv('SERVER_NAME'));
@@ -102,11 +102,11 @@ while true;
 
         io.put_line('Content-Type: text/html');
         io.put_line('');
-        io.put_line('<html>');
-        io.put_line('<head>');
-        io.put_line('<title>Tables</title>');
-        io.put_line('<body>');
-        io.put('<p>Tables matching pattern ');
+        io.put_line('&lt;html&gt;');
+        io.put_line('&lt;head&gt;');
+        io.put_line('&lt;title&gt;Tables&lt;/title&gt;');
+        io.put_line('&lt;body&gt;');
+        io.put('&lt;p&gt;Tables matching pattern ');
         io.put(request_tp.pattern);
         io.put_line(':');
 
@@ -121,11 +121,11 @@ while true;
 
         var i int;
         for i := 0 to length(tablenames) - 1;
-            io.put('<p>');
+            io.put('&lt;p&gt;');
             io.put_line(tablenames[i].tablename);
         end for;
 
-        io.put_line('</html>');
+        io.put_line('&lt;/html&gt;');
     else
         io.put_line('Status: 405 Method Not Allowed');
         io.put_line('');
