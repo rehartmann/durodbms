@@ -113,7 +113,7 @@ no db>
 but is supported for all user-declared variables:
 
 <pre>
-no db> drop var i;
+no db> drop var k;
 no db>
 </pre>
 
@@ -229,7 +229,7 @@ But the following form, which more strictly adheres to <cite>TTM</cite>, is supp
 
 <pre>
 no db> var s string;
-no db> io.put_line('Please enter a number:'); get_line(s);
+no db> io.put_line('Please enter a number:'); io.get_line(s);
 Please enter a number:
 -2
 no db> var n init cast_as_integer(s);
@@ -315,7 +315,7 @@ See <cite>TTM</cite>, chapter 5 for details.
 <pre>
 no db> var s string;
 no db> var n integer;
-no db> io.put_line('Please enter a number:'); get_line(s);
+no db> io.put_line('Please enter a number:'); io.get_line(s);
 Please enter a number:
 0
 no db> n := cast_as_integer(s);
@@ -749,7 +749,7 @@ predicate_violation_error: trc
 D> var a array tup same_heading_as(r);
 D> load a from r order();
 D> var i integer;
-D> for i:= 0 to length(a)-1;
+D> for i:= 0 to length(a) - 1;
 D>   io.put(a[i]); io.put_line('');
 D> end for;
 </pre>
@@ -1194,10 +1194,10 @@ end package;
 <p>Example:
 
 <pre>
-D> var r real relation{n int, s string} key {n};
+D> var r real relation { no int, name string } key { no };
 Table r created.
 D> var i int;
-D> for i := 1 to 10; insert r tup{n i, s cast_as_string(i)}; end for;
+D> for i := 1 to 10; insert r tup { no i, name cast_as_string(i) }; end for;
 1 element affected.
 1 element affected.
 1 element affected.
@@ -1208,8 +1208,8 @@ D> for i := 1 to 10; insert r tup{n i, s cast_as_string(i)}; end for;
 1 element affected.
 1 element affected.
 1 element affected.
-D> explain r where n = 1 order();
-(r INDEX r$0) where (n = 1)
+D> explain r where no = 1 order();
+(r INDEX r$0) where (no = 1)
 </pre>
 
 <p>(This EXPLAIN statement is not to be confused with the EXPLAIN which displays the constraint checking performed for a statement)
@@ -1220,10 +1220,10 @@ This is the unique index which was created to ensure that n is a key attribute o
 <p>Now let's try other WHERE expressions:
 
 <pre>
-D> explain r where n > 1 order();
-(r) where (n > 1)
-D> explain r where s = 'one' order();
-(r) where (s = 'one')
+D> explain r where no > 1 order();
+(r) where (no > 1)
+D> explain r where name = 'one' order();
+(r) where (name = 'one')
 </pre>
 
 <p>For neither of these an index can be used. Not for the first,
@@ -1235,14 +1235,14 @@ which is quite inefficient for large tables.
 <p>We can create an index on s using the INDEX statement:  
 
 <pre>
-D> index r_s r (s);
-Index r_s created.
+D> index r_name r (name);
+Index r_name created.
 </pre>
 
 Now we can use the index:
 
 <pre>
-D> explain r where s = 'one' order();
+D> explain r where name = 'one' order();
 (r INDEX r_s) where (s = 'one')
 </pre>
 
@@ -1252,8 +1252,8 @@ DuroDBMS now uses the index r_s to evaluate the expression.
 An index can be destroyed using DROP INDEX:
 
 <pre>
-D> drop index r_s;
-Index r_s dropped.
+D> drop index r_name;
+Index r_name dropped.
 </pre>
 
 <p>INDEX is supported for physically stored database tables.
