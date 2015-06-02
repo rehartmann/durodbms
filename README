@@ -1,0 +1,21 @@
+	README for Dreisam
+
+This directory contains the source code of Dreisam,
+an MVC web application framework.
+
+To compile and run Dreisam, you need DuroDBMS and the FastCGI library.
+
+Get the current version of DuroDBMS from http://sourceforge.net/p/duro-hg/code/ci/default/tree. 
+(The Tarball version does not work as it lacks the HTML escaping operator needed by Dreisam)
+
+The FastCGI library can be obtained from http://fastcgi.com. 
+
+Dreisam is still in early stages of development. Report bugs to
+rhartmann@users.sourceforge.net. 
+
+-----
+
+This file is part of Dreisam, an MVC web application framework.
+Copyright (C) 2015 Rene Hartmann.
+
+See the file COPYING for redistribution information.

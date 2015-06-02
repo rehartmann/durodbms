@@ -1,0 +1,56 @@
+<html>
+<head>
+<title>The Dreisam template language</title>
+<body>
+
+<p>A Dreisam template is a text file. Although the current implementation sends HTML only,
+in principle the template language can be used to generate any text-based format.
+
+<p>A Dreisam template contains directives which start with {$ and end with $}.
+
+<p>The model is accessed as a tuple with the name m. So if, for example, there is
+a tuple attribute name, it can be accessed as m.name.
+
+<p>The following directives are supported:
+
+<pre>
+{$ expression $}
+</pre>
+
+<p>The value of the expression. The expression must be of type string.
+The following characters are escaped: &lt; &gt; &amp " '
+
+<pre>
+{$%if expression $} text {$%end $}
+</pre>
+
+<p>Will be replaced by text if expression is TRUE, or discarded if expression is FALSE.
+expression must be of type boolean.
+
+<pre>
+{$%if expression $} text1 {$%else $} text2 {$%end $}
+</pre>
+
+<p>Will be replaced by text1 if expression is TRUE, or by text2 if expression is FALSE.
+expression must be of type boolean.
+
+<pre>
+{$%loop expression var varname $} text {$%end $}
+</pre>
+
+<p>Will be replaced by text n times with the variable varname
+set to 0, 1, ... n-1 where n is the value of expression.
+expression must be of type integer.
+
+<p>Example:
+
+<pre>
+{$%loop length(m.a) var i $}
+{$ m.a[i] $}
+{$%end $}
+</pre>
+
+<p>If the model has an attribute a which is an array of string, all of its elements
+will appear in the output, in order.
+
+</html>

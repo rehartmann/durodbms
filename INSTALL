@@ -1,0 +1,16 @@
+Installing Dreisam
+==================
+
+Dreisam uses SCons to build itself. Typing
+
+scons
+
+will build the front controller dreisam.fcgi.
+
+scons deploy
+
+will build the front controller and copy it to /var/www/fcgi-bin.
+
+To compile Dreisam, DuroDBMS and the FastCGI library is required.
+See the file README for more details.
+
