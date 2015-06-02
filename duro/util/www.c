@@ -118,3 +118,38 @@ error:
     return RDB_ERROR;
 }
 
+int
+RDB_net_hescape(RDB_object *dstp, const char *srcp,
+        RDB_exec_context *ecp)
+{
+    const char *cp;
+    int ret;
+
+    if (RDB_string_to_obj(dstp, "", ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    for (cp = srcp; *cp != '\0'; cp++) {
+        switch (*cp) {
+        case '<':
+            ret = RDB_append_string(dstp, "&lt;", ecp);
+            break;
+        case '>':
+            ret = RDB_append_string(dstp, "&gt;", ecp);
+            break;
+        case '&':
+            ret = RDB_append_string(dstp, "&amp;", ecp);
+            break;
+        case '\'':
+            ret = RDB_append_string(dstp, "&#39;", ecp);
+            break;
+        case '"':
+            ret = RDB_append_string(dstp, "&quot;", ecp);
+            break;
+        default:
+            ret = RDB_append_char(dstp, *cp, ecp);
+        }
+        if (ret != RDB_OK)
+            return RDB_ERROR;
+    }
+    return RDB_OK;
+}

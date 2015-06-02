@@ -578,4 +578,7 @@ RDB_drop_constraint(const char *name, RDB_exec_context *,
 int
 RDB_net_form_to_tuple(RDB_object *, const char *, RDB_exec_context *);
 
+int
+RDB_net_hescape(RDB_object *, const char *, RDB_exec_context *);
+
 #endif

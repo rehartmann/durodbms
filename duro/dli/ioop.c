@@ -656,7 +656,7 @@ op_tmpfile(int argc, RDB_object *argv[], RDB_operator *op,
 
 static int
 op_eof(int argc, RDB_object *argv[], RDB_operator *op,
-        RDB_exec_context *ecp, struct RDB_transaction *txp,
+        RDB_exec_context *ecp, RDB_transaction *txp,
         RDB_object *resultp)
 {
     RDB_bool_to_obj(resultp, feof(stdin));
@@ -665,7 +665,7 @@ op_eof(int argc, RDB_object *argv[], RDB_operator *op,
 
 static int
 op_eof_iostream(int argc, RDB_object *argv[], RDB_operator *op,
-        RDB_exec_context *ecp, struct RDB_transaction *txp,
+        RDB_exec_context *ecp, RDB_transaction *txp,
         RDB_object *resultp)
 {
     int fno = get_iostream_id(argv[0], ecp);
@@ -705,6 +705,14 @@ op_net_form_to_tuple(int argc, RDB_object *argv[], RDB_operator *op,
     return RDB_net_form_to_tuple(argv[0], RDB_obj_string(argv[1]), ecp);
 }
 
+static int
+op_net_hescape(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, struct RDB_transaction *txp,
+        RDB_object *resultp)
+{
+    return RDB_net_hescape(resultp, RDB_obj_string(argv[0]), ecp);
+}
+
 int
 RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
 {
@@ -731,6 +739,7 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     static RDB_parameter close_paramv[1];
 
     static RDB_type *eof_iostream_param_typ;
+    static RDB_type *net_hescape_param_typ;
 
     put_string_params[0].typ = &RDB_STRING;
     put_string_params[0].update = RDB_FALSE;
@@ -895,9 +904,15 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
+    eof_iostream_param_typ = &RDB_STRING;
     if (RDB_put_upd_op(opmapp, "net.form_to_tuple", RDB_VAR_PARAMS, NULL,
             &op_net_form_to_tuple, ecp) != RDB_OK)
        return RDB_ERROR;
+
+    if (RDB_put_global_ro_op("net.hescape", 1, &net_hescape_param_typ,
+            &RDB_STRING, &op_net_hescape, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
 
     RDB_init_obj(&DURO_STDIN_OBJ);
     if (init_iostream(&DURO_STDIN_OBJ, STDIN_FILENO, ecp) != RDB_OK)

@@ -1,6 +1,6 @@
 	README for DuroDBMS
 
-The parent directory of this contains the source code of DuroDBMS,
+The parent directory of this directory contains the source code of DuroDBMS,
 a relational database management system.
 
 The following software is required for compiling and running DuroDBMS:
@@ -42,16 +42,5 @@ rhartmann@users.sourceforge.net.
 This file is part of DuroDBMS, a relational management system.
 Copyright (C) 2003-2009, 2011-2015 Rene Hartmann.
 
-DuroDBMS is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
+See the file COPYING for redistribution information.
 
-DuroDBMS is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Duro; if not, write to the Free Software Foundation, Inc.,
-59 Temple Place, Suite 330, Boston, MA  02111-1307  USA

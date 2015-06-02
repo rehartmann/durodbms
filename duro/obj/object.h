@@ -197,6 +197,9 @@ int
 RDB_append_string(RDB_object *, const char *, RDB_exec_context *);
 
 int
+RDB_append_char(RDB_object *, char, RDB_exec_context *);
+
+int
 RDB_binary_set(RDB_object *, size_t pos, const void *srcp, size_t len,
         RDB_exec_context *);
 

@@ -20,6 +20,10 @@
 #include <assert.h>
 #include <stdio.h>
 
+enum {
+    STR_BUF_INC = 16
+};
+
 /**@defgroup generic Scalar and generic functions
  * @{
  */
@@ -347,15 +351,47 @@ The call may fail for a @ref system-errors "system error".
 int
 RDB_append_string(RDB_object *objp, const char *str, RDB_exec_context *ecp)
 {
-    int len = objp->val.bin.len + strlen(str);
-    char *nstr = RDB_realloc(objp->val.bin.datap, len, ecp);
-    if (nstr == NULL) {
-        return RDB_ERROR;
+    int olen = strlen((char *) objp->val.bin.datap);
+    int len = olen + strlen(str);
+
+    if (len + 1 > objp->val.bin.len) {
+        set_str_obj_len(objp,
+                objp->val.bin.len + STR_BUF_INC > len + 1 ?
+                objp->val.bin.len + STR_BUF_INC : len + 1,
+                ecp);
     }
 
-    objp->val.bin.datap = nstr;
-    strcpy(((char *)objp->val.bin.datap) + objp->val.bin.len - 1, str);
-    objp->val.bin.len = len;
+    strcpy(((char *)objp->val.bin.datap) + olen, str);
+    return RDB_OK;
+}
+
+/**
+ * Appends the 1-byte character <var>ch</var> to *<var>objp</var>.
+
+*<var>objp</var> must be of type string.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+The call may fail for a @ref system-errors "system error".
+ */
+int
+RDB_append_char(RDB_object *objp, char ch, RDB_exec_context *ecp)
+{
+    int olen = strlen((char *) objp->val.bin.datap);
+
+    if (olen + 2 > objp->val.bin.len) {
+        set_str_obj_len(objp,
+                objp->val.bin.len + STR_BUF_INC > olen + 2 ?
+                objp->val.bin.len + STR_BUF_INC : olen + 2,
+                ecp);
+    }
+
+    ((char *)objp->val.bin.datap)[olen] = ch;
+    ((char *)objp->val.bin.datap)[olen + 1] = '\0';
     return RDB_OK;
 }
 
