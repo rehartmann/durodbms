@@ -56,11 +56,12 @@ the <var>view</var> argument.
 <p>The view name passed to the operator is the path without the leading slash, so it is simply 'hello'.
 
 <p>In this simple example, both the model and the view don't have to be modified, so the operator
-body doesn't do anything. The semicolon is there because at least one statement is required.
+body doesn't do anything. The semicolon is there because at least one statement is required in the operator body.
 
-<p>When the action has been executed, the front controller maps the view name to a template and processes the template using the model. For a view named 'hello', the template is hello.thtml.
+<p>When the action has been executed, the front controller maps the view name to a template and processes the template using the model.
+For a view named 'hello', the template is hello.thtml.
 
-<p>As templates are located in fcgi-bin/dreisam/views, let's create the following hello.thml right there:
+<p>As templates are located in fcgi-bin/dreisam/views, let's create the following hello.thtml right there:
 
 <pre>
 &lt;html&gt;
@@ -86,4 +87,3 @@ Hello John!
 </pre>
 
 </html>
-

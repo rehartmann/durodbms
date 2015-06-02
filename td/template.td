@@ -178,9 +178,9 @@ operator process_template(istrm io.iostream_id, ostrm io.iostream_id,
 	               raise template_error('end of directive not found (must be on the same line)');
 	           end if;
 
-	           io.put(ostrm, "net.put("
+	           io.put(ostrm, "net.put(net.hescape("
 	                   || substr_b(current_line, pos, dirend - pos)
-	                   || ');');
+	                   || '));');
 	           pos := dirend + 2;
 	       end if;
 	   else
