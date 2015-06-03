@@ -1110,7 +1110,7 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
         goto error;
 
     /* Delete index from catalog */
-    if (RDB_cat_delete_index(RDB_obj_string(&tbnamestr), ecp, txp) != RDB_OK)
+    if (RDB_cat_delete_index(name, ecp, txp) != RDB_OK)
         goto error;
 
     if (tbp->val.tb.stp != NULL) {
