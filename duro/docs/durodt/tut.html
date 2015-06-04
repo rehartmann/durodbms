@@ -902,7 +902,7 @@ POSSREP {
 }; 
 </pre>
 
-<p>The read-only operators now() and now_utc() which return the current time.
+<p>The read-only operators now() and now_utc() return the current time.
 now() returns the current time as a local time whereas now_utc() returns the UTC time.
 
 <p>Example:
@@ -1243,11 +1243,11 @@ Now we can use the index:
 
 <pre>
 D> explain r where name = 'one' order();
-(r INDEX r_s) where (s = 'one')
+(r INDEX r_name) where (name = 'one')
 </pre>
 
 As we can see in the output of the EXPLAIN statement,
-DuroDBMS now uses the index r_s to evaluate the expression.
+DuroDBMS now uses the index r_name to evaluate the expression.
 
 An index can be destroyed using DROP INDEX:
 

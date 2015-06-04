@@ -1,5 +1,9 @@
 Summary of Changes to DuroDBMS
 
+DuroDBMS 1.0
+
+- Fixed bug in RDB_drop_table_index().
+
 DuroDBMS 0.26
 
 - Duro D/T: Replaced MODULE by PACKAGE.
