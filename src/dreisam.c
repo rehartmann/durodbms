@@ -268,6 +268,8 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
         FCGX_ParamArray envp, FCGX_Stream *in, FCGX_Stream *out,
         FCGX_Stream *err)
 {
+    static const char *ERROR_REQUEST = "An error occurred while processing the request";
+
     int ret;
     RDB_object viewname;
     RDB_object model;
@@ -381,7 +383,11 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
     if (RDB_call_update_op(action_op, 2, argv, ecp, NULL)
             != RDB_OK) {
         FCGX_PutS("Invoking action operator failed\n", err);
-        goto error;
+        log_err(interpp, ecp, err);
+        send_error_response(500, ERROR_REQUEST, out, ecp);
+        RDB_destroy_obj(&viewname, ecp);
+        RDB_destroy_obj(&model, ecp);
+        return RDB_OK;
     }
 
     if (*RDB_obj_string(&viewname) != '\0') {
@@ -395,9 +401,7 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
             FCGX_FPrintF(err, "Invoking view operator %s failed\n",
                     RDB_obj_string(&viewname));
             log_err(interpp, ecp, err);
-            send_error_response(500, "processing the request failed", out, ecp);
-
-            return RDB_OK;
+            send_error_response(500, ERROR_REQUEST, out, ecp);
         }
     } else {
         /* No view - send headers if they haven't already been sent */
@@ -410,21 +414,10 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
 
 error:
     ret = RDB_ERROR;
-    /*
-     * If there is a syntax error in the template,
-     * or the template was not found
-     * or an operator was not found
-     * return RDB_OK so the process won't exit
-     */
-    if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_SYNTAX_ERROR
-            || RDB_obj_type(RDB_get_err(ecp)) == &RDB_OPERATOR_NOT_FOUND_ERROR
-            || RDB_obj_type(RDB_get_err(ecp)) == &RDB_RESOURCE_NOT_FOUND_ERROR)
-        ret = RDB_OK;
 
     log_err(interpp, ecp, err);
 
-    send_error_response(500, "An error occurred while processing the request",
-            out, ecp);
+    send_error_response(500, ERROR_REQUEST, out, ecp);
 
     RDB_destroy_obj(&viewname, ecp);
     RDB_destroy_obj(&model, ecp);
