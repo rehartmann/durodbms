@@ -8,35 +8,29 @@
 #include "getaction.h"
 
 RDB_operator *
-Dr_get_action_op(const char *path_info, Duro_interp *interpp,
-        RDB_exec_context *ecp)
+Dr_get_action_op(Duro_interp *interpp, RDB_exec_context *ecp)
 {
-    RDB_object *path_info_objp;
-    RDB_expression *query_exp;
+    static RDB_expression *query_exp = NULL;
+
     RDB_object tpl;
     RDB_type *typev[2];
     RDB_operator *op;
 
-    /* Get controller operator */
+    /* Get action operator */
 
     RDB_init_obj(&tpl);
 
     if (Duro_dt_execute_str("begin tx;", interpp, ecp) != RDB_OK)
         goto error;
 
-    path_info_objp = Duro_lookup_var("path_info", interpp, ecp);
-    if (path_info_objp == NULL) {
-        RDB_raise_internal("no path_info variable", ecp);
-        goto error;
+    if (query_exp == NULL) {
+        query_exp = Duro_dt_parse_expr_str("tuple from net_actions "
+                "where path like net.get_request_header('PATH_INFO') "
+                "and method = net.get_request_header('REQUEST_METHOD')",
+                interpp, ecp);
+        if (query_exp == NULL)
+            goto error;
     }
-
-    if (RDB_string_to_obj(path_info_objp, path_info, ecp) != RDB_OK)
-        goto error;
-
-    query_exp = Duro_dt_parse_expr_str("tuple from net_actions where path like path_info",
-            interpp, ecp);
-    if (query_exp == NULL)
-        goto error;
 
     if (Duro_evaluate(query_exp, interpp, ecp, &tpl) != RDB_OK)
         goto error;

@@ -44,6 +44,8 @@ enum {
 
 static FCGX_Stream *fcgi_out;
 static FCGX_Stream *fcgi_err;
+static FCGX_ParamArray fcgi_envp;
+
 static RDB_operator *send_headers_op;
 static RDB_object *headers_state;
 static const char *request_method;
@@ -167,6 +169,18 @@ op_net_status_reason(int argc, RDB_object *argv[], RDB_operator *op,
     return RDB_string_to_obj(retvalp, Dr_sc_reason(RDB_obj_int(argv[0])), ecp);
 }
 
+static int
+op_net_get_request_header(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    const char *value = FCGX_GetParam(RDB_obj_string(argv[0]), fcgi_envp);
+    if (value == NULL) {
+        RDB_raise_not_found(RDB_obj_string(argv[0]), ecp);
+        return RDB_ERROR;
+    }
+    return RDB_string_to_obj(retvalp, value, ecp);
+}
+
 /*
  * Send error response if it has not already been sent.
  * *ecp is only used to look up the interpreter and is not modified even if RDB_ERROR is returned.
@@ -200,7 +214,7 @@ send_error_response(int status, const char *msg, FCGX_Stream *out, RDB_exec_cont
 /*
  * Reads POST request data and converts it to model data.
  *
- * If RDB_ERROR has been returned and *client_error is TRUE,
+ * If RDB_ERROR has been returned and *client_error is RDB_TRUE,
  * a response has been sent and no error value has been stored in *ecp.
  */
 static int
@@ -265,9 +279,13 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
     RDB_init_obj(&viewname);
     RDB_init_obj(&model);
 
-    if (Duro_dt_execute_str("resp_status := ''; "
-            "resp_headers := array ('Content-type: text/html; charset=utf-8'); "
-            "resp_headers_state := 0;",
+    fcgi_out = out;
+    fcgi_err = err;
+    fcgi_envp = envp;
+
+    if (Duro_dt_execute_str("response_status := ''; "
+            "response_headers := array ('Content-type: text/html; charset=utf-8'); "
+            "response_headers_state := 0;",
             interpp, ecp) != RDB_OK) {
         goto error;
     }
@@ -280,7 +298,7 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
     if (request_method == NULL)
         request_method = "";
 
-    action_op = Dr_get_action_op(path_info, interpp, ecp);
+    action_op = Dr_get_action_op(interpp, ecp);
     if (action_op == NULL) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
             FCGX_FPrintF(out,
@@ -357,9 +375,6 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
                   path_info);
         return RDB_OK;
     }
-
-    fcgi_out = out;
-    fcgi_err = err;
 
     argv[0] = &model;
     argv[1] = &viewname;
@@ -451,6 +466,13 @@ create_fcgi_ops(Duro_interp *interpp, RDB_exec_context *ecp)
             &RDB_STRING, op_net_status_reason, ecp) != RDB_OK) {
         goto error;
     }
+
+    param.typ = &RDB_STRING;
+    if (RDB_put_global_ro_op("net.get_request_header", 1, &param.typ,
+            &RDB_STRING, op_net_get_request_header, ecp) != RDB_OK) {
+        goto error;
+    }
+
     return RDB_OK;
 
 error:
@@ -482,17 +504,16 @@ main(void)
     if (ret != RDB_OK)
         goto error;
 
-    if (Duro_dt_execute_str("var path_info string; "
-            "var dbenv string; "
-            "var resp_status string; "
-            "var resp_headers array string; "
-            "var resp_headers_state int;",
+    if (Duro_dt_execute_str("var dbenv string; "
+            "var response_status string; "
+            "var response_headers array string; "
+            "var response_headers_state int;",
             &interp, &ec) != RDB_OK) {
         ret = DR_ERR_DECL;
         goto error;
     }
 
-    headers_state = Duro_lookup_var("resp_headers_state", &interp, &ec);
+    headers_state = Duro_lookup_var("response_headers_state", &interp, &ec);
     if (headers_state == NULL) {
         ret = DR_ERR_DECL;
         goto error;

@@ -9,6 +9,6 @@
 #include <dli/iinterp.h>
 
 RDB_operator *
-Dr_get_action_op(const char *, Duro_interp *, RDB_exec_context *);
+Dr_get_action_op(Duro_interp *, RDB_exec_context *);
 
 #endif /* GETACTION_H_ */

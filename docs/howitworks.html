@@ -41,10 +41,10 @@ You then probably have to issue a 'sudo' to access the database from your user.
 <p>So let's create both:
 
 <pre>
-insert net_actions tup { path '/hello', opname 'hello' };
+insert net_actions tup { path '/hello', opname 'hello', method 'GET' };
 
 operator hello (model tup { name string }, view string) updates { model, view };
-    ; -- Do nothing
+    ; /* Do nothing */
 end operator;
 </pre>
 
@@ -59,7 +59,7 @@ the <var>view</var> argument.
 body doesn't do anything. The semicolon is there because at least one statement is required in the operator body.
 
 <p>When the action has been executed, the front controller maps the view name to a template and processes the template using the model.
-For a view named 'hello', the template is hello.thtml.
+For a view named 'hello', the template is hello.thtml. <a href="templates.html">Read more about the template language.</a>
 
 <p>As templates are located in fcgi-bin/dreisam/views, let's create the following hello.thtml right there:
 
