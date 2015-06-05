@@ -458,7 +458,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             attrp = RDB_tuple_get(&tpl, attrname);
             if (attrp == NULL) {
                 RDB_destroy_obj(&tpl, ecp);
-                RDB_raise_name(exp->def.op.name, ecp);
+                RDB_raise_name(attrname, ecp);
                 return RDB_ERROR;
             }
             ret = RDB_copy_obj(valp, attrp, ecp);
