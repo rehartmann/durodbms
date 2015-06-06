@@ -42,10 +42,12 @@ RDB_object DURO_STDIN_OBJ;
 RDB_object DURO_STDOUT_OBJ;
 RDB_object DURO_STDERR_OBJ;
 
-/** @page io-ops Built-in I/O operators
+/** @page io-ops Built-in I/O type and operators
 
 These operators are only available in Duro D/T.
 They are part of the io package.
+
+TYPE iostream_id POSSREP { id integer };
 
 OPERATOR put_line(line string) UPDATES {};
 

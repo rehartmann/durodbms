@@ -93,7 +93,20 @@ static int datetime_check_second(int sec, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
-/** @page datetime-ops Built-in datetime operators
+/** @page datetime-ops Built-in datetime type and operators
+
+<pre>
+TYPE datetime
+POSSREP {
+    year integer,
+    month integer,
+    day integer,
+    hour integer,
+    min integer,
+    sec integer
+};
+</pre>
+
  *
  * operator now() returns datetime;
  *

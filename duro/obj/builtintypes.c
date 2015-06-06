@@ -15,7 +15,7 @@
 
 #include <string.h>
 
-/** @page builtin-types Built-in types
+/** @page builtin-types Built-in basic and error types
 @section basic-types Basic data types
 
 <table border="1" summary="Built-in basic data types">
@@ -26,30 +26,6 @@
 <tr><td>string<td>RDB_STRING<td>char *
 <tr><td>binary<td>RDB_BINARY<td>RDB_byte *
 </table>
-
-@section date-time-types Date and time types
-
-<pre>
-TYPE datetime
-POSSREP {
-    year integer,
-    month integer,
-    day integer,
-    hour integer,
-    min integer,
-    sec integer
-};
-</pre>
-
-@section io-types I/O types
-
-<pre>
-PACKAGE io;
-
-TYPE iostream_id POSSREP { id integer };
-
-END PACKAGE;
-</pre>
 
 @section error-types Error types
 
