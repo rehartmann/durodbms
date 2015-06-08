@@ -48,7 +48,7 @@ statement = assignment_stmt
 assignment_stmt = {assign ','} assign ';'.
 
 assign = <a href="expressions.html#var_expression">var_expression</a> ':=' <a href="expressions.html#expression">expression</a>
-        | INSERT qualified_id expression
+        | INSERT <a href="expressions.html#qualified_id">qualified_id</a> expression
         | D_INSERT qualified_id expression
         | DELETE qualified_id [WHERE expression]
         | DELETE qualified_id expression
@@ -68,7 +68,7 @@ var_stmt = VAR id <a href="expressions.html#type">type</a> [INIT expression] ';'
 
 public_var_stmt = VAR id PUBLIC type {key} ';'.
 
-key = KEY [id {',' id}].
+key = KEY '{' [id {',' id}] '}'.
 
 default = DEFAULT '{' [id expression {',' id expression}] '}'.
 
