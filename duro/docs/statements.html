@@ -109,7 +109,7 @@ ro_op_def_stmt = OPERATOR id '(' [id type {',' id type }] ')' RETURNS type ';'
 
 update_op_def_stmt = OPERATOR id '(' [id type {',' id type }] ')' UPDATES '{' [id {',' id}] '}' ';'
             statement {statement} END OPERATOR ';'
-        | OPERATOR id '(' [id type {',' id type }] ')' UPDATES '{' {id} '}' ';'
+        | OPERATOR id '(' [id type {',' id type }] ')' UPDATES '{' [id {',' id}] '}' ';'
             EXTERN string string END OPERATOR ';'.
 
 op_drop_stmt = DROP OPERATOR id ';'.
