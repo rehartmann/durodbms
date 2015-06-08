@@ -25,7 +25,7 @@ and IN for the element-of operator.
 
 <h3>DuroDBMS expression syntax (EBNF notation)</h3>
 
-<pre>
+<pre id="expression">
 expression = project | where | rename | dyadic_relation_op_inv 
     | extend | update | summarize | divideby
     | wrap | unwrap | group | ungroup
@@ -49,12 +49,14 @@ expression = project | where | rename | dyadic_relation_op_inv
     | TUPLE FROM expression
     | ifthenelse
     | with.
+</pre>
 
+<pre id="var_expression">
 var_expression = [expression '.'] id
     | ro_op_inv
     | array_subscript_inv.
 
-ro_op_inv = [expression '.'] id '(' expression_commalist ')'.
+ro_op_inv = [expression '.'] id '(' [expression {',' expression}] ')'.
 
 array_subscript_inv = expression '[' expression ']'. 
 
@@ -115,24 +117,24 @@ ifthenelse = IF expression THEN expression ELSE expression.
 
 count_inv = COUNT '(' expression ')'.
 
-aggregate_inv = summary_type '(' ne_expression_commalist ')'.
+aggregate_inv = summary_type '(' expression {',' expression} ')'.
 
 literal = string | integer | decimal | float | binary | TRUE | FALSE
-        | RELATION '{' id_type_commalist '}' '{' expression_commalist '}'
-        | RELATION '{' ne_expression_commalist '}'
+        | RELATION '{' id_type_commalist '}' '{' [expression {',' expression}] '}'
+        | RELATION '{' expression {',' expression} '}'
         | TABLE_DEE | TABLE_DUM
         | TUPLE '{' tuple_item_list '}'
-        | ARRAY type '(' expression_commalist ')'
-        | ARRAY '(' ne_expression_commalist ')'
+        | ARRAY type '(' [expression {',' expression}] ')'
+        | ARRAY '(' expression {',' expression} ')'
 
 tuple_item_list = [id expression {',' id expression}].
 
-expression_commalist = [ne_expression_commalist].
-
-ne_expression_commalist = expression {',' expression}.
+expression {',' expression} = expression {',' expression}.
 
 id_type_commalist = [id type {',' id type}].
+</pre>
 
+<pre id="type">
 type = qualified_id
         | TUPLE '{' id_type_commalist '}'
         | TUPLE '{' id_type_commalist ',' '*' '}'
@@ -142,7 +144,9 @@ type = qualified_id
         | RELATION SAME_HEADING_AS '(' expression ')'.
 
 qualified_id = [qualified_id '.'] id.
+</pre>
 
+<pre id="string">
 string = '"'{esc_char}'"' | "'"{character}"'".
 
 esc_char = character | '\"' | '\\' | '\n' | '\r' | '\t'.
@@ -154,8 +158,31 @@ decimal = digit{digit}'.'digit{digit}.
 float = digit{digit}'.'digit{digit}('E' | 'e')digit{digit}.
 
 binary = "X'"{hex_digit hex_digit}"'"
+</pre>
 
+<pre id="id">
 id = letter{letter | digit | '_' | '#'}["'"].
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 </pre>
 

@@ -1,0 +1,167 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en">
+<head>
+<title>DuroDBMS statement syntax</title>
+<link rel="stylesheet" href="style.css">
+<body>
+<p><a href="index.html">Documentation home</a>
+
+<h2>DuroDBMS statement syntax</h2>
+
+<pre>
+statement = assignment_stmt
+        | call_stmt
+        | var_stmt
+        | var_drop_stmt
+        | rename_var_stmt
+        | load_stmt
+        | if_stmt
+        | case_stmt
+        | for_stmt
+        | while_stmt
+        | leave_stmt
+        | begin_tx_stmt
+        | commit_stmt
+        | rollback_stmt
+        | ro_op_def_stmt
+        | update_op_def_stmt
+        | op_drop_stmt
+        | return_stmt
+        | type_def_stmt
+        | type_drop_stmt
+        | type_impl_stmt
+        | constraint_def_stmt
+        | constraint_drop_stmt
+        | index_def_stmt
+        | index_drop_stmt
+        | map_stmt
+        | try_stmt
+        | raise_stmt 
+        | explain_exp_stmt
+        | explain_assignment_stmt
+        | package_def_stmt
+        | package_impl_stmt
+        | BEGIN statement {statement} END ';'
+        | ';'.       
+
+assignment_stmt = {assign ','} assign ';'.
+
+assign = <a href="expressions.html#var_expression">var_expression</a> ':=' <a href="expressions.html#expression">expression</a>
+        | INSERT qualified_id expression
+        | D_INSERT qualified_id expression
+        | DELETE qualified_id [WHERE expression]
+        | DELETE qualified_id expression
+        | I_DELETE qualified_id expression
+        | UPDATE var_expression [WHERE expression] '{' <a href="expressions.html#id">id</a> := expression {id := expression} '}'.
+
+call_stmt = [CALL] [expression '.'] id '(' [expression {',' expression}] ')' ';'.
+
+var_stmt = VAR id <a href="expressions.html#type">type</a> [INIT expression] ';'
+        | VAR id INIT expression ';'
+        | VAR id REAL type [INIT expression] {key} [default] ';'
+        | VAR id REAL INIT expression {key} [default] ';'
+        | VAR id PRIVATE type [INIT expression] {key} [default] ';'
+        | VAR id PRIVATE INIT expression {key} [default] ';'
+        | VAR id VIRTUAL expression ';'
+        | public_var_stmt.
+
+public_var_stmt = VAR id PUBLIC type {key} ';'.
+
+key = KEY [id {',' id}].
+
+default = DEFAULT '{' [id expression {',' id expression}] '}'.
+
+var_drop_stmt = DROP VAR id ';'.
+
+rename_var_stmt = RENAME id AS id ';'.
+
+load_stmt = LOAD qualified_id FROM expression ORDER '(' [order_item {',' order_item}] ')' ';'.
+
+order_item = id ASC | id DESC.
+
+if_stmt = IF expression THEN statement {statement}
+          [ELSE statement {statement}] END IF ';'.
+
+case_stmt = CASE [;] {WHEN expression THEN statement {statement}}
+          [ELSE statement {statement}] END CASE ';'.
+
+for_stmt = [id ':'] FOR id ':=' expression TO expression ';'
+            statement {statement} END FOR ';'
+        | [id ':'] FOR id IN expression ORDER '(' [order_item {',' order_item}] ')' ';'
+            statement {statement} END FOR ';'.
+
+while_stmt = [id ':'] WHILE expression ';' statement {statement} END WHILE ';'.
+
+leave_stmt = LEAVE [id] ';'.
+
+begin_tx_stmt = BEGIN TRANSACTION ';'
+        | BEGIN TX ';'.
+
+commit_stmt = COMMIT ';'.
+
+rollback_stmt = ROLLBACK ';'.
+
+ro_op_def_stmt = OPERATOR id '(' [id type {',' id type }] ')' RETURNS type ';'
+            statement {statement} END OPERATOR ';'
+        | OPERATOR id '(' [id type {',' id type }] ')' RETURNS type ';'
+            EXTERN <a href="expressions.html#string">string</a> string END OPERATOR ';'.
+
+update_op_def_stmt = OPERATOR id '(' [id type {',' id type }] ')' UPDATES '{' {id} '}' ';'
+            statement {statement} END OPERATOR ';'
+        | OPERATOR id '(' [id type {',' id type }] ')' UPDATES '{' {id} '}' ';'
+            EXTERN string string END OPERATOR ';'.
+
+op_drop_stmt = DROP OPERATOR id ';'.
+
+return_stmt = RETURN [expression] ';'.
+
+type_def_stmt = TYPE id [ORDERED] possrep {possrep} [CONSTRAINT expression].
+
+possrep = POSSREP [id type {',' id type}].
+
+type_drop_stmt = DROP TYPE id ';'.
+
+type_impl_stmt = IMPLEMENT TYPE id ';' END IMPLEMENT ';'
+        | IMPLEMENT TYPE id AS type ';' ne_op_def_list
+            END IMPLEMENT ';'
+
+ne_op_def_list = (ro_op_def_stmt | update_op_def_stmt) {ro_op_def_stmt | update_op_def_stmt}.
+
+constraint_def_stmt = CONSTRAINT id expression ';'.
+
+constraint_drop_stmt = DROP CONSTRAINT id ';'.
+
+index_def_stmt = INDEX id id '(' id {id} ')' ';'.
+
+index_drop_stmt = DROP INDEX id ';'.
+
+map_stmt = MAP id expression ';'.
+
+try_stmt = TOK_TRY statement {statement} catch {catch} END TRY ';'.
+
+catch = CATCH id [type] ';' statement {statement}.
+
+raise_stmt = RAISE expression ';'.
+
+explain_exp_stmt = EXPLAIN expression ORDER '(' [order_item {',' order_item}] ')' ';'.
+
+explain_assignment_stmt = EXPLAIN assignment_stmt.
+
+package_def_stmt = PACKAGE id ';' {pkg_stmt} END PACKAGE ';'.
+
+pkg_stmt = ro_op_def_stmt
+    | update_op_def_stmt
+    | public_var_stmt
+    | type_def_stmt
+    | package_def_stmt
+    | op_drop_stmt
+    | type_drop_stmt
+    | var_drop_stmt.
+
+package_impl_stmt = IMPLEMENT PACKAGE id ';' {pkg_impl_stmt} END IMPLEMENT ';'.
+
+pkg_impl_stmt = type_impl_stmt
+        | map_stmt.
+
+</pre>    
