@@ -8,7 +8,7 @@
 # its files owned by the user under which the webserver runs. (e.g. www-data)
 #
 
-DURODBMS_ROOT=/usr/local/durodbms.0.26
+DURODBMS_ROOT=/usr/local/durodbms.1.0
 DURODT=$DURODBMS_ROOT/bin/durodt
 
 WWW_ROOT=/var/www
