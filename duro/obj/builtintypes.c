@@ -689,7 +689,7 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
     RDB_DATETIME.ireplen = sizeof(RDB_time);
     RDB_DATETIME.name = "datetime";
     RDB_DATETIME.def.scalar.builtin = RDB_TRUE;
-    RDB_DATETIME.def.scalar.ordered = RDB_FALSE;
+    RDB_DATETIME.def.scalar.ordered = RDB_TRUE;
     RDB_DATETIME.def.scalar.repc = 1;
     RDB_DATETIME.def.scalar.repv = &datetime_rep;
     RDB_DATETIME.def.scalar.arep = NULL;

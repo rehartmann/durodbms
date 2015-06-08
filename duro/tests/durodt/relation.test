@@ -1983,4 +1983,33 @@ test 2dbs {2 databases} -setup $SETUP -cleanup $CLEANUP -body {
 } -result {y
 }
 
+test datetime_table {table with datetime attribute} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+        begin tx;
+        var dr real rel {n int, d datetime} key {n};
+        insert dr rel { tup { n 1, d datetime(2015, 2, 1, 0, 0, 1) },
+                        tup { n 2, d datetime(2014, 1, 1, 0, 0, 1) },
+                        tup { n 3, d datetime(2015, 2, 1, 0, 0, 0) },
+                        tup { n 4, d datetime(2015, 1, 15, 0, 0, 0) } };
+        commit;
+        
+        begin tx;
+        update dr where n = 2 { d := datetime(2015, 2, 2, 0, 0, 1) };
+        var tp tup same_heading_as(dr);
+        for tp in dr order (d asc);
+            io.put(tp.n);
+            io.put(' ');
+            io.put(tp.d);
+            io.put_line('');
+        end for;
+        commit;
+    }
+} -result {4 2015-01-15T00:00:00
+3 2015-02-01T00:00:00
+1 2015-02-01T00:00:01
+2 2015-02-02T00:00:01
+}
+
 cleanupTests

@@ -12,7 +12,7 @@ import os
 bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.6.1')
 with_durotcl = int(ARGUMENTS.get('with_durotcl', 1))
 
-release = '0.26'
+release = '1.0'
 
 env = Environment(ENV = os.environ, tools = ['default', 'textfile'])
 
