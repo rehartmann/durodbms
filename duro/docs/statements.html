@@ -107,7 +107,7 @@ ro_op_def_stmt = OPERATOR id '(' [id type {',' id type }] ')' RETURNS type ';'
         | OPERATOR id '(' [id type {',' id type }] ')' RETURNS type ';'
             EXTERN <a href="expressions.html#string">string</a> string END OPERATOR ';'.
 
-update_op_def_stmt = OPERATOR id '(' [id type {',' id type }] ')' UPDATES '{' {id} '}' ';'
+update_op_def_stmt = OPERATOR id '(' [id type {',' id type }] ')' UPDATES '{' [id {',' id}] '}' ';'
             statement {statement} END OPERATOR ';'
         | OPERATOR id '(' [id type {',' id type }] ')' UPDATES '{' {id} '}' ';'
             EXTERN string string END OPERATOR ';'.
