@@ -380,6 +380,7 @@ node_to_insert(RDB_ma_insert *insp, RDB_parse_node *nodep, Duro_interp *interp,
         int flags, RDB_exec_context *ecp)
 {
     RDB_expression *srcexp;
+    RDB_type *srctyp;
 
     insp->tbp = resolve_parse_node_qid(nodep, interp, ecp);
     if (insp->tbp == NULL) {
@@ -404,6 +405,16 @@ node_to_insert(RDB_ma_insert *insp, RDB_parse_node *nodep, Duro_interp *interp,
             interp->txnp != NULL ? &interp->txnp->tx : NULL,
             insp->objp) != RDB_OK) {
         return RDB_ERROR;
+    }
+
+    if (RDB_is_tuple(insp->objp)) {
+        /* Get type of the source tuple */
+        srctyp = RDB_expr_type(srcexp, &Duro_get_var_type, interp, interp->envp, ecp,
+                interp->txnp != NULL ? &interp->txnp->tx : NULL);
+        if (srctyp == NULL) {
+            return RDB_ERROR;
+        }
+        RDB_obj_set_typeinfo(insp->objp, srctyp);
     }
 
     return RDB_OK;

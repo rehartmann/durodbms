@@ -1,7 +1,5 @@
 /*
- * $Id$
- *
- * Copyright (C) 2003-2012 Rene Hartmann.
+ * Copyright (C) 2003-2008, 2012-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -24,6 +22,26 @@ RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
     RDB_type *tuptyp = tbp->typ->def.basetyp;
     int attrcount = tuptyp->def.tuple.attrc;
     RDB_object serial_val;
+
+    /*
+     * If the tuple has type information, check if all attributes are present in the
+     * destination table
+     */
+    if (tplp->typ != NULL) {
+        int i;
+        int attrc;
+        RDB_attr *attrv = RDB_type_attrs(tplp->typ, &attrc);
+        if (attrv != NULL) {
+            for (i = 0; i < attrc; i++) {
+                if (RDB_tuple_type_attr(tuptyp, attrv[i].name) == NULL) {
+                    RDB_raise_type_mismatch(
+                            "tuple attribute not found in destination table",
+                            ecp);
+                    return RDB_ERROR;
+                }
+            }
+        }
+    }
 
     if (tbp->val.tb.stp == NULL) {
         /* Create physical table */

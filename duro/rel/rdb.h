@@ -60,14 +60,6 @@ typedef struct {
  * @}
  */
 
-/**@addtogroup table
- * @{
- */
-
-/**
- * @}
- */
-
 typedef struct RDB_qresult RDB_qresult;
 
 /* Function definition for reading lines of input */
@@ -77,6 +69,8 @@ typedef void RDB_free_line_fn(char *);
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 
 typedef struct RDB_database RDB_database;
+
+typedef struct RDB_transaction RDB_transaction;
 
 typedef struct RDB_transaction {
     /* internal */
@@ -92,7 +86,7 @@ typedef struct RDB_transaction {
 #endif
 
 typedef int RDB_apply_constraint_fn(RDB_expression *, const char *,
-        RDB_exec_context *, struct RDB_transaction *);
+        RDB_exec_context *, RDB_transaction *);
 
 /** @addtogroup tuple
  * @{

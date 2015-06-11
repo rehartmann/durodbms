@@ -51,7 +51,13 @@ test insert_delete {creating table, insert, delete} \
         try
             insert r relation {} {};
         catch err type_mismatch_error;
-            io.put_line('type mismatch caught');
+            io.put_line('type mismatch caught - empty relation');
+        end try;
+
+        try
+            insert r tup {i 4, d 1.0, c 'X', c2 'Y'};
+        catch err type_mismatch_error;
+            io.put_line('type mismatch caught - tuple with too many attributes');
         end try;
 
         var a init 1;
@@ -140,7 +146,8 @@ test insert_delete {creating table, insert, delete} \
         delete r3;
         io.put_line(if is_empty(r3) then 'empty' else 'not empty');
     }
-} -result {type mismatch caught
+} -result {type mismatch caught - empty relation
+type mismatch caught - tuple with too many attributes
 4
 3
 Y
