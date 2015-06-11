@@ -11,7 +11,7 @@ operator addsupp(model tup same_heading_as(extend suppliers : { msg := '' } ),
         view string) updates { model, view };
     begin tx;
     try
-    	insert suppliers model;
+    	insert suppliers model { all but msg };
     	model.msg := 'Supplier ' || model.sname || ' added.';
     catch err key_violation_error;
         model.msg := 'A supplier with sno ' || cast_as_string(model.sno) || ' already exists.';
