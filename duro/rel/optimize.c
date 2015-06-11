@@ -1577,8 +1577,7 @@ index_joins(RDB_expression *otexp, RDB_expression *itexp,
         return 0;
 
     if (tbp->kind == RDB_OB_TABLE && tbp->val.tb.stp == NULL) {
-        if (RDB_create_stored_table(tbp, RDB_db_env(RDB_tx_db(txp)), NULL,
-                ecp, txp) != RDB_OK)
+        if (RDB_provide_stored_table(tbp, RDB_TRUE, ecp, txp) != RDB_OK)
             return RDB_ERROR;
     }
 

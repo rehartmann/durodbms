@@ -1,7 +1,5 @@
 /*
- * $Id$
- *
- * Copyright (C) 2003-2013 Rene Hartmann.
+ * Copyright (C) 2003-2008, 2012-2013, 2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -496,9 +494,20 @@ update_where_pindex(RDB_expression *texp, RDB_expression *condp,
     }
     objc = refexp->def.tbref.indexp->attrc;
 
-    if (refexp->def.tbref.tbp->val.tb.stp == NULL)
-        return 0;
+    if (refexp->def.tbref.tbp->val.tb.stp == NULL) {
+        /*
+         * The stored table may have been created by another process,
+         * so try to open it
+         */
+        if (RDB_provide_stored_table(refexp->def.tbref.tbp,
+                RDB_FALSE, ecp, txp) != RDB_OK) {
+            return RDB_ERROR;
+        }
 
+        if (refexp->def.tbref.tbp->val.tb.stp == NULL) {
+            return 0;
+        }
+    }
     fvv = RDB_alloc(sizeof(RDB_field) * objc, ecp);
     valv = RDB_alloc(sizeof(RDB_object) * updc, ecp);
     fieldv = RDB_alloc(sizeof(RDB_field) * updc, ecp);
@@ -1175,8 +1184,15 @@ RDB_update_real(RDB_object *tbp, RDB_expression *condp, int updc,
         const RDB_attr_update updv[], RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    if (tbp->val.tb.stp == NULL)
-        return RDB_OK;
+    if (tbp->val.tb.stp == NULL) {
+        if (RDB_provide_stored_table(tbp,
+                RDB_FALSE, ecp, txp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+
+        if (tbp->val.tb.stp == NULL)
+            return RDB_OK;
+    }
 
     if (upd_complex(tbp, updc, updv, ecp)
             || (condp != NULL && RDB_expr_refers(condp, tbp)))
@@ -1198,8 +1214,16 @@ RDB_update_where_index(RDB_expression *texp, RDB_expression *condp,
         refexp = texp->def.op.args.firstp->def.op.args.firstp;
     }
     
-    if (refexp->def.tbref.tbp->val.tb.stp == NULL)
-        return 0;
+    if (refexp->def.tbref.tbp->val.tb.stp == NULL) {
+        if (RDB_provide_stored_table(refexp->def.tbref.tbp,
+                RDB_FALSE, ecp, txp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+
+        if (refexp->def.tbref.tbp->val.tb.stp == NULL) {
+            return 0;
+        }
+    }
 
     if (refexp->def.tbref.indexp->idxp == NULL) {
         return update_where_pindex(texp, condp, updc, updv, ecp, txp);

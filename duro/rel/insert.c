@@ -45,8 +45,7 @@ RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
 
     if (tbp->val.tb.stp == NULL) {
         /* Create physical table */
-        if (RDB_create_stored_table(tbp, txp != NULL ? txp->envp : NULL,
-                NULL, ecp, txp) != RDB_OK) {
+        if (RDB_provide_stored_table(tbp, RDB_TRUE, ecp, txp) != RDB_OK) {
             return RDB_ERROR;
         }
     }

@@ -855,6 +855,10 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
 
     yy_delete_buffer(YY_CURRENT_BUFFER);
 
+    if (whitecommp != NULL) {
+        RDB_destroy_obj(whitecommp, RDB_parse_ecp);
+        RDB_free(whitecommp);
+    }
     whitecommp = RDB_alloc(sizeof (RDB_object), RDB_parse_ecp);
     if (whitecommp == NULL)
         yyterminate();

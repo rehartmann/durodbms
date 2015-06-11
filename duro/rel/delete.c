@@ -78,8 +78,18 @@ RDB_delete_real(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
     RDB_type *tpltyp = tbp->typ->def.basetyp;
 
     if (tbp->val.tb.stp == NULL) {
-        /* Physical table representation has not been created, so table is empty */
-        return 0;
+        /*
+         * The stored table may have been created by another process,
+         * so try to open it
+         */
+        if (RDB_provide_stored_table(tbp, RDB_FALSE, ecp, txp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+
+        if (tbp->val.tb.stp == NULL) {
+            /* Physical table representation still not there, so table is empty */
+            return 0;
+        }
     }
 
     ret = RDB_recmap_cursor(&curp, tbp->val.tb.stp->recmapp, RDB_TRUE,
@@ -387,12 +397,18 @@ RDB_delete_real_tuple(RDB_object *tbp, RDB_object *tplp, int flags, RDB_exec_con
     RDB_object **objpv;
 
     if (tbp->val.tb.stp == NULL) {
-        /* No stored table, so table is empty */
-        if ((RDB_INCLUDED & flags) != 0) {
-            RDB_raise_not_found("tuple not found", ecp);
-            return (RDB_int) RDB_ERROR;
+        if (RDB_provide_stored_table(tbp, RDB_FALSE, ecp, txp) != RDB_OK) {
+            return RDB_ERROR;
         }
-        return (RDB_int) 0;
+
+        if (tbp->val.tb.stp == NULL) {
+            /* No stored table, so table is empty */
+            if ((RDB_INCLUDED & flags) != 0) {
+                RDB_raise_not_found("tuple not found", ecp);
+                return (RDB_int) RDB_ERROR;
+            }
+            return (RDB_int) 0;
+        }
     }
 
     /* Check if the table contains the tuple */

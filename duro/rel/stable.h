@@ -34,13 +34,16 @@ void
 RDB_free_tbindex(RDB_tbindex *);
 
 int
+RDB_provide_stored_table(RDB_object *, RDB_bool,
+        RDB_exec_context *, RDB_transaction *);
+
+int
 RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
         const RDB_bool ascv[], RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp, const char *,
-           int indexc, RDB_tbindex *indexv, RDB_exec_context *,
-           RDB_transaction *);
+           RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_close_stored_table(RDB_stored_table *, RDB_exec_context *);

@@ -1301,8 +1301,7 @@ provide_systable(const char *name, int attrc, RDB_attr heading[],
         ret = RDB_create_stored_table(*tbpp, txp->envp,
                 NULL, ecp, txp);
     } else {
-        ret = RDB_open_stored_table(*tbpp, txp->envp, name, -1, NULL,
-                ecp, txp);
+        ret = RDB_open_stored_table(*tbpp, txp->envp, name, ecp, txp);
     }
     if (ret != RDB_OK) {
         RDB_free_obj(*tbpp, ecp);
@@ -1485,7 +1484,7 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     if (ret != RDB_OK) {
         return ret;
     }
-        
+
     ret = provide_systable("sys_tableattr_defvals",
             3, table_attr_defvals_attrv, 1, table_attr_defvals_keyv,
             create, ecp, txp, dbrootp->envp, &dbrootp->table_attr_defvals_tbp);
@@ -2270,6 +2269,59 @@ error:
     return RDB_ERROR;
 }
 
+int
+RDB_cat_recmap_name(RDB_object *tbp, RDB_object *rmnameobjp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret;
+    RDB_object tpl;
+    RDB_expression *argp;
+    RDB_expression *exp;
+    RDB_object *tmptbp = NULL;
+
+    RDB_init_obj(&tpl);
+    exp = RDB_ro_op("where", ecp);
+    if (exp == NULL) {
+        goto error;
+    }
+    argp = RDB_table_ref(txp->dbp->dbrootp->table_recmap_tbp, ecp);
+    if (argp == NULL) {
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+    argp = tablename_id_eq_expr(RDB_table_name(tbp), ecp);
+    if (argp == NULL) {
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+
+    tmptbp = RDB_expr_to_vtable(exp, ecp, txp);
+    if (tmptbp == NULL) {
+        goto error;
+    }
+    exp = NULL;
+    ret = RDB_extract_tuple(tmptbp, ecp, txp, &tpl);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+    if (RDB_string_to_obj(rmnameobjp, RDB_tuple_get_string(&tpl, "recmap"),
+            ecp) != RDB_OK)
+        goto error;
+    RDB_destroy_obj(&tpl, ecp);
+
+    if (tmptbp != NULL)
+        RDB_drop_table(tmptbp, ecp, txp);
+    return RDB_OK;
+
+error:
+    if (tmptbp != NULL)
+        RDB_drop_table(tmptbp, ecp, txp);
+    if (exp != NULL)
+        RDB_del_expr(exp, ecp);
+    RDB_destroy_obj(&tpl, ecp);
+    return RDB_ERROR;
+}
+
 /* Reads a real table from the catalog */
 static int
 RDB_cat_get_rtable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
@@ -2291,11 +2343,13 @@ RDB_cat_get_rtable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
     RDB_type *tbtyp;
     int defvalc;
     RDB_hashmap *defvalmap = NULL;
+    RDB_object recmapnameobj;
     const char *recmapname = NULL;
 
     RDB_init_obj(&arr);
     RDB_init_obj(&tpl);
     RDB_init_obj(&attrnameobj);
+    RDB_init_obj(&recmapnameobj);
 
     exp = table_query(txp->dbp, txp->dbp->dbrootp->rtables_tbp, name, ecp);
     if (exp == NULL)
@@ -2385,45 +2439,6 @@ RDB_cat_get_rtable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
     if (RDB_cat_get_keys(name, ecp, txp, &keyc, &keyv) != RDB_OK)
         goto error;
 
-    if (usr) {
-        /*
-         * Read recmap name from catalog, if it's user table.
-         * For system tables, the recmap name is the table name.
-         */
-        exp = RDB_ro_op("where", ecp);
-        if (exp == NULL) {
-            goto error;
-        }
-        argp = RDB_table_ref(txp->dbp->dbrootp->table_recmap_tbp, ecp);
-        if (argp == NULL) {
-            RDB_del_expr(exp, ecp);
-            goto error;
-        }
-        RDB_add_arg(exp, argp);
-        argp = tablename_id_eq_expr(name, ecp);
-        if (argp == NULL) {
-            RDB_del_expr(exp, ecp);
-            goto error;
-        }
-        RDB_add_arg(exp, argp);
-
-        tmptb4p = RDB_expr_to_vtable(exp, ecp, txp);
-        if (tmptb4p == NULL) {
-            RDB_del_expr(exp, ecp);
-            goto error;
-        }
-        ret = RDB_extract_tuple(tmptb4p, ecp, txp, &tpl);
-        if (ret != RDB_OK) {
-            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-                goto error;
-            }
-            RDB_clear_err(ecp);
-        }
-        if (ret == RDB_OK) {
-            recmapname = RDB_tuple_get_string(&tpl, "recmap");
-        }
-    }
-
     if (RDB_init_table_i(tbp, name, RDB_TRUE, tbtyp, keyc, keyv,
             0, NULL, usr, NULL, ecp) != RDB_OK) {
         RDB_free_keys(keyc, keyv);
@@ -2432,19 +2447,23 @@ RDB_cat_get_rtable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
     }
     RDB_free_keys(keyc, keyv);
 
-    if (!usr) {
+    /*
+     * Read recmap name from catalog if it's user table.
+     * For system tables, the recmap name is the table name.
+     */
+    if (usr) {
+        if (RDB_cat_recmap_name(tbp, &recmapnameobj, ecp, txp) != RDB_OK) {
+            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
+                goto error;
+            recmapname = NULL;
+        } else {
+            recmapname = RDB_obj_string(&recmapnameobj);
+        }
+    } else {
         recmapname = RDB_table_name(tbp);
     }
     if (recmapname != NULL) {
-        RDB_tbindex *indexv;
-        int indexc = RDB_cat_get_indexes(name, txp->dbp->dbrootp, ecp, txp, &indexv);
-        if (indexc < 0) {
-            ret = indexc;
-            goto error;
-        }
-
-        ret = RDB_open_stored_table(tbp, txp->envp, recmapname,
-                indexc, indexv, ecp, txp);
+        ret = RDB_open_stored_table(tbp, txp->envp, recmapname, ecp, txp);
         if (ret != RDB_OK) {
             goto error;
         }
@@ -2464,6 +2483,7 @@ RDB_cat_get_rtable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
 
     RDB_destroy_obj(&tpl, ecp);
     RDB_destroy_obj(&attrnameobj, ecp);
+    RDB_destroy_obj(&recmapnameobj, ecp);
 
     return RDB_OK;
 
@@ -2479,17 +2499,20 @@ error:
 
     RDB_destroy_obj(&tpl, ecp);
     RDB_destroy_obj(&attrnameobj, ecp);
+    RDB_destroy_obj(&recmapnameobj, ecp);
 
     if (defvalmap != NULL) {
-        RDB_hashmap_iter hiter;
-        void *valp;
+        if (tbp->val.tb.default_map != NULL) {
+            RDB_hashmap_iter hiter;
+            void *valp;
 
-        RDB_init_hashmap_iter(&hiter, tbp->val.tb.default_map);
-        while (RDB_hashmap_next(&hiter, &valp) != NULL) {
-            RDB_free(valp);
+            RDB_init_hashmap_iter(&hiter, tbp->val.tb.default_map);
+            while (RDB_hashmap_next(&hiter, &valp) != NULL) {
+                RDB_free(valp);
+            }
+            RDB_destroy_hashmap_iter(&hiter);
+            RDB_destroy_hashmap(tbp->val.tb.default_map);
         }
-        RDB_destroy_hashmap_iter(&hiter);
-        RDB_destroy_hashmap(tbp->val.tb.default_map);
         RDB_free(tbp->val.tb.default_map);
         tbp->val.tb.default_map = NULL;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2012 Rene Hartmann.
+ * Copyright (C) 2008, 2011-2005 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -240,9 +240,20 @@ RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
                     ecp, txp, resultp);
         }
         if (exp->def.tbref.tbp->val.tb.stp == NULL) {
-            /* Physical table representation has not been created, so table is empty */
-            *resultp = RDB_FALSE;
-            return RDB_OK;
+            /*
+             * The stored table may have been created by another process,
+             * so try to open it
+             */
+            if (RDB_provide_stored_table(exp->def.tbref.tbp,
+                    RDB_FALSE, ecp, txp) != RDB_OK) {
+                return RDB_ERROR;
+            }
+
+            if (exp->def.tbref.tbp->val.tb.stp == NULL) {
+                /* Physical table representation has not been created, so table is empty */
+                *resultp = RDB_FALSE;
+                return RDB_OK;
+            }
         }
         return stored_matching(exp->def.tbref.tbp, tplp, ecp, txp, resultp);
     case RDB_EX_RO_OP:
@@ -347,9 +358,16 @@ RDB_table_matching_tuple(RDB_object *tbp, const RDB_object *tplp, RDB_exec_conte
 	    int i;
 
 	    if (tbp->val.tb.stp == NULL) {
-	        /* Physical table representation has not been created, so table is empty */
-	        *resultp = RDB_FALSE;
-	        return RDB_OK;
+            if (RDB_provide_stored_table(tbp,
+                    RDB_FALSE, ecp, txp) != RDB_OK) {
+                return RDB_ERROR;
+            }
+
+            if (tbp->val.tb.stp == NULL) {
+                /* Physical table representation has not been created, so table is empty */
+                *resultp = RDB_FALSE;
+                return RDB_OK;
+            }
 	    }
 
 	    /*

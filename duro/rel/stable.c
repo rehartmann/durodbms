@@ -330,28 +330,28 @@ static int
 replen(const RDB_type *typ)
 {
     switch(typ->kind) {
-        case RDB_TP_TUPLE:
-        {
-            int i;
-            size_t len;
-            size_t tlen = 0;
+    case RDB_TP_TUPLE:
+    {
+        int i;
+        size_t len;
+        size_t tlen = 0;
 
-            /*
-             * Add lengths of attribute types. If one of the attributes is
-             * of variable length, the tuple type is of variable length.
-             */
-            for (i = 0; i < typ->def.tuple.attrc; i++) {
-                len = replen(typ->def.tuple.attrv[i].typ);
-                if (len == RDB_VARIABLE_LEN)
-                    return RDB_VARIABLE_LEN;
-                tlen += len;
-            }
-            return tlen;
+        /*
+         * Add lengths of attribute types. If one of the attributes is
+         * of variable length, the tuple type is of variable length.
+         */
+        for (i = 0; i < typ->def.tuple.attrc; i++) {
+            len = replen(typ->def.tuple.attrv[i].typ);
+            if (len == RDB_VARIABLE_LEN)
+                return RDB_VARIABLE_LEN;
+            tlen += len;
         }
-        case RDB_TP_RELATION:
-        case RDB_TP_ARRAY:
-        case RDB_TP_SCALAR:
-            return typ->ireplen;
+        return tlen;
+    }
+    case RDB_TP_RELATION:
+    case RDB_TP_ARRAY:
+    case RDB_TP_SCALAR:
+        return typ->ireplen;
     }
     abort();
 }
@@ -620,6 +620,51 @@ error:
     return RDB_ERROR;
 }
 
+int
+RDB_provide_stored_table(RDB_object *tbp, RDB_bool create, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_object rmnameobj;
+
+    RDB_init_obj(&rmnameobj);
+
+    if (RDB_table_is_persistent(tbp)) {
+        if (txp == NULL || !RDB_tx_is_running(txp)) {
+            RDB_raise_no_running_tx(ecp);
+            return RDB_ERROR;
+        }
+
+        /*
+         * Try to get the recmap name from the catalog.
+         * If it is found, open it.
+         */
+        if (RDB_cat_recmap_name(tbp, &rmnameobj, ecp, txp) == RDB_OK) {
+            if (RDB_open_stored_table(tbp, txp->envp, RDB_obj_string(&rmnameobj),
+                        ecp, txp) != RDB_OK) {
+                goto error;
+            }
+            RDB_destroy_obj(&rmnameobj, ecp);
+            return RDB_OK;
+        }
+        if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
+             goto error;
+    }
+
+    if (create) {
+        if (RDB_create_stored_table(tbp, txp != NULL ? txp->envp : NULL,
+                NULL, ecp, txp) != RDB_OK) {
+            goto error;
+        }
+    }
+
+    RDB_destroy_obj(&rmnameobj, ecp);
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&rmnameobj, ecp);
+    return RDB_ERROR;
+}
+
 /*
  * Open the physical representation of a table.
  * (The recmap and the indexes)
@@ -633,12 +678,12 @@ error:
  */
 int
 RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
-        const char *rmname, int indexc, RDB_tbindex *indexv,
+        const char *rmname,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     int i;
-    int *flenv;
+    int *flenv = NULL;
     RDB_hashtable_iter hiter;
     RDB_attrmap_entry *entryp;
     RDB_compare_field *cmpv = NULL;
@@ -650,30 +695,24 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
 
     if (txp != NULL && !RDB_tx_is_running(txp)) {
         RDB_raise_no_running_tx(ecp);
-
-        /* free indexv because it can't be attached to *tbp */
-        if (indexc > 0) {
-            for (i = 0; i < indexc; i++) {
-                RDB_free_tbindex(&indexv[i]);
-            }
-            RDB_free(indexv);
-        }
         return RDB_ERROR;
     }
 
     tbp->val.tb.stp = RDB_alloc(sizeof(RDB_stored_table), ecp);
     if (tbp->val.tb.stp == NULL) {
-        if (indexc > 0) {
-            for (i = 0; i < indexc; i++) {
-                RDB_free_tbindex(&indexv[i]);
-            }
-            RDB_free(indexv);
-        }
         return RDB_ERROR;
     }
 
-    tbp->val.tb.stp->indexc = indexc;
-    tbp->val.tb.stp->indexv = indexv;
+    if (RDB_table_is_persistent(tbp) && RDB_table_is_user(tbp)) {
+        /* Get indexes from catalog */
+        tbp->val.tb.stp->indexc = RDB_cat_get_indexes(RDB_table_name(tbp), txp->dbp->dbrootp,
+                ecp, txp, &tbp->val.tb.stp->indexv);
+        if (tbp->val.tb.stp->indexc < 0) {
+            goto error;
+        }
+    } else {
+        tbp->val.tb.stp->indexc = 0;
+    }
 
     RDB_init_hashtable(&tbp->val.tb.stp->attrmap, RDB_DFL_MAP_CAPACITY, &hash_str,
             &str_equals);
@@ -713,14 +752,14 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
     }
 
     /* Open secondary indexes */
-    for (i = 0; i < indexc; i++) {
-        char *p = strchr(indexv[i].name, '$');
+    for (i = 0; i < tbp->val.tb.stp->indexc; i++) {
+        char *p = strchr(tbp->val.tb.stp->indexv[i].name, '$');
         if (p == NULL || strcmp (p, "$0") != 0) {
-            ret = RDB_open_tbindex(tbp, &indexv[i], envp, ecp, txp);
+            ret = RDB_open_tbindex(tbp, &tbp->val.tb.stp->indexv[i], envp, ecp, txp);
             if (ret != RDB_OK)
                 goto error;
         } else {
-            indexv[i].idxp = NULL;
+            tbp->val.tb.stp->indexv[i].idxp = NULL;
         }
     }
 

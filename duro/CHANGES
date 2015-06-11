@@ -6,6 +6,8 @@ DuroDBMS 1.0
 
 - Fixed bug in RDB_drop_table_index().
 
+- Fixed bug with concurrent access when the first tuple is inserted into a table.
+
 DuroDBMS 0.26
 
 - Duro D/T: Replaced MODULE by PACKAGE.

@@ -2,7 +2,7 @@
  * Functions for RDB_qresult structures that iterate over stored
  * or local tables.
  *
- * Copyright (C) 2014 Rene Hartmann.
+ * Copyright (C) 2014-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -26,11 +26,22 @@ RDB_init_stored_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_expression *exp,
     qrp->val.stored.tbp = tbp;
     if (tbp->val.tb.stp == NULL) {
         /*
-         * Table has no physical representation, which means it is empty
+         * The stored table may have been created by another process,
+         * so try to open it
          */
-        qrp->endreached = RDB_TRUE;
-        qrp->val.stored.curp = NULL;
-        return RDB_OK;
+        if (RDB_provide_stored_table(tbp,
+                RDB_FALSE, ecp, txp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+
+        if (tbp->val.tb.stp == NULL) {
+            /*
+             * Table has no physical representation which means it is empty
+             */
+            qrp->endreached = RDB_TRUE;
+            qrp->val.stored.curp = NULL;
+            return RDB_OK;
+        }
     }
 
     ret = RDB_recmap_cursor(&qrp->val.stored.curp, tbp->val.tb.stp->recmapp,
