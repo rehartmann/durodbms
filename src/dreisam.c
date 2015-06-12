@@ -14,6 +14,7 @@
 #include "getaction.h"
 #include "viewop.h"
 #include "sreason.h"
+#include "json.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -160,6 +161,13 @@ op_net_put_err(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     return RDB_OK;
+}
+
+static int
+op_net_to_json(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    return Dr_obj_to_json(retvalp, argv[0], ecp);
 }
 
 static int
@@ -466,6 +474,12 @@ create_fcgi_ops(Duro_interp *interpp, RDB_exec_context *ecp)
         goto error;
     }
 
+    param.typ = NULL;
+    if (RDB_put_global_ro_op("net.to_json", 1, &param.typ,
+            &RDB_STRING, &op_net_to_json, ecp) != RDB_OK) {
+        ret = DR_ERR_INIT_OP;
+        goto error;
+    }
     return RDB_OK;
 
 error:

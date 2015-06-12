@@ -1,11 +1,13 @@
 begin tx;
 
+
 -- Actions table
 var net_actions real relation {
     path string,
     method string,
     opname string
 } key { path, method };
+
 
 -- HTTP response operators
 package net;
@@ -58,6 +60,14 @@ operator add_response_header(name string, value string) updates {};
     length(response_headers) := hlen + 1;
     response_headers[hlen] := name || ': ' || value;
 end operator;    
+
+operator send_json_response(tp tup { * }) updates {};
+    var json_data init net.to_json(tp);
+    set_response_header('Content-Type', 'application/json');
+    set_response_header('Content-Length', cast_as_string(strlen_b(json_data)));
+
+    net.put(json_data);
+end operator;
 
 end package;
 

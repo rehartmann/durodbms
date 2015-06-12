@@ -103,4 +103,36 @@ operator redirect (model tup { }, view string) updates { model, view };
 end operator;
 </pre>
 
+<h2>Sending JSON data</h2>
+
+<p>An action operator can send a JSON response using the operator send_json_response:
+
+<pre>
+insert net_actions tup { path '/jsonexample', opname 'jsonexample', method 'GET' };
+
+operator jsonexample (model tup { name string, no int, price float }, view string)
+        updates { model, view };
+    model := tup { name 'Cap', no 22, price 10.97 };
+
+    view := '';
+    net.send_json_response(model);
+end operator;
+</pre>
+
+The request
+
+<pre>
+http://localhost/fcgi-bin/dreisam.fcgi/jsonexample
+</pre>
+
+will produce the following output:
+
+<pre>
+{
+"no": 22,
+"name": "Cap",
+"price": 1.097000e+01
+}
+</pre>
+
 </html>

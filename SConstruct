@@ -11,7 +11,7 @@ if (os.environ.has_key('CFLAGS')):
     env.Replace(CCFLAGS = os.environ['CFLAGS'])
 
 dreisam = env.Program('dreisam.fcgi', ['src/dreisam.c', 'src/getaction.c',
-                      'src/viewop.c', 'src/sreason.c'],
+                      'src/viewop.c', 'src/sreason.c', 'src/json.c'],
             CPPPATH = [bdb_home + '/include',
                        duro_home + '/include'],
             LINKFLAGS = ['-g'],
