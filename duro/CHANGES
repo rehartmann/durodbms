@@ -8,6 +8,8 @@ DuroDBMS 1.0
 
 - Fixed bug with concurrent access when the first tuple is inserted into a table.
 
+- Added RDB_is_array().
+
 DuroDBMS 0.26
 
 - Duro D/T: Replaced MODULE by PACKAGE.
