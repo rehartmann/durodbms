@@ -33,6 +33,7 @@ along with DuroDBMS; if not, write to the Free Software Foundation, Inc.,
 #include <obj/expression.h>
 #include <obj/builtintypes.h>
 #include <obj/tuple.h>
+#include <obj/array.h>
 #include <obj/operator.h>
 
 #include <stdlib.h>
@@ -459,19 +460,6 @@ int
 RDB_table_to_array(RDB_object *arrp, RDB_object *, 
                    int seqitc, const RDB_seq_item seqitv[], int flags,
                    RDB_exec_context *, RDB_transaction *);
-
-RDB_object *
-RDB_array_get(const RDB_object *, RDB_int idx, RDB_exec_context *);
-
-int
-RDB_array_set(RDB_object *, RDB_int idx, const RDB_object *tplp,
-        RDB_exec_context *);
-
-RDB_int
-RDB_array_length(const RDB_object *, RDB_exec_context *);
-
-int
-RDB_set_array_length(RDB_object *arrp, RDB_int len, RDB_exec_context *);
 
 RDB_qresult *
 RDB_table_iterator(RDB_object *, int, const RDB_seq_item[],

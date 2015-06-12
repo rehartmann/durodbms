@@ -109,6 +109,7 @@ RDB_type_name
 RDB_type_is_numeric
 RDB_type_is_scalar
 RDB_type_is_tuple
+RDB_type_is_array
 RDB_type_is_relation
 RDB_type_equals
 RDB_type_possreps

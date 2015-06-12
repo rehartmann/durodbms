@@ -58,13 +58,14 @@ gensrc = ['gen/hashmap.c', 'gen/hashmapit.c',
         'gen/strfns.c', 'gen/strdump.c', 'gen/hashtable.c', 'gen/hashtabit.c',
         'gen/releaseno.c']
 
-objsrc = ['obj/object.c', 'obj/excontext.c', 'obj/type.c', 'obj/builtintypes.c',
-          'obj/io.c','obj/expression.c', 'obj/key.c', 'obj/tuple.c',
-          'obj/operator.c', 'obj/builtinscops.c', 'obj/datetimeops.c']
+objsrc = ['obj/object.c', 'obj/excontext.c', 'obj/type.c',
+          'obj/builtintypes.c', 'obj/io.c','obj/expression.c', 'obj/key.c',
+          'obj/tuple.c', 'obj/array.c', 'obj/operator.c',
+          'obj/builtinscops.c', 'obj/datetimeops.c']
 
 recsrc = ['rec/cursor.c', 'rec/env.c', 'rec/index.c', 'rec/recmap.c', 'rec/sequence.c']
 
-relsrc = ['rel/array.c', 'rel/database.c', 'rel/uoperator.c',
+relsrc = ['rel/arrayx.c', 'rel/database.c', 'rel/uoperator.c',
         'rel/expressionx.c', 'rel/evaluate.c', 'rel/exprtype.c', 'rel/tuplex.c',
         'rel/stable.c', 'rel/qresult.c', 'rel/qr_stored.c', 'rel/qr_join.c',
         'rel/qr_tclose.c', 'rel/serialize.c', 'rel/table.c', 'rel/vtable.c',
@@ -260,7 +261,8 @@ gen_hdrs = Split('gen/hashmap.h gen/hashmapit.h gen/hashtable.h '
 rec_hdrs = Split('rec/cursor.h rec/env.h rec/dbdefs.h rec/index.h rec/recmap.h '
                  'rec/sequence.h')
 obj_hdrs = Split('obj/object.h obj/excontext.h obj/type.h obj/builtintypes.h '
-                'obj/expression.h obj/operator.h obj/opmap.h obj/tuple.h')
+                'obj/expression.h obj/operator.h obj/opmap.h obj/tuple.h '
+                'obj/array.h')
 obj_ihdrs = ['obj/io.h', 'obj/key.h', 'obj/objinternal.h', 'obj/builtinscops.h',
              'obj/datetimeops.h']
 rel_hdrs = Split('rel/rdb.h rel/typeimpl.h '

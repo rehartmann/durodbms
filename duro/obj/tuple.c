@@ -345,6 +345,9 @@ RDB_tuple_attr_names(const RDB_object *tplp, char **namev)
     tuple_entry *entryp;
     RDB_hashtable_iter hiter;
 
+    if (tplp->kind == RDB_OB_INITIAL)
+        return;
+
     RDB_init_hashtable_iter(&hiter, (RDB_hashtable *) &tplp->val.tpl_tab);
     while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
         namev[i++] = entryp->key;
