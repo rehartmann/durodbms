@@ -24,9 +24,11 @@ Dr_get_action_op(Duro_interp *interpp, RDB_exec_context *ecp)
         goto error;
 
     if (query_exp == NULL) {
+        /* If the request method is HEAD get the GET entry */
         query_exp = Duro_dt_parse_expr_str("tuple from net_actions "
                 "where path like net.get_request_header('PATH_INFO') "
-                "and method = net.get_request_header('REQUEST_METHOD')",
+                "and with (request_method := net.get_request_header('REQUEST_METHOD')):"
+                     "method = if request_method = 'HEAD' then 'GET' else request_method",
                 interpp, ecp);
         if (query_exp == NULL)
             goto error;

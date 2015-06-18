@@ -48,7 +48,7 @@ append_array_json(RDB_object *strobjp, RDB_object *arrp, RDB_exec_context *ecp)
     if (len < 0)
         return RDB_ERROR;
 
-    if (RDB_append_string(strobjp, "[ ", ecp) != RDB_OK)
+    if (RDB_append_string(strobjp, "[\n", ecp) != RDB_OK)
         return RDB_ERROR;
     for (i = 0; i < len; i++) {
         elemp = RDB_array_get(arrp, i, ecp);
@@ -57,11 +57,11 @@ append_array_json(RDB_object *strobjp, RDB_object *arrp, RDB_exec_context *ecp)
         if (append_obj_json(strobjp, elemp, ecp) != RDB_OK)
             return RDB_ERROR;
         if (i < len - 1) {
-            if (RDB_append_string(strobjp, ", ", ecp) != RDB_OK)
+            if (RDB_append_string(strobjp, ",\n", ecp) != RDB_OK)
                 return RDB_ERROR;
         }
     }
-    return RDB_append_string(strobjp, " ]", ecp);
+    return RDB_append_string(strobjp, "\n]", ecp);
 }
 
 int
@@ -118,7 +118,7 @@ append_obj_json(RDB_object *strobjp, RDB_object *objp, RDB_exec_context *ecp)
         return RDB_append_string(strobjp, buf, ecp);
     }
     if (typ == &RDB_FLOAT) {
-        sprintf(buf, "%e", (double) RDB_obj_float(objp));
+        sprintf(buf, "%g", (double) RDB_obj_float(objp));
         return RDB_append_string(strobjp, buf, ecp);
     }
     if (typ == &RDB_BOOLEAN) {
