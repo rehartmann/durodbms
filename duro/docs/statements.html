@@ -86,10 +86,10 @@ if_stmt = IF expression THEN statement {statement}
 case_stmt = CASE [;] {WHEN expression THEN statement {statement}}
           [ELSE statement {statement}] END CASE ';'.
 
-for_stmt = [id ':'] FOR id ':=' expression TO expression ';'
-            statement {statement} END FOR ';'
-        | [id ':'] FOR id IN expression ORDER '(' [order_item {',' order_item}] ')' ';'
-            statement {statement} END FOR ';'.
+for_stmt = [id ':'] (FOR|DO) id ':=' expression TO expression ';'
+            statement {statement} END (FOR|DO) ';'
+        | [id ':'] (FOR|DO) id IN expression ORDER '(' [order_item {',' order_item}] ')' ';'
+            statement {statement} END (FOR|DO) ';'.
 
 while_stmt = [id ':'] WHILE expression ';' statement {statement} END WHILE ';'.
 
@@ -138,7 +138,7 @@ index_drop_stmt = DROP INDEX id ';'.
 
 map_stmt = MAP id expression ';'.
 
-try_stmt = TOK_TRY statement {statement} catch {catch} END TRY ';'.
+try_stmt = TRY statement {statement} catch {catch} END TRY ';'.
 
 catch = CATCH id [type] ';' statement {statement}.
 
