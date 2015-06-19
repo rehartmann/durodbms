@@ -49,9 +49,6 @@ typedef struct Duro_interp {
 
     RDB_operator *inner_op;
 
-    /* System variables, contains STDIN, STDOUT etc. */
-    RDB_hashmap sys_varmap;
-
     /* System update operators */
     RDB_op_map sys_upd_op_map;
 
@@ -70,8 +67,8 @@ typedef struct Duro_interp {
 
     const char *impl_typename;
 
-    RDB_object current_db_obj;
-    RDB_object implicit_tx_obj;
+    RDB_object *current_db_objp;
+    RDB_object *implicit_tx_objp;
 
     /* Data needed for user-defined operators */
     RDB_hashmap uop_info_map;

@@ -1,7 +1,7 @@
 /*
  * Interpreter core functionality such as handling of variables
  *
- * Copyright (C) 2012-2014 Rene Hartmann.
+ * Copyright (C) 2012-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -77,7 +77,6 @@ void
 Duro_init_vars(Duro_interp *interp)
 {
     RDB_init_hashmap(&interp->root_varmap, DEFAULT_VARMAP_SIZE);
-    RDB_init_hashmap(&interp->sys_varmap, DEFAULT_VARMAP_SIZE);
     interp->current_varmapp = NULL;
 }
 
@@ -85,9 +84,6 @@ void
 Duro_destroy_vars(Duro_interp *interp)
 {
     Duro_destroy_varmap(&interp->root_varmap);
-
-    /* Destroy only the varmap, not the variables as they are global */
-    RDB_destroy_hashmap(&interp->sys_varmap);
 }
 
 /*
@@ -116,12 +112,7 @@ lookup_transient_var(Duro_interp *interp, const char *name, varmap_node *varmapp
     }
 
     /* Search in global transient vars */
-    objp = RDB_hashmap_get(&interp->root_varmap, name);
-    if (objp != NULL)
-        return objp;
-
-    /* Search in system varmap */
-    return RDB_hashmap_get(&interp->sys_varmap, name);
+    return RDB_hashmap_get(&interp->root_varmap, name);
 }
 
 RDB_object *
@@ -345,7 +336,7 @@ RDB_database *
 Duro_get_db(Duro_interp *interp, RDB_exec_context *ecp)
 {
     char *dbname;
-    RDB_object *dbnameobjp = RDB_hashmap_get(&interp->sys_varmap, "current_db");
+    RDB_object *dbnameobjp = RDB_hashmap_get(&interp->root_varmap, "current_db");
     if (dbnameobjp == NULL) {
         RDB_raise_resource_not_found("no database", ecp);
         return NULL;

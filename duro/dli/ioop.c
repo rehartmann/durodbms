@@ -38,9 +38,9 @@ enum {
 
 static FILE *iostreams[IOSTREAMS_MAX + 1] = { NULL }; /* Initalize with zeroes */
 
-RDB_object DURO_STDIN_OBJ;
-RDB_object DURO_STDOUT_OBJ;
-RDB_object DURO_STDERR_OBJ;
+RDB_object *Duro_stdin_objp;
+RDB_object *Duro_stdout_objp;
+RDB_object *Duro_stderr_objp;
 
 /** @page io-ops Built-in I/O type and operators
 
@@ -441,7 +441,7 @@ op_put_line_string(int argc, RDB_object *argv[], RDB_operator *op,
 {
     RDB_object *callargv[3];
 
-    callargv[0] = &DURO_STDOUT_OBJ;
+    callargv[0] = Duro_stdout_objp;
     callargv[1] = argv[0];
     
     return op_put_line_iostream_string(2, callargv, op, ecp, txp);
@@ -916,18 +916,27 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    RDB_init_obj(&DURO_STDIN_OBJ);
-    if (init_iostream(&DURO_STDIN_OBJ, STDIN_FILENO, ecp) != RDB_OK)
+    Duro_stdin_objp = RDB_alloc(sizeof (RDB_object), ecp);
+    if (Duro_stdin_objp == NULL)
+        return RDB_ERROR;
+    RDB_init_obj(Duro_stdin_objp);
+    if (init_iostream(Duro_stdin_objp, STDIN_FILENO, ecp) != RDB_OK)
         return RDB_ERROR;
     iostreams[STDIN_FILENO] = stdin;
 
-    RDB_init_obj(&DURO_STDOUT_OBJ);
-    if (init_iostream(&DURO_STDOUT_OBJ, STDOUT_FILENO, ecp) != RDB_OK)
+    Duro_stdout_objp = RDB_alloc(sizeof (RDB_object), ecp);
+    if (Duro_stdout_objp == NULL)
+        return RDB_ERROR;
+    RDB_init_obj(Duro_stdout_objp);
+    if (init_iostream(Duro_stdout_objp, STDOUT_FILENO, ecp) != RDB_OK)
         return RDB_ERROR;
     iostreams[STDOUT_FILENO] = stdout;
 
-    RDB_init_obj(&DURO_STDERR_OBJ);
-    if (init_iostream(&DURO_STDERR_OBJ, STDERR_FILENO, ecp) != RDB_OK)
+    Duro_stderr_objp = RDB_alloc(sizeof (RDB_object), ecp);
+    if (Duro_stderr_objp == NULL)
+        return RDB_ERROR;
+    RDB_init_obj(Duro_stderr_objp);
+    if (init_iostream(Duro_stderr_objp, STDERR_FILENO, ecp) != RDB_OK)
         return RDB_ERROR;
     iostreams[STDERR_FILENO] = stderr;
 

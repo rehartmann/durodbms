@@ -1,7 +1,7 @@
 /*
  * Statement execution functions.
  *
- * Copyright (C) 2007, 2014 Rene Hartmann.
+ * Copyright (C) 2007, 2014-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -208,7 +208,7 @@ disconnect_op(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     /* If CURRENT_DB was set, set it to empty string */
-    dbnameobjp = RDB_hashmap_get(&interp->sys_varmap, "current_db");
+    dbnameobjp = RDB_hashmap_get(&interp->root_varmap, "current_db");
     if (dbnameobjp == NULL || *RDB_obj_string(dbnameobjp) == '\0') {
         return RDB_OK;
     }
@@ -289,15 +289,15 @@ add_io(Duro_interp *interp, RDB_exec_context *ecp) {
         return RDB_ERROR;
     }
 
-    if (RDB_hashmap_put(&interp->sys_varmap, "io.stdin", &DURO_STDIN_OBJ) != RDB_OK) {
+    if (RDB_hashmap_put(&interp->root_varmap, "io.stdin", Duro_stdin_objp) != RDB_OK) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    if (RDB_hashmap_put(&interp->sys_varmap, "io.stdout", &DURO_STDOUT_OBJ) != RDB_OK) {
+    if (RDB_hashmap_put(&interp->root_varmap, "io.stdout", Duro_stdout_objp) != RDB_OK) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    if (RDB_hashmap_put(&interp->sys_varmap, "io.stderr", &DURO_STDERR_OBJ) != RDB_OK) {
+    if (RDB_hashmap_put(&interp->root_varmap, "io.stderr", Duro_stderr_objp) != RDB_OK) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
@@ -2774,7 +2774,7 @@ Duro_exec_stmt_impl_tx(RDB_parse_node *stmtp, Duro_interp *interp,
      * No implicit transaction if the statement is a BEGIN TX, COMMIT,
      * or ROLLBACK.
      */
-    RDB_bool implicit_tx = RDB_obj_bool(&interp->implicit_tx_obj)
+    RDB_bool implicit_tx = RDB_obj_bool(interp->implicit_tx_objp)
                     && !is_tx_stmt(stmtp) && (interp->txnp == NULL);
 
     /* No implicit tx if no database is available. */
@@ -2815,7 +2815,7 @@ Duro_process_stmt(Duro_interp *interp, RDB_exec_context *ecp)
 {
     int ret;
     RDB_parse_node *stmtp;
-    RDB_object *dbnameobjp = RDB_hashmap_get(&interp->sys_varmap, "current_db");
+    RDB_object *dbnameobjp = RDB_hashmap_get(&interp->root_varmap, "current_db");
 
     if (RDB_parse_get_interactive()) {
         /* Build interp->prompt */
@@ -2912,10 +2912,23 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
 
     RDB_init_hashmap(&interp->uop_info_map, 5);
 
-    RDB_init_obj(&interp->current_db_obj);
-    RDB_init_obj(&interp->implicit_tx_obj);
-
     RDB_init_obj(&interp->pkg_name);
+
+    interp->current_db_objp = RDB_alloc(sizeof (RDB_object), ecp);
+    if (interp->current_db_objp == NULL)
+        goto error;
+    RDB_init_obj(interp->current_db_objp);
+
+    if (dbname == NULL)
+        dbname = "";
+    if (RDB_string_to_obj(interp->current_db_objp, dbname, ecp) != RDB_OK) {
+        goto error;
+    }
+
+    interp->implicit_tx_objp = RDB_alloc(sizeof (RDB_object), ecp);
+    if (interp->implicit_tx_objp == NULL)
+        goto error;
+    RDB_init_obj(interp->implicit_tx_objp);
 
     if (RDB_put_upd_op(&interp->sys_upd_op_map, "exit", 0, NULL, &exit_op, ecp) != RDB_OK)
         goto error;
@@ -2946,21 +2959,15 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
 
     /* Create current_db and implicit_tx in system package */
 
-    if (dbname == NULL)
-        dbname = "";
-    if (RDB_string_to_obj(&interp->current_db_obj, dbname, ecp) != RDB_OK) {
-        goto error;
-    }
+    RDB_bool_to_obj(interp->implicit_tx_objp, RDB_FALSE);
 
-    RDB_bool_to_obj(&interp->implicit_tx_obj, RDB_FALSE);
-
-    if (RDB_hashmap_put(&interp->sys_varmap, "current_db",
-            &interp->current_db_obj) != RDB_OK) {
+    if (RDB_hashmap_put(&interp->root_varmap, "current_db",
+            interp->current_db_objp) != RDB_OK) {
         RDB_raise_no_memory(ecp);
         goto error;
     }
 
-    if (RDB_hashmap_put(&interp->sys_varmap, "implicit_tx", &interp->implicit_tx_obj)
+    if (RDB_hashmap_put(&interp->root_varmap, "implicit_tx", interp->implicit_tx_objp)
             != RDB_OK) {
         RDB_raise_no_memory(ecp);
         goto error;
@@ -2978,9 +2985,6 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
     return RDB_OK;
 
 error:
-    RDB_destroy_obj(&interp->current_db_obj, ecp);
-    RDB_destroy_obj(&interp->implicit_tx_obj, ecp);
-
     RDB_destroy_op_map(&interp->sys_upd_op_map);
     RDB_destroy_obj(&interp->pkg_name, ecp);
     RDB_destroy_hashmap(&interp->uop_info_map);
@@ -3017,8 +3021,6 @@ Duro_destroy_interp(Duro_interp *interp)
     RDB_destroy_hashmap(&interp->uop_info_map);
 
     RDB_destroy_obj(&interp->pkg_name, &ec);
-
-    RDB_destroy_obj(&interp->current_db_obj, &ec);
 
     if (interp->envp != NULL)
         RDB_close_env(interp->envp);
@@ -3133,7 +3135,7 @@ Duro_dt_execute(FILE *infp, Duro_interp *interp, RDB_exec_context *ecp)
         printf("Duro D/T library version %s\n", RDB_release_number);
 
         puts("Implicit transactions enabled.");
-        RDB_bool_to_obj(&interp->implicit_tx_obj, RDB_TRUE);
+        RDB_bool_to_obj(interp->implicit_tx_objp, RDB_TRUE);
     } else {
         RDB_parse_set_interactive(RDB_FALSE);
     }
