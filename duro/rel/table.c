@@ -1,7 +1,7 @@
 /*
- * $Id$
+ * Table functions
  *
- * Copyright (C) 2003-2014 Rene Hartmann.
+ * Copyright (C) 2003-2009, 2011-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -129,11 +129,10 @@ RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
 
     RDB_init_obj(tbp);
     tbp->kind = RDB_OB_TABLE;
-    tbp->val.tb.flags = 0;
     if (usr)
-        tbp->val.tb.flags |= RDB_TB_USER;
+        tbp->flags |= RDB_TB_USER;
     if (persistent)
-        tbp->val.tb.flags |= RDB_TB_PERSISTENT;
+        tbp->flags |= RDB_TB_PERSISTENT;
     tbp->val.tb.keyv = NULL;
     tbp->val.tb.default_map = NULL;
     tbp->val.tb.stp = NULL;
@@ -551,7 +550,7 @@ RDB_table_is_persistent(const RDB_object *tbp)
 {
     if (tbp->kind != RDB_OB_TABLE)
         return RDB_FALSE;
-    return (RDB_bool) ((tbp->val.tb.flags & RDB_TB_PERSISTENT) != 0);
+    return (RDB_bool) ((tbp->flags & RDB_TB_PERSISTENT) != 0);
 }
 
 /**
@@ -595,7 +594,7 @@ is not.
 RDB_bool
 RDB_table_is_user(const RDB_object *tbp)
 {
-    return (RDB_bool) ((tbp->val.tb.flags & RDB_TB_USER) != 0);
+    return (RDB_bool) ((tbp->flags & RDB_TB_USER) != 0);
 }
 
 /**
@@ -922,7 +921,7 @@ RDB_check_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         }
 
         /* Make sure the check flag is still set */
-        tbp->val.tb.flags |= RDB_TB_CHECK;
+        tbp->flags |= RDB_TB_CHECK;
 
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
             /* Table not found in catalog, so it is invalid */
@@ -933,7 +932,7 @@ RDB_check_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     RDB_free(name);
 
     /* Table was found */
-    tbp->val.tb.flags &= ~RDB_TB_CHECK;
+    tbp->flags &= ~RDB_TB_CHECK;
 
     return RDB_OK;
 }
@@ -1000,7 +999,7 @@ RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,
             goto error;
     }
 
-    if (RDB_TB_CHECK & tbp->val.tb.flags) {
+    if (RDB_TB_CHECK & tbp->flags) {
         if (RDB_check_table(tbp, ecp, txp) != RDB_OK)
             return RDB_ERROR;
     }

@@ -936,7 +936,7 @@ dup_expr_deep(const RDB_expression *exp, RDB_exec_context *ecp,
         newexp = RDB_obj_to_expr(&exp->def.obj, ecp);
         break;
     case RDB_EX_TBP:
-        if (RDB_TB_CHECK & exp->def.tbref.tbp->val.tb.flags) {
+        if (RDB_TB_CHECK & exp->def.tbref.tbp->flags) {
             if (RDB_check_table(exp->def.tbref.tbp, ecp, txp) != RDB_OK)
                 return NULL;
         }
@@ -1797,7 +1797,7 @@ RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
         return NULL;
     }
 
-    if (RDB_TB_CHECK & tbp->val.tb.flags) {
+    if (RDB_TB_CHECK & tbp->flags) {
         if (RDB_check_table(tbp, ecp, txp) != RDB_OK)
             return NULL;
     }

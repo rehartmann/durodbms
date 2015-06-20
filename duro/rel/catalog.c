@@ -2592,11 +2592,11 @@ RDB_cat_get_vtable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
     if (RDB_destroy_obj(&arr, ecp) != RDB_OK)
         goto error;
 
-    tbp->val.tb.flags = RDB_TB_PERSISTENT;
+    tbp->flags = RDB_TB_PERSISTENT;
     if (usr) {
-        tbp->val.tb.flags |= RDB_TB_USER;
+        tbp->flags |= RDB_TB_USER;
     } else {
-        tbp->val.tb.flags &= ~RDB_TB_USER;
+        tbp->flags &= ~RDB_TB_USER;
     }
 
     if (add_table(tbp, ecp, txp) != RDB_OK)
@@ -2705,11 +2705,11 @@ RDB_cat_get_ptable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         goto error;
 
-    tbp->val.tb.flags = RDB_TB_PERSISTENT;
+    tbp->flags = RDB_TB_PERSISTENT;
     if (usr) {
-        tbp->val.tb.flags |= RDB_TB_USER;
+        tbp->flags |= RDB_TB_USER;
     } else {
-        tbp->val.tb.flags &= ~RDB_TB_USER;
+        tbp->flags &= ~RDB_TB_USER;
     }
 
     if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {

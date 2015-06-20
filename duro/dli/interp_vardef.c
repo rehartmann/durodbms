@@ -639,3 +639,71 @@ error:
     RDB_destroy_obj(&idobj, ecp);
     return RDB_ERROR;
 }
+
+int
+Duro_exec_constdef(RDB_parse_node *nodep, Duro_interp *interp,
+        RDB_exec_context *ecp)
+{
+    RDB_object *objp;
+    RDB_expression *initexp = NULL;
+    const char *constname = RDB_expr_var_name(nodep->exp);
+    RDB_transaction *txp = interp->txnp != NULL ? &interp->txnp->tx : NULL;
+
+    /* Get value */
+    initexp = RDB_parse_node_expr(nodep->nextp, ecp, txp);
+    if (initexp == NULL)
+        return RDB_ERROR;
+
+    /*
+     * Check if the variable already exists
+     */
+    if (RDB_hashmap_get(interp->current_varmapp != NULL ?
+            &interp->current_varmapp->map : &interp->root_varmap, constname) != NULL) {
+        RDB_raise_element_exists(constname, ecp);
+        return RDB_ERROR;
+    }
+
+    objp = RDB_alloc(sizeof(RDB_object), ecp);
+    if (objp == NULL) {
+        return RDB_ERROR;
+    }
+    RDB_init_obj(objp);
+    RDB_obj_set_const(objp, RDB_TRUE);
+
+    if (RDB_evaluate(initexp, &Duro_get_var, interp, interp->envp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL,
+            objp) != RDB_OK) {
+        goto error;
+    }
+    if (RDB_obj_type(objp) != NULL) {
+        /* No type available (tuple or array) - set type */
+        RDB_type *typ = Duro_expr_type(initexp, interp, ecp);
+        if (typ == NULL)
+            goto error;
+        typ = RDB_dup_nonscalar_type(typ, ecp);
+        if (typ == NULL)
+            goto error;
+        RDB_obj_set_typeinfo(objp, typ);
+    }
+
+    if (interp->current_varmapp != NULL) {
+        /* We're in local scope */
+        if (RDB_hashmap_put(&interp->current_varmapp->map, constname, objp)
+                != RDB_OK) {
+            RDB_raise_no_memory(ecp);
+            goto error;
+        }
+    } else {
+        /* Global scope */
+        if (RDB_hashmap_put(&interp->root_varmap, constname, objp) != RDB_OK) {
+            RDB_raise_no_memory(ecp);
+            goto error;
+        }
+    }
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(objp, ecp);
+    RDB_free(objp);
+    return RDB_ERROR;
+}

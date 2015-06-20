@@ -137,6 +137,8 @@ RDB_binary_set
 RDB_binary_get
 RDB_binary_length
 RDB_set_obj_type
+RDB_obj_is_const
+RDB_obj_set_const
 RDB_expr_is_const
 RDB_bool_to_expr
 RDB_int_to_expr

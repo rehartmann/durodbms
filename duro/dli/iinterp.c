@@ -8,6 +8,7 @@
 #include "iinterp.h"
 #include "interp_core.h"
 #include "interp_assign.h"
+#include "interp_vardef.h"
 #include "ioop.h"
 #include "exparse.h"
 #include "parse.h"
@@ -2614,6 +2615,9 @@ Duro_exec_stmt(RDB_parse_node *stmtp, Duro_interp *interp,
                 ret = Duro_exec_vardef(firstchildp->nextp, interp, ecp);
             }
             break;
+        case TOK_CONST:
+            ret = Duro_exec_constdef(firstchildp->nextp, interp, ecp);
+            break;
         case TOK_DROP:
             switch (firstchildp->nextp->val.token) {
             case TOK_VAR:
@@ -3241,15 +3245,20 @@ Duro_dt_prompt(Duro_interp *interp)
 }
 
 /**
- * Look up a variable and return a pointer to the RDB_object
+ * Looks up a variable and returns a pointer to the RDB_object
  * containing its value.
  */
 RDB_object *
 Duro_lookup_var(const char *name, Duro_interp *interp, RDB_exec_context *ecp)
 {
     RDB_object *objp = Duro_lookup_transient_var(interp, name);
-    if (objp != NULL)
+    if (objp != NULL) {
+        if (RDB_obj_is_const(objp)) {
+            RDB_raise_name(name, ecp);
+            return NULL;
+        }
         return objp;
+    }
 
     if (interp->txnp != NULL) {
         /* Try to get table from DB */

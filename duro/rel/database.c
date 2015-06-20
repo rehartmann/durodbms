@@ -1033,7 +1033,7 @@ create_table(const char *name, RDB_type *reltyp,
     RDB_object *tbp = RDB_hashmap_get(&txp->dbp->tbmap, name);
     if (tbp != NULL && tbp != &null_tb) {
         /* Table found - check if it exists in the catalog */
-        if ((RDB_TB_CHECK & tbp->val.tb.flags) && (RDB_check_table(tbp, ecp, txp) != RDB_OK)) {
+        if ((RDB_TB_CHECK & tbp->flags) && (RDB_check_table(tbp, ecp, txp) != RDB_OK)) {
             /* Table no longer valid - recycle its RDB_object structure */
             char *name = tbp->val.tb.name;
             tbp->val.tb.name = NULL;
@@ -1537,7 +1537,7 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
          * If the table is in CHECK state read it again from the catalog
          * because otherwise the recmap won't get deleted
          */
-        if (RDB_TB_CHECK & tbp->val.tb.flags) {
+        if (RDB_TB_CHECK & tbp->flags) {
             if (RDB_check_table(tbp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         }
@@ -1819,7 +1819,7 @@ RDB_add_table(RDB_object *tbp, RDB_database *dbp, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
-    tbp->val.tb.flags |= RDB_TB_PERSISTENT;
+    tbp->flags |= RDB_TB_PERSISTENT;
 
     return RDB_OK;
 }
@@ -1903,7 +1903,7 @@ RDB_set_user_tables_check(RDB_database *dbp, RDB_exec_context *ecp)
     while (RDB_hashmap_next(&it, &datap) != NULL) {
         if (datap != NULL) {
             tbp = datap;
-            tbp->val.tb.flags |= RDB_TB_CHECK;
+            tbp->flags |= RDB_TB_CHECK;
         }
     }
     RDB_destroy_hashmap_iter(&it);
@@ -1917,7 +1917,7 @@ RDB_set_user_tables_check(RDB_database *dbp, RDB_exec_context *ecp)
                     RDB_close_stored_table(tbp->val.tb.stp, ecp);
                     tbp->val.tb.stp = NULL;
                 }
-                tbp->val.tb.flags |= RDB_TB_CHECK;
+                tbp->flags |= RDB_TB_CHECK;
             }
 
             /* Close all sequences */

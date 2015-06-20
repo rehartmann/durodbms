@@ -96,6 +96,7 @@ yyerror(const char *);
 %token TOK_PER "PER"
 %token TOK_VAR "VAR"
 %token TOK_DROP "DROP"
+%token TOK_CONST "CONST"
 %token TOK_INIT "INIT"
 %token TOK_BEGIN "BEGIN"
 %token TOK_TX "TRANSACTION"
@@ -441,6 +442,20 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $5);
     }
     | var_drop
+    | TOK_CONST TOK_ID expression ';' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            RDB_parse_del_node($4, RDB_parse_ecp);
+            YYABORT;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+    }
     | type_drop
     | op_drop
     | TOK_DROP TOK_CONSTRAINT TOK_ID ';' {

@@ -81,7 +81,6 @@ struct RDB_object {
             size_t len;
         } bin;
         struct {
-            int flags;
             char *name;
 
             /*
@@ -107,6 +106,8 @@ struct RDB_object {
             struct RDB_object *elemv;
         } arr;
      } val;
+
+     unsigned int flags;
 
      /* Used internally for conversion into the internal representation */
      RDB_type *store_typ;
@@ -200,13 +201,12 @@ int
 RDB_append_char(RDB_object *, char, RDB_exec_context *);
 
 int
-RDB_binary_set(RDB_object *, size_t pos, const void *srcp, size_t len,
+RDB_binary_set(RDB_object *, size_t, const void *, size_t,
         RDB_exec_context *);
 
 int
-RDB_binary_get(const RDB_object *, size_t pos, size_t len,
-        RDB_exec_context *, void **pp, size_t *alenp);
-
+RDB_binary_get(const RDB_object *, size_t, size_t,
+        RDB_exec_context *, void **, size_t *);
 
 char *
 RDB_obj_string(const RDB_object *);
@@ -216,5 +216,11 @@ RDB_binary_length(const RDB_object *);
 
 int
 RDB_binary_resize(RDB_object *, size_t, RDB_exec_context *);
+
+RDB_bool
+RDB_obj_is_const(const RDB_object *);
+
+void
+RDB_obj_set_const(RDB_object *, RDB_bool);
 
 #endif /* OBJECT_H_ */

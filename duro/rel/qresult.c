@@ -679,7 +679,7 @@ init_index_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_tbindex *indexp,
 {
     int ret;
 
-    if (RDB_TB_CHECK & tbp->val.tb.flags) {
+    if (RDB_TB_CHECK & tbp->flags) {
         if (RDB_check_table(tbp, ecp, txp) != RDB_OK)
             return RDB_ERROR;
     }
@@ -970,7 +970,7 @@ init_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_exec_context *ecp,
     qrp->endreached = RDB_FALSE;
     qrp->matp = NULL;
 
-    if (RDB_TB_CHECK & tbp->val.tb.flags) {
+    if (RDB_TB_CHECK & tbp->flags) {
         if (RDB_check_table(tbp, ecp, txp) != RDB_OK)
             return RDB_ERROR;
     }
@@ -1163,7 +1163,7 @@ RDB_table_iterator(RDB_object *tbp,
         }
     }
 
-    if (RDB_TB_CHECK & tbp->val.tb.flags) {
+    if (RDB_TB_CHECK & tbp->flags) {
         if (RDB_check_table(tbp, ecp, txp) != RDB_OK)
             return NULL;
     }

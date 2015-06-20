@@ -2,6 +2,8 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 1.0
 
+- Duro D/T now supports a CONST statement.
+
 - Made datetime type ordered.
 
 - Fixed bug in RDB_drop_table_index().

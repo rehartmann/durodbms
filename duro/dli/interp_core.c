@@ -132,7 +132,8 @@ RDB_type *
 Duro_get_var_type(const char *name, void *arg)
 {
     Duro_interp *interp = arg;
-    RDB_object *objp = Duro_lookup_transient_var(interp, name);
+    RDB_object *objp = lookup_transient_var(interp, name,
+            interp->current_varmapp);
     return objp != NULL ? RDB_obj_type(objp) : NULL;
 }
 

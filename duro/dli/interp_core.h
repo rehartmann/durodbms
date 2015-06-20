@@ -1,8 +1,8 @@
 /*
- * interp_core.h
+ * Interpreter core functionality definitions
  *
- *  Created on: 24.08.2012
- *      Author: Rene Hartmann
+ * Copyright (C) 2012-2015 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #ifndef INTERP_CORE_H_
@@ -59,21 +59,6 @@ Duro_put_var(const char *, RDB_object *, Duro_interp *, RDB_exec_context *);
 
 RDB_type *
 Duro_get_var_type(const char *, void *);
-
-int
-Duro_exec_vardef(RDB_parse_node *, Duro_interp *, RDB_exec_context *);
-
-int
-Duro_exec_vardef_private(RDB_parse_node *, Duro_interp *, RDB_exec_context *);
-
-int
-Duro_exec_vardef_public(RDB_parse_node *, Duro_interp *, RDB_exec_context *);
-
-int
-Duro_exec_vardef_real(RDB_parse_node *, Duro_interp *, RDB_exec_context *);
-
-int
-Duro_exec_vardef_virtual(RDB_parse_node *, Duro_interp *, RDB_exec_context *);
 
 int
 Duro_exec_vardrop(const RDB_parse_node *, Duro_interp *, RDB_exec_context *);
