@@ -291,6 +291,8 @@ RDB_token_name(int tok)
         return "PER";
     case TOK_VAR:
         return "VAR";
+    case TOK_CONST:
+        return "CONST";
     case TOK_DROP:
         return "DROP";
     case TOK_INIT:
