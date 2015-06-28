@@ -1066,6 +1066,13 @@ test const {constants} -setup $SETUP -cleanup $CLEANUP -body {
             ;
         end try;
 
+        try
+            ic := 5;
+            io.put_line('assigning constant succeeded');
+        catch err name_error;
+            ;
+        end try;
+
         commit;
     }
 } -result {24
