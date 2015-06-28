@@ -1047,6 +1047,13 @@ test const {constants} -setup $SETUP -cleanup $CLEANUP -body {
         io.put(3 * ic);
         io.put_line('');
 
+        try
+            ic := 5;
+            io.put_line('assigning constant succeeded');
+        catch err name_error;
+            ;
+        end try;
+
         connect('dbenv');
         current_db := 'D';
         begin tx;
@@ -1063,13 +1070,6 @@ test const {constants} -setup $SETUP -cleanup $CLEANUP -body {
             copy_i(ic, i);
             io.put_line('passing constant as update argument succeeded');
         catch err invalid_argument_error;
-            ;
-        end try;
-
-        try
-            ic := 5;
-            io.put_line('assigning constant succeeded');
-        catch err name_error;
             ;
         end try;
 

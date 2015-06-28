@@ -15,6 +15,7 @@ statement = assignment_stmt
         | var_stmt
         | var_drop_stmt
         | rename_var_stmt
+        | const_stmt
         | load_stmt
         | if_stmt
         | case_stmt
@@ -75,6 +76,8 @@ default = DEFAULT '{' [id expression {',' id expression}] '}'.
 var_drop_stmt = DROP VAR id ';'.
 
 rename_var_stmt = RENAME id AS id ';'.
+
+const_stmt = CONST id expression ';'.
 
 load_stmt = LOAD qualified_id FROM expression ORDER '(' [order_item {',' order_item}] ')' ';'.
 
