@@ -1023,8 +1023,7 @@ test datetime {datetime type} -body {
         	io.put_line('2100-02-29 was accepted');
         catch err type_constraint_violation_error;
             ;
-        end try;
-        
+        end try;        
     }
 } -result {1948-12-10T03:00:01
 2057-03-25T18:05:07
@@ -1034,6 +1033,45 @@ test datetime {datetime type} -body {
 18
 5
 7
+}
+
+test const {constants} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        const ic 24;
+
+        io.put_line(cast_as_string(ic));
+
+        io.put(ic);
+        io.put_line('');
+
+        io.put(3 * ic);
+        io.put_line('');
+
+        connect('dbenv');
+        current_db := 'D';
+        begin tx;
+
+        operator copy_i(dst int, src int) updates {dst};
+            dst := src;
+        end operator;
+
+        var i int;
+        copy_i(i, ic);
+        io.put_line(cast_as_string(i));
+
+        try
+            copy_i(ic, i);
+            io.put_line('passing constant as update argument succeeded');
+        catch err invalid_argument_error;
+            ;
+        end try;
+
+        commit;
+    }
+} -result {24
+24
+72
+24
 }
 
 cleanupTests

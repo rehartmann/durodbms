@@ -113,6 +113,9 @@ Duro_dt_get_type_str(RDB_environment *, const char *, RDB_object *,
 RDB_object *
 Duro_lookup_var(const char *, Duro_interp *, RDB_exec_context *);
 
+RDB_object *
+Duro_lookup_sym(const char *, Duro_interp *, RDB_exec_context *);
+
 int
 Duro_evaluate(RDB_expression *, Duro_interp *, RDB_exec_context *,
         RDB_object *);

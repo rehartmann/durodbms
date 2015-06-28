@@ -470,8 +470,12 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
              * (If the parameter is not an update parameter,
              * the callee must not modify the variable)
              */
-            argpv[i] = Duro_lookup_var(varname, interp, ecp);
+            argpv[i] = Duro_lookup_sym(varname, interp, ecp);
             if (argpv[i] == NULL) {
+                goto error;
+            }
+            if (paramp != NULL && paramp->update && RDB_obj_is_const(argpv[i])) {
+                RDB_raise_invalid_argument("constant not allowed", ecp);
                 goto error;
             }
         } else {
@@ -3251,12 +3255,23 @@ Duro_dt_prompt(Duro_interp *interp)
 RDB_object *
 Duro_lookup_var(const char *name, Duro_interp *interp, RDB_exec_context *ecp)
 {
+    RDB_object *objp = Duro_lookup_sym(name, interp, ecp);
+    if (objp != NULL && RDB_obj_is_const(objp)) {
+        RDB_raise_name(name, ecp);
+        return NULL;
+    }
+    return objp;
+}
+
+/**
+ * Looks up a variable or constant and returns a pointer to the RDB_object
+ * containing its value.
+ */
+RDB_object *
+Duro_lookup_sym(const char *name, Duro_interp *interp, RDB_exec_context *ecp)
+{
     RDB_object *objp = Duro_lookup_transient_var(interp, name);
     if (objp != NULL) {
-        if (RDB_obj_is_const(objp)) {
-            RDB_raise_name(name, ecp);
-            return NULL;
-        }
         return objp;
     }
 
