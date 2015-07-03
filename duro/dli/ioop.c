@@ -911,6 +911,7 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
             &op_net_form_to_tuple, ecp) != RDB_OK)
        return RDB_ERROR;
 
+    net_hescape_param_typ = &RDB_STRING;
     if (RDB_put_global_ro_op("net.hescape", 1, &net_hescape_param_typ,
             &RDB_STRING, &op_net_hescape, ecp) != RDB_OK) {
         return RDB_ERROR;

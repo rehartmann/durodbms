@@ -433,7 +433,7 @@ node_to_update(RDB_ma_update *updp, RDB_object *dstp, RDB_parse_node *nodep,
     if (nodep->nextp->val.token == TOK_WHERE) {
         updp->condp = RDB_parse_node_expr(nodep->nextp->nextp, ecp,
                 interp->txnp != NULL ? &interp->txnp->tx : NULL);
-        if (nodep == NULL)
+        if (updp->condp == NULL)
             return RDB_ERROR;
         np = nodep->nextp->nextp->nextp->nextp->val.children.firstp;
     } else {
