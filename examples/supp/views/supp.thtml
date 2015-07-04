@@ -2,6 +2,6 @@
 <title>Supplier created</title>
 <body>
 <p>{$ m.msg $}
-<p><a href="/addsupp.html">Create another supplier</a>
+<p><a href="/addsupp.html">Create supplier</a>
 <p><a href="/fcgi-bin/dreisam.fcgi/listsupps">List all suppliers</a>
 </html>

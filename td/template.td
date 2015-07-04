@@ -1,5 +1,6 @@
 begin tx;
 
+-- Drop operators if they already exist
 try
     package net;
     drop type template_error;
@@ -49,7 +50,6 @@ type template_error
     possrep { msg string }
     init net.template_error('');
 
--- Drop operators if they already exist
 operator get_cdir(current_line string, pos int) returns string;
     var endc init strfind_b(current_line, '$', pos);
     if endc = -1 then
@@ -162,7 +162,7 @@ operator process_template(istrm io.iostream_id, ostrm io.iostream_id,
 
            -- Check if it's a control directive
            pos := dirpos + 2;
-           if substr_b(current_line, pos, 1) = '%' then
+           if substr_b(current_line, pos, 1) = '%' then -- !! check
                pos := pos + 1;
                var cdir init net.get_cdir(current_line, pos);
                if cdir = 'end' or cdir = 'else' then
