@@ -755,6 +755,7 @@ RDB_apply_constraints_i(int ninsc, const RDB_ma_insert ninsv[],
         int nvdelc, const RDB_ma_vdelete nvdelv[],
         int copyc, const RDB_ma_copy copyv[],
         RDB_apply_constraint_fn *applyfnp,
+        RDB_getobjfn *getfn, void *getarg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
@@ -779,6 +780,7 @@ RDB_apply_constraints_i(int ninsc, const RDB_ma_insert ninsv[],
                 ndelc, ndelv, nvdelc, nvdelv, copyc, copyv)) {
             RDB_expression *empty_tbexp;
             RDB_expression *opt_check_exp;
+            RDB_expression *res_check_exp;
 
             /*
              * Replace target tables
@@ -799,9 +801,16 @@ RDB_apply_constraints_i(int ninsc, const RDB_ma_insert ninsv[],
              */
             empty_tbexp = get_empty(constrp->exp);
 
-            opt_check_exp = RDB_optimize_expr(check_exp, 0, NULL,
-                    empty_tbexp, ecp, txp);
+            /* Resolve variables */
+            res_check_exp = RDB_expr_resolve_varnames(check_exp, getfn, getarg, ecp, txp);
             RDB_del_expr(check_exp, ecp);
+            if (res_check_exp == NULL) {
+                return RDB_ERROR;
+            }
+
+            opt_check_exp = RDB_optimize_expr(res_check_exp, 0, NULL,
+                    empty_tbexp, ecp, txp);
+            RDB_del_expr(res_check_exp, ecp);
             if (opt_check_exp == NULL) {
                 return RDB_ERROR;
             }

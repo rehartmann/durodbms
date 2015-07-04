@@ -130,8 +130,9 @@ test insert_delete {creating table, insert, delete} \
         -- connect() without preceding disconnect()
         connect('dbenv', true);
 
+        var hs init 'a';
         begin tx;
-        delete r3 where n = 1 and s = 'a';
+        delete r3 where n = 1 and s = hs;
         io.put(count(r3)); io.put_line(' tuples');
         delete r3 rel { tup {n 1, s 'b'} };
         try
@@ -195,8 +196,17 @@ test update {creating table and updating tuples} -setup $SETUP -cleanup $CLEANUP
             io.put_line('key violation caught');
         end try;
 
-        -- Update combining both tuples into one 
-        update r { k := 1, v := 'Uno' };
+        -- Try with variable
+        var hk init 1;
+        try
+            update r { k := hk };
+        catch err key_violation_error;
+            io.put_line('key violation caught');
+        end try;
+
+        -- Update combining both tuples into one
+        const cv 'Uno';
+        update r { k := 1, v := cv };
         io.put_line((tuple from r).v);
 
         commit;
@@ -207,6 +217,7 @@ Two
 TwoTwo
 11
 TwoTwo
+key violation caught
 key violation caught
 Uno
 }

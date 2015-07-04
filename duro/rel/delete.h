@@ -11,11 +11,13 @@
 #include "rdb.h"
 
 RDB_int
-RDB_delete_real(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *,
-        RDB_transaction *);
+RDB_delete_real(RDB_object *tbp, RDB_expression *condp,
+        RDB_getobjfn *, void *,
+        RDB_exec_context *, RDB_transaction *);
 
 RDB_int
 RDB_delete_where_index(RDB_expression *texp, RDB_expression *condp,
+        RDB_getobjfn *, void *,
         RDB_exec_context *, RDB_transaction *);
 
 RDB_int

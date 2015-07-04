@@ -663,3 +663,22 @@ RDB_tuple_matches(const RDB_object *tpl1p, const RDB_object *tpl2p,
     *resp = RDB_TRUE;
     return RDB_OK;
 }
+
+RDB_object *
+RDB_tpl_get(const char *name, void *arg)
+{
+    return RDB_tuple_get((RDB_object *) arg, name);
+}
+
+RDB_object *
+RDB_get_from_tuple_or_fn(const char *name, void *arg)
+{
+    struct RDB_tuple_and_getfn *tg = arg;
+    RDB_object *objp = RDB_tuple_get(tg->tplp, name);
+    if (objp != NULL)
+        return objp;
+    if (tg->getfn != NULL) {
+        objp = (*tg->getfn)(name, tg->getarg);
+    }
+    return objp;
+}

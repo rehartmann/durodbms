@@ -966,12 +966,6 @@ RDB_expr_depends_table(const RDB_expression *exp, const RDB_object *tbp)
     return RDB_expr_depends_expr(tbp->val.tb.exp, exp);
 }
 
-RDB_object *
-RDB_tpl_get(const char *name, void *arg)
-{
-    return RDB_tuple_get((RDB_object *) arg, name);
-}
-
 RDB_expression *
 RDB_create_unexpr(RDB_expression *arg, enum RDB_expr_kind kind,
         RDB_exec_context *ecp)

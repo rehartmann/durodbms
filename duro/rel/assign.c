@@ -1116,14 +1116,15 @@ do_update(const RDB_ma_update *updp,
  * Perform a delete. delp->tbp must be a real table.
  */
 static RDB_int
-do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+do_delete(const RDB_ma_delete *delp,
+        RDB_getobjfn *getfn, void *getarg,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_expression *tbexp, *exp, *nexp;
 
     if (delp->condp == NULL) {
-        return RDB_delete_real(delp->tbp, NULL, ecp, txp);
+        return RDB_delete_real(delp->tbp, NULL, getfn, getarg, ecp, txp);
     }
 
     tbexp = RDB_table_ref(delp->tbp, ecp);
@@ -1145,14 +1146,15 @@ do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
     RDB_del_expr(tbexp, ecp);
 
     if (nexp->kind == RDB_EX_TBP) {
-        ret = RDB_delete_real(nexp->def.tbref.tbp, NULL, ecp, txp);
+        ret = RDB_delete_real(nexp->def.tbref.tbp, NULL, getfn, getarg,
+                ecp, txp);
         RDB_del_expr(nexp, ecp);
         return ret;
     }
     if (nexp->kind == RDB_EX_RO_OP && strcmp (nexp->def.op.name, "where") == 0) {
         if (nexp->def.op.optinfo.objc > 0
                 || nexp->def.op.optinfo.stopexp != NULL) {
-            ret = RDB_delete_where_index(nexp, NULL, ecp, txp);
+            ret = RDB_delete_where_index(nexp, NULL, getfn, getarg, ecp, txp);
             RDB_del_expr(nexp, ecp);
             return ret;
         }
@@ -1162,14 +1164,14 @@ do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
                 && (nexp->def.op.args.firstp->def.op.optinfo.objc > 0
                    || nexp->def.op.optinfo.stopexp != NULL)) {
             ret = RDB_delete_where_index(nexp->def.op.args.firstp,
-                    nexp->def.op.args.firstp->nextp, ecp, txp);
+                    nexp->def.op.args.firstp->nextp, getfn, getarg, ecp, txp);
             RDB_del_expr(nexp, ecp);
             return ret;
         }
 
         if (nexp->def.op.args.firstp->kind == RDB_EX_TBP) {
             ret = RDB_delete_real(nexp->def.op.args.firstp->def.tbref.tbp,
-                    nexp->def.op.args.firstp->nextp, ecp, txp);
+                    nexp->def.op.args.firstp->nextp, getfn, getarg, ecp, txp);
             RDB_del_expr(nexp, ecp);
             return ret;
         }
@@ -1991,10 +1993,12 @@ check_assign_constraints(int insc, const RDB_ma_insert insv[],
         int delc, const RDB_ma_delete delv[],
         int vdelc, const RDB_ma_vdelete vdelv[],
         int copyc, const RDB_ma_copy copyv[],
+        RDB_getobjfn *getfn, void *getarg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     return RDB_apply_constraints_i(insc, insv, updc, updv, delc, delv,
-            vdelc, vdelv, copyc, copyv, &eval_constraint, ecp, txp);
+            vdelc, vdelv, copyc, copyv, &eval_constraint, getfn, getarg,
+            ecp, txp);
 }
 
 /** @addtogroup generic
@@ -2067,6 +2071,9 @@ result in an not_found_error.
 
 For each of the RDB_ma_copy elements given by <var>copyc</var> and <var>copyv</var>,
 *<var>copyv</var>[i]->scrp is copied to *<var>copyv</var>[i]->dstp.
+
+If <var>getfn</var> is not NULL, the function it points to will be called to resolve
+variable names in expressions passed using the <var>updv</var> and <var>delv</var> arguments.
 
 A <strong>RDB_multi_assign</strong> call is atomic with respect to
 constraint checking; a constraint violation error can only occur
@@ -2250,7 +2257,8 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     /* No constraint checking for transient tables */
     if (need_tx) {
         if (check_assign_constraints(ninsc, ninsv, nupdc, nupdv, ndelc, ndelv,
-                nvdelc, nvdelv, ncopyc, ncopyv, ecp, txp) != RDB_OK) {
+                nvdelc, nvdelv, ncopyc, ncopyv, getfn, getarg, ecp, txp)
+                != RDB_OK) {
             rcount = RDB_ERROR;
             goto cleanup;
         }
@@ -2334,7 +2342,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         }
 
         if (ndelv[i].tbp->val.tb.exp == NULL) {
-            cnt = do_delete(&ndelv[i], ecp, atxp);
+            cnt = do_delete(&ndelv[i], getfn, getarg, ecp, atxp);
             if (cnt == RDB_ERROR) {
                 rcount = RDB_ERROR;
                 goto cleanup;
@@ -2679,7 +2687,7 @@ RDB_apply_constraints(int insc, const RDB_ma_insert insv[],
         int vdelc, const RDB_ma_vdelete vdelv[],
         int copyc, const RDB_ma_copy copyv[],
         RDB_apply_constraint_fn *applyfnp,
-        RDB_getobjfn *getfnp, void *getarg,
+        RDB_getobjfn *getfn, void *getarg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
@@ -2697,7 +2705,7 @@ RDB_apply_constraints(int insc, const RDB_ma_insert insv[],
     vdelete_node *genvdelp = NULL;
 
     if (check_assign_types(insc, insv, updc, updv, delc, delv,
-            copyc, copyv, getfnp, getarg, ecp, txp) != RDB_OK) {
+            copyc, copyv, getfn, getarg, ecp, txp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -2764,7 +2772,7 @@ RDB_apply_constraints(int insc, const RDB_ma_insert insv[],
 
     ret = RDB_apply_constraints_i(ninsc, ninsv,
             nupdc, nupdv, ndelc, ndelv, nvdelc, nvdelv,
-            copyc, copyv, applyfnp, ecp, txp);
+            copyc, copyv, applyfnp, getfn, getarg, ecp, txp);
 
 cleanup:
     /*

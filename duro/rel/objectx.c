@@ -913,7 +913,7 @@ RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
                 return RDB_ERROR;
             }
             /* Delete all tuples */
-            ret = RDB_delete_real(dstvalp, NULL, ecp,
+            ret = RDB_delete_real(dstvalp, NULL, NULL, NULL, ecp,
                     RDB_table_is_persistent(dstvalp) ? txp : NULL);
             if (ret == (RDB_int) RDB_ERROR)
                 return RDB_ERROR;

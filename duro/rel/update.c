@@ -14,25 +14,6 @@
 
 #include <string.h>
 
-struct tuple_and_getfn {
-    RDB_object *tplp; /* Pointer to the updated tuple, must not be NULL */
-    RDB_getobjfn *getfn;
-    void *getarg;
-};
-
-static RDB_object *
-get_from_tuple_or_fn(const char *name, void *arg)
-{
-    struct tuple_and_getfn *tg = arg;
-    RDB_object *objp = RDB_tuple_get(tg->tplp, name);
-    if (objp != NULL)
-        return objp;
-    if (tg->getfn != NULL) {
-        objp = (*tg->getfn)(name, tg->getarg);
-    }
-    return objp;
-}
-
 static RDB_bool
 is_keyattr(const char *attrname, RDB_object *tbp, RDB_exec_context *ecp)
 {
@@ -55,14 +36,14 @@ upd_to_vals(int updc, const RDB_attr_update updv[],
             RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
-    struct tuple_and_getfn tg;
+    struct RDB_tuple_and_getfn tg;
 
     tg.tplp = tplp;
     tg.getfn = getfn;
     tg.getarg = getarg;
 
     for (i = 0; i < updc; i++) {
-        if (RDB_evaluate(updv[i].exp, &get_from_tuple_or_fn, &tg, NULL,
+        if (RDB_evaluate(updv[i].exp, &RDB_get_from_tuple_or_fn, &tg, NULL,
                 ecp, txp, &valv[i]) != RDB_OK) {
             return RDB_ERROR;
         }
@@ -84,7 +65,7 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
     size_t len;
     RDB_bool b;
     RDB_transaction tx;
-    struct tuple_and_getfn tg;
+    struct RDB_tuple_and_getfn tg;
     RDB_object tmptb;
     RDB_type *tmptbtyp;
     RDB_type *tpltyp = tbp->typ->def.basetyp;
@@ -179,7 +160,7 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
             tg.getfn = getfn;
             tg.getarg = getarg;
 
-            ret = RDB_evaluate_bool(condp, &get_from_tuple_or_fn, &tg, NULL, ecp,
+            ret = RDB_evaluate_bool(condp, &RDB_get_from_tuple_or_fn, &tg, NULL, ecp,
                     RDB_table_is_persistent(tbp) ? &tx : NULL, &b);
             if (ret != RDB_OK) {
                 rcount = (RDB_int) RDB_ERROR;
@@ -270,7 +251,7 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
             tg.getfn = getfn;
             tg.getarg = getarg;
 
-            ret = RDB_evaluate_bool(condp, &get_from_tuple_or_fn, &tg, NULL, ecp,
+            ret = RDB_evaluate_bool(condp, &RDB_get_from_tuple_or_fn, &tg, NULL, ecp,
                     RDB_table_is_persistent(tbp) ? &tx : NULL, &b);
             if (ret != RDB_OK) {
                 rcount = RDB_ERROR;
@@ -358,7 +339,7 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
     size_t len;
     RDB_bool b;
     RDB_transaction tx;
-    struct tuple_and_getfn tg;
+    struct RDB_tuple_and_getfn tg;
     RDB_type *tpltyp = tbp->typ->def.basetyp;
     RDB_cursor *curp = NULL;
     RDB_object *valv = RDB_alloc(sizeof(RDB_object) * updc, ecp);
@@ -428,7 +409,7 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
             tg.tplp = &tpl;
             tg.getfn = getfn;
             tg.getarg = getarg;
-            ret = RDB_evaluate_bool(condp, &get_from_tuple_or_fn, &tg, NULL, ecp,
+            ret = RDB_evaluate_bool(condp, &RDB_get_from_tuple_or_fn, &tg, NULL, ecp,
                     RDB_table_is_persistent(tbp) ? &tx: NULL, &b);
             if (ret != RDB_OK) {
                 rcount = RDB_ERROR;
@@ -516,7 +497,7 @@ update_where_pindex(RDB_expression *texp, RDB_expression *condp,
     int rcount;
     int ret;
     int i;
-    struct tuple_and_getfn tg;
+    struct RDB_tuple_and_getfn tg;
     RDB_object tpl;
     RDB_bool b;
     int objc;
@@ -594,7 +575,7 @@ update_where_pindex(RDB_expression *texp, RDB_expression *condp,
         tg.getfn = getfn;
         tg.getarg = getarg;
 
-        if (RDB_evaluate_bool(condp, &get_from_tuple_or_fn, &tg, NULL,
+        if (RDB_evaluate_bool(condp, &RDB_get_from_tuple_or_fn, &tg, NULL,
                 ecp, txp, &b) != RDB_OK) {
             rcount = RDB_ERROR;
             goto cleanup;
@@ -743,7 +724,7 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
     do {
         RDB_bool upd = RDB_TRUE;
         RDB_bool b;
-        struct tuple_and_getfn tg;
+        struct RDB_tuple_and_getfn tg;
 
         /* Read tuple */
         ret = RDB_get_by_cursor(refexp->def.tbref.tbp, curp,
@@ -759,7 +740,7 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
 
         if (texp->def.op.optinfo.stopexp != NULL) {
             ret = RDB_evaluate_bool(texp->def.op.optinfo.stopexp,
-                    &get_from_tuple_or_fn, &tg, NULL, ecp, txp, &b);
+                    &RDB_get_from_tuple_or_fn, &tg, NULL, ecp, txp, &b);
             if (ret != RDB_OK) {
                 rcount = RDB_ERROR;
                 goto cleanup;
@@ -774,14 +755,14 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
             /*
              * Check condition
              */
-            if (RDB_evaluate_bool(condp, &get_from_tuple_or_fn, &tg, NULL, ecp, &tx, &upd)
+            if (RDB_evaluate_bool(condp, &RDB_get_from_tuple_or_fn, &tg, NULL, ecp, &tx, &upd)
                     != RDB_OK) {
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
         }
 
-        if (RDB_evaluate_bool(texp->def.op.args.firstp->nextp, &get_from_tuple_or_fn, &tg,
+        if (RDB_evaluate_bool(texp->def.op.args.firstp->nextp, &RDB_get_from_tuple_or_fn, &tg,
                 NULL, ecp, &tx, &b) != RDB_OK) {
             rcount = RDB_ERROR;
             goto cleanup;
@@ -878,7 +859,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
     RDB_int rcount;
     RDB_object tpl;
     RDB_transaction tx;
-    struct tuple_and_getfn tg;
+    struct RDB_tuple_and_getfn tg;
     int ret;
     int i;
     int flags;
@@ -1009,7 +990,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
 
         if (texp->def.op.optinfo.stopexp != NULL) {
             if (RDB_evaluate_bool(texp->def.op.optinfo.stopexp,
-                    &get_from_tuple_or_fn, &tg, NULL, ecp, txp, &b) != RDB_OK) {
+                    &RDB_get_from_tuple_or_fn, &tg, NULL, ecp, txp, &b) != RDB_OK) {
                 rcount = RDB_ERROR;
                 RDB_destroy_obj(&tpl, ecp);
                 goto cleanup;
@@ -1025,7 +1006,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
             /*
              * Check condition
              */
-            if (RDB_evaluate_bool(condp, &get_from_tuple_or_fn, &tg, NULL,
+            if (RDB_evaluate_bool(condp, &RDB_get_from_tuple_or_fn, &tg, NULL,
                     ecp, &tx, &upd) != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
                 rcount = RDB_ERROR;
@@ -1034,7 +1015,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
         }
 
         if (RDB_evaluate_bool(texp->def.op.args.firstp->nextp,
-                &get_from_tuple_or_fn, &tg, NULL, ecp, &tx, &b) != RDB_OK) {
+                &RDB_get_from_tuple_or_fn, &tg, NULL, ecp, &tx, &b) != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             rcount = RDB_ERROR;
             goto cleanup;
@@ -1118,7 +1099,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
 
         if (texp->def.op.optinfo.stopexp != NULL) {
             if (RDB_evaluate_bool(texp->def.op.optinfo.stopexp,
-                    &get_from_tuple_or_fn, &tg, NULL, ecp, txp, &b) != RDB_OK) {
+                    &RDB_get_from_tuple_or_fn, &tg, NULL, ecp, txp, &b) != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
                 ret = DB_NOTFOUND;
                 goto cleanup;
@@ -1134,7 +1115,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
             /*
              * Check condition
              */
-            if (RDB_evaluate_bool(condp, &get_from_tuple_or_fn, &tg, NULL, ecp, &tx, &upd)
+            if (RDB_evaluate_bool(condp, &RDB_get_from_tuple_or_fn, &tg, NULL, ecp, &tx, &upd)
                     != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
                 rcount = RDB_ERROR;
@@ -1143,7 +1124,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
         }
 
         if (RDB_evaluate_bool(texp->def.op.args.firstp->nextp,
-                &get_from_tuple_or_fn, &tg, NULL, ecp, &tx, &b) != RDB_OK) {
+                &RDB_get_from_tuple_or_fn, &tg, NULL, ecp, &tx, &b) != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             rcount = RDB_ERROR;
             goto cleanup;

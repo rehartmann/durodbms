@@ -2397,7 +2397,8 @@ RDB_reset_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
     }
     if (qrp->exp != NULL && qrp->matp != NULL) {
         /* Clear materialized result */
-        if (RDB_delete_real(qrp->matp, NULL, ecp, txp) == (RDB_int) RDB_ERROR)
+        if (RDB_delete_real(qrp->matp, NULL, NULL, NULL, ecp, txp)
+                == (RDB_int) RDB_ERROR)
             return RDB_ERROR;
     }
     return RDB_OK;

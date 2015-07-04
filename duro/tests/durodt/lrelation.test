@@ -53,7 +53,9 @@ test private {creating private table and inserting tuples} -body {
         end try;
 
         -- multiple update
-        update pr1 where i=2 {i:=20}, update pr2 where i=1 {i:=10};
+        const two 2;
+        var twenty init 20;
+        update pr1 where i = two { i := twenty }, update pr2 where i = 1 { i := 10 };
 
         io.put((tuple from pr1).i); io.put_line('');
         io.put(sum(pr2, i)); io.put_line('');
@@ -393,13 +395,17 @@ test delete {DELETE operator} -body {
     exec $testdir/../../dli/durodt << {
 	    var pr1 private relation {n int, s string}
 	            init rel {tup {n 1, s 'one'}, tup {n 2, s 'two'}, tup {n 3, s 'two'},
-	                      tup {n 4, s 'two'}, tup {n 5, s 'five'}}
+	                      tup {n 4, s 'two'}, tup {n 5, s 'five'}, tup {n 6, s 'six'}}
 	            key {n};
 	
-	    delete pr1 where n=1;
+	    delete pr1 where n = 1;
+
 	    delete pr1 tup{n 2, s 'two'};
 	    delete pr1 rel{tup{n 3, s 'two'}, tup{n 4, s 'two'}};
-	
+
+	    const six 6;
+	    delete pr1 where n = six;
+
 	    var t init tuple from pr1;
 	    io.put(t.n);
 	    io.put(' ');

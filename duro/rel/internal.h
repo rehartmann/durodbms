@@ -99,6 +99,12 @@ struct RDB_tx_and_ec {
     RDB_exec_context *ecp;
 };
 
+struct RDB_tuple_and_getfn {
+    RDB_object *tplp; /* Pointer to the updated tuple, must not be NULL */
+    RDB_getobjfn *getfn;
+    void *getarg;
+};
+
 extern RDB_hashmap RDB_builtin_type_map;
 
 /* Used to pass the execution context (not MT-safe!) */
@@ -238,6 +244,9 @@ RDB_invunwrap_tuple(const RDB_object *, RDB_expression *,
 RDB_object *
 RDB_tpl_get(const char *, void *);
 
+RDB_object *
+RDB_get_from_tuple_or_fn(const char *, void *);
+
 int
 RDB_copy_array(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *);
 
@@ -354,6 +363,7 @@ RDB_apply_constraints_i(int, const RDB_ma_insert[],
         int, const RDB_ma_vdelete[],
         int, const RDB_ma_copy[],
         RDB_apply_constraint_fn *,
+        RDB_getobjfn *, void *,
         RDB_exec_context *, RDB_transaction *);
 
 int
