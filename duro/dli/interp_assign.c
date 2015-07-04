@@ -896,7 +896,8 @@ Duro_exec_assign(const RDB_parse_node *listnodep, Duro_interp *interp,
      * Execute assignments
      */
     cnt = RDB_multi_assign(insc, insv, updc, updv, delc, delv, vdelc, vdelv,
-            copyc, copyv, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
+            copyc, copyv, &Duro_get_var, interp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL);
     if (cnt == (RDB_int) RDB_ERROR)
         goto error;
 
@@ -1052,7 +1053,8 @@ Duro_exec_explain_assign(const RDB_parse_node *listnodep, Duro_interp *interp,
      * Print constraint expressions
      */
     if (RDB_apply_constraints(insc, insv, updc, updv, delc, delv, vdelc, vdelv,
-            copyc, copyv, put_constraint_expr, ecp, &interp->txnp->tx) != RDB_OK)
+            copyc, copyv, put_constraint_expr,
+            &Duro_get_var, interp, ecp, &interp->txnp->tx) != RDB_OK)
         goto error;
     fflush(stdout);
 

@@ -1123,12 +1123,42 @@ aggr_type(const RDB_expression *exp, const RDB_type *tpltyp,
     return NULL;
 }
 
+struct gettypeinfo {
+    RDB_getobjfn *getfnp;
+    void *arg;
+};
+
+static RDB_type *
+getobjtype(const char *name, void *arg)
+{
+    RDB_object *objp;
+    struct gettypeinfo *infop = (struct gettypeinfo *) arg;
+    if (infop == NULL)
+        return NULL;
+    objp = (*infop->getfnp)(name, infop->arg);
+    if (objp == NULL)
+        return NULL;
+    return RDB_obj_type(objp);
+}
+
 int
 RDB_check_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
-        const RDB_type *checktyp, RDB_environment *envp,
+        const RDB_type *checktyp,
+        RDB_getobjfn *getfnp, void *getarg,
+        RDB_environment *envp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_type *typ = RDB_expr_type_tpltyp(exp, tuptyp, NULL, NULL, envp, ecp, txp);
+    RDB_type *typ;
+    struct gettypeinfo gtinfo;
+
+    if (getfnp != NULL) {
+        gtinfo.getfnp = getfnp;
+        gtinfo.arg = getarg;
+    }
+    typ = RDB_expr_type_tpltyp(exp, tuptyp,
+            getfnp != NULL ? &getobjtype : NULL,
+            &gtinfo,
+            envp, ecp, txp);
     if (typ == NULL)
         return RDB_ERROR;
 

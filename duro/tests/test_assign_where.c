@@ -51,7 +51,7 @@ test_assign_select(RDB_database *dbp, RDB_exec_context *ecp)
     mains.flags = RDB_DISTINCT;
 
     assert(RDB_multi_assign(1, &mains, 0, NULL, 0, NULL, 0, NULL, 0, NULL,
-            ecp, &tx) != (RDB_int)RDB_ERROR);
+            NULL, NULL, ecp, &tx) != (RDB_int)RDB_ERROR);
 
     assert(RDB_commit(ecp, &tx) == RDB_OK);
 
@@ -59,7 +59,7 @@ test_assign_select(RDB_database *dbp, RDB_exec_context *ecp)
     assert(RDB_tuple_set_int(&tpl, "EMPNO", 5, ecp) == RDB_OK);
     assert(RDB_tuple_set_string(&tpl, "NAME", "Webb", ecp) == RDB_OK);
     assert(RDB_multi_assign(1, &mains, 0, NULL, 0, NULL, 0, NULL, 0, NULL,
-            ecp, &tx) == (RDB_int)RDB_ERROR);
+            NULL, NULL, ecp, &tx) == (RDB_int)RDB_ERROR);
     assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_NO_RUNNING_TX_ERROR);
 
     assert(RDB_begin_tx(ecp, &tx, dbp, NULL) == RDB_OK);

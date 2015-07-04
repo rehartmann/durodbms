@@ -291,6 +291,7 @@ RDB_multi_assign(int, const RDB_ma_insert[],
         int, const RDB_ma_delete[],
         int, const RDB_ma_vdelete[],
         int, const RDB_ma_copy[],
+        RDB_getobjfn *, void *,
         RDB_exec_context *, RDB_transaction *);
 
 int
@@ -300,6 +301,7 @@ RDB_apply_constraints(int, const RDB_ma_insert[],
         int, const RDB_ma_vdelete[],
         int, const RDB_ma_copy[],
         RDB_apply_constraint_fn *,
+        RDB_getobjfn *, void *,
         RDB_exec_context *, RDB_transaction *);
 
 int

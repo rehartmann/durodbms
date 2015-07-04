@@ -282,8 +282,9 @@ RDB_bool
 RDB_obj_matches_type(RDB_object *, RDB_type *);
 
 int
-RDB_check_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
-        const RDB_type *checktyp, RDB_environment *, RDB_exec_context *, RDB_transaction *);
+RDB_check_expr_type(RDB_expression *exp, const RDB_type *,
+        const RDB_type *, RDB_getobjfn *, void *, RDB_environment *,
+        RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_check_type_constraint(RDB_object *, RDB_environment *,

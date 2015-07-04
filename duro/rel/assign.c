@@ -1039,8 +1039,9 @@ do_insert(const RDB_ma_insert *insp, RDB_exec_context *ecp,
  * Perform update. *updp->tbp must be a real table.
  */
 static RDB_int
-do_update(const RDB_ma_update *updp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+do_update(const RDB_ma_update *updp,
+        RDB_getobjfn *getfn, void *getarg,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_expression *tbexp, *nexp;
@@ -1048,7 +1049,7 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp,
 
     if (updp->condp == NULL) {
         return RDB_update_real(updp->tbp, NULL, updp->updc, updp->updv,
-                ecp, txp);
+                getfn, getarg, ecp, txp);
     }
 
     tbexp = RDB_table_ref(updp->tbp, ecp);
@@ -1072,8 +1073,8 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp,
         return RDB_ERROR;
 
     if (nexp->kind == RDB_EX_TBP) {
-        ret = RDB_update_real(nexp->def.tbref.tbp, NULL, updp->updc, updp->updv,
-                ecp, txp);
+        ret = RDB_update_real(nexp->def.tbref.tbp, NULL,
+                updp->updc, updp->updv, getfn, getarg, ecp, txp);
         RDB_del_expr(nexp, ecp);
         return ret;
     }
@@ -1082,7 +1083,7 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp,
         if (nexp->def.op.optinfo.objc > 0
                 || nexp->def.op.optinfo.stopexp != NULL) {
             ret = RDB_update_where_index(nexp, NULL, updp->updc, updp->updv,
-                    ecp, txp);
+                    getfn, getarg, ecp, txp);
             RDB_del_expr(nexp, ecp);
             return ret;
         }
@@ -1093,7 +1094,7 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp,
                         || nexp->def.op.args.firstp->def.op.optinfo.stopexp != NULL)) {
             ret = RDB_update_where_index(nexp->def.op.args.firstp,
                     nexp->def.op.args.firstp->nextp, updp->updc, updp->updv,
-                    ecp, txp);
+                    getfn, getarg, ecp, txp);
             RDB_del_expr(nexp, ecp);
             return ret;
         }
@@ -1101,7 +1102,7 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp,
         if (nexp->def.op.args.firstp->kind == RDB_EX_TBP) {
             ret = RDB_update_real(nexp->def.op.args.firstp->def.tbref.tbp,
                     nexp->def.op.args.firstp->nextp, updp->updc, updp->updv,
-                    ecp, txp);
+                    getfn, getarg, ecp, txp);
             RDB_del_expr(nexp, ecp);
             return ret;
         }
@@ -1699,6 +1700,7 @@ check_assign_types(int insc, const RDB_ma_insert insv[],
         int updc, const RDB_ma_update updv[],
         int delc, const RDB_ma_delete delv[],
         int copyc, const RDB_ma_copy copyv[],
+        RDB_getobjfn *getfnp, void *getarg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i, j;
@@ -1710,8 +1712,8 @@ check_assign_types(int insc, const RDB_ma_insert insv[],
     for (i = 0; i < updc; i++) {
         if (updv[i].condp != NULL) {
             if (RDB_check_expr_type(updv[i].condp,
-                    updv[i].tbp->typ->def.basetyp,
-                    &RDB_BOOLEAN, NULL, ecp, txp) != RDB_OK) {
+                    updv[i].tbp->typ->def.basetyp, &RDB_BOOLEAN,
+                    getfnp, getarg, NULL, ecp, txp) != RDB_OK) {
                 return RDB_ERROR;
             }
         }
@@ -1720,8 +1722,8 @@ check_assign_types(int insc, const RDB_ma_insert insv[],
     for (i = 0; i < delc; i++) {
         if (delv[i].condp != NULL) {
             if (RDB_check_expr_type(delv[i].condp,
-                    delv[i].tbp->typ->def.basetyp,
-                    &RDB_BOOLEAN, NULL, ecp, txp) != RDB_OK) {
+                    delv[i].tbp->typ->def.basetyp, &RDB_BOOLEAN,
+                    getfnp, getarg, NULL, ecp, txp) != RDB_OK) {
                 return RDB_ERROR;
             }
         }
@@ -1742,7 +1744,7 @@ check_assign_types(int insc, const RDB_ma_insert insv[],
             if (RDB_type_is_scalar(attrp->typ)) {
                 if (RDB_check_expr_type(updv[i].updv[j].exp,
                         updv[i].tbp->typ->def.basetyp, attrp->typ,
-                        NULL, ecp, txp) != RDB_OK) {
+                        getfnp, getarg, NULL, ecp, txp) != RDB_OK) {
                     return RDB_ERROR;
                 }
             }
@@ -2133,6 +2135,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         int delc, const RDB_ma_delete delv[],
         int vdelc, const RDB_ma_vdelete vdelv[],
         int copyc, const RDB_ma_copy copyv[],
+        RDB_getobjfn *getfn, void *getarg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
@@ -2157,7 +2160,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     copy_node *gencopyp = NULL;
 
     if (check_assign_types(insc, insv, updc, updv, delc, delv,
-            copyc, copyv, ecp, txp) != RDB_OK) {
+            copyc, copyv, getfn, getarg, ecp, txp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -2314,7 +2317,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         }
 
         if (nupdv[i].tbp->val.tb.exp == NULL) {
-            cnt = do_update(&nupdv[i], ecp, atxp);
+            cnt = do_update(&nupdv[i], getfn, getarg, ecp, atxp);
             if (cnt == RDB_ERROR) {
                 rcount = RDB_ERROR;
                 goto cleanup;
@@ -2465,7 +2468,7 @@ RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
     cpy.srcp = (RDB_object *) srcvalp;
 
     return RDB_multi_assign(0, NULL, 0, NULL, 0, NULL, 0, NULL, 1, &cpy,
-            ecp, NULL) != (RDB_int) RDB_ERROR ? RDB_OK : RDB_ERROR ;
+            NULL, NULL, ecp, NULL) != (RDB_int) RDB_ERROR ? RDB_OK : RDB_ERROR ;
 } 
 
 /*@}*/
@@ -2526,7 +2529,7 @@ RDB_insert(RDB_object *tbp, const RDB_object *objp, RDB_exec_context *ecp,
     ins.objp = (RDB_object *) objp;
     ins.flags = RDB_DISTINCT;
     if (RDB_multi_assign(1, &ins, 0, NULL, 0, NULL, 0, NULL, 0, NULL,
-            ecp, txp) == (RDB_int) RDB_ERROR)
+            NULL, NULL, ecp, txp) == (RDB_int) RDB_ERROR)
         return RDB_ERROR;
     return RDB_OK;
 }
@@ -2605,7 +2608,7 @@ RDB_update(RDB_object *tbp, RDB_expression *condp, int updc,
     upd.updc = updc;
     upd.updv = (RDB_attr_update *) updv;
     return RDB_multi_assign(0, NULL, 1, &upd, 0, NULL, 0, NULL, 0, NULL,
-            ecp, txp);
+            NULL, NULL, ecp, txp);
 }
 
 /**
@@ -2655,7 +2658,7 @@ RDB_delete(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
     del.tbp = tbp;
     del.condp = condp;
     return RDB_multi_assign(0, NULL, 0, NULL, 1, &del, 0, NULL, 0, NULL,
-            ecp, txp);
+            NULL, NULL, ecp, txp);
 }
 
 /*@}*/
@@ -2676,6 +2679,7 @@ RDB_apply_constraints(int insc, const RDB_ma_insert insv[],
         int vdelc, const RDB_ma_vdelete vdelv[],
         int copyc, const RDB_ma_copy copyv[],
         RDB_apply_constraint_fn *applyfnp,
+        RDB_getobjfn *getfnp, void *getarg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
@@ -2693,7 +2697,7 @@ RDB_apply_constraints(int insc, const RDB_ma_insert insv[],
     vdelete_node *genvdelp = NULL;
 
     if (check_assign_types(insc, insv, updc, updv, delc, delv,
-            copyc, copyv, ecp, txp) != RDB_OK) {
+            copyc, copyv, getfnp, getarg, ecp, txp) != RDB_OK) {
         return RDB_ERROR;
     }
 

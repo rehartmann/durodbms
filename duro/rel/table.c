@@ -440,7 +440,8 @@ RDB_copy_table(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *ecp,
     cpy.dstp = dstp;
     cpy.srcp = srcp;
 
-    return RDB_multi_assign(0, NULL, 0, NULL, 0, NULL, 0, NULL, 1, &cpy, ecp, txp);
+    return RDB_multi_assign(0, NULL, 0, NULL, 0, NULL, 0, NULL, 1, &cpy,
+            NULL, NULL, ecp, txp);
 }
 
 /**

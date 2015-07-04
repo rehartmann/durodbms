@@ -12,6 +12,9 @@ DuroDBMS 1.0
 
 - Added RDB_is_array().
 
+- Added getfn/getarg arguments to RDB_multi_assign(), allowing variables
+  in updates.
+
 DuroDBMS 0.26
 
 - Duro D/T: Replaced MODULE by PACKAGE.
