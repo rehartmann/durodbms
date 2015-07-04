@@ -1,6 +1,6 @@
 <html>
 <head>
-<title>Test</title>
+<title>Edit supplier</title>
 <body>
 <form action="/fcgi-bin/dreisam.fcgi/updatesupp" method="POST">
 <p>S#<br>

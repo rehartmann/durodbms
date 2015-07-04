@@ -53,7 +53,7 @@ type template_error
 operator get_cdir(current_line string, pos int) returns string;
     var endc init strfind_b(current_line, '$', pos);
     if endc = -1 then
-        raise template_error('control directive without proper delimiter');
+        raise net.template_error('control directive without proper delimiter');
     end if;
     var endw init strfind_b(current_line, ' ', pos);
     if (endw <> -1) and (endw < endc) then
@@ -64,10 +64,10 @@ end operator;
 
 operator eat_opening_cdir(current_line string, pos int) updates {pos};
     if pos + 3 > strlen_b(current_line) then
-        raise template_error('missing {$%end or {$%else');
+        raise net.template_error('missing {$%end or {$%else');
     end if;
     if substr_b(current_line, pos, 3) <> '{$%' then
-        raise template_error('missing missing {$%end or {$%else');
+        raise net.template_error('missing missing {$%end or {$%else');
     end if;
     pos := pos + 3;
 end operator;
@@ -90,35 +90,35 @@ operator process_control(istrm io.iostream_id, ostrm io.iostream_id,
                 io.put(ostrm, 'END IF;');
                 pos := strfind_b(current_line, '$}', pos);
                 if pos = -1 then
-                    raise template_error('missing $}');
+                    raise net.template_error('missing $}');
                 end if;
                 pos := pos + 2;
             when cdir = 'else' then
                 io.put(ostrm, 'ELSE ');
                 pos := strfind_b(current_line, '$}', pos);
                 if pos = -1 then
-                    raise template_error('missing $}');
+                    raise net.template_error('missing $}');
                 end if;
                 pos := pos + 2;
                 process_template(istrm, ostrm, current_line, pos);
                 eat_opening_cdir(current_line, pos);
                 cdir := net.get_cdir(current_line, pos);
                 if cdir <> 'end' then
-                    raise template_error('encountered {$%' || cdir || ', expected ${%end ');
+                    raise net.template_error('encountered {$%' || cdir || ', expected ${%end ');
                 end if;
                 pos := strfind_b(current_line, '$}', pos);
                 if pos = -1 then
-                    raise template_error('missing $}');
+                    raise net.template_error('missing $}');
                 end if;
                 pos := pos + 2;
                 io.put(ostrm, 'END IF;');
             else
-                raise template_error('encountered {$%' || cdir || ', expected ${%end or ${%else');
+                raise net.template_error('encountered {$%' || cdir || ', expected ${%end or ${%else');
             end case;
         when cdir = 'loop' then
             var endexp init strfind_b(current_line, ' var ', pos);
             if (endexp = -1) or (endexp > dirend) then
-                raise template_error('missing var in {$%loop');
+                raise net.template_error('missing var in {$%loop');
             end if;
 
             cexp := substr_b(current_line, pos, endexp - pos);
@@ -131,16 +131,16 @@ operator process_control(istrm io.iostream_id, ostrm io.iostream_id,
             eat_opening_cdir(current_line, pos);
             cdir := net.get_cdir(current_line, pos);
             if cdir <> 'end' then
-                raise template_error('encountered {$%' || cdir || ', expected ${%end ');
+                raise net.template_error('encountered {$%' || cdir || ', expected ${%end ');
             end if;
             pos := strfind_b(current_line, '$}', pos);
             if pos = -1 then
-                raise template_error('missing $}');
+                raise net.template_error('missing $}');
             end if;
             pos := pos + 2;
             io.put(ostrm, 'END FOR;');
         else
-            raise template_error('invalid control directive {$%' || cdir);
+            raise net.template_error('invalid control directive {$%' || cdir);
     end case;
 end operator;
 
@@ -161,6 +161,10 @@ operator process_template(istrm io.iostream_id, ostrm io.iostream_id,
            end if;
 
            -- Check if it's a control directive
+           dirend := strfind_b(current_line, '$}', dirpos);
+           if dirend = -1 then
+	           raise net.template_error('end of directive not found (must be on the same line)');
+	       end if;
            pos := dirpos + 2;
            if substr_b(current_line, pos, 1) = '%' then -- !! check
                pos := pos + 1;
@@ -173,11 +177,6 @@ operator process_template(istrm io.iostream_id, ostrm io.iostream_id,
                process_control(istrm, ostrm, current_line, pos, cdir);
            else
                -- Extract expression
-               dirend := strfind_b(current_line, '$}', dirpos);
-	           if dirend = -1 then
-	               raise template_error('end of directive not found (must be on the same line)');
-	           end if;
-
 	           io.put(ostrm, "net.put(net.hescape("
 	                   || substr_b(current_line, pos, dirend - pos)
 	                   || '));');

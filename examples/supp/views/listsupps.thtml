@@ -1,6 +1,6 @@
 <html>
 <head>
-<title>Test</title>
+<title>List of suppliers</title>
 <body>
 <p>Suppliers:
 {$%loop length(m.supps) var i $}

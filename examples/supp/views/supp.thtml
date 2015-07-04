@@ -1,5 +1,5 @@
 <head>
-<title>Supplier created</title>
+<title>Suppliers</title>
 <body>
 <p>{$ m.msg $}
 <p><a href="/addsupp.html">Create supplier</a>
