@@ -123,11 +123,9 @@ literal = string | integer | decimal | float | binary | TRUE | FALSE
         | RELATION '{' [id type {',' id type}] '}' '{' [expression {',' expression}] '}'
         | RELATION '{' expression {',' expression} '}'
         | TABLE_DEE | TABLE_DUM
-        | TUPLE '{' tuple_item_list '}'
+        | TUPLE '{' [id expression {',' id expression}] '}'
         | ARRAY type '(' [expression {',' expression}] ')'
         | ARRAY '(' expression {',' expression} ')'.
-
-tuple_item_list = [id expression {',' id expression}].
 </pre>
 
 <pre id="type">
@@ -135,7 +133,8 @@ type = qualified_id
         | TUPLE '{' [id type {',' id type}] '}'
         | TUPLE '{' [id type {',' id type} ','] '*' '}'
         | RELATION '{' [id type {',' id type}] '}'
-        | ARRAY type | SAME_TYPE_AS '(' expression ')'
+        | ARRAY type
+        | SAME_TYPE_AS '(' expression ')'
         | TUPLE SAME_HEADING_AS '(' expression ')'
         | RELATION SAME_HEADING_AS '(' expression ')'.
 </pre>
