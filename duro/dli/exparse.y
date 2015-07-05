@@ -2517,7 +2517,7 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $4);
     }
     | count_invocation
-    | aggr_invocation
+    | agg_invocation
     | '(' expression ')' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
@@ -2686,7 +2686,7 @@ id_assign_commalist: /* empty */ {
     | ne_id_assign_commalist
     ;
 
-aggr: TOK_SUM
+agg_op_name: TOK_SUM
 	| TOK_AVG
 	| TOK_MAX
 	| TOK_MIN
@@ -2767,7 +2767,7 @@ count_invocation: TOK_COUNT '(' expression ')' {
     }
     ;
 
-aggr_invocation: aggr '(' ne_expression_commalist ')' {
+agg_invocation: agg_op_name '(' ne_expression_commalist ')' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);

@@ -43,7 +43,7 @@ expression = project | where | rename | dyadic_relation_op_inv
     | var_expression
     | literal
     | count_inv
-    | aggregate_inv
+    | agg_op_inv
     | '(' expression ')'
     | id FROM expression
     | TUPLE FROM expression
@@ -85,9 +85,9 @@ summarize = SUMMARIZE expression PER expression
 
 divideby = expression DIVIDEBY expression PER expression.
 
-summary = COUNT '(' ')' | summary_type '(' expression ')'.
+summary = COUNT '(' ')' | agg_op_name '(' expression ')'.
 
-summary_type = SUM | AVG | MAX | MIN | ALL | AND | ANY | OR.
+agg_op_name = SUM | AVG | MAX | MIN | ALL | AND | ANY | OR.
 
 wrap = expression WRAP '(' [wrapping {',' wrapping}] ')'.
 
@@ -117,7 +117,7 @@ ifthenelse = IF expression THEN expression ELSE expression.
 
 count_inv = COUNT '(' expression ')'.
 
-aggregate_inv = summary_type '(' expression {',' expression} ')'.
+agg_op_inv = agg_op_name '(' expression ',' id ')'.
 
 literal = string | integer | decimal | float | binary | TRUE | FALSE
         | RELATION '{' [id type {',' id type}] '}' '{' [expression {',' expression}] '}'
