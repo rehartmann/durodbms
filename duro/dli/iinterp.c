@@ -1152,6 +1152,11 @@ parserep_to_rep(const RDB_parse_node *nodep, Duro_interp *interp, RDB_possrep *r
     rep->compv = RDB_alloc(rep->compc * sizeof(RDB_attr), ecp);
     if (rep->compv == NULL)
         return RDB_ERROR;
+    for (i = 0; i < rep->compc; i++) {
+        rep->compv[i].name = NULL;
+        rep->compv[i].typ = NULL;
+    }
+
     np = nodep->val.children.firstp;
     for (i = 0; i < rep->compc; i++) {
         rep->compv[i].name = (char *) RDB_expr_var_name(np->exp);
@@ -1503,7 +1508,7 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     /*
      * Selectors and getters of user-defined types
      * require special treatment, because they are accessing
-     * the actual type
+     * the actual rep
      */
 
     /*
@@ -1915,7 +1920,6 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
                 opname = RDB_obj_string(&opnameobj);
             } else if (!RDB_type_is_scalar(rtyp)
                     || strcmp(RDB_type_name(rtyp), interp->impl_typename) != 0) {
-                /* Not a selector */
                 RDB_raise_syntax("invalid operator", ecp);
                 goto error;
             }
