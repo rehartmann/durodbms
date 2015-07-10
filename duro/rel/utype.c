@@ -321,6 +321,9 @@ RDB_del_type(RDB_type *typ, RDB_exec_context *ecp)
                 RDB_free(typ->def.scalar.repv[i].name);
                 for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
                     RDB_free(typ->def.scalar.repv[i].compv[j].name);
+                    if (!RDB_type_is_scalar(typ->def.scalar.repv[i].compv[j].typ)) {
+                        RDB_del_nonscalar_type(typ->def.scalar.repv[i].compv[j].typ, ecp);
+                    }
                 }
                 RDB_free(typ->def.scalar.repv[i].compv);
             }

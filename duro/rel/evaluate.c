@@ -289,6 +289,50 @@ evaluate_var(const char *varname, RDB_getobjfn *getfnp, void *getdata,
     return RDB_ERROR;
 }
 
+/*
+ * Get object pointer from expression.
+ * If NULL is returned, an exception will be thrown only if exp->kind == RDB_EX_VAR.
+ */
+static RDB_object *
+expr_obj(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_object *objp;
+
+    switch(exp->kind) {
+    case RDB_EX_OBJ:
+        return &exp->def.obj;
+    case RDB_EX_TBP:
+        return exp->def.tbref.tbp;
+    case RDB_EX_VAR:
+        objp = NULL;
+        if (getfnp != NULL) {
+            objp = (*getfnp)(exp->def.varname, getdata);
+        }
+        if (objp == NULL && txp != NULL) {
+            /* Try to get table */
+            objp = RDB_get_table(exp->def.varname, ecp, txp);
+        }
+        if (objp == NULL) {
+            RDB_raise_name(exp->def.varname, ecp);
+        }
+        return objp;
+    case RDB_EX_GET_COMP:
+        objp = expr_obj(exp->def.op.args.firstp, getfnp, getdata, ecp, txp);
+        if (objp == NULL)
+            return NULL;
+
+        /* Type must be system-implemented with tuple as internal rep */
+        if (!objp->typ->def.scalar.sysimpl
+                || objp->typ->def.scalar.repv[0].compc <= 1)
+            return NULL;
+        return RDB_tuple_get(objp, exp->def.op.name);
+    default:
+        ;
+    }
+    return NULL;
+}
+
 static int
 evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp,
@@ -499,47 +543,25 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     for (i = 0; i < argc; i++) {
         valpv[i] = NULL;
         arginfov[i].type_was_null = RDB_FALSE;
+        RDB_init_obj(&arginfov[i].val);
     }
 
     /*
      * Get pointers to argument values, trying to avoid copying of values.
      */
 
-    if (strcmp(exp->def.op.name, "ungroup") == 0) {
-        int i = 2;
-        i = i*i;
-    }
-
     argp = exp->def.op.args.firstp;
     for (i = 0; i < argc; i++) {
-        switch (argp->kind) {
-        case RDB_EX_OBJ:
-            valpv[i] = &argp->def.obj;
-            break;
-        case RDB_EX_TBP:
-            valpv[i] = argp->def.tbref.tbp;
-            break;
-        case RDB_EX_VAR:
-            if (getfnp != NULL) {
-                valpv[i] = (*getfnp)(argp->def.varname, getdata);
-            }
-            if (valpv[i] == NULL && txp != NULL) {
-                /* Try to get table */
-                valpv[i] = RDB_get_table(argp->def.varname, ecp, txp);
-            }
-            if (valpv[i] == NULL) {
-                RDB_raise_name(argp->def.varname, ecp);
+        valpv[i] = expr_obj(argp, getfnp, getdata, ecp, txp);
+        if (valpv[i] == NULL) {
+            if (argp->kind == RDB_EX_VAR) {
                 ret = RDB_ERROR;
                 goto cleanup;
             }
-            break;
-        default:
-            valpv[i] = &arginfov[i].val;
-            RDB_init_obj(&arginfov[i].val);
             ret = RDB_evaluate(argp, getfnp, getdata, envp, ecp, txp, &arginfov[i].val);
             if (ret != RDB_OK)
                 goto cleanup;
-            break;
+            valpv[i] = &arginfov[i].val;
         }
 
         /*
@@ -611,14 +633,12 @@ cleanup:
     if (arginfov != NULL) {
         argp = exp->def.op.args.firstp;
         for (i = 0; i < argc; i++) {
-            if (valpv[i] != NULL && argp->kind != RDB_EX_OBJ
-                    && argp->kind != RDB_EX_TBP && argp->kind != RDB_EX_VAR) {
-                RDB_destroy_obj(&arginfov[i].val, ecp);
-                /*
-                 * Don't have to drop valpv[i]->typ
-                 * because it's managed by the argument expression
-                 */
-            }
+            RDB_destroy_obj(&arginfov[i].val, ecp);
+            /*
+             * Don't have to drop valpv[i]->typ
+             * because it's managed by the argument expression
+             */
+
             /*
              * If the argument type was set by the function, set it to NULL
              * because the type could be destroyed

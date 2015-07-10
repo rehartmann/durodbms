@@ -61,12 +61,51 @@ error:
 }
 
 static RDB_object *
-resolve_target(const RDB_expression *exp, Duro_interp *interp, RDB_exec_context *ecp)
+resolve_target(RDB_expression *exp, Duro_interp *interp, RDB_exec_context *ecp)
 {
     const char *varname;
     const char *opname = RDB_expr_op_name(exp);
 
     if (opname != NULL) {
+        if (RDB_expr_kind(exp) == RDB_EX_GET_COMP) {
+            RDB_object *prop;
+            RDB_object *objp = resolve_target(
+                    RDB_expr_list_get(RDB_expr_op_args(exp), 0), interp, ecp);
+            if (objp == NULL)
+                return NULL;
+
+            if (!RDB_type_is_scalar(objp->typ)) {
+                RDB_raise_invalid_argument("type must be scalar", ecp);
+                return NULL;
+            }
+
+            /* Type must be system-implemented with tuple as internal rep */
+            if (!objp->typ->def.scalar.sysimpl
+                    || objp->typ->def.scalar.repv[0].compc <= 1) {
+                /* !! get, resize and set */
+                RDB_raise_syntax("unsupported the_ assignment target", ecp);
+                return NULL;
+            }
+            prop = RDB_tuple_get(objp, opname);
+            if (prop == NULL) {
+                RDB_raise_operator_not_found(opname, ecp);
+                return NULL;
+            }
+            if (prop->typ == NULL) {
+                int i;
+
+                for (i = 0;
+                     i < objp->typ->def.scalar.repv[0].compc
+                            && strcmp(objp->typ->def.scalar.repv[0].compv[i].name, opname) != 0;
+                     i++);
+                if (i >= objp->typ->def.scalar.repv[0].compc) {
+                    RDB_raise_internal("component not found", ecp);
+                    return NULL;
+                }
+                RDB_obj_set_typeinfo(prop, objp->typ->def.scalar.repv[0].compv[i].typ);
+            }
+            return prop;
+        }
         if (strcmp(opname, "[]") == 0
                 && RDB_expr_list_length(RDB_expr_op_args((RDB_expression *) exp)) == 2) {
             RDB_int idx;
@@ -542,7 +581,7 @@ op_assign(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
 }
 
 static int
-exec_length_assign(const RDB_parse_node *nodep, const RDB_expression *argexp,
+exec_length_assign(const RDB_parse_node *nodep, RDB_expression *argexp,
         Duro_interp *interp, RDB_exec_context *ecp)
 {
     RDB_type *arrtyp;
