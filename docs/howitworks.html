@@ -96,12 +96,16 @@ using HTTP response code 303 can be created as follows:
 <pre>
 insert net_actions tup { path '/redirect', opname 'redirect', method 'GET' };
 
-operator redirect (model tup { }, view string) updates { model, view };
-    net.set_status(303);
-    net.set_response_header('Location', 'http://someothersite.com/');
+operator redirect (model tup { }, view string, resp http.http_response) updates { model, view };
+    http.set_status(resp, 303);
+    http.set_response_header(resp, 'Location', 'http://someothersite.com/');
     view := '';
 end operator;
 </pre>
+
+<p>The operators www.set_status and www.set_response_header require an argument of
+type http.http_response. This can be made available by adding an argument of this type
+to the action operator.
 
 <h2>Sending JSON data</h2>
 
@@ -110,12 +114,13 @@ end operator;
 <pre>
 insert net_actions tup { path '/jsonexample', opname 'jsonexample', method 'GET' };
 
-operator jsonexample (model tup { name string, no int, price float }, view string)
+operator jsonexample (model tup { name string, no int, price float }, view string,
+        resp http.http_response)
         updates { model, view };
     model := tup { name 'Cap', no 22, price 10.97 };
 
     view := '';
-    net.send_json_response(model);
+    http.send_json_response(resp, model);
 end operator;
 </pre>
 

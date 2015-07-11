@@ -155,7 +155,7 @@ operator process_template(istrm io.iostream_id, ostrm io.iostream_id,
            -- Directive found
            -- Output text before the directive
            if dirpos > pos then
-               io.put(ostrm, "net.put('"
+               io.put(ostrm, "http.put('"
                        || substr_b(current_line, pos, dirpos - pos)
                        || "');");
            end if;
@@ -177,7 +177,7 @@ operator process_template(istrm io.iostream_id, ostrm io.iostream_id,
                process_control(istrm, ostrm, current_line, pos, cdir);
            else
                -- Extract expression
-	           io.put(ostrm, "net.put(net.hescape("
+	           io.put(ostrm, "http.put(net.hescape("
 	                   || substr_b(current_line, pos, dirend - pos)
 	                   || '));');
 	           pos := dirend + 2;
@@ -186,7 +186,7 @@ operator process_template(istrm io.iostream_id, ostrm io.iostream_id,
 	       -- No directive
 	       -- Output the remaining line
 	       var s init substr_b(current_line, pos);
-           io.put_line(ostrm, "net.put_line('" || s || "');");
+           io.put_line(ostrm, "http.put_line('" || s || "');");
 
            -- get next line
            io.get_line(istrm, current_line);

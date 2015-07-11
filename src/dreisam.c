@@ -49,6 +49,7 @@ static FCGX_ParamArray fcgi_envp;
 
 static RDB_operator *send_headers_op;
 static RDB_object *headers_state;
+static RDB_object *response;
 static const char *request_method;
 
 static void
@@ -79,7 +80,10 @@ static int
 send_headers(RDB_exec_context *ecp)
 {
     if (RDB_obj_int(headers_state) == 0) {
-        if (RDB_call_update_op(send_headers_op, 0, NULL, ecp, NULL)
+        RDB_object *send_headers_argv[0];
+
+        send_headers_argv[0] = response;
+        if (RDB_call_update_op(send_headers_op, 1, send_headers_argv, ecp, NULL)
                 != RDB_OK) {
             FCGX_PutS("Sending headers failed\n", fcgi_err);
             return RDB_ERROR;
@@ -89,10 +93,11 @@ send_headers(RDB_exec_context *ecp)
 }
 
 static int
-op_net_put_line(int argc, RDB_object *argv[], RDB_operator *op,
+op_http_put_line(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    send_headers(ecp);
+    if (send_headers(ecp) != RDB_OK)
+        return RDB_ERROR;
 
     /* Don't send response body if the request method is HEAD */
     if (strcmp(request_method, "HEAD") == 0
@@ -113,7 +118,7 @@ error:
 }
 
 static int
-op_net_put(int argc, RDB_object *argv[], RDB_operator *op,
+op_http_put(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     send_headers(ecp);
@@ -132,7 +137,7 @@ op_net_put(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-op_net_put_err_line(int argc, RDB_object *argv[], RDB_operator *op,
+op_http_put_err_line(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     send_headers(ecp);
@@ -150,7 +155,7 @@ error:
 }
 
 static int
-op_net_put_err(int argc, RDB_object *argv[], RDB_operator *op,
+op_http_put_err(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     send_headers(ecp);
@@ -171,14 +176,14 @@ op_net_to_json(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-op_net_status_reason(int argc, RDB_object *argv[], RDB_operator *op,
+op_http_status_reason(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     return RDB_string_to_obj(retvalp, Dr_sc_reason(RDB_obj_int(argv[0])), ecp);
 }
 
 static int
-op_net_get_request_header(int argc, RDB_object *argv[], RDB_operator *op,
+op_http_get_request_header(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     const char *value = FCGX_GetParam(RDB_obj_string(argv[0]), fcgi_envp);
@@ -281,7 +286,8 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
     int ret;
     RDB_object viewname;
     RDB_object model;
-    RDB_object *argv[2];
+    int argc;
+    RDB_object *argv[3];
     RDB_operator *action_op;
     const char *path_info;
     RDB_operator *view_op;
@@ -293,9 +299,10 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
     fcgi_err = err;
     fcgi_envp = envp;
 
-    if (Duro_dt_execute_str("response_status := ''; "
-            "response_headers := array ('Content-type: text/html; charset=utf-8'); "
-            "response_headers_state := 0;",
+    if (Duro_dt_execute_str("dreisam_resp := http.http_response("
+                    "'200 OK',"
+                    "array (tup { name 'Content-type', value 'text/html; charset=utf-8' } ));"
+            "dreisam_response_headers_state := 0;",
             interpp, ecp) != RDB_OK) {
         goto error;
     }
@@ -308,7 +315,7 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
     if (request_method == NULL)
         request_method = "";
 
-    action_op = Dr_get_action_op(interpp, ecp);
+    action_op = Dr_get_action_op(interpp, RDB_obj_type(response), ecp);
     if (action_op == NULL) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
             FCGX_FPrintF(out,
@@ -386,9 +393,12 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
         return RDB_OK;
     }
 
+    argc = RDB_operator_param_count(action_op);
     argv[0] = &model;
     argv[1] = &viewname;
-    if (RDB_call_update_op(action_op, 2, argv, ecp, NULL)
+    if (argc >= 2)
+        argv[2] = response;
+    if (RDB_call_update_op(action_op, argc, argv, ecp, NULL)
             != RDB_OK) {
         FCGX_PutS("Invoking action operator failed\n", err);
         log_err(interpp, ecp, err);
@@ -440,37 +450,37 @@ create_fcgi_ops(Duro_interp *interpp, RDB_exec_context *ecp)
 
     param.typ = &RDB_STRING;
     param.update = RDB_FALSE;
-    if (RDB_put_upd_op(&interpp->sys_upd_op_map, "net.put_line", 1, &param,
-            &op_net_put_line, ecp) != RDB_OK) {
+    if (RDB_put_upd_op(&interpp->sys_upd_op_map, "http.put_line", 1, &param,
+            &op_http_put_line, ecp) != RDB_OK) {
         ret = DR_ERR_INIT_OP;
         goto error;
     }
-    if (RDB_put_upd_op(&interpp->sys_upd_op_map, "net.put_err_line", 1, &param,
-            &op_net_put_err_line, ecp) != RDB_OK) {
+    if (RDB_put_upd_op(&interpp->sys_upd_op_map, "http.put_err_line", 1, &param,
+            &op_http_put_err_line, ecp) != RDB_OK) {
         ret = DR_ERR_INIT_OP;
         goto error;
     }
 
-    if (RDB_put_upd_op(&interpp->sys_upd_op_map, "net.put", 1, &param,
-            &op_net_put, ecp) != RDB_OK) {
+    if (RDB_put_upd_op(&interpp->sys_upd_op_map, "http.put", 1, &param,
+            &op_http_put, ecp) != RDB_OK) {
         ret = DR_ERR_INIT_OP;
         goto error;
     }
-    if (RDB_put_upd_op(&interpp->sys_upd_op_map, "net.put_err", 1, &param,
-            &op_net_put_err, ecp) != RDB_OK) {
+    if (RDB_put_upd_op(&interpp->sys_upd_op_map, "http.put_err", 1, &param,
+            &op_http_put_err, ecp) != RDB_OK) {
         ret = DR_ERR_INIT_OP;
         goto error;
     }
 
     param.typ = &RDB_INTEGER;
-    if (RDB_put_global_ro_op("net.status_reason", 1, &param.typ,
-            &RDB_STRING, op_net_status_reason, ecp) != RDB_OK) {
+    if (RDB_put_global_ro_op("http.status_reason", 1, &param.typ,
+            &RDB_STRING, op_http_status_reason, ecp) != RDB_OK) {
         goto error;
     }
 
     param.typ = &RDB_STRING;
-    if (RDB_put_global_ro_op("net.get_request_header", 1, &param.typ,
-            &RDB_STRING, op_net_get_request_header, ecp) != RDB_OK) {
+    if (RDB_put_global_ro_op("http.get_request_header", 1, &param.typ,
+            &RDB_STRING, op_http_get_request_header, ecp) != RDB_OK) {
         goto error;
     }
 
@@ -494,6 +504,7 @@ main(void)
     FCGX_ParamArray envp;
     RDB_exec_context ec;
     Duro_interp interp;
+    RDB_type *send_headers_argtv[0];
 
     RDB_init_exec_context(&ec);
 
@@ -511,16 +522,14 @@ main(void)
     if (ret != RDB_OK)
         goto error;
 
-    if (Duro_dt_execute_str("var dbenv string; "
-            "var response_status string; "
-            "var response_headers array string; "
-            "var response_headers_state int;",
+    if (Duro_dt_execute_str("var dbenv string;"
+            "var dreisam_response_headers_state int;",
             &interp, &ec) != RDB_OK) {
         ret = DR_ERR_DECL;
         goto error;
     }
 
-    headers_state = Duro_lookup_var("response_headers_state", &interp, &ec);
+    headers_state = Duro_lookup_var("dreisam_response_headers_state", &interp, &ec);
     if (headers_state == NULL) {
         ret = DR_ERR_DECL;
         goto error;
@@ -541,8 +550,27 @@ main(void)
         goto error;
     }
 
-    send_headers_op = RDB_get_update_op("net.send_headers", 0, NULL, NULL, &ec,
-            Duro_dt_tx(&interp));
+    if (Duro_dt_execute_str("var dreisam_req http.http_request;"
+            "var dreisam_resp http.http_response;",
+            &interp, &ec) != RDB_OK) {
+        ret = DR_ERR_GET_OP;
+        goto error;
+    }
+
+    response = Duro_lookup_var("dreisam_resp", &interp, &ec);
+    if (response == NULL) {
+        ret = DR_ERR_GET_OP;
+        goto error;
+    }
+
+    send_headers_argtv[0] = RDB_get_type("http.http_response",
+            &ec, Duro_dt_tx(&interp));
+    if (send_headers_argtv[0] == NULL) {
+        ret = DR_ERR_GET_OP;
+        goto error;
+    }
+    send_headers_op = RDB_get_update_op("http.send_headers",
+            1, send_headers_argtv, NULL, &ec, Duro_dt_tx(&interp));
     if (send_headers_op == NULL) {
         ret = DR_ERR_GET_OP;
         goto error;

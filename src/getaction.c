@@ -8,12 +8,12 @@
 #include "getaction.h"
 
 RDB_operator *
-Dr_get_action_op(Duro_interp *interpp, RDB_exec_context *ecp)
+Dr_get_action_op(Duro_interp *interpp, RDB_type *resptyp, RDB_exec_context *ecp)
 {
     static RDB_expression *query_exp = NULL;
 
     RDB_object tpl;
-    RDB_type *typev[2];
+    RDB_type *typev[3];
     RDB_operator *op;
 
     /* Get action operator */
@@ -26,8 +26,8 @@ Dr_get_action_op(Duro_interp *interpp, RDB_exec_context *ecp)
     if (query_exp == NULL) {
         /* If the request method is HEAD get the GET entry */
         query_exp = Duro_dt_parse_expr_str("tuple from net_actions "
-                "where path like net.get_request_header('PATH_INFO') "
-                "and with (request_method := net.get_request_header('REQUEST_METHOD')):"
+                "where path like http.get_request_header('PATH_INFO') "
+                "and with (request_method := http.get_request_header('REQUEST_METHOD')):"
                      "method = if request_method = 'HEAD' then 'GET' else request_method",
                 interpp, ecp);
         if (query_exp == NULL)
@@ -42,8 +42,13 @@ Dr_get_action_op(Duro_interp *interpp, RDB_exec_context *ecp)
 
     op = RDB_get_update_op(RDB_obj_string(RDB_tuple_get(&tpl, "opname")),
             2, typev, NULL, ecp, &interpp->txnp->tx);
-    if (op == NULL)
-        goto error;
+    if (op == NULL) {
+        typev[2] = resptyp;
+        op = RDB_get_update_op(RDB_obj_string(RDB_tuple_get(&tpl, "opname")),
+                3, typev, NULL, ecp, &interpp->txnp->tx);
+        if (op == NULL)
+            goto error;
+    }
 
     if (Duro_dt_execute_str("commit;", interpp, ecp) != RDB_OK)
         return NULL;

@@ -25,7 +25,7 @@ end operator;
 operator editsupp(model tup same_heading_as(extend suppliers : { msg := '' } ),
         view string) updates { model, view };
     begin tx;
-    model := (tuple from suppliers where sno = model.sno union tuple { msg '' };
+    model := (tuple from suppliers where sno = model.sno) union tuple { msg '' };
     commit;
 end operator;
 

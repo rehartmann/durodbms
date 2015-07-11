@@ -1,6 +1,5 @@
 begin tx;
 
-
 -- Actions table
 var net_actions real relation {
     path string,
@@ -8,67 +7,103 @@ var net_actions real relation {
     opname string
 } key { path, method };
 
+package http;
 
--- HTTP response operators
-package net;
+-- Request type
 
-operator send_headers() updates {};
-    response_headers_state := 1;
+type http_request
+possrep {
+    method string
+    -- headers and body exist only conceptually,
+    -- they are accessible only using get_request_header() etc.
+}
+init http.http_request ('');
 
-    if response_status <> '' then
-        net.put_line('Status: ' || response_status);
+-- Response type
+type http_response
+possrep {
+    status string,
+    headers array tuple { name string, value string }
+    -- body exists only conceptually, not acessible using the operators below
+}
+init http.http_response ('200 OK', array tuple { name string, value string } ());
+
+--
+-- Response operators
+--
+
+operator send_headers(resp http.http_response) updates {};
+    dreisam_response_headers_state := 1;
+
+    if the_status(resp) <> '' then
+        http.put_line('Status: ' || the_status(resp));
     end if;
 
     var i int;
-    for i := 0 to length(response_headers) - 1;
-        net.put_line(response_headers[i]);
+    for i := 0 to length(the_headers(resp)) - 1;
+        http.put(the_headers(resp)[i].name);
+        http.put(': ');
+        http.put_line(the_headers(resp)[i].value);
     end for;
 
-    net.put_line('');
-    response_headers_state := 2;
+    http.put_line('');
+    dreisam_response_headers_state := 2;
 end operator;
 
-operator set_status(status int, reason string) updates {};
-    response_status := cast_as_string(status) || ' ' || reason;
+operator set_status(resp http.http_response, status int, reason string)
+        updates { resp };
+    the_status(resp) := cast_as_string(status) || ' ' || reason;
 end operator;
 
-operator set_status(status int) updates {};
-    set_status(status, net.status_reason(status));
+operator set_status(resp http.http_response, status int) updates { resp };
+    set_status(resp, status, http.status_reason(status));
 end operator;
 
-operator set_response_header(name string, value string) updates {};
+operator set_response_header(resp http.http_response, name string, value string)
+        updates {resp};
     var found init false;
-    var namex init name || ': ';
 
     var i int;
-    for i := 0 to length(response_headers) - 1;
-        if starts_with(response_headers[i], namex) then
+    for i := 0 to length(the_headers(resp)) - 1;
+        if the_headers(resp)[i].name = name then
             -- Replace header
-            response_headers[i] := namex || value;
+            the_headers(resp)[i] := tup { name name, value value };
             found := true;
         end if;
     end for;
-    
+
     if not found then
-        add_response_header(name, value);
+        add_response_header(resp, name, value);
     end if;
 end operator;
 
-operator add_response_header(name string, value string) updates {};
-    var hlen init length(response_headers);
+operator add_response_header(resp http.http_response, name string, value string)
+        updates {resp};
+    var hlen init length(the_headers(resp));
 
-    length(response_headers) := hlen + 1;
-    response_headers[hlen] := name || ': ' || value;
-end operator;    
+    length(the_headers(resp)) := hlen + 1;
+    the_headers(resp)[hlen] := tup { name name, value value };
+end operator;
 
-operator send_json_response(tp tup { * }) updates {};
+operator send_json_response(resp http.http_response, tp tup { * })
+        updates { resp };
     var json_data init net.to_json(tp);
-    set_response_header('Content-Type', 'application/json');
-    set_response_header('Content-Length', cast_as_string(strlen_b(json_data)));
+    set_response_header(resp, 'Content-Type', 'application/json');
+    set_response_header(resp, 'Content-Length', cast_as_string(strlen_b(json_data)));
 
-    net.put(json_data);
+    http.put(json_data);
 end operator;
 
 end package;
+
+implement package http;
+
+implement type http_request;
+end implement;
+
+implement type http_response;
+end implement;
+
+end implement;
 
 commit;
