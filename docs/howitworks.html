@@ -103,7 +103,7 @@ operator redirect (model tup { }, view string, resp http.http_response) updates 
 end operator;
 </pre>
 
-<p>The operators www.set_status and www.set_response_header require an argument of
+<p>The operators http.set_status and http.set_response_header require an argument of
 type http.http_response. This can be made available by adding an argument of this type
 to the action operator.
 
@@ -124,19 +124,19 @@ operator jsonexample (model tup { name string, no int, price float }, view strin
 end operator;
 </pre>
 
-The request
+<p>The request
 
 <pre>
 http://localhost/fcgi-bin/dreisam.fcgi/jsonexample
 </pre>
 
-will produce the following output:
+<p>will produce the following output:
 
 <pre>
 {
 "no": 22,
 "name": "Cap",
-"price": 1.097000e+01
+"price": 1.097
 }
 </pre>
 

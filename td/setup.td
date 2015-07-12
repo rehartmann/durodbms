@@ -17,7 +17,7 @@ possrep {
     -- headers and body exist only conceptually,
     -- they are accessible only using get_request_header() etc.
 }
-init http.http_request ('');
+init http.http_request('');
 
 -- Response type
 type http_response
