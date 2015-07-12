@@ -290,7 +290,7 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
         end implement;
 
         var s string5;
-        
+
         s := string5('OK');
 
         try
@@ -298,6 +298,8 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
         catch err type_constraint_violation_error;
             io.put_line('type constraint violation caught');
         end try;
+
+        the_value(s) := '12345';
         commit;        
     }
 } -result {error #1 caused by incomplete type caught

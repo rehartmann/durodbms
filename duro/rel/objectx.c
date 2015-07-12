@@ -730,8 +730,6 @@ RDB_obj_set_property(RDB_object *objp, const char *propname,
         }
 
         if (objp->typ->def.scalar.repv[0].compc == 1) {
-            if (RDB_destroy_obj(objp, ecp) != RDB_OK)
-                return RDB_ERROR;
             ret = RDB_copy_obj_data(objp, propvalp, ecp, NULL);
         } else {
             ret = RDB_tuple_set(objp, propname, propvalp, ecp);
