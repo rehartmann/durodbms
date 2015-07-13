@@ -715,17 +715,17 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
         }
         return &RDB_FLOAT;
     } else if (strcmp(exp->def.op.name, "sum") == 0
-            || strcmp(exp->def.op.name, "max") == 0
-            || strcmp(exp->def.op.name, "min") == 0) {
+            || strcmp(exp->def.op.name, "min") == 0
+            || strcmp(exp->def.op.name, "max") == 0) {
         RDB_type *argtyp;
         RDB_type *attrtyp;
 
-        if (argc != 2) {
+        if (argc != 1 && argc != 2) {
             RDB_raise_invalid_argument("invalid number of aggregate arguments",
                     ecp);
             goto error;
         }
-        if (exp->def.op.args.firstp->nextp->kind != RDB_EX_VAR) {
+        if (argc == 2 && exp->def.op.args.firstp->nextp->kind != RDB_EX_VAR) {
             RDB_raise_invalid_argument("invalid aggregate", ecp);
             goto error;
         }
@@ -733,12 +733,20 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
         argtyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg, envp, ecp, txp);
         if (argtyp == NULL)
             goto error;
-        attrtyp = RDB_type_attr_type(argtyp,
-                exp->def.op.args.firstp->nextp->def.varname);
         if (argtyp->kind != RDB_TP_RELATION) {
             RDB_raise_invalid_argument("aggregate requires relation argument",
                     ecp);
             goto error;
+        }
+        if (argc == 1) {
+            if (argtyp->def.basetyp->def.tuple.attrc != 1) {
+                RDB_raise_invalid_argument("Second argument is required", ecp);
+                goto error;
+            }
+            attrtyp = argtyp->def.basetyp->def.tuple.attrv[0].typ;
+        } else {
+            attrtyp = RDB_type_attr_type(argtyp,
+                    exp->def.op.args.firstp->nextp->def.varname);
         }
         if (attrtyp != &RDB_INTEGER && attrtyp != &RDB_FLOAT
                 && attrtyp != &RDB_FLOAT) {

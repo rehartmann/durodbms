@@ -388,14 +388,17 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
      * Handle aggregate functions except COUNT and '.'
      * First check if there are 2 arguments and the second is a variable name
      */
-    if (argc == 2 && exp->def.op.args.firstp->nextp->kind == RDB_EX_VAR) {
+    if (argc == 1 ||
+            (argc == 2 && exp->def.op.args.firstp->nextp->kind == RDB_EX_VAR)) {
         if (strcmp(exp->def.op.name, "sum") == 0) {
             RDB_init_obj(&tb);
 
             if (RDB_evaluate(exp->def.op.args.firstp, getfnp, getdata, envp,
-                    ecp, txp, &tb) != RDB_OK)
+                    ecp, txp, &tb) != RDB_OK) {
+                RDB_destroy_obj(&tb, ecp);
                 return RDB_ERROR;
-            ret = RDB_sum(&tb, exp->def.op.args.firstp->nextp->def.varname, ecp,
+            }
+            ret = RDB_sum(&tb, argc == 2 ? exp->def.op.args.firstp->nextp->def.varname : NULL, ecp,
                     txp, valp);
             RDB_destroy_obj(&tb, ecp);
             return ret;
@@ -404,8 +407,10 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             RDB_float res;
 
             RDB_init_obj(&tb);
-            if (RDB_evaluate(exp->def.op.args.firstp, getfnp, getdata, envp, ecp, txp, &tb) != RDB_OK)
+            if (RDB_evaluate(exp->def.op.args.firstp, getfnp, getdata, envp, ecp, txp, &tb) != RDB_OK) {
+                RDB_destroy_obj(&tb, ecp);
                 return RDB_ERROR;
+            }
             ret = RDB_avg(&tb, exp->def.op.args.firstp->nextp->def.varname, ecp, txp, &res);
             RDB_destroy_obj(&tb, ecp);
             if (ret == RDB_OK) {
@@ -416,18 +421,23 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         if (strcmp(exp->def.op.name, "min") == 0) {
             RDB_init_obj(&tb);
             if (RDB_evaluate(exp->def.op.args.firstp, getfnp, getdata, envp,
-                    ecp, txp, &tb) != RDB_OK)
+                    ecp, txp, &tb) != RDB_OK) {
+                RDB_destroy_obj(&tb, ecp);
                 return RDB_ERROR;
-            ret = RDB_min(&tb, exp->def.op.args.firstp->nextp->def.varname, ecp, txp, valp);
+            }
+            ret = RDB_min(&tb, argc == 2 ? exp->def.op.args.firstp->nextp->def.varname : NULL,
+                    ecp, txp, valp);
             RDB_destroy_obj(&tb, ecp);
             return ret;
         }
         if (strcmp(exp->def.op.name, "max") == 0) {
             RDB_init_obj(&tb);
             if (RDB_evaluate(exp->def.op.args.firstp, getfnp, getdata, envp, ecp,
-                    txp, &tb) != RDB_OK)
+                    txp, &tb) != RDB_OK) {
+                RDB_destroy_obj(&tb, ecp);
                 return RDB_ERROR;
-            ret = RDB_max(&tb, exp->def.op.args.firstp->nextp->def.varname, ecp, txp, valp);
+            }
+            ret = RDB_max(&tb, argc == 2 ? exp->def.op.args.firstp->nextp->def.varname : NULL, ecp, txp, valp);
             RDB_destroy_obj(&tb, ecp);
             return ret;
         }
@@ -436,8 +446,10 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
 
             RDB_init_obj(&tb);
             if (RDB_evaluate(exp->def.op.args.firstp, getfnp, getdata, envp, ecp,
-                    txp, &tb) != RDB_OK)
+                    txp, &tb) != RDB_OK) {
+                RDB_destroy_obj(&tb, ecp);
                 return RDB_ERROR;
+            }
             ret = RDB_all(&tb, exp->def.op.args.firstp->nextp->def.varname, ecp, txp, &res);
             RDB_destroy_obj(&tb, ecp);
             if (ret == RDB_OK) {
@@ -450,8 +462,10 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
 
             RDB_init_obj(&tb);
             if (RDB_evaluate(exp->def.op.args.firstp, getfnp, getdata, envp,
-                    ecp, txp, &tb) != RDB_OK)
+                    ecp, txp, &tb) != RDB_OK) {
+                RDB_destroy_obj(&tb, ecp);
                 return RDB_ERROR;
+            }
             ret = RDB_any(&tb, exp->def.op.args.firstp->nextp->def.varname, ecp, txp, &res);
             RDB_destroy_obj(&tb, ecp);
             if (ret == RDB_OK) {
