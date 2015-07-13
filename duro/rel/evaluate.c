@@ -388,8 +388,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
      * Handle aggregate functions except COUNT and '.'
      * First check if there are 2 arguments and the second is a variable name
      */
-    if (argc == 1 ||
-            (argc == 2 && exp->def.op.args.firstp->nextp->kind == RDB_EX_VAR)) {
+    if (argc == 1 || argc == 2) {
         if (strcmp(exp->def.op.name, "sum") == 0) {
             RDB_init_obj(&tb);
 
@@ -398,8 +397,8 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
                 RDB_destroy_obj(&tb, ecp);
                 return RDB_ERROR;
             }
-            ret = RDB_sum(&tb, argc == 2 ? exp->def.op.args.firstp->nextp->def.varname : NULL, ecp,
-                    txp, valp);
+            ret = RDB_sum(&tb, argc == 2 ? exp->def.op.args.firstp->nextp : NULL,
+                    ecp, txp, valp);
             RDB_destroy_obj(&tb, ecp);
             return ret;
         }
@@ -411,7 +410,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
                 RDB_destroy_obj(&tb, ecp);
                 return RDB_ERROR;
             }
-            ret = RDB_avg(&tb, exp->def.op.args.firstp->nextp->def.varname, ecp, txp, &res);
+            ret = RDB_avg(&tb, exp->def.op.args.firstp->nextp, ecp, txp, &res);
             RDB_destroy_obj(&tb, ecp);
             if (ret == RDB_OK) {
                 RDB_float_to_obj(valp, res);
@@ -425,7 +424,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
                 RDB_destroy_obj(&tb, ecp);
                 return RDB_ERROR;
             }
-            ret = RDB_min(&tb, argc == 2 ? exp->def.op.args.firstp->nextp->def.varname : NULL,
+            ret = RDB_min(&tb, argc == 2 ? exp->def.op.args.firstp->nextp : NULL,
                     ecp, txp, valp);
             RDB_destroy_obj(&tb, ecp);
             return ret;
@@ -437,7 +436,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
                 RDB_destroy_obj(&tb, ecp);
                 return RDB_ERROR;
             }
-            ret = RDB_max(&tb, argc == 2 ? exp->def.op.args.firstp->nextp->def.varname : NULL, ecp, txp, valp);
+            ret = RDB_max(&tb, argc == 2 ? exp->def.op.args.firstp->nextp : NULL, ecp, txp, valp);
             RDB_destroy_obj(&tb, ecp);
             return ret;
         }
@@ -450,7 +449,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
                 RDB_destroy_obj(&tb, ecp);
                 return RDB_ERROR;
             }
-            ret = RDB_all(&tb, exp->def.op.args.firstp->nextp->def.varname, ecp, txp, &res);
+            ret = RDB_all(&tb, argc == 2 ? exp->def.op.args.firstp->nextp : NULL, ecp, txp, &res);
             RDB_destroy_obj(&tb, ecp);
             if (ret == RDB_OK) {
                 RDB_bool_to_obj(valp, res);
@@ -466,7 +465,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
                 RDB_destroy_obj(&tb, ecp);
                 return RDB_ERROR;
             }
-            ret = RDB_any(&tb, exp->def.op.args.firstp->nextp->def.varname, ecp, txp, &res);
+            ret = RDB_any(&tb, argc == 2 ? exp->def.op.args.firstp->nextp : NULL, ecp, txp, &res);
             RDB_destroy_obj(&tb, ecp);
             if (ret == RDB_OK) {
                 RDB_bool_to_obj(valp, res);

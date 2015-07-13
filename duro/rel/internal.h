@@ -412,4 +412,7 @@ int
 RDB_possrep_to_selector(RDB_object *, const char *,
         const char *, RDB_exec_context *);
 
+RDB_type *
+RDB_get_tuple_attr_type(const char *, void *);
+
 #endif

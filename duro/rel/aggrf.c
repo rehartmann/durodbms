@@ -16,16 +16,16 @@
  */
 
 /**
- * RDB_all computes a logical AND over the attribute
-<var>attrname</var> of the table specified by <var>tbp</var>
+ * RDB_all computes a logical AND over the expression
+*<var>exp</var> of the table *<var>tbp</var>
 and stores the result at the location pointed to by <var>resultp</var>.
 
-If the table has only one attribute, <var>attrname</var>
+If the table has only one attribute, <var>exp</var>
 may be NULL.
 
 If an error occurs, an error value is left in *<var>ecp</var>.
 
-The attribute <var>attrname</var> must be of type BOOLEAN.
+The type of *<var>exp</var> must be BOOLEAN.
 
 @returns
 
@@ -41,7 +41,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>type_mismatch_error
 <dd>The type of the attribute is not BOOLEAN.
 <dt>invalid_argument_error
-<dd><var>attrname</var> is NULL and the table has more than one
+<dd><var>exp</var> is NULL and the table has more than one
 attribute.
 <dt>
 <dd>The table represented by *<var>tbp</var> does not exist. (e.g. after a rollback)
@@ -51,33 +51,36 @@ The call may also fail for a @ref system-errors "system error",
 in which case the transaction may be implicitly rolled back.
  */
 int
-RDB_all(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
+RDB_all(RDB_object *tbp, RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resultp)
 {
     RDB_type *attrtyp;
-    RDB_qresult *qrp;
     RDB_object tpl;
+    RDB_object hobj;
+    RDB_qresult *qrp = NULL;
+    RDB_bool del_over = RDB_FALSE;
 
-    /* attrname may only be NULL if table is unary */
-    if (attrname == NULL) {
+    if (exp == NULL) {
         if (tbp->typ->def.basetyp->def.tuple.attrc != 1) {
-            RDB_raise_invalid_argument("attribute name is required", ecp);
+            RDB_raise_invalid_argument("second argument required", ecp);
             return RDB_ERROR;
         }
-        attrname = tbp->typ->def.basetyp->def.tuple.attrv[0].name;
+        exp = RDB_var_ref(tbp->typ->def.basetyp->def.tuple.attrv[0].name, ecp);
+        if (exp == NULL)
+            return RDB_ERROR;
+        del_over = RDB_TRUE;
     }
 
-    attrtyp = RDB_tuple_type_attr(tbp->typ->def.basetyp, attrname)->typ;
+    attrtyp = RDB_expr_type(exp, RDB_get_tuple_attr_type, tbp->typ->def.basetyp, NULL, ecp, txp);
     if (attrtyp == NULL) {
-        RDB_raise_name(attrname, ecp);
         return RDB_ERROR;
     }
     if (attrtyp != &RDB_BOOLEAN) {
-        RDB_raise_type_mismatch("attribute type must be BOOLEAN", ecp);
+        RDB_raise_type_mismatch("type must be boolean", ecp);
         return RDB_ERROR;
     }
 
-    /* initialize result */
+    /* Initialize result */
     *resultp = RDB_TRUE;
 
     /*
@@ -89,32 +92,56 @@ RDB_all(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         return RDB_ERROR;
 
     RDB_init_obj(&tpl);
+    RDB_init_obj(&hobj);
+
     while (RDB_next_tuple(qrp, &tpl, ecp, txp) == RDB_OK) {
-        if (!RDB_tuple_get_bool(&tpl, attrname))
+        if (RDB_evaluate(exp, &RDB_tpl_get, &tpl, NULL, ecp, txp, &hobj)
+                != RDB_OK) {
+            goto error;
+        }
+        if (!RDB_obj_bool(&hobj))
             *resultp = RDB_FALSE;
     }
-    RDB_destroy_obj(&tpl, ecp);
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        RDB_del_table_iterator(qrp, ecp, txp);
-        return RDB_ERROR;
+        goto error;
     }
-    RDB_clear_err(ecp);
+
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&hobj, ecp);
+
+    if (del_over) {
+        RDB_del_expr(exp, ecp);
+    }
+
     return RDB_del_table_iterator(qrp, ecp, txp);
+
+error:
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&hobj, ecp);
+
+    if (qrp != NULL) {
+        RDB_del_table_iterator(qrp, ecp, txp);
+    }
+
+    if (del_over) {
+        RDB_del_expr(exp, ecp);
+    }
+
+    return RDB_ERROR;
 }
 
 /**
-RDB_any computes a logical OR over the attribute
-<var>attrname</var> of the table specified by <var>tbp</var>
+RDB_any computes a logical OR over the expression
+*<var>exp</var> of the table specified by <var>tbp</var>
 and stores the result at the location
 pointed to by <var>resultp</var>.
 
-If the table has only one attribute, <var>attrname</var>
+If the table has only one attribute, <var>exp</var>
 may be NULL.
 
 If an error occurs, an error value is left in *<var>ecp</var>.
 
-The attribute <var>attrname</var> must be of
-type BOOLEAN.
+The type of *<var>exp</var> must be BOOLEAN.
 
 @returns
 
@@ -126,11 +153,11 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>no_running_tx_error
 <dd>*<var>tbp</var> is persistent and *<var>txp</var> is not a running transaction.
 <dt>name_error
-<dd>The table does not have an attribute <var>attrname</var>.
+<dd>*<var>exp</var> refers to a non-existing attribute or variable.
 <dt>type_mismatch_error
-<dd>The type of the attribute is not BOOLEAN.
+<dd>The type of the expression is not BOOLEAN.
 <dt>invalid_argument_error
-<dd><var>attrname</var> is NULL and the table has more than one
+<dd><var>exp</var> is NULL and the table has more than one
 attribute.
 <dt>
 <dd>The table represented by *<var>tbp</var> does not exist. (e.g. after a rollback)
@@ -140,33 +167,36 @@ The call may also fail for a @ref system-errors "system error",
 in which case the transaction may be implicitly rolled back.
 */
 int
-RDB_any(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
+RDB_any(RDB_object *tbp, RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resultp)
 {
     RDB_type *attrtyp;
-    RDB_qresult *qrp;
     RDB_object tpl;
+    RDB_object hobj;
+    RDB_qresult *qrp = NULL;
+    RDB_bool del_over = RDB_FALSE;
 
-    /* attrname may only be NULL if table is unary */
-    if (attrname == NULL) {
+    if (exp == NULL) {
         if (tbp->typ->def.basetyp->def.tuple.attrc != 1) {
-            RDB_raise_invalid_argument("attribute name is required", ecp);
+            RDB_raise_invalid_argument("second argument required", ecp);
             return RDB_ERROR;
         }
-        attrname = tbp->typ->def.basetyp->def.tuple.attrv[0].name;
+        exp = RDB_var_ref(tbp->typ->def.basetyp->def.tuple.attrv[0].name, ecp);
+        if (exp == NULL)
+            return RDB_ERROR;
+        del_over = RDB_TRUE;
     }
 
-    attrtyp = RDB_tuple_type_attr(tbp->typ->def.basetyp, attrname)->typ;
+    attrtyp = RDB_expr_type(exp, RDB_get_tuple_attr_type, tbp->typ->def.basetyp, NULL, ecp, txp);
     if (attrtyp == NULL) {
-        RDB_raise_name(attrname, ecp);
         return RDB_ERROR;
     }
     if (attrtyp != &RDB_BOOLEAN) {
-        RDB_raise_type_mismatch("attribute type must be BOOLEAN", ecp);
+        RDB_raise_type_mismatch("type must be boolean", ecp);
         return RDB_ERROR;
     }
 
-    /* initialize result */
+    /* Initialize result */
     *resultp = RDB_FALSE;
 
     /*
@@ -178,30 +208,55 @@ RDB_any(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         return RDB_ERROR;
 
     RDB_init_obj(&tpl);
+    RDB_init_obj(&hobj);
+
     while (RDB_next_tuple(qrp, &tpl, ecp, txp) == RDB_OK) {
-        if (RDB_tuple_get_bool(&tpl, attrname))
+        if (RDB_evaluate(exp, &RDB_tpl_get, &tpl, NULL, ecp, txp, &hobj)
+                != RDB_OK) {
+            goto error;
+        }
+        if (RDB_obj_bool(&hobj))
             *resultp = RDB_TRUE;
     }
-    RDB_destroy_obj(&tpl, ecp);
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        RDB_del_table_iterator(qrp, ecp, txp);
-        return RDB_ERROR;
+        goto error;
     }
-    RDB_clear_err(ecp);
+
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&hobj, ecp);
+
+    if (del_over) {
+        RDB_del_expr(exp, ecp);
+    }
+
     return RDB_del_table_iterator(qrp, ecp, txp);
+
+error:
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&hobj, ecp);
+
+    if (qrp != NULL) {
+        RDB_del_table_iterator(qrp, ecp, txp);
+    }
+
+    if (del_over) {
+        RDB_del_expr(exp, ecp);
+    }
+
+    return RDB_ERROR;
 }
 
 /**
- * RDB_max computes the maximum over the attribute
-<var>attrname</var> of the table specified by <var>tbp</var>
+ * RDB_max computes the maximum over the expression
+<var>exp</var> of the table specified by <var>tbp</var>
 and stores the result at the location pointed to by <var>resultp</var>.
 
-If the table has only one attribute, <var>attrname</var>
+If the table has only one attribute, <var>exp</var>
 may be NULL.
 
 If an error occurs, an error value is left in *<var>ecp</var>.
 
-The attribute <var>attrname</var> must be numeric
+The type of <var>exp</var> must be numeric
 and the result is of the same type as the attribute.
 
 @returns
@@ -214,11 +269,11 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>no_running_tx_error
 <dd>*<var>tbp</var> is persistent and *<var>txp</var> is not a running transaction.
 <dt>name_error
-<dd>The table does not have an attribute <var>attrname</var>.
+<dd>*<var>exp</var> refers to a non-existing attribute or variable.
 <dt>type_mismatch_error
 <dd>The type of the attribute is not numeric.
 <dt>invalid_argument_error
-<dd><var>attrname</var> is NULL and the table has more than one
+<dd><var>exp</var> is NULL and the table has more than one
 attribute.
 <dt>
 <dd>The table represented by *<var>tbp</var> does not exist. (e.g. after a rollback)
@@ -228,30 +283,32 @@ The call may also fail for a @ref system-errors "system error",
 in which case the transaction may be implicitly rolled back.
  */
 int
-RDB_max(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
+RDB_max(RDB_object *tbp, RDB_expression *exp, RDB_exec_context *ecp,
        RDB_transaction *txp, RDB_object *resultp)
 {
     RDB_type *attrtyp;
-    RDB_qresult *qrp;
+    RDB_qresult *qrp = NULL;
     RDB_object tpl;
+    RDB_object hobj;
+    RDB_bool del_over = RDB_FALSE;
 
-    /* attrname may only be NULL if table is unary */
-    if (attrname == NULL) {
+    if (exp == NULL) {
         if (tbp->typ->def.basetyp->def.tuple.attrc != 1) {
-            RDB_raise_invalid_argument("attribute name is required", ecp);
+            RDB_raise_invalid_argument("second argument required", ecp);
             return RDB_ERROR;
         }
-        attrname = tbp->typ->def.basetyp->def.tuple.attrv[0].name;
+        exp = RDB_var_ref(tbp->typ->def.basetyp->def.tuple.attrv[0].name, ecp);
+        if (exp == NULL)
+            return RDB_ERROR;
+        del_over = RDB_TRUE;
     }
 
-    attrtyp = RDB_tuple_type_attr(tbp->typ->def.basetyp, attrname)->typ;
+    attrtyp = RDB_expr_type(exp, RDB_get_tuple_attr_type, tbp->typ->def.basetyp, NULL, ecp, txp);
     if (attrtyp == NULL) {
-        RDB_raise_name(attrname, ecp);
         return RDB_ERROR;
     }
 
-    RDB_set_obj_type(resultp, attrtyp);
-
+    /* Initialize result */
     if (attrtyp == &RDB_INTEGER)
         resultp->val.int_val = RDB_INT_MIN;
     else if (attrtyp == &RDB_FLOAT)
@@ -261,6 +318,8 @@ RDB_max(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
+    RDB_set_obj_type(resultp, attrtyp);
+
     /*
      * Perform aggregation
      */
@@ -270,38 +329,64 @@ RDB_max(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         return RDB_ERROR;
 
     RDB_init_obj(&tpl);
+    RDB_init_obj(&hobj);
+
     while (RDB_next_tuple(qrp, &tpl, ecp, txp) == RDB_OK) {
+        if (RDB_evaluate(exp, &RDB_tpl_get, &tpl, NULL, ecp, txp, &hobj)
+                != RDB_OK) {
+            goto error;
+        }
         if (attrtyp == &RDB_INTEGER) {
-            RDB_int val = RDB_tuple_get_int(&tpl, attrname);
+            RDB_int val = RDB_obj_int(&hobj);
 
             if (val > resultp->val.int_val)
                  resultp->val.int_val = val;
         } else {
-            RDB_float val = RDB_tuple_get_float(&tpl, attrname);
+            RDB_float val = RDB_obj_float(&hobj);
 
             if (val > resultp->val.float_val)
                 resultp->val.float_val = val;
         }
     }
-    RDB_destroy_obj(&tpl, ecp);
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
+        goto error;
+    }
+
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&hobj, ecp);
+
+    if (del_over) {
+        RDB_del_expr(exp, ecp);
+    }
+
+    return RDB_del_table_iterator(qrp, ecp, txp);
+
+error:
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&hobj, ecp);
+
+    if (qrp != NULL) {
         RDB_del_table_iterator(qrp, ecp, txp);
     }
-    RDB_clear_err(ecp);
-    return RDB_del_table_iterator(qrp, ecp, txp);
+
+    if (del_over) {
+        RDB_del_expr(exp, ecp);
+    }
+
+    return RDB_ERROR;
 }
 
 /**
- * RDB_min computes the minimum over the attribute
-<var>attrname</var> of the table specified by <var>tbp</var>
+ * RDB_min computes the minimum over the expression
+<var>exp</var> of the table specified by <var>tbp</var>
 and stores the result at the location pointed to by <var>resultp</var>.
 
-If the table has only one attribute, <var>attrname</var>
+If the table has only one attribute, <var>exp</var>
 may be NULL.
 
 If an error occurs, an error value is left in *<var>ecp</var>.
 
-The attribute <var>attrname</var> must be numeric
+The type of *<var>exp</var> must be numeric
 and the result is of the same type as the attribute.
 
 @returns
@@ -314,11 +399,11 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>no_running_tx_error
 <dd>*<var>tbp</var> is persistent and *<var>txp</var> is not a running transaction.
 <dt>name_error
-<dd>The table does not have an attribute <var>attrname</var>.
+<dd>*<var>exp</var> refers to a non-existing attribute or variable.
 <dt>type_mismatch_error
 <dd>The type of the attribute is not numeric.
 <dt>invalid_argument_error
-<dd><var>attrname</var> is NULL and the table has more than one
+<dd><var>exp</var> is NULL and the table has more than one
 attribute.
 <dt>
 <dd>The table represented by *<var>tbp</var> does not exist. (e.g. after a rollback)
@@ -328,30 +413,32 @@ The call may also fail for a @ref system-errors "system error",
 in which case the transaction may be implicitly rolled back.
  */
 int
-RDB_min(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *resultp)
+RDB_min(RDB_object *tbp, RDB_expression *exp, RDB_exec_context *ecp,
+       RDB_transaction *txp, RDB_object *resultp)
 {
     RDB_type *attrtyp;
-    RDB_qresult *qrp;
+    RDB_qresult *qrp = NULL;
     RDB_object tpl;
+    RDB_object hobj;
+    RDB_bool del_over = RDB_FALSE;
 
-    /* attrname may only be NULL if table is unary */
-    if (attrname == NULL) {
+    if (exp == NULL) {
         if (tbp->typ->def.basetyp->def.tuple.attrc != 1) {
-            RDB_raise_invalid_argument("attribute name is required", ecp);
+            RDB_raise_invalid_argument("second argument required", ecp);
             return RDB_ERROR;
         }
-        attrname = tbp->typ->def.basetyp->def.tuple.attrv[0].name;
+        exp = RDB_var_ref(tbp->typ->def.basetyp->def.tuple.attrv[0].name, ecp);
+        if (exp == NULL)
+            return RDB_ERROR;
+        del_over = RDB_TRUE;
     }
 
-    attrtyp = RDB_tuple_type_attr(tbp->typ->def.basetyp, attrname)->typ;
+    attrtyp = RDB_expr_type(exp, RDB_get_tuple_attr_type, tbp->typ->def.basetyp, NULL, ecp, txp);
     if (attrtyp == NULL) {
-        RDB_raise_name(attrname, ecp);
         return RDB_ERROR;
     }
 
-    RDB_set_obj_type(resultp, attrtyp);
-
+    /* Initialize result */
     if (attrtyp == &RDB_INTEGER)
         resultp->val.int_val = RDB_INT_MAX;
     else if (attrtyp == &RDB_FLOAT)
@@ -361,6 +448,8 @@ RDB_min(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
+    RDB_set_obj_type(resultp, attrtyp);
+
     /*
      * Perform aggregation
      */
@@ -370,40 +459,64 @@ RDB_min(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         return RDB_ERROR;
 
     RDB_init_obj(&tpl);
+    RDB_init_obj(&hobj);
+
     while (RDB_next_tuple(qrp, &tpl, ecp, txp) == RDB_OK) {
+        if (RDB_evaluate(exp, &RDB_tpl_get, &tpl, NULL, ecp, txp, &hobj)
+                != RDB_OK) {
+            goto error;
+        }
         if (attrtyp == &RDB_INTEGER) {
-            RDB_int val = RDB_tuple_get_int(&tpl, attrname);
+            RDB_int val = RDB_obj_int(&hobj);
 
             if (val < resultp->val.int_val)
                  resultp->val.int_val = val;
         } else {
-            RDB_float val = RDB_tuple_get_float(&tpl, attrname);
+            RDB_float val = RDB_obj_float(&hobj);
 
             if (val < resultp->val.float_val)
                 resultp->val.float_val = val;
         }
     }
-    RDB_destroy_obj(&tpl, ecp);
-
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        RDB_del_table_iterator(qrp, ecp, txp);
-        return RDB_ERROR;
+        goto error;
     }
-    RDB_clear_err(ecp);
+
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&hobj, ecp);
+
+    if (del_over) {
+        RDB_del_expr(exp, ecp);
+    }
+
     return RDB_del_table_iterator(qrp, ecp, txp);
+
+error:
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&hobj, ecp);
+
+    if (qrp != NULL) {
+        RDB_del_table_iterator(qrp, ecp, txp);
+    }
+
+    if (del_over) {
+        RDB_del_expr(exp, ecp);
+    }
+
+    return RDB_ERROR;
 }
 
 /**
- * RDB_sum computes the sum over the attribute
-<var>attrname</var> of the table pointed to by <var>tbp</var>
+ * RDB_sum computes the sum over the expression
+<var>exp</var> of the table pointed to by <var>tbp</var>
 and stores the result at the location pointed to by <var>resultp</var>.
 
-If the table has only one attribute, <var>attrname</var>
+If the table has only one attribute, <var>exp</var>
 may be NULL.
 
 If an error occurs, an error value is left in *<var>ecp</var>.
 
-The attribute <var>attrname</var> must be numeric
+The type of <var>exp</var> must be numeric
 and the result is of the same type as the attribute.
 
 @returns
@@ -416,11 +529,11 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>no_running_tx_error
 <dd>*<var>tbp</var> is persistent and *<var>txp</var> is not a running transaction.
 <dt>name_error
-<dd>The table does not have an attribute <var>attrname</var>.
+<dd>*<var>exp</var> refers to a non-existing attribute or variable.
 <dt>type_mismatch_error
 <dd>The type of the attribute is not numeric.
 <dt>invalid_argument_error
-<dd><var>attrname</var> is NULL and the table has more than one
+<dd><var>exp</var> is NULL and the table has more than one
 attribute.
 <dt>
 <dd>The table represented by *<var>tbp</var> does not exist. (e.g. after a rollback)
@@ -430,30 +543,32 @@ The call may also fail for a @ref system-errors "system error",
 in which case the transaction may be implicitly rolled back.
  */
 int
-RDB_sum(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
+RDB_sum(RDB_object *tbp, RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *resultp)
 {
     RDB_type *attrtyp;
-    RDB_qresult *qrp;
+    RDB_qresult *qrp = NULL;
     RDB_object tpl;
+    RDB_object hobj;
+    RDB_bool del_over = RDB_FALSE;
 
-    if (attrname == NULL) {
+    if (exp == NULL) {
         if (tbp->typ->def.basetyp->def.tuple.attrc != 1) {
-            RDB_raise_invalid_argument("attribute name is required", ecp);
+            RDB_raise_invalid_argument("second argument required", ecp);
             return RDB_ERROR;
         }
-        attrname = tbp->typ->def.basetyp->def.tuple.attrv[0].name;
+        exp = RDB_var_ref(tbp->typ->def.basetyp->def.tuple.attrv[0].name, ecp);
+        if (exp == NULL)
+            return RDB_ERROR;
+        del_over = RDB_TRUE;
     }
 
-    attrtyp = RDB_tuple_type_attr(tbp->typ->def.basetyp, attrname)->typ;
+    attrtyp = RDB_expr_type(exp, RDB_get_tuple_attr_type, tbp->typ->def.basetyp, NULL, ecp, txp);
     if (attrtyp == NULL) {
-        RDB_raise_name(attrname, ecp);
         return RDB_ERROR;
     }
 
-    RDB_set_obj_type(resultp, attrtyp);
-
-    /* initialize result */
+    /* Initialize result */
     if (attrtyp == &RDB_INTEGER)
         resultp->val.int_val = 0;
     else if (attrtyp == &RDB_FLOAT)
@@ -462,6 +577,8 @@ RDB_sum(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         RDB_raise_type_mismatch("argument must be numeric", ecp);
         return RDB_ERROR;
     }
+
+    RDB_set_obj_type(resultp, attrtyp);
 
     /*
      * Perform aggregation
@@ -472,36 +589,59 @@ RDB_sum(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         return RDB_ERROR;
 
     RDB_init_obj(&tpl);
+    RDB_init_obj(&hobj);
+
     while (RDB_next_tuple(qrp, &tpl, ecp, txp) == RDB_OK) {
+        if (RDB_evaluate(exp, &RDB_tpl_get, &tpl, NULL, ecp, txp, &hobj)
+                != RDB_OK) {
+            goto error;
+        }
         if (attrtyp == &RDB_INTEGER)
-            resultp->val.int_val += RDB_tuple_get_int(&tpl, attrname);
+            resultp->val.int_val += RDB_obj_int(&hobj);
         else
-            resultp->val.float_val
-                            += RDB_tuple_get_float(&tpl, attrname);
+            resultp->val.float_val += RDB_obj_float(&hobj);
     }
-    RDB_destroy_obj(&tpl, ecp);
 
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        RDB_del_table_iterator(qrp, ecp, txp);
-        return RDB_ERROR;
+        goto error;
     }
-    RDB_clear_err(ecp);
+
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&hobj, ecp);
+
+    if (del_over) {
+        RDB_del_expr(exp, ecp);
+    }
 
     return RDB_del_table_iterator(qrp, ecp, txp);
+
+error:
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&hobj, ecp);
+
+    if (qrp != NULL) {
+        RDB_del_table_iterator(qrp, ecp, txp);
+    }
+
+    if (del_over) {
+        RDB_del_expr(exp, ecp);
+    }
+
+    return RDB_ERROR;
 }
 
 /**
- * Computes the average over the attribute
-<var>attrname</var> of the table specified by <var>tbp</var>
+ * Computes the average over the expression
+*<var>exp</var> of the table specified by <var>tbp</var>
 and stores the result at the location
 pointed to by <var>resultp</var>.
 
-If the table has only one attribute, <var>attrname</var>
+If the table has only one attribute, <var>exp</var>
 may be NULL.
 
 If an error occurs, an error value is left in *<var>ecp</var>.
 
-The attribute <var>attrname</var> must be numeric.
+The type of *<var>exp</var> must be numeric.
 
 @returns
 
@@ -513,11 +653,11 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>no_running_tx_error
 <dd>*<var>tbp</var> is persistent and *<var>txp</var> is not a running transaction.
 <dt>name_error
-<dd>The table does not have an attribute <var>attrname</var>.
+<dd>*<var>exp</var> refers to a non-existing attribute or variable.
 <dt>type_mismatch_error
 <dd>The type of the attribute is not numeric.
 <dt>invalid_argument_error
-<dd><var>attrname</var> is NULL and the table has more than one
+<dd><var>exp</var> is NULL and the table has more than one
 attribute.
 <dt>
 <dd>The table represented by *<var>tbp</var> does not exist. (e.g. after a rollback)
@@ -529,34 +669,37 @@ The call may also fail for a @ref system-errors "system error",
 in which case the transaction may be implicitly rolled back.
  */
 int
-RDB_avg(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
+RDB_avg(RDB_object *tbp, RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_float *resultp)
 {
     RDB_type *attrtyp;
-    RDB_qresult *qrp;
     RDB_object tpl;
+    RDB_object hobj;
     unsigned long count;
+    RDB_qresult *qrp = NULL;
+    RDB_bool del_over = RDB_FALSE;
 
-    /* attrname may only be NULL if table is unary */
-    if (attrname == NULL) {
+    if (exp == NULL) {
         if (tbp->typ->def.basetyp->def.tuple.attrc != 1) {
-            RDB_raise_invalid_argument("attribute name is required", ecp);
+            RDB_raise_invalid_argument("second argument required", ecp);
             return RDB_ERROR;
         }
-        attrname = tbp->typ->def.basetyp->def.tuple.attrv[0].name;
+        exp = RDB_var_ref(tbp->typ->def.basetyp->def.tuple.attrv[0].name, ecp);
+        if (exp == NULL)
+            return RDB_ERROR;
+        del_over = RDB_TRUE;
     }
 
-    attrtyp = RDB_tuple_type_attr(tbp->typ->def.basetyp, attrname)->typ;
+    attrtyp = RDB_expr_type(exp, RDB_get_tuple_attr_type, tbp->typ->def.basetyp, NULL, ecp, txp);
     if (attrtyp == NULL) {
-        RDB_raise_name(attrname, ecp);
         return RDB_ERROR;
     }
 
+    /* Initialize result */
     if (!RDB_type_is_numeric(attrtyp)) {
         RDB_raise_type_mismatch("argument must be numeric", ecp);
         return RDB_ERROR;
     }
-    count = 0;
 
     /*
      * Perform aggregation
@@ -567,28 +710,54 @@ RDB_avg(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         return RDB_ERROR;
 
     RDB_init_obj(&tpl);
+    RDB_init_obj(&hobj);
+
+    count = 0;
     *resultp = 0.0;
     while (RDB_next_tuple(qrp, &tpl, ecp, txp) == RDB_OK) {
         count++;
+        if (RDB_evaluate(exp, &RDB_tpl_get, &tpl, NULL, ecp, txp, &hobj)
+                != RDB_OK) {
+            goto error;
+        }
         if (attrtyp == &RDB_INTEGER)
-            *resultp += RDB_tuple_get_int(&tpl, attrname);
+            *resultp += RDB_obj_int(&hobj);
         else
-            *resultp += RDB_tuple_get_float(&tpl, attrname);
+            *resultp += RDB_obj_float(&hobj);
     }
-    RDB_destroy_obj(&tpl, ecp);
+
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        RDB_del_table_iterator(qrp, ecp, txp);
-        return RDB_ERROR;
+        goto error;
     }
-    RDB_clear_err(ecp);
 
     if (count == 0) {
         RDB_raise_aggregate_undefined(ecp);
-        return RDB_ERROR;
+        goto error;
     }
     *resultp /= count;
 
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&hobj, ecp);
+
+    if (del_over) {
+        RDB_del_expr(exp, ecp);
+    }
+
     return RDB_del_table_iterator(qrp, ecp, txp);
+
+error:
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&hobj, ecp);
+
+    if (qrp != NULL) {
+        RDB_del_table_iterator(qrp, ecp, txp);
+    }
+
+    if (del_over) {
+        RDB_del_expr(exp, ecp);
+    }
+
+    return RDB_ERROR;
 }
 
 /**

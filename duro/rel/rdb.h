@@ -305,28 +305,28 @@ RDB_apply_constraints(int, const RDB_ma_insert[],
         RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_max(RDB_object *tbp, const char *attrname, RDB_exec_context *,
-        RDB_transaction *, RDB_object *resultp);
+RDB_max(RDB_object *, RDB_expression *, RDB_exec_context *,
+        RDB_transaction *, RDB_object *);
 
 int
-RDB_min(RDB_object *tbp, const char *attrname, RDB_exec_context *,
-        RDB_transaction *, RDB_object *resultp);
+RDB_min(RDB_object *tbp, RDB_expression *, RDB_exec_context *,
+        RDB_transaction *, RDB_object *);
 
 int
-RDB_all(RDB_object *tbp, const char *attrname, RDB_exec_context *,
-        RDB_transaction *, RDB_bool *resultp);
+RDB_all(RDB_object *tbp, RDB_expression *, RDB_exec_context *,
+        RDB_transaction *, RDB_bool *);
 
 int
-RDB_any(RDB_object *tbp, const char *attrname, RDB_exec_context *,
-        RDB_transaction *, RDB_bool *resultp);
+RDB_any(RDB_object *tbp, RDB_expression *, RDB_exec_context *,
+        RDB_transaction *, RDB_bool *);
 
 int
-RDB_sum(RDB_object *tbp, const char *attrname, RDB_exec_context *,
-        RDB_transaction *, RDB_object *resultp);
+RDB_sum(RDB_object *, RDB_expression *, RDB_exec_context *,
+        RDB_transaction *, RDB_object *);
 
 int
-RDB_avg(RDB_object *tbp, const char *attrname, RDB_exec_context *,
-        RDB_transaction *, RDB_float *resultp);
+RDB_avg(RDB_object *, RDB_expression *, RDB_exec_context *,
+        RDB_transaction *, RDB_float *);
 
 int
 RDB_table_contains(RDB_object *tbp, const RDB_object *, RDB_exec_context *,

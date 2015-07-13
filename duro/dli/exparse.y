@@ -2767,19 +2767,57 @@ count_invocation: TOK_COUNT '(' expression ')' {
     }
     ;
 
-agg_invocation: agg_op_name '(' ne_expression_commalist ')' {
-        $$ = new_parse_inner();
-        if ($$ == NULL) {
+agg_invocation: agg_op_name '(' expression ')' {
+        RDB_parse_node *nodep = new_parse_inner();
+        if (nodep == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
             RDB_parse_del_node($2, RDB_parse_ecp);
             RDB_parse_del_node($3, RDB_parse_ecp);
             RDB_parse_del_node($4, RDB_parse_ecp);
             YYABORT;
         }
+        RDB_parse_add_child(nodep, $3);
+
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node(nodep, RDB_parse_ecp);
+            RDB_parse_del_node($4, RDB_parse_ecp);
+            YYABORT;
+        }
         RDB_parse_add_child($$, $1);
         RDB_parse_add_child($$, $2);
-        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, nodep);
         RDB_parse_add_child($$, $4);
+    }
+    | agg_op_name '(' expression ',' expression ')' {
+        RDB_parse_node *nodep = new_parse_inner();
+        if (nodep == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            RDB_parse_del_node($4, RDB_parse_ecp);
+            RDB_parse_del_node($5, RDB_parse_ecp);
+            RDB_parse_del_node($6, RDB_parse_ecp);
+            YYABORT;
+        }
+        RDB_parse_add_child(nodep, $3);
+        RDB_parse_add_child(nodep, $4);
+        RDB_parse_add_child(nodep, $5);
+
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node(nodep, RDB_parse_ecp);
+            RDB_parse_del_node($6, RDB_parse_ecp);
+            YYABORT;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, nodep);
+        RDB_parse_add_child($$, $6);
     }
     ;
 

@@ -30,6 +30,7 @@ Duro_exec_vardef(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *e
         if (typ == NULL)
             return RDB_ERROR;
         if (RDB_type_is_relation(typ)) {
+            RDB_del_nonscalar_type(typ, ecp);
             RDB_raise_syntax("relation type not permitted", ecp);
             return RDB_ERROR;
         }

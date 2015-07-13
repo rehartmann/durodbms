@@ -117,7 +117,7 @@ ifthenelse = IF expression THEN expression ELSE expression.
 
 count_inv = COUNT '(' expression ')'.
 
-agg_op_inv = agg_op_name '(' expression ',' id ')'.
+agg_op_inv = agg_op_name '(' expression [',' expression] ')'.
 
 literal = string | integer | decimal | float | binary | TRUE | FALSE
         | RELATION '{' [id type {',' id type}] '}' '{' [expression {',' expression}] '}'

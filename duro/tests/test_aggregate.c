@@ -30,7 +30,7 @@ test_aggregate(RDB_database *dbp, RDB_exec_context *ecp)
 
     /* Creating aggregation AVG ( EMPS1, SALARY ) */
 
-    ret = RDB_avg(tbp, "SALARY", ecp, &tx, &avg);
+    ret = RDB_avg(tbp, RDB_var_ref("SALARY", ecp), ecp, &tx, &avg);
     if (ret != RDB_OK) {
         RDB_commit(ecp, &tx);
         return RDB_ERROR;

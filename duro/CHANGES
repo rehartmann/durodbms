@@ -4,6 +4,10 @@ DuroDBMS 1.0
 
 - Duro D/T now supports a CONST statement.
 
+- The second argument of aggregate operators SUM, AVG, MAX, MIN, ALL, AND, ANY, OR
+  can be an expresssion and is optional if the relation has only one attribute.
+  The second argument of RDB_min() etc. is now of type RDB_expression *. 
+
 - Made datetime type ordered.
 
 - Fixed bug in RDB_drop_table_index().

@@ -18,8 +18,8 @@ struct chained_type_getters {
     RDB_gettypefn *getfn2p;
 };
 
-static RDB_type *
-get_tuple_attr_type(const char *attrname, void *arg)
+RDB_type *
+RDB_get_tuple_attr_type(const char *attrname, void *arg)
 {
     RDB_attr *attrp = RDB_tuple_type_attr(arg, attrname);
     return attrp != NULL ? attrp->typ : NULL;
@@ -137,11 +137,11 @@ where_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         tgetters.getarg1 = arg;
         tgetters.getfn1p = getfnp;
         tgetters.getarg2 = reltyp->def.basetyp;
-        tgetters.getfn2p = get_tuple_attr_type;
+        tgetters.getfn2p = RDB_get_tuple_attr_type;
         condtyp = RDB_expr_type(exp->def.op.args.lastp, get_type_from_chained_getters,
                 &tgetters, envp, ecp, txp);
     } else {
-        condtyp = RDB_expr_type(exp->def.op.args.lastp, get_tuple_attr_type,
+        condtyp = RDB_expr_type(exp->def.op.args.lastp, RDB_get_tuple_attr_type,
                 reltyp->def.basetyp, envp, ecp, txp);
     }
     if (condtyp == NULL) {
@@ -169,7 +169,7 @@ RDB_expr_type_tpltyp(RDB_expression *exp, const RDB_type *tpltyp,
 {
     struct chained_type_getters chgetters;
 
-    chgetters.getfn1p = tpltyp != NULL ? &get_tuple_attr_type : NULL;
+    chgetters.getfn1p = tpltyp != NULL ? &RDB_get_tuple_attr_type : NULL;
     chgetters.getarg1 = (void *) tpltyp;
     chgetters.getfn2p = getfnp;
     chgetters.getarg2 = getarg;
@@ -682,51 +682,17 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
 
     argc = RDB_expr_list_length(&exp->def.op.args);
 
-    /* Aggregate operators with attribute argument */
-    if (strcmp(exp->def.op.name, "avg") == 0) {
-        RDB_type *argtyp;
-        RDB_type *attrtyp;
-
-        if (argc != 2) {
-            RDB_raise_invalid_argument("invalid number of aggregate arguments",
-                    ecp);
-            goto error;
-        }
-
-        if (exp->def.op.args.firstp->nextp->kind != RDB_EX_VAR) {
-            RDB_raise_invalid_argument("invalid aggregate", ecp);
-            goto error;
-        }
-        if (argtv[0]->kind != RDB_TP_RELATION) {
-            RDB_raise_invalid_argument("aggregate requires relation argument",
-                    ecp);
-            goto error;
-        }
-
-        argtyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg, envp, ecp, txp);
-        if (argtyp == NULL)
-            goto error;
-        attrtyp = RDB_type_attr_type(argtyp,
-                exp->def.op.args.firstp->nextp->def.varname);
-        if (attrtyp != &RDB_INTEGER && attrtyp != &RDB_FLOAT
-                && attrtyp != &RDB_FLOAT) {
-            RDB_raise_type_mismatch("invalid attribute type", ecp);
-            goto error;
-        }
-        return &RDB_FLOAT;
-    } else if (strcmp(exp->def.op.name, "sum") == 0
+    /* Aggregate operators */
+    if (strcmp(exp->def.op.name, "sum") == 0
             || strcmp(exp->def.op.name, "min") == 0
-            || strcmp(exp->def.op.name, "max") == 0) {
+            || strcmp(exp->def.op.name, "max") == 0
+            || strcmp(exp->def.op.name, "avg") == 0) {
         RDB_type *argtyp;
         RDB_type *attrtyp;
 
         if (argc != 1 && argc != 2) {
             RDB_raise_invalid_argument("invalid number of aggregate arguments",
                     ecp);
-            goto error;
-        }
-        if (argc == 2 && exp->def.op.args.firstp->nextp->kind != RDB_EX_VAR) {
-            RDB_raise_invalid_argument("invalid aggregate", ecp);
             goto error;
         }
 
@@ -740,26 +706,27 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
         }
         if (argc == 1) {
             if (argtyp->def.basetyp->def.tuple.attrc != 1) {
-                RDB_raise_invalid_argument("Second argument is required", ecp);
+                RDB_raise_invalid_argument("second argument required", ecp);
                 goto error;
             }
             attrtyp = argtyp->def.basetyp->def.tuple.attrv[0].typ;
         } else {
-            attrtyp = RDB_type_attr_type(argtyp,
-                    exp->def.op.args.firstp->nextp->def.varname);
+            attrtyp = RDB_expr_type(exp->def.op.args.firstp->nextp, RDB_get_tuple_attr_type,
+                    argtyp->def.basetyp, envp, ecp, txp);
+            if (attrtyp == NULL)
+                goto error;
         }
-        if (attrtyp != &RDB_INTEGER && attrtyp != &RDB_FLOAT
-                && attrtyp != &RDB_FLOAT) {
+        if (attrtyp != &RDB_INTEGER && attrtyp != &RDB_FLOAT) {
             RDB_raise_type_mismatch("invalid attribute type", ecp);
             goto error;
         }
-        return attrtyp;
+        return strcmp(exp->def.op.name, "avg") == 0 ? &RDB_FLOAT : attrtyp;
     } else if (strcmp(exp->def.op.name, "any") == 0
             || strcmp(exp->def.op.name, "all") == 0) {
         RDB_type *argtyp;
         RDB_type *attrtyp;
 
-        if (argc != 2) {
+        if (argc != 1 && argc != 2) {
             RDB_raise_invalid_argument("invalid number of aggregate arguments",
                     ecp);
             goto error;
@@ -768,9 +735,23 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
         argtyp = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg, envp, ecp, txp);
         if (argtyp == NULL)
             goto error;
-        attrtyp = RDB_type_attr_type(argtyp,
-                exp->def.op.args.firstp->nextp->def.varname);
-
+        if (argtyp->kind != RDB_TP_RELATION) {
+            RDB_raise_invalid_argument("aggregate requires relation argument",
+                    ecp);
+            goto error;
+        }
+        if (argc == 1) {
+            if (argtyp->def.basetyp->def.tuple.attrc != 1) {
+                RDB_raise_invalid_argument("second argument required", ecp);
+                goto error;
+            }
+            attrtyp = argtyp->def.basetyp->def.tuple.attrv[0].typ;
+        } else {
+            attrtyp = RDB_expr_type(exp->def.op.args.firstp->nextp, RDB_get_tuple_attr_type,
+                    argtyp->def.basetyp, envp, ecp, txp);
+            if (attrtyp == NULL)
+                goto error;
+        }
         if (attrtyp != &RDB_BOOLEAN) {
             RDB_raise_type_mismatch("invalid attribute type", ecp);
             goto error;
