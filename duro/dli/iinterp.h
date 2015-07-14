@@ -133,6 +133,9 @@ RDB_transaction *
 Duro_dt_tx(Duro_interp *);
 
 int
+Duro_rollback_all(Duro_interp *, RDB_exec_context *);
+
+int
 Duro_dt_put_creop_info(Duro_interp *, const char *, Duro_uop_info *,
         RDB_exec_context *);
 

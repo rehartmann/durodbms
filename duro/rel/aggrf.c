@@ -16,9 +16,10 @@
  */
 
 /**
- * RDB_all computes a logical AND over the expression
-*<var>exp</var> of the table *<var>tbp</var>
-and stores the result at the location pointed to by <var>resultp</var>.
+ * RDB_all computes a logical OR over the expression
+*<var>exp</var> of the table specified by <var>tbp</var>
+and stores the result at the location
+pointed to by <var>resultp</var>.
 
 If the table has only one attribute, <var>exp</var>
 may be NULL.
@@ -37,7 +38,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>no_running_tx_error
 <dd>*<var>tbp</var> is persistent and *<var>txp</var> is not a running transaction.
 <dt>name_error
-<dd>The table does not have an attribute <var>attrname</var>.
+<dd>*<var>exp</var> refers to a non-existing attribute.
 <dt>type_mismatch_error
 <dd>The type of the attribute is not BOOLEAN.
 <dt>invalid_argument_error
@@ -153,7 +154,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>no_running_tx_error
 <dd>*<var>tbp</var> is persistent and *<var>txp</var> is not a running transaction.
 <dt>name_error
-<dd>*<var>exp</var> refers to a non-existing attribute or variable.
+<dd>*<var>exp</var> refers to a non-existing attribute.
 <dt>type_mismatch_error
 <dd>The type of the expression is not BOOLEAN.
 <dt>invalid_argument_error
@@ -269,7 +270,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>no_running_tx_error
 <dd>*<var>tbp</var> is persistent and *<var>txp</var> is not a running transaction.
 <dt>name_error
-<dd>*<var>exp</var> refers to a non-existing attribute or variable.
+<dd>*<var>exp</var> refers to a non-existing attribute.
 <dt>type_mismatch_error
 <dd>The type of the attribute is not numeric.
 <dt>invalid_argument_error
@@ -399,7 +400,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>no_running_tx_error
 <dd>*<var>tbp</var> is persistent and *<var>txp</var> is not a running transaction.
 <dt>name_error
-<dd>*<var>exp</var> refers to a non-existing attribute or variable.
+<dd>*<var>exp</var> refers to a non-existing attribute.
 <dt>type_mismatch_error
 <dd>The type of the attribute is not numeric.
 <dt>invalid_argument_error
@@ -529,7 +530,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>no_running_tx_error
 <dd>*<var>tbp</var> is persistent and *<var>txp</var> is not a running transaction.
 <dt>name_error
-<dd>*<var>exp</var> refers to a non-existing attribute or variable.
+<dd>*<var>exp</var> refers to a non-existing attribute.
 <dt>type_mismatch_error
 <dd>The type of the attribute is not numeric.
 <dt>invalid_argument_error
@@ -653,7 +654,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>no_running_tx_error
 <dd>*<var>tbp</var> is persistent and *<var>txp</var> is not a running transaction.
 <dt>name_error
-<dd>*<var>exp</var> refers to a non-existing attribute or variable.
+<dd>*<var>exp</var> refers to a non-existing attribute.
 <dt>type_mismatch_error
 <dd>The type of the attribute is not numeric.
 <dt>invalid_argument_error

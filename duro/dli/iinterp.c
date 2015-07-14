@@ -111,6 +111,24 @@ system_op(int argc, RDB_object *argv[], RDB_operator *op,
     return RDB_OK;
 }
 
+int
+Duro_rollback_all(Duro_interp *interp, RDB_exec_context *ecp)
+{
+    int ret;
+    tx_node *htxnp;
+
+    if (interp->txnp == NULL)
+        return RDB_OK;
+    ret = RDB_rollback_all(ecp, &interp->txnp->tx);
+
+    do {
+        htxnp = interp->txnp;
+        interp->txnp = interp->txnp->parentp;
+        RDB_free(htxnp);
+    } while (interp->txnp != NULL);
+    return ret;
+}
+
 static int
 connect_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
@@ -119,7 +137,7 @@ connect_op(int argc, RDB_object *argv[], RDB_operator *op,
     Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
 
     if (txp != NULL && RDB_tx_is_running(txp))
-        RDB_rollback_all(ecp, txp);
+        Duro_rollback_all(interp, ecp);
 
     /* If a connection exists, close it */
     if (interp->envp != NULL) {
