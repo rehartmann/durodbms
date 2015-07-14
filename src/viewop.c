@@ -170,13 +170,16 @@ error:
  */
 RDB_operator *
 Dr_provide_view_op(const char *viewname, Duro_interp *interpp,
-        RDB_exec_context *ecp, FCGX_Stream *err)
+        RDB_type *resptyp, RDB_exec_context *ecp, FCGX_Stream *err)
 {
     RDB_exec_context ec;
     RDB_object viewopname;
-    RDB_type *viewargtyp = NULL;
+    RDB_type *viewargtypv[2];
     /* Try to get the view operator without a tx */
     RDB_operator *view_op;
+
+    viewargtypv[0] = resptyp;
+    viewargtypv[1] = NULL;
 
     RDB_init_obj(&viewopname);
 
@@ -185,15 +188,15 @@ Dr_provide_view_op(const char *viewname, Duro_interp *interpp,
     if (RDB_append_string(&viewopname, viewname, ecp) != RDB_OK)
         goto error;
 
-    view_op = RDB_get_update_op(RDB_obj_string(&viewopname), 1,
-            &viewargtyp, interpp->envp, ecp, NULL);
+    view_op = RDB_get_update_op(RDB_obj_string(&viewopname), 2,
+            viewargtypv, interpp->envp, ecp, NULL);
 
     if (view_op == NULL) {
         /* Retry with tx */
         if (Duro_dt_execute_str("begin tx;", interpp, ecp) != RDB_OK)
             goto error;
-        view_op = RDB_get_update_op(RDB_obj_string(&viewopname), 1,
-                    &viewargtyp, interpp->envp, ecp, &interpp->txnp->tx);
+        view_op = RDB_get_update_op(RDB_obj_string(&viewopname), 2,
+                    viewargtypv, interpp->envp, ecp, &interpp->txnp->tx);
     }
 
     if (view_op == NULL) {
@@ -202,8 +205,8 @@ Dr_provide_view_op(const char *viewname, Duro_interp *interpp,
         if (create_view_op(viewname, interpp, ecp, err) != RDB_OK) {
             goto error;
         }
-        view_op = RDB_get_update_op(RDB_obj_string(&viewopname), 1,
-                &viewargtyp, interpp->envp, ecp, &interpp->txnp->tx);
+        view_op = RDB_get_update_op(RDB_obj_string(&viewopname), 2,
+                viewargtypv, interpp->envp, ecp, &interpp->txnp->tx);
         if (view_op == NULL)
             goto error;
     } else {
@@ -226,8 +229,8 @@ Dr_provide_view_op(const char *viewname, Duro_interp *interpp,
             if (create_view_op(viewname, interpp, ecp, err) != RDB_OK) {
                 goto error;
             }
-            view_op = RDB_get_update_op(RDB_obj_string(&viewopname), 1,
-                    &viewargtyp, interpp->envp, ecp, &interpp->txnp->tx);
+            view_op = RDB_get_update_op(RDB_obj_string(&viewopname), 2,
+                    viewargtypv, interpp->envp, ecp, &interpp->txnp->tx);
             if (view_op == NULL)
                 goto error;
         }

@@ -155,7 +155,7 @@ operator process_template(istrm io.iostream_id, ostrm io.iostream_id,
            -- Directive found
            -- Output text before the directive
            if dirpos > pos then
-               io.put(ostrm, "http.put('"
+               io.put(ostrm, "http.put(resp, '"
                        || substr_b(current_line, pos, dirpos - pos)
                        || "');");
            end if;
@@ -177,7 +177,7 @@ operator process_template(istrm io.iostream_id, ostrm io.iostream_id,
                process_control(istrm, ostrm, current_line, pos, cdir);
            else
                -- Extract expression
-	           io.put(ostrm, "http.put(net.hescape("
+	           io.put(ostrm, "http.put(resp, net.hescape("
 	                   || substr_b(current_line, pos, dirend - pos)
 	                   || '));');
 	           pos := dirend + 2;
@@ -186,7 +186,7 @@ operator process_template(istrm io.iostream_id, ostrm io.iostream_id,
 	       -- No directive
 	       -- Output the remaining line
 	       var s init substr_b(current_line, pos);
-           io.put_line(ostrm, "http.put_line('" || s || "');");
+           io.put_line(ostrm, "http.put_line(resp, '" || s || "');");
 
            -- get next line
            io.get_line(istrm, current_line);
@@ -203,7 +203,7 @@ operator template_to_op (tfilename string, view_op string, ostrm io.iostream_id)
     var line string;
 
     io.put(ostrm, 'PACKAGE t; ');
-    io.put(ostrm, 'OPERATOR ' || view_op || ' (m TUPLE { * }) UPDATES {};');
+    io.put(ostrm, 'OPERATOR ' || view_op || ' (resp http.http_response, m TUPLE { * }) UPDATES { resp };');
 
     io.open(istrm, tfilename, 'r');
 

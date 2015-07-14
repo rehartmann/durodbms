@@ -1,0 +1,10 @@
+<html>
+<head>
+<title>Delete supplier supplier</title>
+<body>
+<p>Delete supplier {$ m.sname $}?
+<form action="/fcgi-bin/dreisam.fcgi/delsupp" method="POST">
+<input type="hidden" name="sno" value="{$ cast_as_string(m.sno) $}">
+<p><input type="submit">
+</form>
+</html>

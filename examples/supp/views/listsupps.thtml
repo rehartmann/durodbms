@@ -6,6 +6,7 @@
 {$%loop length(m.supps) var i $}
 <p>{$ cast_as_string(m.supps[i].sno) $} {$ m.supps[i].sname $}
 <a href="/fcgi-bin/dreisam.fcgi/editsupp?sno={$ cast_as_string(m.supps[i].sno) $}">Edit</a>
+<a href="/fcgi-bin/dreisam.fcgi/askdelsupp?sno={$ cast_as_string(m.supps[i].sno) $}">Delete</a>
 {$%end $}
 {$%if length(m.supps)=0 $}
 <p>No suppliers found.

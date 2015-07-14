@@ -36,17 +36,17 @@ operator send_headers(resp http.http_response) updates {};
     dreisam_response_headers_state := 1;
 
     if the_status(resp) <> '' then
-        http.put_line('Status: ' || the_status(resp));
+        http.put_line(resp, 'Status: ' || the_status(resp));
     end if;
 
     var i int;
     for i := 0 to length(the_headers(resp)) - 1;
-        http.put(the_headers(resp)[i].name);
-        http.put(': ');
-        http.put_line(the_headers(resp)[i].value);
+        http.put(resp, the_headers(resp)[i].name);
+        http.put(resp, ': ');
+        http.put_line(resp, the_headers(resp)[i].value);
     end for;
 
-    http.put_line('');
+    http.put_line(resp, '');
     dreisam_response_headers_state := 2;
 end operator;
 
@@ -91,7 +91,7 @@ operator send_json_response(resp http.http_response, tp tup { * })
     set_response_header(resp, 'Content-Type', 'application/json');
     set_response_header(resp, 'Content-Length', cast_as_string(strlen_b(json_data)));
 
-    http.put(json_data);
+    http.put(resp, json_data);
 end operator;
 
 end package;

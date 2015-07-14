@@ -106,7 +106,7 @@ op_http_put_line(int argc, RDB_object *argv[], RDB_operator *op,
         return RDB_OK;
     }
 
-    if (FCGX_PutS(RDB_obj_string(argv[0]), fcgi_out) == -1)
+    if (FCGX_PutS(RDB_obj_string(argv[1]), fcgi_out) == -1)
         goto error;
     if (FCGX_PutS("\n", fcgi_out) == -1)
         goto error;
@@ -129,7 +129,7 @@ op_http_put(int argc, RDB_object *argv[], RDB_operator *op,
         return RDB_OK;
     }
 
-    if (FCGX_PutS(RDB_obj_string(argv[0]), fcgi_out) == -1) {
+    if (FCGX_PutS(RDB_obj_string(argv[1]), fcgi_out) == -1) {
         RDB_errcode_to_error(errno, ecp);
         return RDB_ERROR;
     }
@@ -143,7 +143,7 @@ op_http_put_err_line(int argc, RDB_object *argv[], RDB_operator *op,
 {
     send_headers(ecp);
 
-    if (FCGX_PutS(RDB_obj_string(argv[0]), fcgi_err) == -1)
+    if (FCGX_PutS(RDB_obj_string(argv[1]), fcgi_err) == -1)
         goto error;
     if (FCGX_PutS("\n", fcgi_err) == -1)
         goto error;
@@ -161,7 +161,7 @@ op_http_put_err(int argc, RDB_object *argv[], RDB_operator *op,
 {
     send_headers(ecp);
 
-    if (FCGX_PutS(RDB_obj_string(argv[0]), fcgi_err) == -1) {
+    if (FCGX_PutS(RDB_obj_string(argv[1]), fcgi_err) == -1) {
         RDB_errcode_to_error(errno, ecp);
         return RDB_ERROR;
     }
@@ -189,7 +189,7 @@ op_http_get_request_header(int argc, RDB_object *argv[], RDB_operator *op,
 {
     const char *value = FCGX_GetParam(RDB_obj_string(argv[1]), fcgi_envp);
     if (value == NULL) {
-        RDB_raise_not_found(RDB_obj_string(argv[0]), ecp);
+        RDB_raise_not_found(RDB_obj_string(argv[1]), ecp);
         return RDB_ERROR;
     }
     return RDB_string_to_obj(retvalp, value, ecp);
@@ -319,6 +319,8 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
     if (request_method == NULL)
         request_method = "";
 
+    FCGX_FPrintF(err, "path_info: %s, method: %s\n", request_method, path_info);
+
     if (RDB_string_to_obj(&method, request_method, ecp) != RDB_OK)
         goto error;
 
@@ -377,7 +379,8 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
     }
 
     if (strcmp(request_method, "GET") == 0
-            || strcmp(request_method, "HEAD") == 0) {
+            || strcmp(request_method, "HEAD") == 0
+            || strcmp(request_method, "DELETE") == 0) {
         char *query_string = FCGX_GetParam("QUERY_STRING", envp);
         if (RDB_net_form_to_tuple(&model, query_string, ecp) != RDB_OK)
             goto error;
@@ -393,7 +396,7 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
         FCGX_FPrintF(out,
                   "Status: 405 Method not allowed\n"
                   "Content-Type: text/html; charset=utf-8\n"
-                  "Allow: GET, POST\n"
+                  "Allow: GET, HEAD, POST, DELETE\n"
                   "\n"
                   "<html>\n"
                   "<head>\n"
@@ -434,20 +437,32 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
             != RDB_OK) {
         FCGX_PutS("Invoking action operator failed\n", err);
         log_err(interpp, ecp, err);
+
+        if (Duro_dt_tx(interpp) != NULL) {
+            FCGX_PutS("Found transaction after action invocation, rolling back\n", err);
+            Duro_rollback_all(interpp, ecp);
+        }
+
         send_error_response(500, ERROR_REQUEST, out, ecp);
         RDB_destroy_obj(&viewname, ecp);
         RDB_destroy_obj(&model, ecp);
         return RDB_OK;
     }
 
+    if (Duro_dt_tx(interpp) != NULL) {
+        FCGX_PutS("Found transaction after action invocation, rolling back\n", err);
+        Duro_rollback_all(interpp, ecp);
+    }
+
     if (*RDB_obj_string(&viewname) != '\0') {
-        view_op = Dr_provide_view_op(RDB_obj_string(&viewname), interpp, ecp,
-                err);
+        view_op = Dr_provide_view_op(RDB_obj_string(&viewname),
+                interpp, RDB_obj_type(response), ecp, err);
         if (view_op == NULL)
             goto error;
 
-        argv[0] = &model;
-        if (RDB_call_update_op(view_op, 1, argv, ecp, NULL) != RDB_OK) {
+        argv[0] = response;
+        argv[1] = &model;
+        if (RDB_call_update_op(view_op, 2, argv, ecp, NULL) != RDB_OK) {
             FCGX_FPrintF(err, "Invoking view operator %s failed\n",
                     RDB_obj_string(&viewname));
             log_err(interpp, ecp, err);
@@ -477,31 +492,33 @@ error:
 }
 
 static int
-create_fcgi_ops(Duro_interp *interpp, RDB_type *reqtyp, RDB_exec_context *ecp)
+create_fcgi_ops(Duro_interp *interpp, RDB_type *reqtyp, RDB_type *resptyp, RDB_exec_context *ecp)
 {
     int ret;
-    RDB_parameter param;
+    RDB_parameter paramv[2];
     RDB_type *paramtypv[2];
 
-    param.typ = &RDB_STRING;
-    param.update = RDB_FALSE;
-    if (RDB_put_upd_op(&interpp->sys_upd_op_map, "http.put_line", 1, &param,
+    paramv[0].typ = resptyp;
+    paramv[0].update = RDB_TRUE;
+    paramv[1].typ = &RDB_STRING;
+    paramv[1].update = RDB_FALSE;
+    if (RDB_put_upd_op(&interpp->sys_upd_op_map, "http.put_line", 2, paramv,
             &op_http_put_line, ecp) != RDB_OK) {
         ret = DR_ERR_INIT_OP;
         goto error;
     }
-    if (RDB_put_upd_op(&interpp->sys_upd_op_map, "http.put_err_line", 1, &param,
+    if (RDB_put_upd_op(&interpp->sys_upd_op_map, "http.put_err_line", 2, paramv,
             &op_http_put_err_line, ecp) != RDB_OK) {
         ret = DR_ERR_INIT_OP;
         goto error;
     }
 
-    if (RDB_put_upd_op(&interpp->sys_upd_op_map, "http.put", 1, &param,
+    if (RDB_put_upd_op(&interpp->sys_upd_op_map, "http.put", 2, paramv,
             &op_http_put, ecp) != RDB_OK) {
         ret = DR_ERR_INIT_OP;
         goto error;
     }
-    if (RDB_put_upd_op(&interpp->sys_upd_op_map, "http.put_err", 1, &param,
+    if (RDB_put_upd_op(&interpp->sys_upd_op_map, "http.put_err", 2, paramv,
             &op_http_put_err, ecp) != RDB_OK) {
         ret = DR_ERR_INIT_OP;
         goto error;
@@ -595,15 +612,15 @@ main(void)
         goto error;
     }
 
-    ret = create_fcgi_ops(&interp, RDB_obj_type(request), &ec);
-    if (ret != RDB_OK)
-        goto error;
-
     response = Duro_lookup_var("dreisam_resp", &interp, &ec);
     if (response == NULL) {
         ret = DR_ERR_GET_OP;
         goto error;
     }
+
+    ret = create_fcgi_ops(&interp, RDB_obj_type(request), RDB_obj_type(response), &ec);
+    if (ret != RDB_OK)
+        goto error;
 
     send_headers_argtv[0] = RDB_obj_type(response);
     send_headers_op = RDB_get_update_op("http.send_headers",

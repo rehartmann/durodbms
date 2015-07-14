@@ -4,7 +4,6 @@
 <body>
 <form action="/fcgi-bin/dreisam.fcgi/updatesupp" method="POST">
 <p>S#<br>
-
 <input type="text" name="sno" value="{$ cast_as_string(m.sno) $}" readonly>
 <p>Name<br>
 <input type="text" name="sname" value="{$ m.sname $}">
