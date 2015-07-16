@@ -457,8 +457,40 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
     if (*RDB_obj_string(&viewname) != '\0') {
         view_op = Dr_provide_view_op(RDB_obj_string(&viewname),
                 interpp, RDB_obj_type(response), ecp, err);
-        if (view_op == NULL)
-            goto error;
+        if (view_op == NULL) {
+            RDB_type *errtyp = RDB_obj_type(RDB_get_err(ecp));
+            if (errtyp != NULL) {
+                /*
+                 * Special treatment of syntax_error and net.template_error
+                 */
+                const char *typename;
+
+                if (errtyp == &RDB_SYNTAX_ERROR) {
+                    log_err(interpp, ecp, err);
+
+                    send_error_response(500, ERROR_REQUEST, out, ecp);
+
+                    RDB_destroy_obj(&viewname, ecp);
+                    RDB_destroy_obj(&model, ecp);
+                    RDB_destroy_obj(&method, ecp);
+                    return RDB_OK;
+                }
+                typename = RDB_type_name(errtyp);
+                if (typename != NULL
+                        && strcmp(typename, "net.template_error") == 0) {
+                    interpp->err_line = -1; /* Line number is meaningless here */
+                    log_err(interpp, ecp, err);
+
+                    send_error_response(500, ERROR_REQUEST, out, ecp);
+
+                    RDB_destroy_obj(&viewname, ecp);
+                    RDB_destroy_obj(&model, ecp);
+                    RDB_destroy_obj(&method, ecp);
+                    return RDB_OK;
+                }
+                goto error;
+            }
+        }
 
         argv[0] = response;
         argv[1] = &model;

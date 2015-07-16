@@ -50,10 +50,11 @@ type template_error
     possrep { msg string }
     init net.template_error('');
 
-operator get_cdir(current_line string, pos int) returns string;
+operator get_cdir(current_line string, pos int, lineno int) returns string;
     var endc init strfind_b(current_line, '$', pos);
     if endc = -1 then
-        raise net.template_error('control directive without proper delimiter');
+        raise net.template_error('control directive without proper delimiter at line '
+                || cast_as_string(lineno));
     end if;
     var endw init strfind_b(current_line, ' ', pos);
     if (endw <> -1) and (endw < endc) then
@@ -62,18 +63,20 @@ operator get_cdir(current_line string, pos int) returns string;
     return substr_b(current_line, pos, endc - pos);
 end operator;
 
-operator eat_opening_cdir(current_line string, pos int) updates {pos};
+operator eat_opening_cdir(current_line string, pos int, lineno int) updates {pos};
     if pos + 3 > strlen_b(current_line) then
-        raise net.template_error('missing {$%end or {$%else');
+        raise net.template_error('missing {$%end or {$%else at line '
+                || cast_as_string(lineno));
     end if;
     if substr_b(current_line, pos, 3) <> '{$%' then
-        raise net.template_error('missing missing {$%end or {$%else');
+        raise net.template_error('missing missing {$%end or {$%else at line '
+                || cast_as_string(lineno));
     end if;
     pos := pos + 3;
 end operator;
 
 operator process_control(istrm io.iostream_id, ostrm io.iostream_id,
-                current_line string, pos int, cdir string)
+                current_line string, pos int, cdir string, lineno int)
         updates {current_line, pos};
     var cexp string;
     var dirend init strfind_b(current_line, '$}', pos);
@@ -82,43 +85,51 @@ operator process_control(istrm io.iostream_id, ostrm io.iostream_id,
             cexp := substr_b(current_line, pos, dirend - pos);
             io.put(ostrm, 'IF ' || cexp || ' THEN ');
             pos := dirend + 2;
-            process_template(istrm, ostrm, current_line, pos);
-            eat_opening_cdir(current_line, pos);
-            cdir := net.get_cdir(current_line, pos);
+            process_template(istrm, ostrm, current_line, pos, lineno);
+            eat_opening_cdir(current_line, pos, lineno);
+            cdir := net.get_cdir(current_line, pos, lineno);
             case
             when cdir = 'end' then
                 io.put(ostrm, 'END IF;');
                 pos := strfind_b(current_line, '$}', pos);
                 if pos = -1 then
-                    raise net.template_error('missing $}');
+                    raise net.template_error('missing $} at line '
+                            || cast_as_string(lineno));
                 end if;
                 pos := pos + 2;
             when cdir = 'else' then
                 io.put(ostrm, 'ELSE ');
                 pos := strfind_b(current_line, '$}', pos);
                 if pos = -1 then
-                    raise net.template_error('missing $}');
+                    raise net.template_error('missing $} at line '
+                            || cast_as_string(lineno));
                 end if;
                 pos := pos + 2;
-                process_template(istrm, ostrm, current_line, pos);
-                eat_opening_cdir(current_line, pos);
-                cdir := net.get_cdir(current_line, pos);
+                process_template(istrm, ostrm, current_line, pos, lineno);
+                eat_opening_cdir(current_line, pos, lineno);
+                cdir := net.get_cdir(current_line, pos, lineno);
                 if cdir <> 'end' then
-                    raise net.template_error('encountered {$%' || cdir || ', expected ${%end ');
+                    raise net.template_error(
+                            'encountered {$%' || cdir || ', expected ${%end at line '
+                            || cast_as_string(lineno));
                 end if;
                 pos := strfind_b(current_line, '$}', pos);
                 if pos = -1 then
-                    raise net.template_error('missing $}');
+                    raise net.template_error('missing $} at line '
+                            || cast_as_string(lineno));
                 end if;
                 pos := pos + 2;
                 io.put(ostrm, 'END IF;');
             else
-                raise net.template_error('encountered {$%' || cdir || ', expected ${%end or ${%else');
+                raise net.template_error(
+                        'encountered {$%' || cdir || ', expected ${%end or ${%else at line '
+                        || cast_as_string(lineno));
             end case;
         when cdir = 'loop' then
             var endexp init strfind_b(current_line, ' var ', pos);
             if (endexp = -1) or (endexp > dirend) then
-                raise net.template_error('missing var in {$%loop');
+                raise net.template_error('missing var in {$%loop at line '
+                        || cast_as_string(lineno));
             end if;
 
             cexp := substr_b(current_line, pos, endexp - pos);
@@ -127,25 +138,30 @@ operator process_control(istrm io.iostream_id, ostrm io.iostream_id,
             io.put(ostrm, 'FOR ' || varname || ' := 0 TO (' || cexp || ') - 1;');
 
             pos := dirend + 2;
-            process_template(istrm, ostrm, current_line, pos);
-            eat_opening_cdir(current_line, pos);
-            cdir := net.get_cdir(current_line, pos);
+            process_template(istrm, ostrm, current_line, pos, lineno);
+            eat_opening_cdir(current_line, pos, lineno);
+            cdir := net.get_cdir(current_line, pos, lineno);
             if cdir <> 'end' then
-                raise net.template_error('encountered {$%' || cdir || ', expected ${%end ');
+                raise net.template_error(
+                        'encountered {$%' || cdir || ', expected ${%end at line '
+                        || cast_as_string(lineno));
             end if;
             pos := strfind_b(current_line, '$}', pos);
             if pos = -1 then
-                raise net.template_error('missing $}');
+                raise net.template_error('missing $} at line '
+                        || cast_as_string(lineno));
             end if;
             pos := pos + 2;
             io.put(ostrm, 'END FOR;');
         else
-            raise net.template_error('invalid control directive {$%' || cdir);
+            raise net.template_error('invalid control directive {$%'
+                    || cdir || ' at line ' || cast_as_string(lineno));
     end case;
 end operator;
 
 operator process_template(istrm io.iostream_id, ostrm io.iostream_id,
-        current_line string, pos int) updates {current_line, pos};
+        current_line string, pos int, lineno int)
+        updates { current_line, pos, lineno };
     var dirpos int;
     var dirend int;
 
@@ -163,18 +179,20 @@ operator process_template(istrm io.iostream_id, ostrm io.iostream_id,
            -- Check if it's a control directive
            dirend := strfind_b(current_line, '$}', dirpos);
            if dirend = -1 then
-	           raise net.template_error('end of directive not found (must be on the same line)');
+	           raise net.template_error(
+	                   'end of directive not found (must be on the same line) at line '
+                       || cast_as_string(lineno));
 	       end if;
            pos := dirpos + 2;
            if substr_b(current_line, pos, 1) = '%' then -- !! check
                pos := pos + 1;
-               var cdir init net.get_cdir(current_line, pos);
+               var cdir init net.get_cdir(current_line, pos, lineno);
                if cdir = 'end' or cdir = 'else' then
                    pos := dirpos;
                    return;
                end if;
                pos := pos + strlen(cdir);
-               process_control(istrm, ostrm, current_line, pos, cdir);
+               process_control(istrm, ostrm, current_line, pos, cdir, lineno);
            else
                -- Extract expression
 	           io.put(ostrm, "http.put(resp, net.hescape("
@@ -193,6 +211,7 @@ operator process_template(istrm io.iostream_id, ostrm io.iostream_id,
            if io.eof(istrm) then
                leave;
            end if;
+           lineno := lineno + 1;
            pos := 0;           
 	   end if;
     end while;
@@ -208,8 +227,9 @@ operator template_to_op (tfilename string, view_op string, ostrm io.iostream_id)
     io.open(istrm, tfilename, 'r');
 
     io.get_line(istrm, line);
+    var lineno init 1;
     var pos init 0;
-    process_template(istrm, ostrm, line, pos);
+    process_template(istrm, ostrm, line, pos, lineno);
 
     io.close(istrm);
     io.put_line(ostrm, 'END OPERATOR;');
