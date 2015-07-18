@@ -467,6 +467,91 @@ test deftypemri {user-defined type with multiple possreps and incomplete impleme
 declaration with unimplemented type caught
 }
 
+test deftypemarr {user-defined type with array possreps} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+		type text
+		    possrep lines { lines array string }
+		    possrep text { text string }
+		init lines(array string());
+		
+		implement type text as array string;
+		
+		operator lines(l array string) returns text;
+		    return l;
+		end operator;
+		
+		operator get_lines(t text) returns array string;
+		    return t;
+		end operator;
+		
+		operator set_lines(t text, l array string) updates { t };
+		    t := l;
+		end operator;
+		
+		operator text(t string) returns text;
+		    return array(t);
+		end operator;
+		
+		operator set_text(t text, s string) updates { t };
+		    -- not quite correct, but that's not important here
+		    t := array(s);
+		end operator;
+		
+		operator get_text(t text) returns string;
+		    var i int;
+		    var s string;
+		    for i := 0 to length(t) - 1;
+		        if i > 0 then
+		            s := s || "\n";
+		        end if;
+		        s := s || t[i];
+		    end for;
+		    return s;
+		end operator;
+		
+		end implement;
+		commit;        
+
+        begin tx;
+        var i int;
+        var t text;
+        t := lines(array('one','two'));
+        io.put_line(the_text(t));
+        
+        for i := 0 to length(the_lines(t)) - 1;
+            io.put_line(the_lines(t)[i]);
+        end for;
+        
+        the_length(the_lines(t)) := 4;
+        io.put_line(the_text(t));
+        
+        the_length(the_lines(t)) := 1;
+        for i := 0 to length(the_lines(t)) - 1;
+            io.put_line(the_lines(t)[i]);
+        end for;
+        
+        try
+            the_length(the_text(t)) := 1;
+            io.put('assignment to the_length(string) succeeded');
+        catch err type_mismatch_error;
+            ;
+        end try;
+    }
+} -result {one
+two
+one
+two
+one
+two
+
+
+one
+}
+        
 test deftypecmp {user-defined type with comparison operator} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');

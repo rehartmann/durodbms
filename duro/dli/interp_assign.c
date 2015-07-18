@@ -82,8 +82,7 @@ resolve_target(RDB_expression *exp, Duro_interp *interp, RDB_exec_context *ecp)
             /* Type must be system-implemented with tuple as internal rep */
             if (!objp->typ->def.scalar.sysimpl
                     || objp->typ->def.scalar.repv[0].compc <= 1) {
-                /* !! get, resize and set */
-                RDB_raise_syntax("unsupported the_ assignment target", ecp);
+                RDB_raise_not_supported("unsupported the_ assignment target", ecp);
                 return NULL;
             }
             prop = RDB_tuple_get(objp, opname);
@@ -581,27 +580,16 @@ op_assign(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
 }
 
 static int
-exec_length_assign(const RDB_parse_node *nodep, RDB_expression *argexp,
+resize_array_by_exp(RDB_object *arrp, RDB_expression *srcexp,
         Duro_interp *interp, RDB_exec_context *ecp)
 {
-    RDB_type *arrtyp;
-    RDB_expression *srcexp;
-    RDB_object *arrp;
     RDB_object lenobj;
     RDB_int len;
     RDB_int olen;
 
-    if (nodep->nextp != NULL) {
-        RDB_raise_syntax("only single assignment of array length permitted", ecp);
-        return RDB_ERROR;
-    }
-    arrp = resolve_target(argexp, interp, ecp);
-    if (arrp == NULL)
-        return RDB_ERROR;
-
-    arrtyp = RDB_obj_type(arrp);
+    RDB_type *arrtyp = RDB_obj_type(arrp);
     if (arrtyp == NULL || !RDB_type_is_array(arrtyp)) {
-        RDB_raise_syntax("unsupported assignment", ecp);
+        RDB_raise_type_mismatch("not an array", ecp);
         return RDB_ERROR;
     }
     olen = RDB_array_length(arrp, ecp);
@@ -609,25 +597,18 @@ exec_length_assign(const RDB_parse_node *nodep, RDB_expression *argexp,
         return RDB_ERROR;
 
     RDB_init_obj(&lenobj);
-    srcexp = RDB_parse_node_expr(nodep->val.children.firstp->nextp->nextp, ecp,
-            interp->txnp != NULL ? &interp->txnp->tx : NULL);
-    if (srcexp == NULL)
-        return RDB_ERROR;
     if (RDB_evaluate(srcexp, &Duro_get_var, interp, interp->envp, ecp,
             interp->txnp != NULL ? &interp->txnp->tx : NULL,
-            &lenobj) != RDB_OK) {
-        RDB_destroy_obj(&lenobj, ecp);
-        return RDB_ERROR;
+                    &lenobj) != RDB_OK) {
+        goto error;
     }
     if (RDB_obj_type(&lenobj) != &RDB_INTEGER) {
         RDB_raise_type_mismatch("array length must be INTEGER", ecp);
-        RDB_destroy_obj(&lenobj, ecp);
-        return RDB_ERROR;
+        goto error;
     }
     len = RDB_obj_int(&lenobj);
-    RDB_destroy_obj(&lenobj, ecp);
     if (RDB_set_array_length(arrp, len, ecp) != RDB_OK) {
-        return RDB_ERROR;
+        goto error;
     }
 
     /* Initialize new elements */
@@ -637,14 +618,73 @@ exec_length_assign(const RDB_parse_node *nodep, RDB_expression *argexp,
         for (i = olen; i < len; i++) {
             RDB_object *elemp = RDB_array_get(arrp, i, ecp);
             if (elemp == NULL)
-                return RDB_ERROR;
+                goto error;
 
             if (RDB_set_init_value(elemp, basetyp, interp->envp, ecp) != RDB_OK)
-                return RDB_ERROR;
+                goto error;
         }
     }
-
+    RDB_destroy_obj(&lenobj, ecp);
     return RDB_OK;
+
+error:
+    RDB_destroy_obj(&lenobj, ecp);
+    return RDB_ERROR;
+}
+
+static int
+exec_length_assign(const RDB_parse_node *nodep, RDB_expression *argexp,
+        Duro_interp *interp, RDB_exec_context *ecp)
+{
+    RDB_expression *srcexp;
+    RDB_object *arrp;
+
+    if (nodep->nextp != NULL) {
+        RDB_raise_syntax("only single assignment of array length permitted", ecp);
+        return RDB_ERROR;
+    }
+    srcexp = RDB_parse_node_expr(nodep->val.children.firstp->nextp->nextp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL);
+    if (srcexp == NULL)
+        return RDB_ERROR;
+
+    arrp = resolve_target(argexp, interp, ecp);
+    if (arrp == NULL) {
+        /*
+         * length argument cannot be resolved, evaluate and set
+         */
+        int ret;
+        RDB_object arrobj;
+        RDB_object *dstobjp;
+
+        if (RDB_expr_kind(argexp) != RDB_EX_GET_COMP) {
+            return RDB_ERROR;
+        }
+        RDB_init_obj(&arrobj);
+        if (RDB_evaluate(argexp, &Duro_get_var, interp, interp->envp, ecp,
+                interp->txnp != NULL ? &interp->txnp->tx : NULL,
+                &arrobj) != RDB_OK) {
+            RDB_destroy_obj(&arrobj, ecp);
+            return RDB_ERROR;
+        }
+        if (resize_array_by_exp(&arrobj, srcexp, interp, ecp) != RDB_OK) {
+            RDB_destroy_obj(&arrobj, ecp);
+            return RDB_ERROR;
+        }
+        dstobjp = resolve_target(RDB_expr_list_get(RDB_expr_op_args(argexp), 0),
+                interp, ecp);
+        if (dstobjp == NULL) {
+            RDB_destroy_obj(&arrobj, ecp);
+            return RDB_ERROR;
+        }
+        ret = RDB_obj_set_property(dstobjp, RDB_expr_op_name(argexp), &arrobj,
+                interp->envp, ecp,
+                interp->txnp != NULL ? &interp->txnp->tx : NULL);
+        RDB_destroy_obj(&arrobj, ecp);
+        return ret;
+    }
+
+    return resize_array_by_exp(arrp, srcexp, interp, ecp);
 }
 
 /*

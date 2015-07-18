@@ -2,6 +2,9 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 1.0
 
+- Statements of the form the_length(the_property(v)) := ... are now supported
+  for array-valued properties. 
+
 - Duro D/T now supports a CONST statement.
 
 - The second parameter of aggregate operators SUM, AVG, MAX, MIN, ALL, AND, ANY, OR
