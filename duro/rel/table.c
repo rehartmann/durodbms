@@ -8,6 +8,7 @@
 #include "rdb.h"
 #include "typeimpl.h"
 #include "catalog.h"
+#include "cat_stored.h"
 #include "stable.h"
 #include "qresult.h"
 #include "insert.h"

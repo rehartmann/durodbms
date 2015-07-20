@@ -11,14 +11,7 @@
 /* Name of the file in which the tables are physically stored */
 #define RDB_DATAFILE "rdata"
 
-typedef struct RDB_tbindex {
-    char *name;
-    int attrc;
-    RDB_seq_item *attrv;
-    RDB_bool unique;
-    RDB_bool ordered;
-    RDB_index *idxp;    /* NULL for the primary index */
-} RDB_tbindex;
+typedef struct RDB_tbindex RDB_tbindex;
 
 typedef struct RDB_stored_table {
     RDB_recmap *recmapp;

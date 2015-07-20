@@ -72,8 +72,8 @@ relsrc = ['rel/arrayx.c', 'rel/database.c', 'rel/uoperator.c',
         'rel/ptable.c', 'rel/aggrf.c', 'rel/update.c', 'rel/insert.c',
         'rel/contains.c', 'rel/transaction.c', 'rel/delete.c',
         'rel/utype.c', 'rel/typeimpl.c', 'rel/builtinops.c',
-        'rel/objectx.c', 'rel/catalog.c', 'rel/cat_type.c', 'rel/cat_op.c',
-        'rel/optimize.c', 'rel/transform.c',
+        'rel/objectx.c', 'rel/catalog.c', 'rel/cat_stored.c', 'rel/cat_type.c',
+        'rel/cat_op.c', 'rel/optimize.c', 'rel/transform.c',
         'rel/constraint.c', 'rel/assign.c', 'obj/opmap.c',
         'rel/match.c', 'rel/tostr.c',
         'rel/pexpr.c', 'util/www.c']
@@ -267,7 +267,7 @@ obj_ihdrs = ['obj/io.h', 'obj/key.h', 'obj/objinternal.h', 'obj/builtinscops.h',
              'obj/datetimeops.h']
 rel_hdrs = Split('rel/rdb.h rel/typeimpl.h '
                  'rel/optimize.h rel/qresult.h rel/tostr.h ')
-rel_ihdrs = Split('rel/catalog.h rel/cat_type.h rel/cat_op.h '
+rel_ihdrs = Split('rel/catalog.h rel/cat_stored.h rel/cat_type.h rel/cat_op.h '
 		'rel/delete.h rel/serialize.h '
         'rel/insert.h rel/transform.h rel/internal.h rel/stable.h '
         'rel/update.h rel/qr_stored.h rel/qr_join.h rel/qr_tclose.h '

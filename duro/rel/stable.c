@@ -9,7 +9,7 @@
 
 #include "stable.h"
 #include "typeimpl.h"
-#include "catalog.h"
+#include "cat_stored.h"
 #include "internal.h"
 #include <obj/excontext.h>
 #include <obj/type.h>

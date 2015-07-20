@@ -89,6 +89,15 @@ typedef struct RDB_dbroot {
     RDB_object *version_info_tbp;
 } RDB_dbroot;
 
+typedef struct RDB_tbindex {
+    char *name;
+    int attrc;
+    RDB_seq_item *attrv;
+    RDB_bool unique;
+    RDB_bool ordered;
+    RDB_index *idxp;    /* NULL for the primary index */
+} RDB_tbindex;
+
 typedef struct {
     char *key;
     RDB_int fno;
