@@ -717,7 +717,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
                 goto error;
         }
         if (attrtyp != &RDB_INTEGER && attrtyp != &RDB_FLOAT) {
-            RDB_raise_type_mismatch("invalid attribute type", ecp);
+            RDB_raise_type_mismatch("numeric type required", ecp);
             goto error;
         }
         return strcmp(exp->def.op.name, "avg") == 0 ? &RDB_FLOAT : attrtyp;
@@ -753,7 +753,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
                 goto error;
         }
         if (attrtyp != &RDB_BOOLEAN) {
-            RDB_raise_type_mismatch("invalid attribute type", ecp);
+            RDB_raise_type_mismatch("boolean required", ecp);
             goto error;
         }
         return &RDB_BOOLEAN;
