@@ -1083,8 +1083,8 @@ test datetime {datetime type} -body {
         the_month(d) := 3;
         the_day(d) := 25;
         the_hour(d) := 18;
-        the_min(d) := 5;
-        the_sec(d) := 7;
+        the_minute(d) := 5;
+        the_second(d) := 7;
 
         io.put(d);
         io.put_line('');
@@ -1096,9 +1096,9 @@ test datetime {datetime type} -body {
         io.put_line('');
         io.put(the_hour(d));
         io.put_line('');
-        io.put(the_min(d));
+        io.put(the_minute(d));
         io.put_line('');
-        io.put(the_sec(d));
+        io.put(the_second(d));
         io.put_line('');
 
         -- 2000 is a leap year

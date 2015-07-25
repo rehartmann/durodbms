@@ -2,6 +2,8 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 1.0
 
+- Renamed datetime properties min and sec to minute and second, respectively.
+
 - Statements of the form the_length(the_property(v)) := ... are now supported
   for array-valued properties. 
 

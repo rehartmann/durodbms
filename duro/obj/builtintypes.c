@@ -226,13 +226,13 @@ compare_datetime(int argc, RDB_object *argv[], RDB_operator *op,
         return RDB_OK;
     }
 
-    d = argv[0]->val.time.min - argv[1]->val.time.min;
+    d = argv[0]->val.time.minute - argv[1]->val.time.minute;
     if (d != 0) {
         RDB_int_to_obj(retvalp, d);
         return RDB_OK;
     }
 
-    RDB_int_to_obj(retvalp, argv[0]->val.time.sec - argv[1]->val.time.sec);
+    RDB_int_to_obj(retvalp, argv[0]->val.time.second - argv[1]->val.time.second);
     return RDB_OK;
 }
 
@@ -496,8 +496,8 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
             { "month", &RDB_INTEGER },
             { "day", &RDB_INTEGER },
             { "hour", &RDB_INTEGER },
-            { "min", &RDB_INTEGER },
-            { "sec", &RDB_INTEGER }
+            { "minute", &RDB_INTEGER },
+            { "second", &RDB_INTEGER }
     };
 
     static RDB_possrep datetime_rep = {

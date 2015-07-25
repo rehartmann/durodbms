@@ -102,8 +102,8 @@ POSSREP {
     month integer,
     day integer,
     hour integer,
-    min integer,
-    sec integer
+    minute integer,
+    second integer
 };
 </pre>
 
@@ -181,18 +181,18 @@ datetime_get_hour(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-datetime_get_min(int argc, RDB_object *argv[], RDB_operator *op,
+datetime_get_minute(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_int_to_obj(retvalp, (RDB_int) argv[0]->val.time.min);
+    RDB_int_to_obj(retvalp, (RDB_int) argv[0]->val.time.minute);
     return RDB_OK;
 }
 
 static int
-datetime_get_sec(int argc, RDB_object *argv[], RDB_operator *op,
+datetime_get_second(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_int_to_obj(retvalp, (RDB_int) argv[0]->val.time.sec);
+    RDB_int_to_obj(retvalp, (RDB_int) argv[0]->val.time.second);
     return RDB_OK;
 }
 
@@ -241,8 +241,8 @@ cast_as_string_datetime(int argc, RDB_object *argv[], RDB_operator *op,
             argv[0]->val.time.month,
             argv[0]->val.time.day,
             argv[0]->val.time.hour,
-            argv[0]->val.time.min,
-            argv[0]->val.time.sec);
+            argv[0]->val.time.minute,
+            argv[0]->val.time.second);
 
     return RDB_string_to_obj(retvalp, buf, ecp);
 }
@@ -290,24 +290,24 @@ datetime_set_hour(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-datetime_set_min(int argc, RDB_object *argv[], RDB_operator *op,
+datetime_set_minute(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (datetime_check_minute(RDB_obj_int(argv[1]), ecp) != RDB_OK)
         return RDB_ERROR;
 
-    argv[0]->val.time.min = RDB_obj_int(argv[1]);
+    argv[0]->val.time.minute = RDB_obj_int(argv[1]);
     return RDB_OK;
 }
 
 static int
-datetime_set_sec(int argc, RDB_object *argv[], RDB_operator *op,
+datetime_set_second(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (datetime_check_second(RDB_obj_int(argv[1]), ecp) != RDB_OK)
         return RDB_ERROR;
 
-    argv[0]->val.time.sec = RDB_obj_int(argv[1]);
+    argv[0]->val.time.second = RDB_obj_int(argv[1]);
     return RDB_OK;
 }
 
@@ -334,12 +334,12 @@ RDB_add_datetime_ro_ops(RDB_op_map *opmap, RDB_exec_context *ecp)
             &datetime_get_hour, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (RDB_put_ro_op(opmap, "datetime_get_min", 1, paramtv, &RDB_INTEGER,
-            &datetime_get_min, ecp) != RDB_OK)
+    if (RDB_put_ro_op(opmap, "datetime_get_minute", 1, paramtv, &RDB_INTEGER,
+            &datetime_get_minute, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (RDB_put_ro_op(opmap, "datetime_get_sec", 1, paramtv, &RDB_INTEGER,
-            &datetime_get_sec, ecp) != RDB_OK)
+    if (RDB_put_ro_op(opmap, "datetime_get_second", 1, paramtv, &RDB_INTEGER,
+            &datetime_get_second, ecp) != RDB_OK)
         return RDB_ERROR;
 
     if (RDB_put_ro_op(opmap, "cast_as_string", 1, paramtv, &RDB_STRING,
@@ -389,11 +389,11 @@ RDB_add_datetime_upd_ops(RDB_op_map *opmap, RDB_exec_context *ecp)
     if (RDB_put_upd_op(opmap, "datetime_set_hour", 2, paramv,
             &datetime_set_hour, ecp) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmap, "datetime_set_min", 2, paramv,
-            &datetime_set_min, ecp) != RDB_OK)
+    if (RDB_put_upd_op(opmap, "datetime_set_minute", 2, paramv,
+            &datetime_set_minute, ecp) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmap, "datetime_set_sec", 2, paramv,
-            &datetime_set_sec, ecp) != RDB_OK)
+    if (RDB_put_upd_op(opmap, "datetime_set_second", 2, paramv,
+            &datetime_set_second, ecp) != RDB_OK)
         return RDB_ERROR;
 
     return RDB_OK;

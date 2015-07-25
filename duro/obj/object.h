@@ -48,8 +48,8 @@ typedef struct RDB_time {
     RDB_byte month;
     RDB_byte day;
     RDB_byte hour;
-    RDB_byte min;
-    RDB_byte sec;
+    RDB_byte minute;
+    RDB_byte second;
 } RDB_time;
 
 /**

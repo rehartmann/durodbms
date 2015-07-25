@@ -270,8 +270,8 @@ RDB_tm_to_obj(RDB_object *objp, const struct tm *tm)
     objp->val.time.month = tm->tm_mon + 1;
     objp->val.time.day = tm->tm_mday;
     objp->val.time.hour = tm->tm_hour;
-    objp->val.time.min = tm->tm_min;
-    objp->val.time.sec = tm->tm_sec;
+    objp->val.time.minute = tm->tm_min;
+    objp->val.time.second = tm->tm_sec;
 }
 
 static int

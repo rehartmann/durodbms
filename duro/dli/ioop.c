@@ -288,8 +288,8 @@ op_put_datetime(int argc, RDB_object *argv[], RDB_operator *op,
             argv[0]->val.time.month,
             argv[0]->val.time.day,
             argv[0]->val.time.hour,
-            argv[0]->val.time.min,
-            argv[0]->val.time.sec) < 0) {
+            argv[0]->val.time.minute,
+            argv[0]->val.time.second) < 0) {
         RDB_handle_errcode(errno, ecp, txp);
         return RDB_ERROR;
     }
@@ -427,8 +427,8 @@ op_put_iostream_datetime(int argc, RDB_object *argv[], RDB_operator *op,
             argv[1]->val.time.month,
             argv[1]->val.time.day,
             argv[1]->val.time.hour,
-            argv[1]->val.time.min,
-            argv[1]->val.time.sec) < 0) {
+            argv[1]->val.time.minute,
+            argv[1]->val.time.second) < 0) {
         RDB_handle_errcode(errno, ecp, txp);
         return RDB_ERROR;
     }
