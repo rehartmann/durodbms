@@ -144,7 +144,7 @@ no db>
 
 <h2 id="types">Built-in types</h2>
 
-<p>DuroDBMS supports the following built-in scalar types:
+<p>DuroDBMS supports the following built-in basic scalar types:
 
 <ul>
 <li><code>boolean</code> (synonym <code>bool</code>)</li>
@@ -164,7 +164,7 @@ no db> var s string init 'Foo';
 no db> var bin binary init X'466f6f';
 </pre>
 
-<p>There are other built-in types used for I/O and exception handling.
+<p>There are other built-in types used for I/O, date/time and exception handling.
 These are discussed in the respective sections.
 
 <p>For non-scalar types, see the chapters on tuples, tables, and arrays,
@@ -897,8 +897,8 @@ POSSREP {
     month integer,
     day integer,
     hour integer,
-    min integer,
-    sec integer
+    minute integer,
+    second integer
 }; 
 </pre>
 
