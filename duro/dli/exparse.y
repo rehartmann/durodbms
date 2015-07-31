@@ -985,6 +985,7 @@ statement: assignment ';' {
     | type_impl
     | package_def
     | package_impl
+    | package_drop
     ;
 
     pkg_stmt_list: /* empty */ {
@@ -1108,6 +1109,21 @@ statement: assignment ';' {
     package_impl_stmt: type_impl
     | map_def
     ;
+
+    package_drop: TOK_DROP TOK_PACKAGE qualified_id ';' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            RDB_parse_del_node($4, RDB_parse_ecp);
+            YYABORT;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+    }
 
     type_impl: TOK_IMPLEMENT TOK_TYPE TOK_ID ';' TOK_END TOK_IMPLEMENT ';' {
         $$ = new_parse_inner();

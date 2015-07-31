@@ -29,11 +29,14 @@
 #include <assert.h>
 
 extern int yylineno;
+extern YY_BUFFER_STATE RDB_parse_buffer;
+extern int RDB_parse_buffer_valid;
 
 typedef struct yy_buffer_state *YY_BUFFER_STATE;
 
 YY_BUFFER_STATE yy_scan_string(const char *txt);
 void yy_delete_buffer(YY_BUFFER_STATE);
+void yy_switch_to_buffer(YY_BUFFER_STATE);
 
 /** @page update-ops Built-in system and connection operators
 
@@ -2524,6 +2527,140 @@ error:
 }
 
 static int
+exec_pkgdrop(RDB_parse_node *nodep, Duro_interp *interp,
+        RDB_exec_context *ecp)
+{
+    RDB_object *pkgname;
+    RDB_object *ops;
+    RDB_object *types;
+    RDB_object *ptables;
+    RDB_parse_node *np;
+    int i, len;
+    YY_BUFFER_STATE oldbuf;
+    int lineno = yylineno;
+
+    int pbuf_was_valid = RDB_parse_buffer_valid;
+    RDB_bool was_interactive = RDB_parse_get_interactive();
+
+    if (interp->txnp == NULL) {
+        RDB_raise_no_running_tx(ecp);
+        return RDB_ERROR;
+    }
+
+    if (Duro_add_varmap(interp, ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    /* If the parse buffer is valid, save it */
+    if (RDB_parse_buffer_valid) {
+        if (RDB_parse_get_interactive())
+            yy_delete_buffer(RDB_parse_buffer);
+        else
+            oldbuf = RDB_parse_buffer;
+    }
+
+    yylineno = 1;
+
+    if (Duro_dt_execute_str("var pkgname string;", interp, ecp) != RDB_OK)
+        goto error;
+
+    pkgname = Duro_lookup_transient_var(interp, "pkgname");
+
+    if (RDB_string_to_obj(pkgname,
+            RDB_expr_var_name(nodep->val.children.firstp->exp), ecp) != RDB_OK)
+        goto error;
+    np = nodep->val.children.firstp->nextp;
+    while (np != NULL) {
+        if (RDB_append_string(pkgname, ".", ecp) != RDB_OK)
+            goto error;
+        if (RDB_append_string(pkgname,
+                RDB_expr_var_name(np->nextp->exp), ecp) != RDB_OK)
+            goto error;
+        np = np->nextp->nextp;
+    }
+
+    if (Duro_dt_execute_str("var ops array tuple { opname string };"
+            "load ops from sys_ro_ops where opname like pkgname || '.*' { opname }"
+                    "union sys_upd_ops where opname like pkgname || '.*' { opname } order();",
+            interp, ecp) != RDB_OK) {
+        goto error;
+    }
+
+    ops = Duro_lookup_transient_var(interp, "ops");
+    len = (int) RDB_array_length(ops, ecp);
+    for (i = 0; i < len; i++) {
+        RDB_object *elem = RDB_array_get(ops, (RDB_int) i, ecp);
+        if (elem == NULL)
+            goto error;
+        if (RDB_drop_op(RDB_tuple_get_string(elem, "opname"), ecp, &interp->txnp->tx)
+                != RDB_OK)
+            goto error;
+    }
+
+    if (Duro_dt_execute_str("var types array tuple { typename string };"
+            "load types from sys_types where typename like pkgname || '.*' { typename } order();",
+            interp, ecp) != RDB_OK) {
+        goto error;
+    }
+
+    types = Duro_lookup_transient_var(interp, "types");
+    len = (int) RDB_array_length(types, ecp);
+    for (i = 0; i < len; i++) {
+        RDB_object *elem = RDB_array_get(types, (RDB_int) i, ecp);
+        if (elem == NULL)
+            goto error;
+        if (RDB_drop_type(RDB_tuple_get_string(elem, "typename"), ecp, &interp->txnp->tx)
+                != RDB_OK)
+            goto error;
+    }
+
+    if (Duro_dt_execute_str("var ptables array tuple { tablename string };"
+            "load ptables from sys_ptables where tablename like pkgname || '.*' { tablename } order();",
+            interp, ecp) != RDB_OK) {
+        goto error;
+    }
+
+    ptables = Duro_lookup_transient_var(interp, "ptables");
+    len = (int) RDB_array_length(ptables, ecp);
+    for (i = 0; i < len; i++) {
+        RDB_object *elem = RDB_array_get(ptables, (RDB_int) i, ecp);
+        if (elem == NULL)
+            goto error;
+        if (RDB_drop_table_by_name(RDB_tuple_get_string(elem, "tablename"), ecp, &interp->txnp->tx)
+                != RDB_OK)
+            goto error;
+    }
+
+    Duro_remove_varmap(interp);
+    RDB_parse_set_interactive(was_interactive);
+    /* If the parse buffer was valid, restore it */
+    if (pbuf_was_valid) {
+        if (RDB_parse_get_interactive()) {
+            RDB_parse_buffer = yy_scan_string("");
+        } else {
+            yy_switch_to_buffer(oldbuf);
+            RDB_parse_buffer = oldbuf;
+        }
+    }
+    yylineno = lineno;
+    return RDB_OK;
+
+error:
+    Duro_remove_varmap(interp);
+    RDB_parse_set_interactive(was_interactive);
+    /* If the parse buffer was valid, restore it */
+    if (pbuf_was_valid) {
+        if (RDB_parse_get_interactive()) {
+            RDB_parse_buffer = yy_scan_string("");
+        } else {
+            yy_switch_to_buffer(oldbuf);
+            RDB_parse_buffer = oldbuf;
+        }
+    }
+    yylineno = lineno;
+    return RDB_ERROR;
+}
+
+static int
 exec_map(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
 {
     RDB_expression *exp;
@@ -2660,6 +2797,9 @@ Duro_exec_stmt(RDB_parse_node *stmtp, Duro_interp *interp,
                 break;
             case TOK_INDEX:
                 ret = exec_indexdrop(firstchildp->nextp->nextp, interp, ecp);
+                break;
+            case TOK_PACKAGE:
+                ret = exec_pkgdrop(firstchildp->nextp->nextp, interp, ecp);
                 break;
             }
             break;
@@ -3176,7 +3316,9 @@ Duro_dt_execute(FILE *infp, Duro_interp *interp, RDB_exec_context *ecp)
      * Store pointer to the Duro_interp structure in the execution context
      * to make it available to operators
      */
-    RDB_ec_set_property(ecp, "INTERP", interp);
+    if (RDB_ec_set_property(ecp, "INTERP", interp) != RDB_OK) {
+        goto error;
+    }
 
     for(;;) {
         if (Duro_process_stmt(interp, ecp) != RDB_OK) {
@@ -3231,9 +3373,14 @@ Duro_dt_execute_str(const char *instr, Duro_interp *interp,
 
     RDB_parse_set_interactive(RDB_FALSE);
 
-    RDB_ec_set_property(ecp, "INTERP", interp);
+    if (RDB_ec_set_property(ecp, "INTERP", interp) != RDB_OK)
+        return RDB_ERROR;
 
     buf = yy_scan_string(instr);
+    if (buf == NULL) {
+        RDB_raise_internal("yy_scan_string() failed", ecp);
+        goto error;
+    }
 
     while (Duro_process_stmt(interp, ecp) == RDB_OK);
 

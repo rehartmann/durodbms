@@ -43,6 +43,7 @@ statement = assignment_stmt
         | explain_assignment_stmt
         | package_def_stmt
         | package_impl_stmt
+        | package_drop_stmt
         | BEGIN statement {statement} END ';'
         | ';'.       
 
@@ -166,5 +167,7 @@ package_impl_stmt = IMPLEMENT PACKAGE id ';' {pkg_impl_stmt} END IMPLEMENT ';'.
 
 pkg_impl_stmt = type_impl_stmt
         | map_stmt.
+
+package_drop_stmt = DROP PACKAGE qualified_id ';'.
 
 </pre>    

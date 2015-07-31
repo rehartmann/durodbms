@@ -297,4 +297,65 @@ blah
 foo 76
 }
 
+test pkgdrop {Drop package} \
+        -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+
+        var r real rel { n int };
+
+        package p;
+            operator op() returns int;
+                return 1;
+            end operator;
+            
+            operator op1(a int) updates { a };
+               a := 1;
+            end operator;
+
+            type t possrep { p int } init p.t(0);
+
+            var p public relation { n int };
+        end package;
+
+        implement package p;
+            implement type t;
+            end implement;
+        
+            map p r;
+        end implement;
+
+        commit;
+
+        begin tx;
+
+        drop package p;
+
+        try
+            io.put(p.op());
+        catch err operator_not_found_error;
+            ;
+        end try;
+        
+        try
+            var t t;
+            io.put('var succeeded');
+        catch err type_not_found_error;
+            ;
+        end try;
+
+        try
+            p.p := rel { tup { n 1 } };
+            io.put('accessing public var succeeded');
+        catch err name_error;
+            ;
+        end try;
+
+        commit;
+    }
+} -output {}
+
 cleanupTests
