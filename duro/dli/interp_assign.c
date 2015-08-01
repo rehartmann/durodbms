@@ -1003,11 +1003,13 @@ error:
 int
 Duro_exec_load(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
 {
+    int ret;
     RDB_object srctb;
     RDB_object *srctbp;
-    int ret;
     RDB_expression *tbexp;
     RDB_object *dstp;
+    RDB_type *dsttyp;
+    RDB_type *srctyp;
     const char *srcvarname;
     int seqitc;
     RDB_parse_node *seqitnodep;
@@ -1024,6 +1026,42 @@ Duro_exec_load(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp
     tbexp = RDB_parse_node_expr(nodep->nextp->nextp, ecp,
             interp->txnp != NULL ? &interp->txnp->tx : NULL);
     if (tbexp == NULL) {
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+
+    /*
+     * Type check
+     */
+
+    dsttyp = RDB_obj_type(dstp);
+    if (dsttyp == NULL) {
+        RDB_raise_invalid_argument("destination type not available", ecp);
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+
+    if (!RDB_type_is_array(dsttyp)) {
+        RDB_raise_type_mismatch("destination is not an array", ecp);
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+
+    srctyp = RDB_expr_type(tbexp, &Duro_get_var_type, interp,
+            interp->envp, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
+    if (srctyp == NULL) {
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+
+    if (!RDB_type_is_relation(srctyp)) {
+        RDB_raise_type_mismatch("source is not a relation", ecp);
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+
+    if (!RDB_type_equals(RDB_base_type(srctyp), RDB_base_type(dsttyp))) {
+        RDB_raise_type_mismatch("source does not match destination", ecp);
         ret = RDB_ERROR;
         goto cleanup;
     }

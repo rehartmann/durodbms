@@ -117,6 +117,14 @@ test ptarray {array from private table} -body {
 
         load a from r order(c desc, i asc);
 
+        var a2 array tuple { i int, d string };
+        try
+            load a2 from r order();
+            io.put_line('LOAD with wrong array type succeeded');
+        catch err type_mismatch_error;
+            ;
+        end try;
+
         drop var r;
 
         io.put(a[0].i); io.put_line('');
