@@ -117,6 +117,15 @@ no db> drop var k;
 no db>
 </pre>
 
+<h3>Constants</h3>
+
+<p>Symbolic constants can be created using CONST:
+
+<pre>
+no db> const pi 3.141592653;
+no db>
+</pre>
+
 <h2 id="assign">Assignment</h2>
 
 <p>Once a variable has been declared, a value can be assigned
@@ -1174,17 +1183,16 @@ by surrounding the respective DROP statements by PACKAGE .. END PACKAGE;
 package empapp;
 
     drop operator print_employees;
-    drop var employees;
 
 end package;
+</pre>
 
-drop var employees;
+<p>DROP PACKAGE deletes a package by deleting all operators, types, and public tables the package contains.
 
-package emp;
+<p>Example:
 
-    drop type empno;
-
-end package;
+<pre>
+drop package empapp;
 </pre>
 
 <h2 id="performance">Performance</h2>
