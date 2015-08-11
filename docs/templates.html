@@ -23,6 +23,13 @@ a tuple attribute <var>name</var>, it can be accessed as <var>m.name</var>.
 The following characters are escaped: &lt; &gt; &amp " '
 
 <pre>
+{$= expression $}
+</pre>
+
+<p>The value of the expression. The expression must be of type string.
+No escaping will occur.
+
+<pre>
 {$%if expression $} text {$%end $}
 </pre>
 

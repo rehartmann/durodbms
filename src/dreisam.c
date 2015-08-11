@@ -461,7 +461,7 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
             RDB_type *errtyp = RDB_obj_type(RDB_get_err(ecp));
             if (errtyp != NULL) {
                 /*
-                 * Special treatment of syntax_error and net.template_error
+                 * Special treatment of syntax_error and template.template_error
                  */
                 const char *typename;
 
@@ -477,7 +477,7 @@ process_request(Duro_interp *interpp, RDB_exec_context *ecp,
                 }
                 typename = RDB_type_name(errtyp);
                 if (typename != NULL
-                        && strcmp(typename, "net.template_error") == 0) {
+                        && strcmp(typename, "template.template_error") == 0) {
                     interpp->err_line = -1; /* Line number is meaningless here */
                     log_err(interpp, ecp, err);
 

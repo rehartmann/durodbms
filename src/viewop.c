@@ -62,7 +62,7 @@ create_view_op(const char *viewname, Duro_interp *interpp,
      */
 
     /* Call conversion operator */
-    if (RDB_call_update_op_by_name("net.template_to_op", 3, argv,
+    if (RDB_call_update_op_by_name("template.template_to_op", 3, argv,
                ecp, Duro_dt_tx(interpp)) != RDB_OK) {
         FCGX_FPrintF(err, "Processing template %s failed\n",
                 RDB_obj_string(&tfilename));
@@ -175,7 +175,6 @@ Dr_provide_view_op(const char *viewname, Duro_interp *interpp,
     RDB_exec_context ec;
     RDB_object viewopname;
     RDB_type *viewargtypv[2];
-    /* Try to get the view operator without a tx */
     RDB_operator *view_op;
 
     viewargtypv[0] = resptyp;
@@ -183,16 +182,17 @@ Dr_provide_view_op(const char *viewname, Duro_interp *interpp,
 
     RDB_init_obj(&viewopname);
 
-    if (RDB_string_to_obj(&viewopname, "t.", ecp) != RDB_OK)
+    if (RDB_string_to_obj(&viewopname, "template.t.", ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(&viewopname, viewname, ecp) != RDB_OK)
         goto error;
 
+    /* Try to get the view operator without a tx */
     view_op = RDB_get_update_op(RDB_obj_string(&viewopname), 2,
             viewargtypv, interpp->envp, ecp, NULL);
 
     if (view_op == NULL) {
-        /* Retry with tx */
+        /* Failure, retry with tx */
         if (Duro_dt_execute_str("begin tx;", interpp, ecp) != RDB_OK)
             goto error;
         view_op = RDB_get_update_op(RDB_obj_string(&viewopname), 2,
