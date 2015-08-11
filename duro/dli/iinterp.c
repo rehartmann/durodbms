@@ -2578,6 +2578,23 @@ exec_pkgdrop(RDB_parse_node *nodep, Duro_interp *interp,
         np = np->nextp->nextp;
     }
 
+    if (Duro_dt_execute_str("var types array tuple { typename string };"
+            "load types from sys_types where typename like pkgname || '.*' { typename } order();",
+            interp, ecp) != RDB_OK) {
+        goto error;
+    }
+
+    types = Duro_lookup_transient_var(interp, "types");
+    len = (int) RDB_array_length(types, ecp);
+    for (i = 0; i < len; i++) {
+        RDB_object *elem = RDB_array_get(types, (RDB_int) i, ecp);
+        if (elem == NULL)
+            goto error;
+        if (RDB_drop_type(RDB_tuple_get_string(elem, "typename"), ecp, &interp->txnp->tx)
+                != RDB_OK)
+            goto error;
+    }
+
     if (Duro_dt_execute_str("var ops array tuple { opname string };"
             "load ops from sys_ro_ops where opname like pkgname || '.*' { opname }"
                     "union sys_upd_ops where opname like pkgname || '.*' { opname } order();",
@@ -2592,23 +2609,6 @@ exec_pkgdrop(RDB_parse_node *nodep, Duro_interp *interp,
         if (elem == NULL)
             goto error;
         if (RDB_drop_op(RDB_tuple_get_string(elem, "opname"), ecp, &interp->txnp->tx)
-                != RDB_OK)
-            goto error;
-    }
-
-    if (Duro_dt_execute_str("var types array tuple { typename string };"
-            "load types from sys_types where typename like pkgname || '.*' { typename } order();",
-            interp, ecp) != RDB_OK) {
-        goto error;
-    }
-
-    types = Duro_lookup_transient_var(interp, "types");
-    len = (int) RDB_array_length(types, ecp);
-    for (i = 0; i < len; i++) {
-        RDB_object *elem = RDB_array_get(types, (RDB_int) i, ecp);
-        if (elem == NULL)
-            goto error;
-        if (RDB_drop_type(RDB_tuple_get_string(elem, "typename"), ecp, &interp->txnp->tx)
                 != RDB_OK)
             goto error;
     }
