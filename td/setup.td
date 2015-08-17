@@ -1,7 +1,7 @@
 begin tx;
 
 -- Actions table
-var net_actions real relation {
+var http_actions real relation {
     path string,
     method string,
     opname string
@@ -87,7 +87,7 @@ end operator;
 
 operator send_json_response(resp http.http_response, tp tup { * })
         updates { resp };
-    var json_data init net.to_json(tp);
+    var json_data init json.to_json(tp);
     set_response_header(resp, 'Content-Type', 'application/json');
     set_response_header(resp, 'Content-Length', cast_as_string(strlen_b(json_data)));
 

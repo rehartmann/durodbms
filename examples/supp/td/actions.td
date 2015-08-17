@@ -2,12 +2,12 @@ current_db := 'SDB';
 
 begin tx;
 
-insert net_actions tup { path '/addsupp', opname 'addsupp', method 'POST' };
-insert net_actions tup { path '/editsupp', opname 'editsupp', method 'GET' };
-insert net_actions tup { path '/updatesupp', opname 'updatesupp', method 'POST' };
-insert net_actions tup { path '/listsupps', opname 'listsupps', method 'GET' };
-insert net_actions tup { path '/askdelsupp', opname 'askdelsupp', method 'GET' };
-insert net_actions tup { path '/delsupp', opname 'delsupp', method 'POST' };
+insert http_actions tup { path '/addsupp', opname 'addsupp', method 'POST' };
+insert http_actions tup { path '/editsupp', opname 'editsupp', method 'GET' };
+insert http_actions tup { path '/updatesupp', opname 'updatesupp', method 'POST' };
+insert http_actions tup { path '/listsupps', opname 'listsupps', method 'GET' };
+insert http_actions tup { path '/askdelsupp', opname 'askdelsupp', method 'GET' };
+insert http_actions tup { path '/delsupp', opname 'delsupp', method 'POST' };
 
 -- Action operator for adding a supplier
 operator addsupp(model tup same_heading_as(extend suppliers : { msg := '' } ),

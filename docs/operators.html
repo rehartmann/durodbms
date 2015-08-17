@@ -1,0 +1,84 @@
+<html>
+<head>
+<title>Dreisam Operators</title>
+<link rel="stylesheet" href="style.css">
+<body>
+
+<h1>Dreisam Operators</h1>
+
+<h2>Package http</h2>
+
+<p>OPERATOR the_method(req http.http_request) RETURNS string;
+
+<p>Returns the name of the HTTP method with which this request was made.
+
+<p>OPERATOR put_line(resp http.http_response, s string) UPDATES { resp };
+
+<p>Writes <var>s</var> as response data, followed by a newline.
+
+<p>OPERATOR put_err_line(resp http.http_response, s string) UPDATES { resp };
+
+<p>Writes <var>s</var> as error data, followed by a newline.
+This data will usually appear in the webserver error log.
+
+<p>OPERATOR put(resp http.http_response, s string) UPDATES { resp };
+
+<p>Writes <var>s</var> as response data.
+
+<p>OPERATOR put_err(resp http.http_response, s string) UPDATES { resp };
+
+<p>Writes <var>s</var> as error data.
+
+<p>OPERATOR send_headers(resp http.http_response) UPDATES {};
+
+<p>Sends the HTTP headers.
+
+<p>OPERATOR set_status(resp http.http_response, status int, reason string)
+
+<p>Sets the HTTP status.
+
+<p>OPERATOR set_status(resp http.http_response, status int) UPDATES { resp };
+
+<p>Sets the HTTP status using the specified status code.
+
+<p>OPERATOR set_response_header(resp http.http_response, name string, value string)
+        UPDATES {resp};
+
+<p>Sets the HTTP response header <var>name</var>. An existing header with that name
+is overwritten.
+
+<p>OPERATOR add_response_header(resp http.http_response, name string, value string)
+        UPDATES {resp};
+
+<p>Adds a HTTP response header.
+
+<p>OPERATOR send_json_response(resp http.http_response, tp tup { * })
+        UPDATES { resp };
+
+<p>Converts tp to JSON and writes it as a HTTP response.
+
+<h2>Package json</h2>
+
+<p>OPERATOR to_json(<em>ANY</em>) RETURNS string;
+
+<p>Converts the argument to JSON.
+
+<h2>Package template</h2>
+
+<p>OPERATOR template_to_op (tfilename string, view_op string, ostrm io.iostream_id)
+UPDATES {};
+
+<p>Reads a template from file <var>tfilename</var>, converts it to an update operator
+named <var>view_op</var> and writes the operator definition to <var>ostrm</var.
+
+<h2>Package net</h2>
+
+<p>OPERATOR hescape(s string) RETURNS string;
+
+<p>Performs HTML escaping, converting the following characters to HTML entities:
+&lt; &gt; &amp " '
+
+<p>This operator is provided by DuroDBMS.
+
+</html>
+

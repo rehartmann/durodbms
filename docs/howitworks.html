@@ -1,6 +1,7 @@
 <html>
 <head>
 <title>Dreisam &ndash; how it works</title>
+<link rel="stylesheet" href="style.css">
 <body>
 
 <h1>Dreisam &ndash; how it works</h1>
@@ -36,12 +37,12 @@ You then probably have to issue a 'sudo' to access the database from your user.
 
 <p>Let's create a small application which receives a name with the request and sends a hello message back.
 
-<p>First, we need an action. For an action there must be an entry in the net_actions table and an update operator.
+<p>First, we need an action. For an action there must be an entry in the http_actions table and an update operator.
 
 <p>So let's create both:
 
 <pre>
-insert net_actions tup { path '/hello', opname 'hello', method 'GET' };
+insert http_actions tup { path '/hello', opname 'hello', method 'GET' };
 
 operator hello (model tup { name string }, view string) updates { model, view };
     ; /* Do nothing */
@@ -94,7 +95,7 @@ Hello John!
 using HTTP response code 303 can be created as follows:
 
 <pre>
-insert net_actions tup { path '/redirect', opname 'redirect', method 'GET' };
+insert http_actions tup { path '/redirect', opname 'redirect', method 'GET' };
 
 operator redirect (model tup { }, view string, resp http.http_response) updates { model, view };
     http.set_status(resp, 303);
@@ -112,7 +113,7 @@ to the action operator.
 <p>An action operator can send a JSON response using the operator send_json_response:
 
 <pre>
-insert net_actions tup { path '/jsonexample', opname 'jsonexample', method 'GET' };
+insert http_actions tup { path '/jsonexample', opname 'jsonexample', method 'GET' };
 
 operator jsonexample (model tup { name string, no int, price float }, view string,
         resp http.http_response)

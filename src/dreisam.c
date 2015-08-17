@@ -170,7 +170,7 @@ op_http_put_err(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-op_net_to_json(int argc, RDB_object *argv[], RDB_operator *op,
+op_to_json(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     return Dr_obj_to_json(retvalp, argv[0], ecp);
@@ -570,8 +570,8 @@ create_fcgi_ops(Duro_interp *interpp, RDB_type *reqtyp, RDB_type *resptyp, RDB_e
     }
 
     paramtypv[0] = NULL;
-    if (RDB_put_global_ro_op("net.to_json", 1, paramtypv,
-            &RDB_STRING, &op_net_to_json, ecp) != RDB_OK) {
+    if (RDB_put_global_ro_op("json.to_json", 1, paramtypv,
+            &RDB_STRING, &op_to_json, ecp) != RDB_OK) {
         ret = DR_ERR_INIT_OP;
         goto error;
     }
