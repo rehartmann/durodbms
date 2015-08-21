@@ -22,7 +22,7 @@ SUPP_DIR=..
 DREISAM_PROJ_DIR=$SUPP_DIR/../..
 
 # Create directories
-mkdir $DREISAMDIR $DATA_DIR $VIEWS_DIR
+mkdir $DREISAM_DIR $DATA_DIR $VIEWS_DIR
 
 # Copy templates and HTML files
 cp $SUPP_DIR/views/*.thtml $VIEWS_DIR
