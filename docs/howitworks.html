@@ -91,7 +91,7 @@ Hello John!
 
 <p>By setting the view to the empty string, a controller can prevent the template rendering.
 
-<p>For example, a controller which redirects to http://someothersite.com/
+<p>For example, a controller which redirects to http://some_other_site.com/
 using HTTP response code 303 can be created as follows:
 
 <pre>
@@ -99,7 +99,7 @@ insert http_actions tup { path '/redirect', opname 'redirect', method 'GET' };
 
 operator redirect (model tup { }, view string, resp http.http_response) updates { model, view };
     http.set_status(resp, 303);
-    http.set_response_header(resp, 'Location', 'http://someothersite.com/');
+    http.set_response_header(resp, 'Location', 'http://some_other_site.com/');
     view := '';
 end operator;
 </pre>
