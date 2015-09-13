@@ -138,7 +138,7 @@ The file is automatically deleted when it is closed.
 
 The following operator is part of the 'net' package.
 
-OPERATOR form_to_tuple(tp <em>TUPLE</em>, form_data string) UPDATES {tp};
+OPERATOR form_to_tuple(tp TUPLE { * }, form_data string) UPDATES { tp };
 
 Converts WWW form data to a tuple.
 For each name/value pair set the value of the corresponding tuple attribute
