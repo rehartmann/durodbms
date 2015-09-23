@@ -42,7 +42,7 @@ tuple_to_operator(const char *name, const RDB_object *tplp,
             typobjp = RDB_array_get(typarrp, i, ecp);
             if (typobjp == NULL)
                 goto error;
-            argtv[i] = RDB_binobj_to_type(typobjp, ecp, txp);
+            argtv[i] = RDB_bin_to_type(typobjp, ecp, txp);
             if (argtv[i] == NULL)
                 goto error;
         }
@@ -158,7 +158,7 @@ RDB_cat_load_ro_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp
             goto error;
 
         /* Return type */
-        op->rtyp = RDB_binobj_to_type(RDB_tuple_get(&tpl, "rtype"), ecp, txp);
+        op->rtyp = RDB_bin_to_type(RDB_tuple_get(&tpl, "rtype"), ecp, txp);
         if (op->rtyp == NULL) {
             RDB_free_op_data(op, ecp);
             goto error;

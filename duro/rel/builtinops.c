@@ -8,6 +8,7 @@
 #include "rdb.h"
 #include "internal.h"
 #include "tostr.h"
+#include "serialize.h"
 #include <obj/objinternal.h>
 #include <obj/builtinscops.h>
 #include <obj/datetimeops.h>
@@ -471,6 +472,18 @@ Converts the operand to a binary, without a terminating nullbyte.
 <h4>Return value</h4>
 
 The operand, converted to string.
+
+<h3 id="serialize">OPERATOR serialize</h3>
+
+OPERATOR serialize (value <em>ANY</em>) RETURNS binary;
+
+<h4>Description</h4>
+
+Converts a value to a binary representation which includes the type.
+
+<h4>Return value</h4>
+
+The operand, converted to binary representation.
 
 <hr>
 
@@ -1245,7 +1258,7 @@ op_unwrap(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_raise_invalid_argument("invalid argument to UNWRAP", ecp);
         return RDB_ERROR;
     }
-    
+
     if (argv[0]->kind == RDB_OB_TABLE)
         return op_vtable(argc, argv, op, ecp, txp, retvalp);
 
@@ -1367,6 +1380,13 @@ op_index_of(int argc, RDB_object *argv[], RDB_operator *op,
     return RDB_OK;
 }
 
+static int
+op_serialize(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    return RDB_obj_to_bin(retvalp, argv[0], ecp);
+}
+
 int
 RDB_put_global_ro_op(const char *name, int argc, RDB_type **argtv,
         RDB_type *rtyp, RDB_ro_op_func *fp, RDB_exec_context *ecp)
@@ -1452,6 +1472,10 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     if (RDB_put_global_ro_op("<>", 2, paramtv, &RDB_BOOLEAN,
             &RDB_obj_not_equals, ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    paramtv[0] = NULL;
+    if (RDB_put_global_ro_op("serialize", 1, paramtv, &RDB_BINARY, &op_serialize, ecp) != RDB_OK)
         return RDB_ERROR;
 
     if (RDB_put_global_ro_op("tuple", -1, NULL, NULL, &op_tuple, ecp) != RDB_OK)

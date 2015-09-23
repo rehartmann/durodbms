@@ -29,7 +29,7 @@ params_to_typesobj(int argc, RDB_parameter paramv[],
     RDB_set_array_length(objp, argc, ecp);
     RDB_init_obj(&typeobj);
     for (i = 0; i < argc; i++) {
-        ret = RDB_type_to_binobj(&typeobj, paramv[i].typ, ecp);
+        ret = RDB_type_to_bin(&typeobj, paramv[i].typ, ecp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&typeobj, ecp);
             return ret;
@@ -183,7 +183,7 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_type_to_binobj(&rtypobj, rtyp, ecp);
+    ret = RDB_type_to_bin(&rtypobj, rtyp, ecp);
     if (ret != RDB_OK)
         goto cleanup;
     ret = RDB_tuple_set(&tpl, "rtype", &rtypobj, ecp);

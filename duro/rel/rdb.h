@@ -565,4 +565,10 @@ RDB_net_form_to_tuple(RDB_object *, const char *, RDB_exec_context *);
 int
 RDB_net_hescape(RDB_object *, const char *, RDB_exec_context *);
 
+int
+RDB_obj_to_bin(RDB_object *, const RDB_object *, RDB_exec_context *);
+
+int
+RDB_bin_to_obj(const RDB_object *, RDB_object *, RDB_exec_context *);
+
 #endif

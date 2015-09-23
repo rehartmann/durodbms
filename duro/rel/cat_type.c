@@ -195,7 +195,7 @@ get_possrepcomps(const char *typename, RDB_possrep *rep,
             goto error;
         }
 
-        rep->compv[idx].typ = RDB_binobj_to_type(
+        rep->compv[idx].typ = RDB_bin_to_type(
                 RDB_tuple_get(tplp, "comptype"), ecp, txp);
         if (rep->compv[idx].typ == NULL)
             goto error;
@@ -255,7 +255,7 @@ RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
 
     typedatap = RDB_tuple_get(&tpl, "arep_type");
     if (RDB_binary_length(typedatap) != 0) {
-        typ->def.scalar.arep = RDB_binobj_to_type(typedatap, ecp, txp);
+        typ->def.scalar.arep = RDB_bin_to_type(typedatap, ecp, txp);
         if (typ->def.scalar.arep == NULL)
             goto error;
     } else {
@@ -270,7 +270,7 @@ RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
 
     cvalp = RDB_tuple_get(&tpl, "constraint");
     if (RDB_binary_length(cvalp) > 0) {
-        typ->def.scalar.constraintp = RDB_binobj_to_expr(cvalp, ecp, txp);
+        typ->def.scalar.constraintp = RDB_bin_to_expr(cvalp, ecp, txp);
         if (typ->def.scalar.constraintp == NULL)
             goto error;
     } else {
@@ -284,7 +284,7 @@ RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
      */
     ivalp = RDB_tuple_get(&tpl, "init");
     if (RDB_binary_length(ivalp) > 0) {
-        typ->def.scalar.initexp = RDB_binobj_to_expr(ivalp, ecp, txp);
+        typ->def.scalar.initexp = RDB_bin_to_expr(ivalp, ecp, txp);
         if (typ->def.scalar.initexp == NULL)
             goto error;
     } else {

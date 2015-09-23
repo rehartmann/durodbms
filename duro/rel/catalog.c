@@ -347,7 +347,7 @@ insert_defvals(RDB_object *tbp, RDB_dbroot *dbrootp,
             }
 
             RDB_init_obj(&binval);
-            ret = RDB_expr_to_binobj(&binval, defaultp->exp, ecp);
+            ret = RDB_expr_to_bin(&binval, defaultp->exp, ecp);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&binval, ecp);
                 goto error;
@@ -435,7 +435,7 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         char *attrname = tuptyp->def.tuple.attrv[i].name;
 
         RDB_init_obj(&typedata);
-        if (RDB_type_to_binobj(&typedata, tuptyp->def.tuple.attrv[i].typ,
+        if (RDB_type_to_bin(&typedata, tuptyp->def.tuple.attrv[i].typ,
                 ecp) != RDB_OK) {
             RDB_destroy_obj(&typedata, ecp);
             goto error;
@@ -521,7 +521,7 @@ insert_vtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_expr_to_binobj(&defval, RDB_vtable_expr(tbp), ecp);
+    ret = RDB_expr_to_bin(&defval, RDB_vtable_expr(tbp), ecp);
     if (ret != RDB_OK)
         goto cleanup;
     ret = RDB_tuple_set(&tpl, "i_def", &defval, ecp);
@@ -722,7 +722,7 @@ RDB_cat_insert_ptable(const char *name,
         char *attrname = attrv[i].name;
 
         RDB_init_obj(&typedata);
-        ret = RDB_type_to_binobj(&typedata, attrv[i].typ,
+        ret = RDB_type_to_bin(&typedata, attrv[i].typ,
                 ecp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&typedata, ecp);
@@ -817,7 +817,7 @@ RDB_cat_map_ptable(const char *name, RDB_expression *exp,
     upd.exp = NULL;
 
     upd.name = "i_def";
-    if (RDB_expr_to_binobj(&defval, exp, ecp) != RDB_OK)
+    if (RDB_expr_to_bin(&defval, exp, ecp) != RDB_OK)
         goto error;
     upd.exp = RDB_obj_to_expr(&defval, ecp);
     if (upd.exp == NULL)
@@ -1802,7 +1802,7 @@ RDB_cat_get_table_type(const char *name, RDB_exec_context *ecp,
         }
         typedatap = RDB_tuple_get(tplp, "type");
 
-        attrv[fno].typ = RDB_binobj_to_type(typedatap, ecp, txp);
+        attrv[fno].typ = RDB_bin_to_type(typedatap, ecp, txp);
         if (attrv[fno].typ == NULL)
             goto error;
 
@@ -2644,7 +2644,7 @@ RDB_cat_create_constraint(const char *name, RDB_expression *exp,
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_expr_to_binobj(&exprval, exp, ecp);
+    ret = RDB_expr_to_bin(&exprval, exp, ecp);
     if (ret != RDB_OK)
         goto cleanup;
     ret = RDB_tuple_set(&tpl, "i_expr", &exprval, ecp);

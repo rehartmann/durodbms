@@ -100,7 +100,7 @@ RDB_read_constraints(RDB_exec_context *ecp, RDB_transaction *txp)
             ret = RDB_ERROR;
             goto cleanup;
         }
-        constrp->exp = RDB_binobj_to_expr(RDB_tuple_get(tplp, "i_expr"), ecp,
+        constrp->exp = RDB_bin_to_expr(RDB_tuple_get(tplp, "i_expr"), ecp,
                 txp);
         if (constrp->exp == NULL) {
             RDB_free(constrp->name);

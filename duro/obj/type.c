@@ -98,23 +98,23 @@ RDB_type_depends_type(const RDB_type *typ, const RDB_type *dtyp)
         return RDB_TRUE;
 
     switch (typ->kind) {
-        case RDB_TP_TUPLE:
-            for (i = 0; i < typ->def.tuple.attrc; i++) {
-                if (RDB_type_depends_type(typ->def.tuple.attrv[i].typ, dtyp))
+    case RDB_TP_TUPLE:
+        for (i = 0; i < typ->def.tuple.attrc; i++) {
+            if (RDB_type_depends_type(typ->def.tuple.attrv[i].typ, dtyp))
+                return RDB_TRUE;
+        }
+        return RDB_FALSE;
+    case RDB_TP_RELATION:
+    case RDB_TP_ARRAY:
+        return RDB_type_depends_type(typ->def.basetyp, dtyp);
+    case RDB_TP_SCALAR:
+        for (i = 0; i < typ->def.scalar.repc; i++) {
+            for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
+                if (RDB_type_depends_type(typ->def.scalar.repv[i].compv[j].typ, dtyp))
                     return RDB_TRUE;
             }
-            return RDB_FALSE;
-        case RDB_TP_RELATION:
-        case RDB_TP_ARRAY:
-            return RDB_type_depends_type(typ->def.basetyp, dtyp);
-        case RDB_TP_SCALAR:
-            for (i = 0; i < typ->def.scalar.repc; i++) {
-                for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
-                    if (RDB_type_depends_type(typ->def.scalar.repv[i].compv[j].typ, dtyp))
-                        return RDB_TRUE;
-                }
-            }
-            return RDB_FALSE;
+        }
+        return RDB_FALSE;
     }
     abort();
 }
@@ -156,27 +156,27 @@ RDB_dup_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
     RDB_type *restyp;
 
     switch (typ->kind) {
-        case RDB_TP_RELATION:
-        case RDB_TP_ARRAY:
-            restyp = RDB_alloc(sizeof (RDB_type), ecp);
-            if (restyp == NULL) {
-                return NULL;
-            }
-            restyp->name = NULL;
-            restyp->kind = typ->kind;
-            restyp->ireplen = RDB_VARIABLE_LEN;
-            restyp->def.basetyp = RDB_dup_nonscalar_type(typ->def.basetyp,
-                    ecp);
-            if (restyp->def.basetyp == NULL) {
-                RDB_free(restyp);
-                return NULL;
-            }
-            return restyp;
-        case RDB_TP_TUPLE:
-            return RDB_new_tuple_type(typ->def.tuple.attrc,
-                    typ->def.tuple.attrv, ecp);
-        case RDB_TP_SCALAR:
-            return typ;
+    case RDB_TP_RELATION:
+    case RDB_TP_ARRAY:
+        restyp = RDB_alloc(sizeof (RDB_type), ecp);
+        if (restyp == NULL) {
+            return NULL;
+        }
+        restyp->name = NULL;
+        restyp->kind = typ->kind;
+        restyp->ireplen = RDB_VARIABLE_LEN;
+        restyp->def.basetyp = RDB_dup_nonscalar_type(typ->def.basetyp,
+                ecp);
+        if (restyp->def.basetyp == NULL) {
+            RDB_free(restyp);
+            return NULL;
+        }
+        return restyp;
+    case RDB_TP_TUPLE:
+        return RDB_new_tuple_type(typ->def.tuple.attrc,
+                typ->def.tuple.attrv, ecp);
+    case RDB_TP_SCALAR:
+        return typ;
     }
     abort();
 }
@@ -457,29 +457,29 @@ RDB_del_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
     int ret = RDB_OK;
 
     switch (typ->kind) {
-        case RDB_TP_TUPLE:
-            for (i = 0; i < typ->def.tuple.attrc; i++) {
-                if (typ->def.tuple.attrv[i].name != NULL) {
-                    RDB_type *attrtyp = typ->def.tuple.attrv[i].typ;
+    case RDB_TP_TUPLE:
+        for (i = 0; i < typ->def.tuple.attrc; i++) {
+            if (typ->def.tuple.attrv[i].name != NULL) {
+                RDB_type *attrtyp = typ->def.tuple.attrv[i].typ;
 
-                    RDB_free(typ->def.tuple.attrv[i].name);
-                    if (!RDB_type_is_scalar(attrtyp))
-                        ret = RDB_del_nonscalar_type(attrtyp, ecp);
-                }
+                RDB_free(typ->def.tuple.attrv[i].name);
+                if (!RDB_type_is_scalar(attrtyp))
+                    ret = RDB_del_nonscalar_type(attrtyp, ecp);
             }
-            if (typ->def.tuple.attrc > 0)
-                RDB_free(typ->def.tuple.attrv);
-            break;
-        case RDB_TP_RELATION:
-        case RDB_TP_ARRAY:
-            if (!RDB_type_is_scalar(typ->def.basetyp))
-                ret = RDB_del_nonscalar_type(typ->def.basetyp, ecp);
-            break;
-        case RDB_TP_SCALAR:
-            RDB_raise_invalid_argument("type is scalar", ecp);
-            return RDB_ERROR;
-        default:
-            abort();
+        }
+        if (typ->def.tuple.attrc > 0)
+            RDB_free(typ->def.tuple.attrv);
+        break;
+    case RDB_TP_RELATION:
+    case RDB_TP_ARRAY:
+        if (!RDB_type_is_scalar(typ->def.basetyp))
+            ret = RDB_del_nonscalar_type(typ->def.basetyp, ecp);
+        break;
+    case RDB_TP_SCALAR:
+        RDB_raise_invalid_argument("type is scalar", ecp);
+        return RDB_ERROR;
+    default:
+        abort();
     }
     typ->kind = (enum RDB_tp_kind) -1; /* for debugging */
     RDB_free(typ);
@@ -563,15 +563,15 @@ RDB_type_attr_type(const RDB_type *typ, const char *name)
     RDB_attr *attrp;
 
     switch (typ->kind) {
-        case RDB_TP_RELATION:
-            attrp = RDB_tuple_type_attr(typ->def.basetyp, name);
-            break;
-        case RDB_TP_TUPLE:
-            attrp = RDB_tuple_type_attr(typ, name);
-            break;
-        case RDB_TP_ARRAY:
-        case RDB_TP_SCALAR:
-            return NULL;
+    case RDB_TP_RELATION:
+        attrp = RDB_tuple_type_attr(typ->def.basetyp, name);
+        break;
+    case RDB_TP_TUPLE:
+        attrp = RDB_tuple_type_attr(typ, name);
+        break;
+    case RDB_TP_ARRAY:
+    case RDB_TP_SCALAR:
+        return NULL;
     }
     if (attrp == NULL)
         return NULL;
@@ -632,6 +632,7 @@ RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
 
     newtyp->name = NULL;
     newtyp->kind = RDB_TP_TUPLE;
+    newtyp->ireplen = RDB_VARIABLE_LEN;
     newtyp->def.tuple.attrc = typ->def.tuple.attrc + attrc;
     newtyp->def.tuple.attrv = RDB_alloc(sizeof (RDB_attr)
             * (newtyp->def.tuple.attrc), ecp);
@@ -706,6 +707,7 @@ RDB_extend_relation_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
 
     newtyp->name = NULL;
     newtyp->kind = RDB_TP_RELATION;
+    newtyp->ireplen = RDB_VARIABLE_LEN;
     newtyp->def.basetyp = RDB_extend_tuple_type(typ->def.basetyp, attrc, attrv,
             ecp);
     if (newtyp->def.basetyp == NULL) {
@@ -731,6 +733,7 @@ RDB_union_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
 
     newtyp->name = NULL;
     newtyp->kind = RDB_TP_TUPLE;
+    newtyp->ireplen = RDB_VARIABLE_LEN;
     
     /* calculate new # of attributes as the sum of the # of attributes
      * of both types.
@@ -817,6 +820,7 @@ RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
     }
     newtyp->name = NULL;
     newtyp->kind = RDB_TP_RELATION;
+    newtyp->ireplen = RDB_VARIABLE_LEN;
 
     newtyp->def.basetyp = RDB_union_tuple_types(typ1->def.basetyp,
             typ2->def.basetyp, ecp);
@@ -855,6 +859,7 @@ RDB_project_tuple_type(const RDB_type *typ, int attrc, const char *attrv[],
     }
     tuptyp->name = NULL;
     tuptyp->kind = RDB_TP_TUPLE;
+    tuptyp->ireplen = RDB_VARIABLE_LEN;
     tuptyp->def.tuple.attrc = attrc;
     if (attrc > 0) {
         tuptyp->def.tuple.attrv = RDB_alloc(attrc * sizeof (RDB_attr), ecp);
@@ -920,6 +925,7 @@ RDB_project_relation_type(const RDB_type *typ, int attrc, const char *attrv[],
     }
     reltyp->name = NULL;
     reltyp->kind = RDB_TP_RELATION;
+    reltyp->ireplen = RDB_VARIABLE_LEN;
 
     return reltyp;
 }
@@ -979,6 +985,7 @@ RDB_rename_tuple_type(const RDB_type *typ, int renc, const RDB_renaming renv[],
 
     newtyp->name = NULL;
     newtyp->kind = RDB_TP_TUPLE;
+    newtyp->ireplen = RDB_VARIABLE_LEN;
     newtyp->def.tuple.attrc = typ->def.tuple.attrc;
     newtyp->def.tuple.attrv = RDB_alloc (typ->def.tuple.attrc * sizeof(RDB_attr), ecp);
     if (newtyp->def.tuple.attrv == NULL) {
@@ -1033,6 +1040,7 @@ RDB_rename_relation_type(const RDB_type *typ, int renc, const RDB_renaming renv[
 
     newtyp->name = NULL;
     newtyp->kind = RDB_TP_RELATION;
+    newtyp->ireplen = RDB_VARIABLE_LEN;
 
     newtyp->def.basetyp = RDB_rename_tuple_type(typ->def.basetyp, renc, renv,
             ecp);
@@ -1099,6 +1107,7 @@ RDB_wrap_tuple_type(const RDB_type *typ, int wrapc, const RDB_wrapping wrapv[],
 
     newtyp->name = NULL;
     newtyp->kind = RDB_TP_TUPLE;
+    newtyp->ireplen = RDB_VARIABLE_LEN;
     newtyp->def.tuple.attrc = attrc;
     newtyp->def.tuple.attrv = RDB_alloc(attrc * sizeof(RDB_attr), ecp);
     if (newtyp->def.tuple.attrv == NULL) {
@@ -1121,6 +1130,7 @@ RDB_wrap_tuple_type(const RDB_type *typ, int wrapc, const RDB_wrapping wrapv[],
         }
         tuptyp->name = NULL;
         tuptyp->kind = RDB_TP_TUPLE;
+        tuptyp->ireplen = RDB_VARIABLE_LEN;
         tuptyp->def.tuple.attrc = wrapv[i].attrc;
         tuptyp->def.tuple.attrv = RDB_alloc(sizeof(RDB_attr) * wrapv[i].attrc, ecp);
         if (tuptyp->def.tuple.attrv == NULL) {
@@ -1201,6 +1211,7 @@ RDB_wrap_relation_type(const RDB_type *typ, int wrapc,
 
     newtyp->name = NULL;
     newtyp->kind = RDB_TP_RELATION;
+    newtyp->ireplen = RDB_VARIABLE_LEN;
 
     newtyp->def.basetyp = RDB_wrap_tuple_type(typ->def.basetyp, wrapc, wrapv,
             ecp);
@@ -1243,6 +1254,7 @@ RDB_unwrap_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
 
     newtyp->name = NULL;
     newtyp->kind = RDB_TP_TUPLE;
+    newtyp->ireplen = RDB_VARIABLE_LEN;
     newtyp->def.tuple.attrc = nattrc;
     newtyp->def.tuple.attrv = RDB_alloc(nattrc * sizeof(RDB_attr), ecp);
     if (newtyp->def.tuple.attrv == NULL) {
@@ -1315,6 +1327,7 @@ RDB_unwrap_relation_type(const RDB_type *typ, int attrc, char *attrv[],
 
     newtyp->name = NULL;
     newtyp->kind = RDB_TP_RELATION;
+    newtyp->ireplen = RDB_VARIABLE_LEN;
 
     newtyp->def.basetyp = RDB_unwrap_tuple_type(typ->def.basetyp, attrc, attrv,
             ecp);
@@ -1369,6 +1382,7 @@ RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
     }
 
     tuptyp->kind = RDB_TP_TUPLE;
+    tuptyp->ireplen = RDB_VARIABLE_LEN;
     tuptyp->name = NULL;
     tuptyp->def.tuple.attrc = typ->def.basetyp->def.tuple.attrc + 1 - attrc;
     tuptyp->def.tuple.attrv = RDB_alloc(tuptyp->def.tuple.attrc * sizeof(RDB_attr), ecp);
@@ -1417,6 +1431,7 @@ RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
         goto error;
     }
     newtyp->kind = RDB_TP_RELATION;
+    newtyp->ireplen = RDB_VARIABLE_LEN;
     newtyp->name = NULL;
     newtyp->def.basetyp = tuptyp;
 
@@ -1462,6 +1477,7 @@ RDB_ungroup_type(RDB_type *typ, const char *attr, RDB_exec_context *ecp)
     }
 
     tuptyp->kind = RDB_TP_TUPLE;
+    tuptyp->ireplen = RDB_VARIABLE_LEN;
     tuptyp->name = NULL;
 
     /* Compute # of attributes */
@@ -1519,6 +1535,7 @@ RDB_ungroup_type(RDB_type *typ, const char *attr, RDB_exec_context *ecp)
         goto error;
     }
     newtyp->kind = RDB_TP_RELATION;
+    newtyp->ireplen = RDB_VARIABLE_LEN;
     newtyp->name = NULL;
     newtyp->def.basetyp = tuptyp;
 

@@ -319,7 +319,7 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
     }
     if (arep != NULL) {
         RDB_init_obj(&typedata);
-        ret = RDB_type_to_binobj(&typedata, arep, ecp);
+        ret = RDB_type_to_bin(&typedata, arep, ecp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&typedata, ecp);
             goto cleanup;

@@ -224,13 +224,13 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
         goto error;
 
     /* Store constraint in tuple */
-    if (RDB_expr_to_binobj(&conval, constraintp, ecp) != RDB_OK)
+    if (RDB_expr_to_bin(&conval, constraintp, ecp) != RDB_OK)
         goto error;
     if (RDB_tuple_set(&tpl, "constraint", &conval, ecp) != RDB_OK)
         goto error;
 
     /* Store init expression in tuple */
-    if (RDB_expr_to_binobj(&initval, initexp, ecp) != RDB_OK)
+    if (RDB_expr_to_bin(&initval, initexp, ecp) != RDB_OK)
         goto error;
     if (RDB_tuple_set(&tpl, "init", &initval, ecp) != RDB_OK)
         goto error;
@@ -279,7 +279,7 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
             if (RDB_tuple_set_string(&tpl, "compname", cname, ecp) != RDB_OK)
                 goto error;
 
-            if (RDB_type_to_binobj(&typedata, repv[i].compv[j].typ,
+            if (RDB_type_to_bin(&typedata, repv[i].compv[j].typ,
                     ecp) != RDB_OK)
                 goto error;
             if (RDB_tuple_set(&tpl, "comptype", &typedata, ecp) != RDB_OK)

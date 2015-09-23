@@ -376,6 +376,8 @@ RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
             int attridx = RDB_next_attr_sorted(tpltyp, lastwritten);
 
             attrp = RDB_tuple_get(objp, tpltyp->def.tuple.attrv[attridx].name);
+            if (attrp->store_typ == NULL)
+                attrp->store_typ = tpltyp->def.tuple.attrv[attridx].typ;
             bp = obj_to_len_irep(bp, attrp, tpltyp->def.tuple.attrv[attridx].typ,
                     &ec);
             lastwritten = tpltyp->def.tuple.attrv[attridx].name;
