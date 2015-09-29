@@ -7,6 +7,7 @@
 
 #include "datetimeops.h"
 #include "builtintypes.h"
+#include <gen/strfns.h>
 
 #include <stdio.h>
 
@@ -115,6 +116,13 @@ POSSREP {
  * Returns the time as a datetime.
  * now() returns the time according to the current timezone.
  * now_utc() returns the time as UTC.
+ *
+ *
+ * operator add_seconds(dt datetime, seconds integer) returns datetime;
+ *
+ * Adds the number of seconds specified by <var>seconds</var>
+ * to the datetime specified by <var>dt</var> using the current time zone
+ * and returns the result.
  */
 
 /* Selector of type datetime */
@@ -142,7 +150,6 @@ datetime(int argc, RDB_object *argv[], RDB_operator *op,
     tm.tm_hour = RDB_obj_int(argv[3]);
     tm.tm_min = RDB_obj_int(argv[4]);
     tm.tm_sec = RDB_obj_int(argv[5]);
-    tm.tm_isdst = 0;
 
     RDB_tm_to_obj(retvalp, &tm);
     return RDB_OK;
@@ -311,6 +318,40 @@ datetime_set_second(int argc, RDB_object *argv[], RDB_operator *op,
     return RDB_OK;
 }
 
+static int
+datetime_add_seconds(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    time_t t;
+    struct tm *restm;
+    struct tm tm;
+
+    tm.tm_year = argv[0]->val.time.year - 1900;
+    tm.tm_mon = argv[0]->val.time.month - 1;
+    tm.tm_mday = argv[0]->val.time.day;
+    tm.tm_hour = argv[0]->val.time.hour;
+    tm.tm_min = argv[0]->val.time.minute;
+    tm.tm_sec = argv[0]->val.time.second;
+    tm.tm_isdst = -1;
+
+    t = mktime(&tm);
+    if (t == -1) {
+        RDB_raise_invalid_argument("converting datetime to time_t failed", ecp);
+        return RDB_ERROR;
+    }
+
+    t += RDB_obj_int(argv[1]);
+
+    restm = localtime(&t);
+    if (restm == NULL) {
+        RDB_raise_system("localtime() failed", ecp);
+        return RDB_ERROR;
+    }
+
+    RDB_tm_to_obj(retvalp, restm);
+    return RDB_OK;
+}
+
 int
 RDB_add_datetime_ro_ops(RDB_op_map *opmap, RDB_exec_context *ecp)
 {
@@ -363,6 +404,14 @@ RDB_add_datetime_ro_ops(RDB_op_map *opmap, RDB_exec_context *ecp)
     if (RDB_put_ro_op(opmap, "now", 0, NULL, &RDB_DATETIME,
             &now_datetime, ecp) != RDB_OK)
         return RDB_ERROR;
+
+    paramtv[0] = &RDB_DATETIME;
+    paramtv[1] = &RDB_INTEGER;
+
+    if (RDB_put_ro_op(opmap, "add_seconds", 2, paramtv, &RDB_DATETIME,
+            &datetime_add_seconds, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
 
     return RDB_OK;
 }

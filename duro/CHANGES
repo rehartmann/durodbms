@@ -1,5 +1,12 @@
 Summary of Changes to DuroDBMS
 
+DuroDBMS 1.1
+
+- Added read-only operators serialize and add_seconds to libduro.
+
+- Added RDB_obj_to_bin() and RDB_bin_to_obj() to rel/rdb.h.
+  Removed internal functions from rel/serialize.h.
+
 DuroDBMS 1.0
 
 - Renamed datetime properties min and sec to minute and second, respectively.

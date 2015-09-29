@@ -602,8 +602,7 @@ RDB_get_update_op(const char *name, int argc, RDB_type *argtv[],
             return NULL;
         }
     } else {
-        RDB_raise_invalid_argument(
-                "No transaction and no database environment available", ecp);
+        RDB_raise_operator_not_found(name, ecp);
         return NULL;
     }
 

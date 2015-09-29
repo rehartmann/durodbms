@@ -334,15 +334,6 @@ interp_get_op(Duro_interp *interp, const char *opname, int argc,
         RDB_bool type_mismatch =
                 (RDB_obj_type(RDB_get_err(ecp)) == &RDB_TYPE_MISMATCH_ERROR);
 
-        /*
-         * If there is transaction and no environment, RDB_get_update_op()
-         * will fail
-         */
-        if (interp->txnp == NULL && interp->envp == NULL) {
-            return NULL;
-        }
-        RDB_clear_err(ecp);
-
         op = RDB_get_update_op(opname, argc, argtv, interp->envp, ecp,
                 interp->txnp != NULL ? &interp->txnp->tx : NULL);
         /*
