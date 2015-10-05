@@ -676,7 +676,7 @@ Duro_exec_constdef(RDB_parse_node *nodep, Duro_interp *interp,
             objp) != RDB_OK) {
         goto error;
     }
-    if (RDB_obj_type(objp) != NULL) {
+    if (RDB_obj_type(objp) == NULL) {
         /* No type available (tuple or array) - set type */
         RDB_type *typ = Duro_expr_type(initexp, interp, ecp);
         if (typ == NULL)

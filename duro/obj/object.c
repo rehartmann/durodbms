@@ -112,6 +112,8 @@ RDB_init_obj(RDB_object *valp)
 /**
  * RDB_destroy_obj releases all resources associated with a RDB_object
  * structure.
+ * If an error occurred, RDB_ERROR is returned and an error valued is stored in *<var>ecp</var>.
+ * On success, RDB_OK is returned and *<var>ecp</var> is not modified.
 
 @returns
 
@@ -256,7 +258,7 @@ RDB_float_to_obj(RDB_object *valp, RDB_float v)
 /**
  * Sets the RDB_object *<var>objp</var>
  * to the datetime value specified by the argument <var>tm</var>.
- * The *<var>objp</var> must either be newly initialized or of type
+ * *<var>objp</var> must either be newly initialized or of type
  * datetime.
  */
 void
