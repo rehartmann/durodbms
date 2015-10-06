@@ -109,20 +109,25 @@ POSSREP {
 </pre>
 
  *
- * operator now() returns datetime;
+ * OPERATOR now() RETURNS datetime;
  *
- * operator now_utc() returns datetime;
+ * OPERATOR now_utc() RETURNS datetime;
  *
  * Returns the time as a datetime.
  * now() returns the time according to the current timezone.
  * now_utc() returns the time as UTC.
  *
  *
- * operator add_seconds(dt datetime, seconds integer) returns datetime;
+ * OPERATOR add_seconds(dt datetime, seconds integer) RETURNS datetime;
  *
  * Adds the number of seconds specified by <var>seconds</var>
  * to the datetime specified by <var>dt</var> using the current time zone
  * and returns the result.
+ *
+ * OPERATOR weekday(dt datetime) RETURNS integer;
+ *
+ * Returns, for the given datetime, the weekday as the number of days since Sunday.
+ *
  */
 
 /* Selector of type datetime */
@@ -323,8 +328,8 @@ datetime_add_seconds(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     time_t t;
-    struct tm *restm;
     struct tm tm;
+    struct tm *restm;
 
     tm.tm_year = argv[0]->val.time.year - 1900;
     tm.tm_mon = argv[0]->val.time.month - 1;
@@ -349,6 +354,38 @@ datetime_add_seconds(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     RDB_tm_to_obj(retvalp, restm);
+    return RDB_OK;
+}
+
+static int
+datetime_weekday(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    time_t t;
+    struct tm tm;
+    struct tm *restm;
+
+    tm.tm_year = argv[0]->val.time.year - 1900;
+    tm.tm_mon = argv[0]->val.time.month - 1;
+    tm.tm_mday = argv[0]->val.time.day;
+    tm.tm_hour = argv[0]->val.time.hour;
+    tm.tm_min = argv[0]->val.time.minute;
+    tm.tm_sec = argv[0]->val.time.second;
+    tm.tm_isdst = -1;
+
+    t = mktime(&tm);
+    if (t == -1) {
+        RDB_raise_invalid_argument("converting datetime to time_t failed", ecp);
+        return RDB_ERROR;
+    }
+
+    restm = localtime(&t);
+    if (restm == NULL) {
+        RDB_raise_system("localtime() failed", ecp);
+        return RDB_ERROR;
+    }
+
+    RDB_int_to_obj(retvalp, restm->tm_wday);
     return RDB_OK;
 }
 
@@ -410,6 +447,11 @@ RDB_add_datetime_ro_ops(RDB_op_map *opmap, RDB_exec_context *ecp)
 
     if (RDB_put_ro_op(opmap, "add_seconds", 2, paramtv, &RDB_DATETIME,
             &datetime_add_seconds, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    if (RDB_put_ro_op(opmap, "weekday", 1, paramtv, &RDB_INTEGER,
+            &datetime_weekday, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 

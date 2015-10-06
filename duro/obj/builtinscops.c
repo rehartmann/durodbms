@@ -12,6 +12,7 @@
 #include <string.h>
 #include <math.h>
 #include <regex.h>
+#include <ctype.h>
 #ifdef _WIN32
 #include "Shlwapi.h"
 #else
@@ -354,6 +355,182 @@ op_regex_like(int argc, RDB_object *argv[], RDB_operator *op,
     regfree(&reg);
 
     return RDB_OK;
+}
+
+static int
+sprint_obj(char **buf, int *bufsizep, const char *format,
+        const RDB_object *srcobjp, RDB_exec_context *ecp)
+{
+    int reqsize;
+    RDB_type *typ = RDB_obj_type(srcobjp);
+    const char *convp = format + 1;
+
+    /* Skip flags etc. */
+    while (*convp == '#' || *convp == '0' || *convp == '-'
+            || *convp == ' ' || *convp == '+') {
+        ++convp;
+    }
+    while (isdigit(*convp)) ++convp;
+    if (*convp == '.') {
+        ++convp;
+        while (isdigit(*convp)) ++convp;
+    }
+    switch (*convp) {
+    case 'd':
+    case 'o':
+    case 'u':
+    case 'x':
+    case 'X':
+        if (typ != &RDB_INTEGER) {
+            RDB_raise_type_mismatch("integer expected", ecp);
+            return RDB_ERROR;
+        }
+        if (*convp == 'd') {
+#ifdef _WIN32
+            reqsize = _scprintf(format, (int) RDB_obj_int(srcobjp)) + 1;
+#else
+            reqsize = snprintf(NULL, 0, format,
+                    (int) RDB_obj_int(srcobjp)) + 1;
+#endif
+        } else {
+#ifdef _WIN32
+            reqsize = _scprintf(format, (unsigned int) RDB_obj_int(srcobjp)) + 1;
+#else
+            reqsize = snprintf(NULL, 0, format,
+                    (unsigned int) RDB_obj_int(srcobjp)) + 1;
+#endif
+        }
+        if (*bufsizep < reqsize) {
+            *buf = RDB_realloc(*buf, reqsize , ecp);
+            if (*buf == NULL)
+                return RDB_ERROR;
+            *bufsizep = reqsize;
+        }
+        if (*convp == 'd') {
+            sprintf(*buf, format, (int) RDB_obj_int(srcobjp));
+        } else {
+            sprintf(*buf, format, (unsigned int) RDB_obj_int(srcobjp));
+        }
+        break;
+    case 's':
+        if (typ != &RDB_STRING) {
+            RDB_raise_type_mismatch("string expected", ecp);
+            return RDB_ERROR;
+        }
+#ifdef _WIN32
+        reqsize = _scprintf(format, RDB_obj_string(srcobjp)) + 1;
+#else
+        reqsize = snprintf(NULL, 0, format, RDB_obj_string(srcobjp)) + 1;
+#endif
+        if (*bufsizep < reqsize) {
+            *buf = RDB_realloc(*buf, reqsize, ecp);
+            if (*buf == NULL)
+                return RDB_ERROR;
+            *bufsizep = reqsize;
+        }
+        sprintf(*buf, format, RDB_obj_string(srcobjp));
+        break;
+    case 'e':
+    case 'f':
+    case 'g':
+        if (typ != &RDB_FLOAT) {
+            RDB_raise_type_mismatch("float expected", ecp);
+            return RDB_ERROR;
+        }
+#ifdef _WIN32
+        reqsize = _scprintf(format, (double) RDB_obj_float(srcobjp)) + 1;
+#else
+        reqsize = snprintf(NULL, 0, format, (double) RDB_obj_float(srcobjp)) + 1;
+#endif
+        if (*bufsizep < reqsize) {
+            *buf = RDB_realloc(*buf, reqsize, ecp);
+            if (*buf == NULL)
+                return RDB_ERROR;
+            *bufsizep = reqsize;
+        }
+        sprintf(*buf, format, (double) RDB_obj_float(srcobjp));
+        break;
+    default:
+        RDB_raise_type_mismatch("Unsupported conversion", ecp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int
+op_format(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    char *format;
+    char *pos, *npos;
+    char *buf = NULL;
+    int bufsize = 0;
+    int argi;
+
+    if (argc < 1) {
+        RDB_raise_invalid_argument("format argument missing", ecp);
+        return RDB_ERROR;
+    }
+
+    if (RDB_obj_type(argv[0]) != &RDB_STRING) {
+        RDB_raise_type_mismatch("format must be of type string", ecp);
+        return RDB_ERROR;
+    }
+    format = RDB_obj_string(argv[0]);
+
+    pos = strchr(format, '%');
+    if (pos == NULL) {
+        return RDB_string_to_obj(retvalp, format, ecp);
+    }
+    RDB_string_n_to_obj(retvalp, format, pos - format, ecp);
+
+    argi = 1;
+    for (;;) {
+        char *tmpformat;
+        int ret;
+
+        while (pos[1] == '%') {
+            npos = strchr(pos + 2, '%');
+            if (npos == NULL) {
+                RDB_free(buf);
+                return RDB_append_string(retvalp, pos + 1, ecp);
+            }
+            for (pos += 1; pos < npos; pos++) {
+                if (RDB_append_char(retvalp, *pos, ecp) != RDB_OK)
+                    goto error;
+            }
+            pos = npos;
+        }
+        if (argi >= argc) {
+            RDB_raise_invalid_argument("missing argument", ecp);
+            goto error;
+        }
+        npos = strchr(pos + 1, '%');
+        if (npos == NULL) {
+            if (sprint_obj(&buf, &bufsize, pos, argv[argi], ecp) != RDB_OK)
+                goto error;
+
+            ret = RDB_append_string(retvalp, buf, ecp);
+            RDB_free(buf);
+            return ret;
+        }
+        tmpformat = RDB_alloc(npos - pos + 1, ecp);
+        strncpy(tmpformat, pos, npos - pos);
+        tmpformat[npos - pos] = '\0';
+        ret = sprint_obj(&buf, &bufsize, tmpformat, argv[argi], ecp);
+        RDB_free(tmpformat);
+        if (ret != RDB_OK)
+            goto error;
+        if (RDB_append_string(retvalp, buf, ecp) != RDB_OK)
+            goto error;
+
+        pos = npos;
+        argi++;
+    }
+
+error:
+    RDB_free(buf);
+    return RDB_ERROR;
 }
 
 static int
@@ -733,6 +910,10 @@ RDB_add_builtin_scalar_ro_ops(RDB_op_map *opmap, RDB_exec_context *ecp)
 
     if (RDB_put_ro_op(opmap, "regex_like", 2, paramtv, &RDB_BOOLEAN,
             &op_regex_like, ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    if (RDB_put_ro_op(opmap, "format", -1, NULL, &RDB_STRING,
+            &op_format, ecp) != RDB_OK)
         return RDB_ERROR;
 
     paramtv[0] = &RDB_BOOLEAN;

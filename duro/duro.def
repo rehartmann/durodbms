@@ -265,6 +265,8 @@ RDB_expr_op_args
 RDB_expr_list_get
 RDB_set_op_cleanup_fn
 RDB_is_comparer
+RDB_obj_to_bin
+RDB_bin_to_obj
 RDB_parse_set_read_line_fn
 RDB_parse_set_free_line_fn
 RDB_parse_set_case_insensitive

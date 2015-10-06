@@ -411,6 +411,22 @@ TRUE if <var>s</var> matches <var>pattern</var>, RDB_FALSE otherwise.
 
 <hr>
 
+<h3 id="op_format">OPERATOR format</h3>
+
+OPERATOR format (format string, ...) RETURNS string;
+
+<h4>Description</h4>
+
+Generates a formatted string in the style of sprintf.
+The arguments passed after format must be of type string, integer, or float
+and must match the format argument.
+
+<h4>Return value</h4>
+
+The formatted string.
+
+<hr>
+
 <h3 id="op_integer">OPERATOR cast_as_integer</h3>
 
 OPERATOR cast_as_integer (float) RETURNS integer;
