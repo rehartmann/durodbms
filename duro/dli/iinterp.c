@@ -510,6 +510,7 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
             RDB_init_obj(&argv[i]);
             if (RDB_evaluate(exp, &Duro_get_var, interp, interp->envp, ecp,
                     interp->txnp != NULL ? &interp->txnp->tx : NULL, &argv[i]) != RDB_OK) {
+                RDB_destroy_obj(&argv[i], ecp);
                 goto error;
             }
             /* Set type if missing */
@@ -517,6 +518,7 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
                 RDB_type *typ = RDB_expr_type(exp, &Duro_get_var_type,
                         interp, interp->envp, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
                 if (typ == NULL) {
+                    RDB_destroy_obj(&argv[i], ecp);
                     goto error;
                 }
                 RDB_obj_set_typeinfo(&argv[i], typ);

@@ -463,26 +463,30 @@ op_format(int argc, RDB_object *argv[], RDB_operator *op,
 {
     char *format;
     char *pos, *npos;
-    char *buf = NULL;
-    int bufsize = 0;
     int argi;
+    int bufsize = 160;
+    char *buf = RDB_alloc(bufsize, ecp);
+    if (buf == NULL)
+        return RDB_ERROR;
 
     if (argc < 1) {
         RDB_raise_invalid_argument("format argument missing", ecp);
-        return RDB_ERROR;
+        goto error;
     }
 
     if (RDB_obj_type(argv[0]) != &RDB_STRING) {
         RDB_raise_type_mismatch("format must be of type string", ecp);
-        return RDB_ERROR;
+        goto error;
     }
     format = RDB_obj_string(argv[0]);
 
     pos = strchr(format, '%');
     if (pos == NULL) {
+        RDB_free(buf);
         return RDB_string_to_obj(retvalp, format, ecp);
     }
-    RDB_string_n_to_obj(retvalp, format, pos - format, ecp);
+    if (RDB_string_n_to_obj(retvalp, format, pos - format, ecp) != RDB_OK)
+        goto error;
 
     argi = 1;
     for (;;) {
@@ -510,9 +514,10 @@ op_format(int argc, RDB_object *argv[], RDB_operator *op,
             if (sprint_obj(&buf, &bufsize, pos, argv[argi], ecp) != RDB_OK)
                 goto error;
 
-            ret = RDB_append_string(retvalp, buf, ecp);
+            if (RDB_append_string(retvalp, buf, ecp) != RDB_OK)
+                goto error;
             RDB_free(buf);
-            return ret;
+            return RDB_OK;
         }
         tmpformat = RDB_alloc(npos - pos + 1, ecp);
         strncpy(tmpformat, pos, npos - pos);

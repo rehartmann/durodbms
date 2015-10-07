@@ -1168,4 +1168,25 @@ test const {constants} -setup $SETUP -cleanup $CLEANUP -body {
 24
 }
 
+test format {printf-style formatting} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        io.put_line(format('%%!%5.2fxx%03d %s.', 1.2, 12, 'foo '));
+        
+        try
+            io.put_line(format('%d %s', 2, 3));
+            io.put_line('passing integer when string is expected not caught');
+        catch err type_mismatch_error;
+            ;
+        end try;
+
+        try
+            io.put_line(format(' %d'));
+            io.put_line('missing integer arg not caught');
+        catch err invalid_argument_error;
+            ;
+        end try;
+    }
+} -result {%! 1.20xx012 foo .
+}
+
 cleanupTests
