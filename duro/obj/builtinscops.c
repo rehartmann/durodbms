@@ -358,7 +358,7 @@ op_regex_like(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-sprint_obj(char **buf, int *bufsizep, const char *format,
+sprintf_obj(char **buf, int *bufsizep, const char *format,
         const RDB_object *srcobjp, RDB_exec_context *ecp)
 {
     int reqsize;
@@ -387,19 +387,22 @@ sprint_obj(char **buf, int *bufsizep, const char *format,
         }
         if (*convp == 'd') {
 #ifdef _WIN32
-            reqsize = _scprintf(format, (int) RDB_obj_int(srcobjp)) + 1;
+            reqsize = _scprintf(format, (int) RDB_obj_int(srcobjp));
 #else
-            reqsize = snprintf(NULL, 0, format,
-                    (int) RDB_obj_int(srcobjp)) + 1;
+            reqsize = snprintf(NULL, 0, format, (int) RDB_obj_int(srcobjp));
 #endif
         } else {
 #ifdef _WIN32
-            reqsize = _scprintf(format, (unsigned int) RDB_obj_int(srcobjp)) + 1;
+            reqsize = _scprintf(format, (unsigned int) RDB_obj_int(srcobjp));
 #else
-            reqsize = snprintf(NULL, 0, format,
-                    (unsigned int) RDB_obj_int(srcobjp)) + 1;
+            reqsize = snprintf(NULL, 0, format, (unsigned int) RDB_obj_int(srcobjp));
 #endif
         }
+        if (reqsize < 0) {
+            RDB_raise_invalid_argument("", ecp);
+            return RDB_ERROR;
+        }
+        ++reqsize; /* For the terminating null character */
         if (*bufsizep < reqsize) {
             *buf = RDB_realloc(*buf, reqsize , ecp);
             if (*buf == NULL)
@@ -418,10 +421,15 @@ sprint_obj(char **buf, int *bufsizep, const char *format,
             return RDB_ERROR;
         }
 #ifdef _WIN32
-        reqsize = _scprintf(format, RDB_obj_string(srcobjp)) + 1;
+        reqsize = _scprintf(format, RDB_obj_string(srcobjp));
 #else
-        reqsize = snprintf(NULL, 0, format, RDB_obj_string(srcobjp)) + 1;
+        reqsize = snprintf(NULL, 0, format, RDB_obj_string(srcobjp));
 #endif
+        if (reqsize < 0) {
+            RDB_raise_invalid_argument("", ecp);
+            return RDB_ERROR;
+        }
+        ++reqsize;
         if (*bufsizep < reqsize) {
             *buf = RDB_realloc(*buf, reqsize, ecp);
             if (*buf == NULL)
@@ -438,10 +446,15 @@ sprint_obj(char **buf, int *bufsizep, const char *format,
             return RDB_ERROR;
         }
 #ifdef _WIN32
-        reqsize = _scprintf(format, (double) RDB_obj_float(srcobjp)) + 1;
+        reqsize = _scprintf(format, (double) RDB_obj_float(srcobjp));
 #else
-        reqsize = snprintf(NULL, 0, format, (double) RDB_obj_float(srcobjp)) + 1;
+        reqsize = snprintf(NULL, 0, format, (double) RDB_obj_float(srcobjp));
 #endif
+        if (reqsize < 0) {
+            RDB_raise_invalid_argument("", ecp);
+            return RDB_ERROR;
+        }
+        ++reqsize;
         if (*bufsizep < reqsize) {
             *buf = RDB_realloc(*buf, reqsize, ecp);
             if (*buf == NULL)
@@ -511,7 +524,7 @@ op_format(int argc, RDB_object *argv[], RDB_operator *op,
         }
         npos = strchr(pos + 1, '%');
         if (npos == NULL) {
-            if (sprint_obj(&buf, &bufsize, pos, argv[argi], ecp) != RDB_OK)
+            if (sprintf_obj(&buf, &bufsize, pos, argv[argi], ecp) != RDB_OK)
                 goto error;
 
             if (RDB_append_string(retvalp, buf, ecp) != RDB_OK)
@@ -520,9 +533,11 @@ op_format(int argc, RDB_object *argv[], RDB_operator *op,
             return RDB_OK;
         }
         tmpformat = RDB_alloc(npos - pos + 1, ecp);
+        if (tmpformat == NULL)
+            goto error;
         strncpy(tmpformat, pos, npos - pos);
         tmpformat[npos - pos] = '\0';
-        ret = sprint_obj(&buf, &bufsize, tmpformat, argv[argi], ecp);
+        ret = sprintf_obj(&buf, &bufsize, tmpformat, argv[argi], ecp);
         RDB_free(tmpformat);
         if (ret != RDB_OK)
             goto error;
