@@ -108,15 +108,19 @@ POSSREP {
 };
 </pre>
 
+ * <h3>OPERATOR now</h3>
  *
  * OPERATOR now() RETURNS datetime;
  *
+ * Returns the current time as a datetime, according to the current timezone.
+ *
+ * <h3>OPERATOR now_utc</h3>
+ *
  * OPERATOR now_utc() RETURNS datetime;
  *
- * Returns the time as a datetime.
- * now() returns the time according to the current timezone.
- * now_utc() returns the time as UTC.
+ * Returns the current time as a UTC datetime.
  *
+ * <h3>OPERATOR add_seconds</h3>
  *
  * OPERATOR add_seconds(dt datetime, seconds integer) RETURNS datetime;
  *
@@ -124,9 +128,17 @@ POSSREP {
  * to the datetime specified by <var>dt</var> using the current time zone
  * and returns the result.
  *
+ * <h3>OPERATOR weekday</h3>
+ *
  * OPERATOR weekday(dt datetime) RETURNS integer;
  *
  * Returns, for the given datetime, the weekday as the number of days since Sunday.
+ *
+ * <h3>OPERATOR local_utc</h3>
+ *
+ * OPERATOR local_to_utc(dt datetime) RETURNS datetime;
+ *
+ * Converts a local datetime to a UTC datetime.
  *
  */
 
@@ -389,6 +401,38 @@ datetime_weekday(int argc, RDB_object *argv[], RDB_operator *op,
     return RDB_OK;
 }
 
+static int
+datetime_local_to_utc(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    time_t t;
+    struct tm tm;
+    struct tm *restm;
+
+    tm.tm_year = argv[0]->val.time.year - 1900;
+    tm.tm_mon = argv[0]->val.time.month - 1;
+    tm.tm_mday = argv[0]->val.time.day;
+    tm.tm_hour = argv[0]->val.time.hour;
+    tm.tm_min = argv[0]->val.time.minute;
+    tm.tm_sec = argv[0]->val.time.second;
+    tm.tm_isdst = -1;
+
+    t = mktime(&tm);
+    if (t == -1) {
+        RDB_raise_invalid_argument("converting datetime to time_t failed", ecp);
+        return RDB_ERROR;
+    }
+
+    restm = gmtime(&t);
+    if (restm == NULL) {
+        RDB_raise_system("gmtime() failed", ecp);
+        return RDB_ERROR;
+    }
+
+    RDB_tm_to_obj(retvalp, restm);
+    return RDB_OK;
+}
+
 int
 RDB_add_datetime_ro_ops(RDB_op_map *opmap, RDB_exec_context *ecp)
 {
@@ -455,6 +499,11 @@ RDB_add_datetime_ro_ops(RDB_op_map *opmap, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
+    if (RDB_put_ro_op(opmap, "local_to_utc", 1, paramtv, &RDB_DATETIME,
+            &datetime_local_to_utc, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+
     return RDB_OK;
 }
 
@@ -489,4 +538,3 @@ RDB_add_datetime_upd_ops(RDB_op_map *opmap, RDB_exec_context *ecp)
 
     return RDB_OK;
 }
-
