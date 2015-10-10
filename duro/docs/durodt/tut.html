@@ -314,7 +314,7 @@ type "exit" to exit: exit
 no db> 
 </pre>
 
-<p>LEAVE with a statement name is also supported.
+<p>LEAVE with a statement name (label) is also supported.
 See <cite>TTM</cite>, chapter 5 for details.
 
 <h3>CASE</h3>
@@ -501,8 +501,8 @@ thus a table is created by declaring a variable.
 <p>Creating a real table:
 
 <pre>
-D> var r real relation { no int, name string } key {no};
-Table r created.
+D> var items real relation { itemno int, name string, price float } key { itemno };
+Table items created.
 D>
 </pre>
 
@@ -511,9 +511,9 @@ D>
 <p>It is possible to specify default values when creating a table. Example:
 
 <pre>
-D> var r2 real rel { no int, name string } key { no } default { name 'unknown' };
-Table r2 created.
-D> insert r2 tup{no 1};
+D> var items2 real rel { itemno int, name string, price float } key { itemno } default { price 0.0 };
+Table items2 created.
+D> insert items2 tup { itemno 1, name 'Sunglasses' };
 1 element affected.
 </pre>
 
@@ -523,15 +523,15 @@ will be obtained automatically.</p>
 <p>Example:</p>
 
 <pre>
-D> var r3 real rel { no int, name string } key { no } default { no serial() };
+D> var items3 real rel { itemno int, name string, price float } key { itemno } default { itemno serial() };
 Table r3 created.
-D> insert r3 tup { name 'foo' };
+D> insert items3 tup { name 'Bag', price 19.95 };
 1 element affected.
-D> insert r3 tup { name 'bar' };
+D> insert items3 tup { name 'Hat', price 25.0 };
 1 element affected.
-D> io.put(r3); io.put_line('');
-RELATION {TUPLE {no 2, name 'bar'}, TUPLE {no 1, name 'foo'}}
-D> 
+D> io.put(items3); io.put_line('');
+RELATION {TUPLE {itemno 2, name 'Hat', price 25.0}, TUPLE {itemno 1, name 'Bag', price 19.95}}
+D>
 </pre>
 
 <h3>Private tables</h3>
@@ -552,12 +552,12 @@ D>
 <p>Creating a virtual table:
 
 <pre>
-D> var v virtual r { no };
-Table v created.
+D> var cheap_item_names virtual items where price < 5.0 { name };
+Table cheap_item_names created.
 D>
 </pre>
 
-<p>This creates a projection over attribute <code>no</code>.
+<p>This creates a view which contains the names of all items with a price lower than 5.
 
 <h3>Public tables</h3>
 
@@ -567,18 +567,18 @@ separating the application from the database.
 <p>A public table can be defined as follows:
 
 <pre>
-D> var pt public relation { no int, name string } key {no};
-Public table pt created.
+D> var app_items public relation { itemno int, name string, price float } key { itemno };
+Public table app_items created.
 D> 
 </pre>
 
 <p>Before a public table can be used, a mapping between it and and one or more database
 tables must be defined. This can be done using the MAP operator.
 
-<p>A simple example (using the table <var>r</var> defined above):
+<p>A simple example (using the table <var>items</var> defined above):
 
 <pre>
-D> map pt r;
+D> map app_items items2;
 D>
 </pre>
 
@@ -587,7 +587,7 @@ D>
 <p>Inserting a single tuple:</p>
 
 <pre>
-D> insert r tup { no 1, name 'one' };
+D> insert items tup { itemno 1, name 'Wallet', price 15.0 };
 1 element affected.
 D>
 </pre>
@@ -595,7 +595,8 @@ D>
 <p>Inserting several tuples:</p>
 
 <pre>
-D> insert r rel { tup { no 2, name 'two' }, tup { no 3, name 'three' } };
+D> insert items rel { tup { itemno 2, name 'T-Shirt', price 23.99 },
+                      tup { itemno 3, name 'Cap', price 18.99 } };
 2 elements affected.
 D>
 </pre>
@@ -603,7 +604,7 @@ D>
 <p>Updating a table:</p>
 
 <pre>
-D> update r where no = 3 { no := 4, name := 'four' };
+D> update items where itemno = 3 { itemno := 4, name := 'Baseball cap' };
 1 element affected.
 D>
 </pre>
@@ -611,9 +612,9 @@ D>
 <p>Deleting tuples from a table:</p>
 
 <pre>
-D> delete r where no = 4;
+D> delete items where itemno = 4;
 1 element affected.
-D> delete r tup { no 2, name 'two' };
+D> delete items tup { itemno 2, name 'T-Shirt', price 23.99 };
 1 element affected.
 D>
 </pre>
@@ -621,11 +622,11 @@ D>
 <p>Tables can be destroyed just as other variables using DROP VAR:
 
 <pre>
-D> drop var v;
-Table v dropped.
-D> drop var r;
-Table r dropped.
-D> 
+D> drop var cheap_item_names;
+Table cheap_item_names dropped.
+D> drop var items;
+Table items dropped.
+D>
 </pre>
 
 <h3>Renaming a table</h3>
@@ -633,8 +634,8 @@ D>
 <p>A table can be renamed using RENAME VAR:</p>
 
 <pre>
-D> rename var r2 as rn;
-Table r2 renamed.
+D> rename var items3 as itemsn;
+Table items3 renamed.
 D>
 </pre>
 
