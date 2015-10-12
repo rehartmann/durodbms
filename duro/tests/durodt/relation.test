@@ -2030,4 +2030,23 @@ test datetime_table {table with datetime attribute} -setup $SETUP -cleanup $CLEA
 2 2015-02-02T00:00:01
 }
 
+test nested_rollback {nested transactions rolled back} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+        begin tx;
+        var r real rel {n int, s string} key {n};
+        commit;
+        begin tx;
+        begin tx;
+        insert r tup {n 1, s '1'};
+        rollback;
+        rollback;
+        begin tx;
+        io.put_line(cast_as_string(count(r)));
+        commit;
+    }
+} -result {0
+}
+
 cleanupTests

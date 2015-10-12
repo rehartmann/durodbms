@@ -134,7 +134,7 @@ POSSREP {
  *
  * Returns, for the given datetime, the weekday as the number of days since Sunday.
  *
- * <h3>OPERATOR local_utc</h3>
+ * <h3>OPERATOR local_to_utc</h3>
  *
  * OPERATOR local_to_utc(dt datetime) RETURNS datetime;
  *

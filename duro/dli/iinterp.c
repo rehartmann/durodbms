@@ -1116,6 +1116,8 @@ exec_commit(Duro_interp *interp, RDB_exec_context *ecp)
 static int
 do_rollback(Duro_interp *interp, RDB_exec_context *ecp)
 {
+    tx_node *ptxnp;
+
     if (interp->txnp == NULL) {
         RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
@@ -1129,8 +1131,9 @@ do_rollback(Duro_interp *interp, RDB_exec_context *ecp)
     if (RDB_rollback(ecp, &interp->txnp->tx) != RDB_OK)
         return RDB_ERROR;
 
+    ptxnp = interp->txnp->parentp;
     RDB_free(interp->txnp);
-    interp->txnp = NULL;
+    interp->txnp = ptxnp;
 
     return RDB_OK;
 }
