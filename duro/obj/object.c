@@ -19,6 +19,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
+#include <time.h>
 
 enum {
     STR_BUF_INC = 16,
@@ -695,4 +696,16 @@ RDB_obj_set_const(RDB_object *objp, RDB_bool isconst)
         objp->flags |= CONSTANT;
     else
         objp->flags &= ~CONSTANT;
+}
+
+void
+RDB_datetime_to_tm(struct tm *tm, const RDB_object *dt)
+{
+    tm->tm_year = dt->val.time.year - 1900;
+    tm->tm_mon = dt->val.time.month - 1;
+    tm->tm_mday = dt->val.time.day;
+    tm->tm_hour = dt->val.time.hour;
+    tm->tm_min = dt->val.time.minute;
+    tm->tm_sec = dt->val.time.second;
+    tm->tm_isdst = -1;
 }

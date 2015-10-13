@@ -7,13 +7,11 @@
 
 #include "datetimeops.h"
 #include "builtintypes.h"
+#include "object.h"
 #include <gen/strfns.h>
 
 #include <stdio.h>
-
-#ifdef _WIN32
-#define snprintf sprintf_s
-#endif
+#include <time.h>
 
 static int datetime_check_month(int m, RDB_exec_context *ecp)
 {
@@ -259,14 +257,11 @@ cast_as_string_datetime(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 
 {
+    struct tm tm;
     char buf[20];
-    snprintf(buf, sizeof(buf), "%4d-%02d-%02dT%02d:%02d:%02d",
-            argv[0]->val.time.year,
-            argv[0]->val.time.month,
-            argv[0]->val.time.day,
-            argv[0]->val.time.hour,
-            argv[0]->val.time.minute,
-            argv[0]->val.time.second);
+
+    RDB_datetime_to_tm(&tm, argv[0]);
+    strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &tm);
 
     return RDB_string_to_obj(retvalp, buf, ecp);
 }
@@ -343,13 +338,7 @@ datetime_add_seconds(int argc, RDB_object *argv[], RDB_operator *op,
     struct tm tm;
     struct tm *restm;
 
-    tm.tm_year = argv[0]->val.time.year - 1900;
-    tm.tm_mon = argv[0]->val.time.month - 1;
-    tm.tm_mday = argv[0]->val.time.day;
-    tm.tm_hour = argv[0]->val.time.hour;
-    tm.tm_min = argv[0]->val.time.minute;
-    tm.tm_sec = argv[0]->val.time.second;
-    tm.tm_isdst = -1;
+    RDB_datetime_to_tm(&tm, argv[0]);
 
     t = mktime(&tm);
     if (t == -1) {
@@ -377,13 +366,7 @@ datetime_weekday(int argc, RDB_object *argv[], RDB_operator *op,
     struct tm tm;
     struct tm *restm;
 
-    tm.tm_year = argv[0]->val.time.year - 1900;
-    tm.tm_mon = argv[0]->val.time.month - 1;
-    tm.tm_mday = argv[0]->val.time.day;
-    tm.tm_hour = argv[0]->val.time.hour;
-    tm.tm_min = argv[0]->val.time.minute;
-    tm.tm_sec = argv[0]->val.time.second;
-    tm.tm_isdst = -1;
+    RDB_datetime_to_tm(&tm, argv[0]);
 
     t = mktime(&tm);
     if (t == -1) {
@@ -409,13 +392,7 @@ datetime_local_to_utc(int argc, RDB_object *argv[], RDB_operator *op,
     struct tm tm;
     struct tm *restm;
 
-    tm.tm_year = argv[0]->val.time.year - 1900;
-    tm.tm_mon = argv[0]->val.time.month - 1;
-    tm.tm_mday = argv[0]->val.time.day;
-    tm.tm_hour = argv[0]->val.time.hour;
-    tm.tm_min = argv[0]->val.time.minute;
-    tm.tm_sec = argv[0]->val.time.second;
-    tm.tm_isdst = -1;
+    RDB_datetime_to_tm(&tm, argv[0]);
 
     t = mktime(&tm);
     if (t == -1) {

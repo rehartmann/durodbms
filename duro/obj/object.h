@@ -52,6 +52,8 @@ typedef struct RDB_time {
     RDB_byte second;
 } RDB_time;
 
+struct tm;
+
 /**
  * A RDB_object structure carries a value of an arbitrary type,
  * together with the type information.
@@ -222,5 +224,8 @@ RDB_obj_is_const(const RDB_object *);
 
 void
 RDB_obj_set_const(RDB_object *, RDB_bool);
+
+void
+RDB_datetime_to_tm(struct tm *, const RDB_object *);
 
 #endif /* OBJECT_H_ */
