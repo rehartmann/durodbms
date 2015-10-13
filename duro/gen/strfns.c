@@ -6,7 +6,6 @@
 #include "strfns.h"
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 char *
 RDB_dup_str(const char *str) {

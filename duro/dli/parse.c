@@ -15,7 +15,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <locale.h>
-#include <assert.h>
 
 int yyparse(void);
 

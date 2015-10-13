@@ -26,7 +26,6 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
 
 extern int yylineno;
 extern YY_BUFFER_STATE RDB_parse_buffer;

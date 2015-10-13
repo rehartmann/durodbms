@@ -22,7 +22,6 @@
 #include <gen/strfns.h>
 
 #include <string.h>
-#include <assert.h>
 
 static int
 init_qresult(RDB_qresult *, RDB_object *, RDB_exec_context *,
@@ -993,8 +992,11 @@ static int
 expr_dups(RDB_expression *exp, RDB_exec_context *ecp, RDB_bool *resp)
 {
     if (exp->kind == RDB_EX_OBJ) {
-        assert(exp->def.obj.kind == RDB_OB_TABLE
-                && exp->def.obj.val.tb.exp == NULL);
+        if (exp->def.obj.kind != RDB_OB_TABLE
+                || exp->def.obj.val.tb.exp != NULL) {
+            RDB_raise_invalid_argument("expression required", ecp);
+            return RDB_ERROR;
+        }
         *resp = RDB_FALSE;
         return RDB_OK;
     }
