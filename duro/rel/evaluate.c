@@ -474,17 +474,17 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         }
         if (strcmp(exp->def.op.name, ".") == 0) {
             int ret;
-            RDB_object tpl;
+            RDB_object obj;
             RDB_object *attrp;
             const char *attrname;
 
-            RDB_init_obj(&tpl);
+            RDB_init_obj(&obj);
             ret = RDB_evaluate(exp->def.op.args.firstp, getfnp, getdata, envp, ecp,
-                    txp, &tpl);
+                    txp, &obj);
             if (ret != RDB_OK) {
                 RDB_object varnameobj;
 
-                RDB_destroy_obj(&tpl, ecp);
+                RDB_destroy_obj(&obj, ecp);
 
                 if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NAME_ERROR)
                     return RDB_ERROR;
@@ -501,29 +501,34 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
 
                 return ret;
             }
-            if (tpl.kind != RDB_OB_TUPLE) {
-                RDB_destroy_obj(&tpl, ecp);
-                RDB_raise_type_mismatch("tuple required", ecp);
-                return RDB_ERROR;
-            }
 
             attrname = RDB_expr_var_name(exp->def.op.args.firstp->nextp);
             if (attrname == NULL) {
                 RDB_raise_invalid_argument("invalid '.' expression", ecp);
                 return RDB_ERROR;
             }
-            attrp = RDB_tuple_get(&tpl, attrname);
+
+            if (obj.typ != NULL && RDB_type_is_scalar(obj.typ)) {
+                ret = RDB_obj_property(&obj, attrname, valp, envp, ecp, txp);
+                RDB_destroy_obj(&obj, ecp);
+                return ret;
+            }
+            if (!RDB_is_tuple(&obj)) {
+                RDB_raise_invalid_argument("scalar or tuple required", ecp);
+                return RDB_ERROR;
+            }
+            attrp = RDB_tuple_get(&obj, attrname);
             if (attrp == NULL) {
-                RDB_destroy_obj(&tpl, ecp);
+                RDB_destroy_obj(&obj, ecp);
                 RDB_raise_name(attrname, ecp);
                 return RDB_ERROR;
             }
             ret = RDB_copy_obj(valp, attrp, ecp);
             if (ret != RDB_OK) {
-                RDB_destroy_obj(&tpl, ecp);
+                RDB_destroy_obj(&obj, ecp);
                 return RDB_ERROR;
             }
-            return RDB_destroy_obj(&tpl, ecp);
+            return RDB_destroy_obj(&obj, ecp);
         }
     }
 

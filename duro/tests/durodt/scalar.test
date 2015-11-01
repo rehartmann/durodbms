@@ -176,8 +176,12 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
         v := t(1, 2);
         io.put(the_a(v)); io.put_line('');
         io.put(the_b(v)); io.put_line('');
+        io.put(v.a); io.put_line('');
+        io.put(v.b); io.put_line('');
 
         the_a(v) := 5;
+        io.put(the_a(v)); io.put_line('');
+        v.a := 66;
         io.put(the_a(v)); io.put_line('');
 
         try
@@ -307,7 +311,10 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
 0
 1
 2
+1
+2
 5
+66
 9
 -7
 15
@@ -525,18 +532,21 @@ test deftypemarr {user-defined type with array possreps} -setup $SETUP -cleanup 
         for i := 0 to length(the_lines(t)) - 1;
             io.put_line(the_lines(t)[i]);
         end for;
-        
-        the_length(the_lines(t)) := 4;
+
+        length(the_lines(t)) := 4;
         io.put_line(the_text(t));
-        
-        the_length(the_lines(t)) := 1;
+
+        length(t.lines) := 3;
+        io.put_line(t.text);
+
+        length(the_lines(t)) := 1;
         for i := 0 to length(the_lines(t)) - 1;
             io.put_line(the_lines(t)[i]);
         end for;
         
         try
-            the_length(the_text(t)) := 1;
-            io.put('assignment to the_length(string) succeeded');
+            length(the_text(t)) := 1;
+            io.put('assignment to length(string) succeeded');
         catch err type_mismatch_error;
             ;
         end try;
@@ -548,6 +558,9 @@ two
 one
 two
 
+
+one
+two
 
 one
 }

@@ -64,12 +64,13 @@ static RDB_object *
 resolve_target(RDB_expression *exp, Duro_interp *interp, RDB_exec_context *ecp)
 {
     const char *varname;
+    RDB_object *objp;
+    RDB_object *prop;
     const char *opname = RDB_expr_op_name(exp);
 
     if (opname != NULL) {
         if (RDB_expr_kind(exp) == RDB_EX_GET_COMP) {
-            RDB_object *prop;
-            RDB_object *objp = resolve_target(
+            objp = resolve_target(
                     RDB_expr_list_get(RDB_expr_op_args(exp), 0), interp, ecp);
             if (objp == NULL)
                 return NULL;
@@ -148,12 +149,40 @@ resolve_target(RDB_expression *exp, Duro_interp *interp, RDB_exec_context *ecp)
             RDB_expr_list *arglistp = RDB_expr_op_args((RDB_expression *)exp);
 
             /* Check if it's a tuple attribute */
-            RDB_object *tplp = resolve_target(RDB_expr_list_get(arglistp, 0), interp, ecp);
+            objp = resolve_target(RDB_expr_list_get(arglistp, 0), interp, ecp);
 
-            if (tplp != NULL && RDB_is_tuple(tplp)) {
-                resp = RDB_tuple_get(tplp, RDB_expr_var_name(RDB_expr_list_get(arglistp, 1)));
+            if (objp != NULL) {
+                if (RDB_is_tuple(objp)) {
+                resp = RDB_tuple_get(objp, RDB_expr_var_name(RDB_expr_list_get(arglistp, 1)));
                 if (resp != NULL)
                     return resp;
+                } else if (RDB_obj_type(objp) != NULL) {
+                    /* Type must be system-implemented with tuple as internal rep */
+                    if (!objp->typ->def.scalar.sysimpl
+                            || objp->typ->def.scalar.repv[0].compc <= 1) {
+                        RDB_raise_not_supported("unsupported the_ assignment target", ecp);
+                        return NULL;
+                    }
+                    prop = RDB_tuple_get(objp, opname);
+                    if (prop == NULL) {
+                        RDB_raise_operator_not_found(opname, ecp);
+                        return NULL;
+                    }
+                    if (prop->typ == NULL) {
+                        int i;
+
+                        for (i = 0;
+                             i < objp->typ->def.scalar.repv[0].compc
+                                    && strcmp(objp->typ->def.scalar.repv[0].compv[i].name, opname) != 0;
+                             i++);
+                        if (i >= objp->typ->def.scalar.repv[0].compc) {
+                            RDB_raise_internal("component not found", ecp);
+                            return NULL;
+                        }
+                        RDB_obj_set_typeinfo(prop, objp->typ->def.scalar.repv[0].compv[i].typ);
+                    }
+                    return prop;
+                }
             }
 
             RDB_init_obj(&idobj);
@@ -557,7 +586,7 @@ node_to_vdelete(RDB_ma_vdelete *delp, RDB_parse_node *nodep, Duro_interp *interp
 }
 
 /*
- * Check if the first child of nodep is an operator invocation with one argument
+ * Check if the first child of nodep is an operator invocation
  * and return it as an expression if it is.
  */
 static const RDB_expression *
@@ -576,7 +605,7 @@ op_assign(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
     opname = RDB_expr_op_name(exp);
     if (opname == NULL)
         return NULL;
-    return RDB_expr_list_length(RDB_expr_op_args(exp)) == 1 ? exp : NULL;
+    return exp;
 }
 
 static int
@@ -657,7 +686,9 @@ exec_length_assign(const RDB_parse_node *nodep, RDB_expression *argexp,
         RDB_object arrobj;
         RDB_object *dstobjp;
 
-        if (RDB_expr_kind(argexp) != RDB_EX_GET_COMP) {
+        if (RDB_expr_kind(argexp) != RDB_EX_GET_COMP
+                && (RDB_expr_kind(argexp) != RDB_EX_RO_OP
+                        || strcmp(RDB_expr_op_name(argexp), ".") != 0)) {
             return RDB_ERROR;
         }
         RDB_init_obj(&arrobj);
@@ -677,7 +708,9 @@ exec_length_assign(const RDB_parse_node *nodep, RDB_expression *argexp,
             RDB_destroy_obj(&arrobj, ecp);
             return RDB_ERROR;
         }
-        ret = RDB_obj_set_property(dstobjp, RDB_expr_op_name(argexp), &arrobj,
+        ret = RDB_obj_set_property(dstobjp,
+                RDB_expr_kind(argexp) == RDB_EX_GET_COMP ? RDB_expr_op_name(argexp)
+                        : RDB_expr_var_name(RDB_expr_list_get(RDB_expr_op_args(argexp), 1)), &arrobj,
                 interp->envp, ecp,
                 interp->txnp != NULL ? &interp->txnp->tx : NULL);
         RDB_destroy_obj(&arrobj, ecp);
@@ -718,6 +751,38 @@ exec_the_assign_set(const RDB_parse_node *nodep, const RDB_expression *opexp,
     }
 
     ret = RDB_obj_set_property(argp, RDB_expr_op_name(opexp), &srcobj,
+            interp->envp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL);
+    RDB_destroy_obj(&srcobj, ecp);
+    return ret;
+}
+
+/*
+ * Execute property assignment using the dot operator
+ */
+static int
+exec_dot_assign_set(RDB_object *dstp, const RDB_parse_node *nodep, const RDB_expression *opexp,
+        Duro_interp *interp, RDB_exec_context *ecp)
+{
+    int ret;
+    RDB_expression *srcexp;
+    RDB_object srcobj;
+    RDB_expr_list *arglist = RDB_expr_op_args((RDB_expression *) opexp);
+
+    srcexp = RDB_parse_node_expr(nodep->val.children.firstp->nextp->nextp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL);
+    if (srcexp == NULL)
+        return RDB_ERROR;
+
+    RDB_init_obj(&srcobj);
+    if (RDB_evaluate(srcexp, &Duro_get_var, interp, interp->envp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL,
+            &srcobj) != RDB_OK) {
+        RDB_destroy_obj(&srcobj, ecp);
+        return RDB_ERROR;
+    }
+
+    ret = RDB_obj_set_property(dstp, RDB_expr_var_name(RDB_expr_list_get(arglist, 1)), &srcobj,
             interp->envp, ecp,
             interp->txnp != NULL ? &interp->txnp->tx : NULL);
     RDB_destroy_obj(&srcobj, ecp);
@@ -953,15 +1018,29 @@ Duro_exec_assign(const RDB_parse_node *listnodep, Duro_interp *interp,
     if (nodep->nextp == NULL) {
         opexp = op_assign(nodep, interp, ecp);
         if (opexp != NULL) {
+            RDB_expr_list *arglist = RDB_expr_op_args((RDB_expression *) opexp);
+            int argcount = (int) RDB_expr_list_length(arglist);
             const char *opname = RDB_expr_op_name(opexp);
             if (opname != NULL) {
-                if (strcmp(opname, "length") == 0) {
+                if (strcmp(opname, "length") == 0 && argcount == 1) {
                     return exec_length_assign(nodep,
-                            RDB_expr_list_get(RDB_expr_op_args((RDB_expression *) opexp), 0), interp, ecp);
+                            RDB_expr_list_get(arglist, 0), interp, ecp);
+                }
+
+                if (RDB_expr_kind(opexp) == RDB_EX_GET_COMP && argcount == 1)
+                    return exec_the_assign_set(nodep, opexp, interp, ecp);
+
+                if (strcmp(opname, ".") == 0 && argcount == 2) {
+                    /* If the first argument is scalar, assign property */
+                    RDB_expression *dstexp = RDB_expr_list_get(arglist, 0);
+                    RDB_object *dstp = resolve_target(dstexp, interp, ecp);
+                    if (dstp != NULL) {
+                        RDB_type *dsttyp = RDB_obj_type(dstp);
+                        if (dsttyp != NULL && RDB_type_is_scalar(dsttyp))
+                            return exec_dot_assign_set(dstp, nodep, opexp, interp, ecp);
+                    }
                 }
             }
-            if (RDB_expr_kind(opexp) == RDB_EX_GET_COMP)
-                return exec_the_assign_set(nodep, opexp, interp, ecp);
         }
     }
 

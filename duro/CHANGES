@@ -2,6 +2,8 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 1.1
 
+- Accessing properties is now possible using v.p in addition to the_p(v).
+
 - Added read-only operators serialize(), add_seconds(), weekday(), local_to_utc(),
   and format() to libduro.
 

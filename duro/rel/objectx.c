@@ -376,8 +376,6 @@ RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
             int attridx = RDB_next_attr_sorted(tpltyp, lastwritten);
 
             attrp = RDB_tuple_get(objp, tpltyp->def.tuple.attrv[attridx].name);
-            if (attrp->store_typ == NULL)
-                attrp->store_typ = tpltyp->def.tuple.attrv[attridx].typ;
             bp = obj_to_len_irep(bp, attrp, tpltyp->def.tuple.attrv[attridx].typ,
                     &ec);
             lastwritten = tpltyp->def.tuple.attrv[attridx].name;
@@ -593,8 +591,9 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p,
 
 /**
 Copy the value of property <var>propname</var>
-of the variable pointed to by <var>objp</var>
-to *<var>propvalp</var>.
+of *<var>objp</var> *<var>propvalp</var>.
+
+There must be type information associated with *<var>objp</var>.
 
 If <var>txp</var> is NULL and <var>envp</var> is not, <var>envp</var> is used
 to look up the getter operator from memory.
@@ -700,6 +699,9 @@ If <var>txp</var> is not NULL, <var>envp</var> is ignored.
 
 If an error occurs, an error value is left in *<var>ecp</var>.
 
+If the call fails with a type_constraint_violation_error, the value of *dst
+may be replaced by the init value of the type of *dst.
+
 @returns
 
 RDB_OK on success, RDB_ERROR if an error occurred.
@@ -770,9 +772,12 @@ RDB_obj_set_property(RDB_object *objp, const char *propname,
 
     ret = RDB_check_type_constraint(objp, envp, ecp, txp);
     if (ret != RDB_OK) {
-        /* Destroy illegal value */
-        RDB_destroy_obj(objp, ecp);
-        RDB_init_obj(objp);
+        /* Replace illegal value by init value */
+        if (!objp->typ->def.scalar.init_val_is_valid) {
+            RDB_raise_internal("missing init value", ecp);
+            return RDB_ERROR;
+        }
+        RDB_copy_obj_data(objp, &objp->typ->def.scalar.init_val, ecp, NULL);
     }
     return ret;
 }

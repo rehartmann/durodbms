@@ -789,6 +789,14 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
             RDB_raise_invalid_argument("invalid '.' expression", ecp);
             return NULL;
         }
+        if (RDB_type_is_scalar(typ)) {
+            RDB_attr *attrp = RDB_prop_attr(typ, attrname);
+            if (attrp == NULL) {
+                RDB_raise_invalid_argument("property not found", ecp);
+                return NULL;
+            }
+            return attrp->typ;
+        }
         typ = RDB_type_attr_type(typ, attrname);
         if (typ == NULL) {
             RDB_raise_name(attrname, ecp);
@@ -1291,7 +1299,7 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
 
         attrp = RDB_prop_attr(typ, exp->def.op.name);
         if (attrp == NULL) {
-            RDB_raise_invalid_argument("component not found", ecp);
+            RDB_raise_invalid_argument("property not found", ecp);
             return NULL;
         }
         return attrp->typ;
