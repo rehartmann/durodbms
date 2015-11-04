@@ -968,10 +968,18 @@ D> empno := empno('A1234');
 type_constraint_violation_error: empno
 D> empno := empno('E1234');
 1 element affected.
-D> io.put_line(the_no(empno));
+D> io.put_line(empno.no);
 E1234
 D> 
 </pre>
+
+<p>The <var>no</var> property can also be accessed using a the_ operator:
+
+<pre>
+D> io.put_line(the_no(empno));
+E1234
+D> 
+</pre> 
 
 <p>Things are getting a little more complex if a user-defined type has more
 than one possible representation.
@@ -1047,13 +1055,13 @@ end implement;
 D> var p point;
 D> p := cartesian(1.0, 1.0);
 1 element affected.
-D> io.put(the_x(p)); io.put_line('');
+D> io.put(p.x); io.put_line('');
 1.0
-D> io.put(the_y(p)); io.put_line('');
+D> io.put(p.y); io.put_line('');
 1.0
-D> io.put(the_r(p)); io.put_line('');
+D> io.put(p.r); io.put_line('');
 1.4142135624
-D> io.put(the_theta(p)); io.put_line('');
+D> io.put(p.theta); io.put_line('');
 0.7853981634
 D> 
 </pre>
@@ -1160,7 +1168,7 @@ package empapp;
         var tp tuple same_heading_as(empapp.employees);
 
         for tp in empapp.employees order (name asc);
-            io.put(the_no(tp.empno));
+            io.put(tp.empno.no);
             io.put(' ');
             io.put_line(tp.name);
         end for;
