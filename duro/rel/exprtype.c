@@ -1260,7 +1260,6 @@ RDB_type *
 RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
         RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_attr *attrp;
     RDB_type *typ;
 
     if (exp->typ != NULL)
@@ -1289,24 +1288,6 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
     case RDB_EX_VAR:
         exp->typ = var_type(RDB_expr_var_name(exp), getfnp, getarg, ecp, txp);
         return exp->typ;
-    case RDB_EX_GET_COMP:
-        typ = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg,
-                envp, ecp, txp);
-        if (typ == NULL)
-            return NULL;
-
-        if (!RDB_type_is_scalar(typ)) {
-            RDB_raise_type_mismatch(
-                    "accessing components only possible with scalar types", ecp);
-            return NULL;
-        }
-
-        attrp = RDB_prop_attr(typ, exp->def.op.name);
-        if (attrp == NULL) {
-            RDB_raise_invalid_argument("property not found", ecp);
-            return NULL;
-        }
-        return attrp->typ;
     case RDB_EX_RO_OP:
         exp->typ = expr_op_type(exp, getfnp, getarg, envp, ecp, txp);
         return exp->typ;

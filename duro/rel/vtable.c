@@ -458,9 +458,6 @@ RDB_infer_keys(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         /* Not found */
         RDB_raise_name(exp->def.varname, ecp);
         return RDB_ERROR;
-    case RDB_EX_GET_COMP:
-        RDB_raise_invalid_argument("Expression is not a table", ecp);
-        return RDB_ERROR;
     }
 
     if ((strcmp(exp->def.op.name, "where") == 0)

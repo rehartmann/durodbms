@@ -27,10 +27,6 @@ RDB_expr_resolve_varnames(RDB_expression *exp, RDB_getobjfn *getfnp,
     RDB_object *objp;
 
     switch (exp->kind) {
-    case RDB_EX_GET_COMP:
-        return RDB_expr_property(
-                RDB_expr_resolve_varnames(exp->def.op.args.firstp, getfnp, getdata, ecp, txp),
-                exp->def.op.name, ecp);
     case RDB_EX_RO_OP:
     {
         RDB_expression *argp;
@@ -125,14 +121,6 @@ RDB_expr_equals(const RDB_expression *ex1p, const RDB_expression *ex2p,
     case RDB_EX_VAR:
         *resp = (RDB_bool)
         (strcmp (ex1p->def.varname, ex2p->def.varname) == 0);
-        break;
-    case RDB_EX_GET_COMP:
-        ret = RDB_expr_equals(ex1p->def.op.args.firstp,
-                ex2p->def.op.args.firstp, ecp, txp, resp);
-        if (ret != RDB_OK)
-            return RDB_ERROR;
-        *resp = (RDB_bool)
-                            (strcmp (ex1p->def.op.name, ex2p->def.op.name) == 0);
         break;
     case RDB_EX_RO_OP:
         if (RDB_expr_list_length(&ex1p->def.op.args)

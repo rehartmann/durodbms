@@ -701,7 +701,6 @@ table_est_cardinality(const RDB_expression *exp)
         return exp->def.obj.val.tb.stp != NULL ?
                 exp->def.obj.val.tb.stp->est_cardinality : 0;
     case RDB_EX_VAR:
-    case RDB_EX_GET_COMP:
         return 1;
     case RDB_EX_RO_OP:
         break;
@@ -956,17 +955,9 @@ dup_expr_deep(const RDB_expression *exp, RDB_exec_context *ecp,
     RDB_expression *newexp;
 
     switch (exp->kind) {
-    case RDB_EX_GET_COMP:
-        newexp = dup_expr_deep(exp->def.op.args.firstp, ecp, txp);
-        if (newexp == NULL)
-            return NULL;
-        newexp = RDB_expr_property(newexp, exp->def.op.name, ecp);
-        break;
     case RDB_EX_RO_OP:
-    {
         newexp = dup_ro_op_expr_deep(exp, ecp, txp);
         break;
-    }
     case RDB_EX_OBJ:
         newexp = RDB_obj_to_expr(&exp->def.obj, ecp);
         break;

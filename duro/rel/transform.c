@@ -1081,9 +1081,6 @@ RDB_expr_resolve_tbnames(RDB_expression *exp, RDB_exec_context *ecp,
     RDB_expression *argp;
 
     switch (exp->kind) {
-    case RDB_EX_GET_COMP:
-        return RDB_expr_resolve_tbnames(exp->def.op.args.firstp,
-                ecp, txp);
     case RDB_EX_RO_OP:
         argp = exp->def.op.args.firstp;
         while (argp != NULL) {

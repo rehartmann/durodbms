@@ -244,11 +244,6 @@ RDB_serialize_expr(RDB_object *valp, int *posp, RDB_expression *exp,
         return serialize_table(valp, posp, exp->def.tbref.tbp, ecp);
     case RDB_EX_VAR:
         return RDB_serialize_str(valp, posp, exp->def.varname, ecp);
-    case RDB_EX_GET_COMP:
-        if (RDB_serialize_expr(valp, posp, exp->def.op.args.firstp, ecp)
-                != RDB_OK)
-            return RDB_ERROR;
-        return RDB_serialize_str(valp, posp, exp->def.op.name, ecp);
     case RDB_EX_RO_OP:
     {
         RDB_expression *argp;
@@ -624,7 +619,6 @@ int
 RDB_deserialize_expr(const RDB_object *valp, int *posp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_expression **expp)
 {
-    RDB_expression *ex1p;
     enum RDB_expr_kind ekind;
     int ret;
 
@@ -636,6 +630,12 @@ RDB_deserialize_expr(const RDB_object *valp, int *posp, RDB_exec_context *ecp,
     ret = RDB_deserialize_byte(valp, posp, ecp);
     if (ret < 0)
         return ret;
+    if (ret == 3) {
+        RDB_raise_not_supported(
+                "Storage format of expression no longer supported, must be deleted and recreated",
+                ecp);
+        return RDB_ERROR;
+    }
     ekind = (enum RDB_expr_kind) ret;
     switch (ekind) {
     case RDB_EX_OBJ:
@@ -679,29 +679,6 @@ RDB_deserialize_expr(const RDB_object *valp, int *posp, RDB_exec_context *ecp,
             return RDB_ERROR;
     }
     break;
-    case RDB_EX_GET_COMP:
-    {
-        char *name;
-
-        ret = RDB_deserialize_expr(valp, posp, ecp, txp, &ex1p);
-        if (ret != RDB_OK)
-            return ret;
-        ret = RDB_deserialize_str(valp, posp, ecp, &name);
-        if (ret != RDB_OK) {
-            RDB_del_expr(ex1p, ecp);
-            return ret;
-        }
-        *expp = RDB_create_unexpr(ex1p, RDB_EX_GET_COMP, ecp);
-        if (*expp == NULL)
-            return RDB_ERROR;
-        (*expp)->def.op.name = RDB_dup_str(name);
-        if ((*expp)->def.op.name == NULL) {
-            RDB_del_expr(*expp, ecp);
-            RDB_raise_no_memory(ecp);
-            return RDB_ERROR;
-        }
-        break;
-    }
     case RDB_EX_RO_OP:
     {
         char *name;

@@ -859,16 +859,17 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
 
     yy_delete_buffer(YY_CURRENT_BUFFER);
 
-    if (whitecommp != NULL) {
-        RDB_destroy_obj(whitecommp, RDB_parse_ecp);
-        RDB_free(whitecommp);
+    if (whitecommp == NULL) {
+        whitecommp = RDB_alloc(sizeof (RDB_object), RDB_parse_ecp);
+        if (whitecommp == NULL)
+            yyterminate();
+        RDB_init_obj(whitecommp);
+        if (RDB_string_to_obj(whitecommp, "\n", RDB_parse_ecp) != RDB_OK)
+            yyterminate();
+    } else {
+        if (RDB_append_char(whitecommp, '\n', RDB_parse_ecp) != RDB_OK)
+            yyterminate();
     }
-    whitecommp = RDB_alloc(sizeof (RDB_object), RDB_parse_ecp);
-    if (whitecommp == NULL)
-        yyterminate();
-    RDB_init_obj(whitecommp);
-    if (RDB_string_to_obj(whitecommp, "\n", RDB_parse_ecp) != RDB_OK)
-        yyterminate();
 
     line = (*RDB_parse_read_line_fnp) ();
     if (line == NULL) {

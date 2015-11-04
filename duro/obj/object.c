@@ -360,10 +360,12 @@ RDB_append_string(RDB_object *objp, const char *str, RDB_exec_context *ecp)
     int len = olen + strlen(str);
 
     if (len + 1 > objp->val.bin.len) {
-        set_str_obj_len(objp,
+        if (set_str_obj_len(objp,
                 objp->val.bin.len + STR_BUF_INC > len + 1 ?
                 objp->val.bin.len + STR_BUF_INC : len + 1,
-                ecp);
+                ecp) != RDB_OK) {
+            return RDB_ERROR;
+        }
     }
 
     strcpy(((char *)objp->val.bin.datap) + olen, str);
@@ -389,10 +391,12 @@ RDB_append_char(RDB_object *objp, char ch, RDB_exec_context *ecp)
     int olen = strlen((char *) objp->val.bin.datap);
 
     if (olen + 2 > objp->val.bin.len) {
-        set_str_obj_len(objp,
+        if (set_str_obj_len(objp,
                 objp->val.bin.len + STR_BUF_INC > olen + 2 ?
                 objp->val.bin.len + STR_BUF_INC : olen + 2,
-                ecp);
+                ecp) != RDB_OK) {
+            return RDB_ERROR;
+        }
     }
 
     ((char *)objp->val.bin.datap)[olen] = ch;

@@ -12,8 +12,8 @@ enum RDB_expr_kind {
 
     RDB_EX_VAR,
 
-    RDB_EX_GET_COMP,
-    RDB_EX_RO_OP
+    /* 3 is no longer used */
+    RDB_EX_RO_OP = 4
 };
 
 typedef struct RDB_expression RDB_expression;

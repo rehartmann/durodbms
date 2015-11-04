@@ -317,16 +317,6 @@ expr_obj(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             RDB_raise_name(exp->def.varname, ecp);
         }
         return objp;
-    case RDB_EX_GET_COMP:
-        objp = expr_obj(exp->def.op.args.firstp, getfnp, getdata, ecp, txp);
-        if (objp == NULL)
-            return NULL;
-
-        /* Type must be system-implemented with tuple as internal rep */
-        if (!objp->typ->def.scalar.sysimpl
-                || objp->typ->def.scalar.repv[0].compc <= 1)
-            return NULL;
-        return RDB_tuple_get(objp, exp->def.op.name);
     default:
         ;
     }
@@ -721,21 +711,6 @@ RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     }
 
     switch (exp->kind) {
-    case RDB_EX_GET_COMP:
-    {
-        int ret;
-        RDB_object obj;
-
-        RDB_init_obj(&obj);
-        if (RDB_evaluate(exp->def.op.args.firstp, getfnp, getdata, envp, ecp,
-                txp, &obj) != RDB_OK) {
-            RDB_destroy_obj(&obj, ecp);
-            return RDB_ERROR;
-        }
-        ret = RDB_obj_property(&obj, exp->def.op.name, valp, envp, ecp, txp);
-        RDB_destroy_obj(&obj, ecp);
-        return ret;
-    }
     case RDB_EX_RO_OP:
         return evaluate_ro_op(exp, getfnp, getdata, envp, ecp, txp, valp);
     case RDB_EX_VAR:

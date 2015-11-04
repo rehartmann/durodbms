@@ -137,9 +137,6 @@ expr_remove_tick(const RDB_expression *exp)
     case RDB_EX_OBJ:
     case RDB_EX_TBP:
         return;
-    case RDB_EX_GET_COMP:
-        expr_remove_tick(exp->def.op.args.firstp);
-        return;
     case RDB_EX_VAR:
         /* If last char is "'", overwrite with null byte */
         lpos = strlen (exp->def.varname) - 1;
@@ -671,12 +668,6 @@ replace_targets(RDB_expression *exp,
     size_t lpos;
 
     switch (exp->kind) {
-    case RDB_EX_GET_COMP:
-        newexp = replace_targets(exp->def.op.args.firstp, insc, insv,
-                updc, updv, delc, delv, vdelc, vdelv, copyc, copyv, ecp, txp);
-        if (newexp == NULL)
-            return NULL;
-        return RDB_expr_property(newexp, exp->def.op.name, ecp);
     case RDB_EX_RO_OP:
     {
         RDB_expression *hexp;

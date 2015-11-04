@@ -41,8 +41,6 @@ RDB_expr_is_const(const RDB_expression *exp)
             argp = argp->nextp;
         }
         return RDB_TRUE;
-    case RDB_EX_GET_COMP:
-        return RDB_expr_is_const(exp->def.op.args.firstp);
     default: ;
     }
     return RDB_FALSE;
@@ -68,9 +66,6 @@ RDB_expr_resolve_varname_expr(RDB_expression **expp, const char *varname,
     RDB_expression *argp;
 
     switch ((*expp)->kind) {
-    case RDB_EX_GET_COMP:
-        return RDB_expr_resolve_varname_expr(&(*expp)->def.op.args.firstp,
-                varname, texp, ecp);
     case RDB_EX_RO_OP:
         argp = (*expp)->def.op.args.firstp;
         (*expp)->def.op.args.firstp = NULL;
@@ -111,8 +106,7 @@ RDB_expr_resolve_varname_expr(RDB_expression **expp, const char *varname,
 const char *
 RDB_expr_op_name(const RDB_expression *exp)
 {
-    return exp->kind == RDB_EX_RO_OP || exp->kind == RDB_EX_GET_COMP ?
-            exp->def.op.name : NULL;
+    return exp->kind == RDB_EX_RO_OP ? exp->def.op.name : NULL;
 }
 
 /**
@@ -121,8 +115,7 @@ RDB_expr_op_name(const RDB_expression *exp)
 RDB_expr_list *
 RDB_expr_op_args(RDB_expression *exp)
 {
-    return exp->kind == RDB_EX_RO_OP || exp->kind == RDB_EX_GET_COMP ?
-            &exp->def.op.args : NULL;
+    return exp->kind == RDB_EX_RO_OP ? &exp->def.op.args : NULL;
 }
 
 /**
@@ -610,11 +603,6 @@ RDB_dup_expr(const RDB_expression *exp, RDB_exec_context *ecp)
     RDB_expression *newexp;
 
     switch (exp->kind) {
-    case RDB_EX_GET_COMP:
-        newexp = RDB_dup_expr(exp->def.op.args.firstp, ecp);
-        if (newexp == NULL)
-            return NULL;
-        return RDB_expr_property(newexp, exp->def.op.name, ecp);
     case RDB_EX_RO_OP:
         return dup_ro_op(exp, ecp);
     case RDB_EX_OBJ:
@@ -715,10 +703,6 @@ int
 RDB_drop_expr_children(RDB_expression *exp, RDB_exec_context *ecp)
 {
     switch (exp->kind) {
-    case RDB_EX_GET_COMP:
-        if (RDB_del_expr(exp->def.op.args.firstp, ecp) != RDB_OK)
-            return RDB_ERROR;
-        break;
     case RDB_EX_RO_OP:
         if (RDB_destroy_expr_list(&exp->def.op.args, ecp) != RDB_OK)
             return RDB_ERROR;
@@ -851,9 +835,6 @@ RDB_destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
         break;
     case RDB_EX_TBP:
         break;
-    case RDB_EX_GET_COMP:
-        RDB_free(exp->def.op.name);
-        break;
     case RDB_EX_RO_OP:
         RDB_free(exp->def.op.name);
         if (exp->def.op.optinfo.objc > 0) {
@@ -885,8 +866,6 @@ RDB_expr_depends_expr(const RDB_expression *ex1p, const RDB_expression *ex2p)
         return RDB_expr_depends_table(ex2p, ex1p->def.tbref.tbp);
     case RDB_EX_VAR:
         return RDB_FALSE;
-    case RDB_EX_GET_COMP:
-        return RDB_expr_depends_expr(ex1p->def.op.args.firstp, ex2p);
     case RDB_EX_RO_OP:
     {
         RDB_expression *argp = ex1p->def.op.args.firstp;
@@ -912,8 +891,6 @@ RDB_expr_refers(const RDB_expression *exp, const RDB_object *tbp)
         return RDB_table_refers(exp->def.tbref.tbp, tbp);
     case RDB_EX_VAR:
         return RDB_FALSE;
-    case RDB_EX_GET_COMP:
-        return RDB_expr_refers(exp->def.op.args.firstp, tbp);
     case RDB_EX_RO_OP:
     {
         RDB_expression *argp = exp->def.op.args.firstp;
@@ -939,8 +916,6 @@ RDB_expr_refers_var(const RDB_expression *exp, const char *attrname)
         return RDB_FALSE;
     case RDB_EX_VAR:
         return (RDB_bool) (strcmp(exp->def.varname, attrname) == 0);
-    case RDB_EX_GET_COMP:
-        return RDB_expr_refers_var(exp->def.op.args.firstp, attrname);
     case RDB_EX_RO_OP:
     {
         RDB_expression *argp = exp->def.op.args.firstp;
@@ -995,8 +970,6 @@ RDB_invrename_expr(RDB_expression *exp, RDB_expression *texp,
     RDB_expression *argp;
 
     switch (exp->kind) {
-    case RDB_EX_GET_COMP:
-        return RDB_invrename_expr(exp->def.op.args.firstp, texp, ecp);
     case RDB_EX_RO_OP:
         argp = exp->def.op.args.firstp;
         while (argp != NULL) {
@@ -1042,9 +1015,6 @@ RDB_resolve_exprnames(RDB_expression **expp, RDB_expression *texp,
     RDB_expression *argp;
 
     switch ((*expp)->kind) {
-    case RDB_EX_GET_COMP:
-        return RDB_resolve_exprnames(&(*expp)->def.op.args.firstp,
-                texp, ecp);
     case RDB_EX_RO_OP:
         argp = (*expp)->def.op.args.firstp;
         (*expp)->def.op.args.firstp = NULL;

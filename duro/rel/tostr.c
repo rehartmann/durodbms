@@ -506,24 +506,6 @@ append_ex(RDB_object *objp, const RDB_expression *exp, RDB_environment *envp,
              if (ret != RDB_OK)
                  return ret;
             break;
-        case RDB_EX_GET_COMP:
-            ret = RDB_append_string(objp, RDB_THE_PREFIX, ecp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = RDB_append_string(objp, exp->def.op.name, ecp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = RDB_append_string(objp, "(", ecp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_ex(objp, exp->def.op.args.firstp, envp,
-                    ecp, txp, options);
-            if (ret != RDB_OK)
-                return ret;
-            ret = RDB_append_string(objp, ")", ecp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
         case RDB_EX_RO_OP:
             if (append_ro_op_ex(objp, exp, envp, ecp, txp, options) != RDB_OK)
                 return RDB_ERROR;

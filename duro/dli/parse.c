@@ -720,7 +720,7 @@ RDB_parse_node_pkgname(RDB_parse_node *nodep, RDB_object *nameobjp, RDB_exec_con
             RDB_raise_syntax("identifier expected", ecp);
             return RDB_ERROR;
         }
-        if (RDB_append_string(nameobjp, ".", ecp) != RDB_OK)
+        if (RDB_append_char(nameobjp, '.', ecp) != RDB_OK)
             return RDB_ERROR;
         return RDB_append_string(nameobjp, name, ecp);
     default: ;
