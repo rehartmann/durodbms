@@ -1,4 +1,9 @@
-/* $Id$ */
+/*
+ * Test for table containg attributes of a user-defined type.
+ *
+ * Copyright (C) 2003-2008, 2011-2012, 2013-2014 Rene Hartmann.
+ * See the file COPYING for redistribution information.
+ */
 
 #include <rel/rdb.h>
 #include <rel/tostr.h>
@@ -173,7 +178,7 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_add_arg(exp, argp);
 
     wherep = RDB_var_ref("point", ecp);
-    wherep = RDB_expr_comp(wherep, "x", ecp);
+    wherep = RDB_expr_property(wherep, "x", ecp);
     wherep = RDB_eq(wherep, RDB_float_to_expr(1.0, ecp), ecp);
     RDB_add_arg(exp, wherep);
 

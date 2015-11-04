@@ -115,7 +115,7 @@ RDB_tablename_id_eq_expr(const char *name, RDB_exec_context *ecp)
     if (argp == NULL) {
         return NULL;
     }
-    arg2p = RDB_expr_comp(argp, "name", ecp);
+    arg2p = RDB_expr_property(argp, "name", ecp);
     if (arg2p == NULL) {
         RDB_del_expr(argp, ecp);
         return NULL;

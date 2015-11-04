@@ -148,7 +148,6 @@ test package {Packages} \
 
         drop var t1v;
 
-
         var t2v m.t2;
 
         io.put(the_comp1(t2v)); io.put(' ');

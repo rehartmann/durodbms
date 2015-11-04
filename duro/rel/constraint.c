@@ -676,7 +676,7 @@ replace_targets(RDB_expression *exp,
                 updc, updv, delc, delv, vdelc, vdelv, copyc, copyv, ecp, txp);
         if (newexp == NULL)
             return NULL;
-        return RDB_expr_comp(newexp, exp->def.op.name, ecp);
+        return RDB_expr_property(newexp, exp->def.op.name, ecp);
     case RDB_EX_RO_OP:
     {
         RDB_expression *hexp;

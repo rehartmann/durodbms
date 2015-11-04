@@ -10,6 +10,8 @@ DuroDBMS 1.1
 - Added RDB_obj_to_bin() and RDB_bin_to_obj() to rel/rdb.h.
   Removed internal functions from rel/serialize.h.
 
+- Renamed RDB_expr_comp() as RDB_expr_property().
+
 DuroDBMS 1.0
 
 - Renamed datetime properties min and sec to minute and second, respectively.

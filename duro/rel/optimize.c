@@ -900,6 +900,51 @@ mutate_unary(RDB_expression *exp, RDB_expression **tbpv, int cap,
     return tbc;
 }
 
+static RDB_expression *
+dup_expr_deep(const RDB_expression *, RDB_exec_context *,
+        RDB_transaction *);
+
+static RDB_expression *
+dup_ro_op_expr_deep(const RDB_expression *exp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_expression *argp, *nargp;
+
+    RDB_expression *newexp = RDB_ro_op(exp->def.op.name, ecp);
+    if (newexp == NULL)
+        return NULL;
+
+    if (strcmp(exp->def.op.name, ".") == 0
+            && RDB_expr_list_length(&exp->def.op.args) == 2) {
+        /* Special treatment for '.' operator - do not try to resolve attribute name */
+        nargp = dup_expr_deep(exp->def.op.args.firstp, ecp, txp);
+        if (nargp == NULL) {
+            RDB_del_expr(newexp, ecp);
+            return NULL;
+        }
+        RDB_add_arg(newexp, nargp);
+
+        nargp = RDB_dup_expr(exp->def.op.args.firstp->nextp, ecp);
+        if (nargp == NULL) {
+            RDB_del_expr(newexp, ecp);
+            return NULL;
+        }
+        RDB_add_arg(newexp, nargp);
+    } else {
+        argp = exp->def.op.args.firstp;
+        while (argp != NULL) {
+            nargp = dup_expr_deep(argp, ecp, txp);
+            if (nargp == NULL) {
+                RDB_del_expr(newexp, ecp);
+                return NULL;
+            }
+            RDB_add_arg(newexp, nargp);
+            argp = argp->nextp;
+        }
+    }
+    return newexp;
+}
+
 /*
  * Copy expression, resolving table names and making a copy
  * of virtual tables (recursively)
@@ -915,21 +960,11 @@ dup_expr_deep(const RDB_expression *exp, RDB_exec_context *ecp,
         newexp = dup_expr_deep(exp->def.op.args.firstp, ecp, txp);
         if (newexp == NULL)
             return NULL;
-        newexp = RDB_expr_comp(newexp, exp->def.op.name, ecp);
+        newexp = RDB_expr_property(newexp, exp->def.op.name, ecp);
         break;
     case RDB_EX_RO_OP:
     {
-        RDB_expression *argp;
-
-        newexp = RDB_ro_op(exp->def.op.name, ecp);
-        argp = exp->def.op.args.firstp;
-        while (argp != NULL) {
-            RDB_expression *nargp = dup_expr_deep(argp, ecp, txp);
-            if (nargp == NULL)
-                return NULL;
-            RDB_add_arg(newexp, nargp);
-            argp = argp->nextp;
-        }
+        newexp = dup_ro_op_expr_deep(exp, ecp, txp);
         break;
     }
     case RDB_EX_OBJ:

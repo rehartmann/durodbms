@@ -795,7 +795,11 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
                 RDB_raise_invalid_argument("property not found", ecp);
                 return NULL;
             }
-            return attrp->typ;
+            return RDB_dup_nonscalar_type(attrp->typ, ecp);
+        }
+        if (!RDB_type_is_tuple(typ)) {
+            RDB_raise_invalid_argument("scalar or tuple required", ecp);
+            return NULL;
         }
         typ = RDB_type_attr_type(typ, attrname);
         if (typ == NULL) {

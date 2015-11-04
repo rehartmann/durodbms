@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Rene Hartmann.
+ * Copyright (C) 2013, 2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -90,7 +90,7 @@ int
 RDB_expr_attr_qid(const RDB_expression *, RDB_object *, RDB_exec_context *);
 
 RDB_expression *
-RDB_expr_comp(RDB_expression *, const char *, RDB_exec_context *);
+RDB_expr_property(RDB_expression *, const char *, RDB_exec_context *);
 
 RDB_object *
 RDB_expr_obj(RDB_expression *);

@@ -1,7 +1,7 @@
 /*
  * Expression functions.
  *
- * Copyright (C) 2004, 2012 Rene Hartmann.
+ * Copyright (C) 2004, 2012, 2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -31,19 +31,19 @@ RDB_expr_is_const(const RDB_expression *exp)
     RDB_expression *argp;
 
     switch (exp->kind) {
-        case RDB_EX_OBJ:
-            return RDB_TRUE;
-        case RDB_EX_RO_OP:
-            argp = exp->def.op.args.firstp;
-            while (argp != NULL) {
-                if (!RDB_expr_is_const(argp))
-                    return RDB_FALSE;
-                argp = argp->nextp;
-            }
-            return RDB_TRUE;
-        case RDB_EX_GET_COMP:
-            return RDB_expr_is_const(exp->def.op.args.firstp);
-        default: ;
+    case RDB_EX_OBJ:
+        return RDB_TRUE;
+    case RDB_EX_RO_OP:
+        argp = exp->def.op.args.firstp;
+        while (argp != NULL) {
+            if (!RDB_expr_is_const(argp))
+                return RDB_FALSE;
+            argp = argp->nextp;
+        }
+        return RDB_TRUE;
+    case RDB_EX_GET_COMP:
+        return RDB_expr_is_const(exp->def.op.args.firstp);
+    default: ;
     }
     return RDB_FALSE;
 }
@@ -68,35 +68,35 @@ RDB_expr_resolve_varname_expr(RDB_expression **expp, const char *varname,
     RDB_expression *argp;
 
     switch ((*expp)->kind) {
-        case RDB_EX_GET_COMP:
-            return RDB_expr_resolve_varname_expr(&(*expp)->def.op.args.firstp,
-                    varname, texp, ecp);
-        case RDB_EX_RO_OP:
-            argp = (*expp)->def.op.args.firstp;
-            (*expp)->def.op.args.firstp = NULL;
-            while (argp != NULL) {
-                RDB_expression *nextp = argp->nextp;
-                if (RDB_expr_resolve_varname_expr(&argp, varname, texp, ecp) != RDB_OK)
-                    return RDB_ERROR;
-                RDB_add_arg(*expp, argp);
-                argp = nextp;
+    case RDB_EX_GET_COMP:
+        return RDB_expr_resolve_varname_expr(&(*expp)->def.op.args.firstp,
+                varname, texp, ecp);
+    case RDB_EX_RO_OP:
+        argp = (*expp)->def.op.args.firstp;
+        (*expp)->def.op.args.firstp = NULL;
+        while (argp != NULL) {
+            RDB_expression *nextp = argp->nextp;
+            if (RDB_expr_resolve_varname_expr(&argp, varname, texp, ecp) != RDB_OK)
+                return RDB_ERROR;
+            RDB_add_arg(*expp, argp);
+            argp = nextp;
+        }
+        return RDB_OK;
+    case RDB_EX_OBJ:
+    case RDB_EX_TBP:
+        return RDB_OK;
+    case RDB_EX_VAR:
+        if (strcmp(varname, RDB_expr_var_name(*expp)) == 0) {
+            RDB_expression *exp = RDB_dup_expr(texp, ecp);
+            if (exp == NULL) {
+                return RDB_ERROR;
             }
-            return RDB_OK;
-        case RDB_EX_OBJ:
-        case RDB_EX_TBP:
-            return RDB_OK;
-        case RDB_EX_VAR:
-            if (strcmp(varname, RDB_expr_var_name(*expp)) == 0) {
-                RDB_expression *exp = RDB_dup_expr(texp, ecp);
-                if (exp == NULL) {
-                    return RDB_ERROR;
-                }
 
-                exp->nextp = (*expp)->nextp;
-                RDB_del_expr(*expp, ecp);
-                *expp = exp;
-            }
-            return RDB_OK;
+            exp->nextp = (*expp)->nextp;
+            RDB_del_expr(*expp, ecp);
+            *expp = exp;
+        }
+        return RDB_OK;
     }
     /* Never reached */
     abort();
@@ -455,20 +455,20 @@ RDB_expr_attr_qid(const RDB_expression *exp, RDB_object *idobjp, RDB_exec_contex
     RDB_expression *arg1p = RDB_expr_list_get(arglistp, 0);
 
     switch (RDB_expr_kind(arg1p)) {
-        case RDB_EX_VAR:
-            if (RDB_string_to_obj(idobjp, RDB_expr_var_name(arg1p), ecp) != RDB_OK)
-                return RDB_ERROR;
-            break;
-        case RDB_EX_RO_OP:
-            if (strcmp(arg1p->def.op.name, ".") != 0) {
-                RDB_raise_invalid_argument("invalid usage of \'.\'", ecp);
-                    return RDB_ERROR;
-            }
-            if (RDB_expr_attr_qid(arg1p, idobjp, ecp) != RDB_OK)
-                return RDB_ERROR;
-        default:
+    case RDB_EX_VAR:
+        if (RDB_string_to_obj(idobjp, RDB_expr_var_name(arg1p), ecp) != RDB_OK)
+            return RDB_ERROR;
+        break;
+    case RDB_EX_RO_OP:
+        if (strcmp(arg1p->def.op.name, ".") != 0) {
             RDB_raise_invalid_argument("invalid usage of \'.\'", ecp);
             return RDB_ERROR;
+        }
+        if (RDB_expr_attr_qid(arg1p, idobjp, ecp) != RDB_OK)
+            return RDB_ERROR;
+    default:
+        RDB_raise_invalid_argument("invalid usage of \'.\'", ecp);
+        return RDB_ERROR;
     }
 
     if (RDB_append_string(idobjp, ".", ecp) != RDB_OK)
@@ -478,7 +478,7 @@ RDB_expr_attr_qid(const RDB_expression *exp, RDB_object *idobjp, RDB_exec_contex
 }
 
 /**
- * RDB_expr_comp creates an expression which evaluates to a
+ * RDB_expr_property creates an expression which evaluates to a
 possible representation component.
 
 @returns
@@ -487,20 +487,21 @@ A pointer to the newly created expression, of NULL if the creation
 failed.
  */
 RDB_expression *
-RDB_expr_comp(RDB_expression *arg, const char *compname,
+RDB_expr_property(RDB_expression *arg, const char *compname,
         RDB_exec_context *ecp)
 {
     RDB_expression *exp;
-
-    exp = RDB_create_unexpr(arg, RDB_EX_GET_COMP, ecp);
-    if (exp == NULL)
+    RDB_expression *compexp = RDB_var_ref(compname, ecp);
+    if (compexp == NULL)
         return NULL;
 
-    exp->def.op.name = RDB_dup_str(compname);
-    if (exp->def.op.name == NULL) {
-        RDB_del_expr(exp, ecp);
+    exp = RDB_ro_op(".", ecp);
+    if (exp == NULL) {
+        RDB_del_expr(compexp, ecp);
         return NULL;
     }
+    RDB_add_arg(exp, arg);
+    RDB_add_arg(exp, compexp);
     return exp;
 }
 
@@ -609,23 +610,23 @@ RDB_dup_expr(const RDB_expression *exp, RDB_exec_context *ecp)
     RDB_expression *newexp;
 
     switch (exp->kind) {
-        case RDB_EX_GET_COMP:
-            newexp = RDB_dup_expr(exp->def.op.args.firstp, ecp);
-            if (newexp == NULL)
-                return NULL;
-            return RDB_expr_comp(newexp, exp->def.op.name, ecp);
-        case RDB_EX_RO_OP:
-            return dup_ro_op(exp, ecp);
-        case RDB_EX_OBJ:
-            return RDB_obj_to_expr(&exp->def.obj, ecp);
-        case RDB_EX_TBP:
-            newexp = RDB_table_ref(exp->def.tbref.tbp, ecp);
-            if (newexp == NULL)
-                return NULL;
-            newexp->def.tbref.indexp = exp->def.tbref.indexp;
-            return newexp;
-        case RDB_EX_VAR:
-            return RDB_var_ref(exp->def.varname, ecp);
+    case RDB_EX_GET_COMP:
+        newexp = RDB_dup_expr(exp->def.op.args.firstp, ecp);
+        if (newexp == NULL)
+            return NULL;
+        return RDB_expr_property(newexp, exp->def.op.name, ecp);
+    case RDB_EX_RO_OP:
+        return dup_ro_op(exp, ecp);
+    case RDB_EX_OBJ:
+        return RDB_obj_to_expr(&exp->def.obj, ecp);
+    case RDB_EX_TBP:
+        newexp = RDB_table_ref(exp->def.tbref.tbp, ecp);
+        if (newexp == NULL)
+            return NULL;
+        newexp->def.tbref.indexp = exp->def.tbref.indexp;
+        return newexp;
+    case RDB_EX_VAR:
+        return RDB_var_ref(exp->def.varname, ecp);
     }
     abort();
 }
@@ -642,11 +643,11 @@ RDB_object *
 RDB_expr_obj(RDB_expression *exp)
 {
     switch (exp->kind) {
-        case RDB_EX_OBJ:
-            return &exp->def.obj;
-        case RDB_EX_TBP:
-            return exp->def.tbref.tbp;
-        default: ;
+    case RDB_EX_OBJ:
+        return &exp->def.obj;
+    case RDB_EX_TBP:
+        return exp->def.tbref.tbp;
+    default: ;
     }
     return NULL;
 }
@@ -714,15 +715,15 @@ int
 RDB_drop_expr_children(RDB_expression *exp, RDB_exec_context *ecp)
 {
     switch (exp->kind) {
-        case RDB_EX_GET_COMP:
-            if (RDB_del_expr(exp->def.op.args.firstp, ecp) != RDB_OK)
-                return RDB_ERROR;
-            break;
-        case RDB_EX_RO_OP:
-            if (RDB_destroy_expr_list(&exp->def.op.args, ecp) != RDB_OK)
-                return RDB_ERROR;
-            break;
-        default: ;
+    case RDB_EX_GET_COMP:
+        if (RDB_del_expr(exp->def.op.args.firstp, ecp) != RDB_OK)
+            return RDB_ERROR;
+        break;
+    case RDB_EX_RO_OP:
+        if (RDB_destroy_expr_list(&exp->def.op.args, ecp) != RDB_OK)
+            return RDB_ERROR;
+        break;
+    default: ;
     }
     return RDB_OK;
 }
@@ -839,35 +840,35 @@ int
 RDB_destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
 {
     switch (exp->kind) {
-        case RDB_EX_OBJ:
-            /* The expression takes responsibility for non-scalar types */
-            if (exp->def.obj.typ != NULL
-                    && !RDB_type_is_scalar(exp->def.obj.typ)
-                    && exp->def.obj.kind != RDB_OB_TABLE)
-                RDB_del_nonscalar_type(exp->def.obj.typ, ecp);
-            if (RDB_destroy_obj(&exp->def.obj, ecp) != RDB_OK)
-                return RDB_ERROR;
-            break;
-        case RDB_EX_TBP:
-            break;
-        case RDB_EX_GET_COMP:
-            RDB_free(exp->def.op.name);
-            break;
-        case RDB_EX_RO_OP:
-            RDB_free(exp->def.op.name);
-            if (exp->def.op.optinfo.objc > 0) {
-                RDB_free(exp->def.op.optinfo.objpv);
-                if (exp->def.op.optinfo.objv != NULL) {
-                    int i;
-                    for (i = 0; i < exp->def.op.optinfo.objc; i++)
-                        RDB_destroy_obj(&exp->def.op.optinfo.objv[i], ecp);
-                    RDB_free(exp->def.op.optinfo.objv);
-                }
+    case RDB_EX_OBJ:
+        /* The expression takes responsibility for non-scalar types */
+        if (exp->def.obj.typ != NULL
+                && !RDB_type_is_scalar(exp->def.obj.typ)
+                && exp->def.obj.kind != RDB_OB_TABLE)
+            RDB_del_nonscalar_type(exp->def.obj.typ, ecp);
+        if (RDB_destroy_obj(&exp->def.obj, ecp) != RDB_OK)
+            return RDB_ERROR;
+        break;
+    case RDB_EX_TBP:
+        break;
+    case RDB_EX_GET_COMP:
+        RDB_free(exp->def.op.name);
+        break;
+    case RDB_EX_RO_OP:
+        RDB_free(exp->def.op.name);
+        if (exp->def.op.optinfo.objc > 0) {
+            RDB_free(exp->def.op.optinfo.objpv);
+            if (exp->def.op.optinfo.objv != NULL) {
+                int i;
+                for (i = 0; i < exp->def.op.optinfo.objc; i++)
+                    RDB_destroy_obj(&exp->def.op.optinfo.objv[i], ecp);
+                RDB_free(exp->def.op.optinfo.objv);
             }
-            break;
-        case RDB_EX_VAR:
-            RDB_free(exp->def.varname);
-            break;
+        }
+        break;
+    case RDB_EX_VAR:
+        RDB_free(exp->def.varname);
+        break;
     }
     if (exp->typ != NULL && !RDB_type_is_scalar(exp->typ))
         return RDB_del_nonscalar_type(exp->typ, ecp);
@@ -878,24 +879,24 @@ RDB_bool
 RDB_expr_depends_expr(const RDB_expression *ex1p, const RDB_expression *ex2p)
 {
     switch (ex1p->kind) {
-        case RDB_EX_OBJ:
-            return RDB_FALSE;
-        case RDB_EX_TBP:
-            return RDB_expr_depends_table(ex2p, ex1p->def.tbref.tbp);
-        case RDB_EX_VAR:
-            return RDB_FALSE;
-        case RDB_EX_GET_COMP:
-            return RDB_expr_depends_expr(ex1p->def.op.args.firstp, ex2p);
-        case RDB_EX_RO_OP:
-        {
-            RDB_expression *argp = ex1p->def.op.args.firstp;
-            while (argp != NULL) {
-                if (RDB_expr_depends_expr(argp, ex2p))
-                    return RDB_TRUE;
-                argp = argp->nextp;
-            }
-            return RDB_FALSE;
+    case RDB_EX_OBJ:
+        return RDB_FALSE;
+    case RDB_EX_TBP:
+        return RDB_expr_depends_table(ex2p, ex1p->def.tbref.tbp);
+    case RDB_EX_VAR:
+        return RDB_FALSE;
+    case RDB_EX_GET_COMP:
+        return RDB_expr_depends_expr(ex1p->def.op.args.firstp, ex2p);
+    case RDB_EX_RO_OP:
+    {
+        RDB_expression *argp = ex1p->def.op.args.firstp;
+        while (argp != NULL) {
+            if (RDB_expr_depends_expr(argp, ex2p))
+                return RDB_TRUE;
+            argp = argp->nextp;
         }
+        return RDB_FALSE;
+    }
     }
     /* Should never be reached */
     abort();
@@ -905,25 +906,25 @@ RDB_bool
 RDB_expr_refers(const RDB_expression *exp, const RDB_object *tbp)
 {
     switch (exp->kind) {
-        case RDB_EX_OBJ:
-            return RDB_FALSE;
-        case RDB_EX_TBP:
-            return RDB_table_refers(exp->def.tbref.tbp, tbp);
-        case RDB_EX_VAR:
-            return RDB_FALSE;
-        case RDB_EX_GET_COMP:
-            return RDB_expr_refers(exp->def.op.args.firstp, tbp);
-        case RDB_EX_RO_OP:
-        {
-            RDB_expression *argp = exp->def.op.args.firstp;
-            while (argp != NULL) {
-                if (RDB_expr_refers(argp, tbp))
-                    return RDB_TRUE;
-                argp = argp->nextp;
-            }
-            
-            return RDB_FALSE;
+    case RDB_EX_OBJ:
+        return RDB_FALSE;
+    case RDB_EX_TBP:
+        return RDB_table_refers(exp->def.tbref.tbp, tbp);
+    case RDB_EX_VAR:
+        return RDB_FALSE;
+    case RDB_EX_GET_COMP:
+        return RDB_expr_refers(exp->def.op.args.firstp, tbp);
+    case RDB_EX_RO_OP:
+    {
+        RDB_expression *argp = exp->def.op.args.firstp;
+        while (argp != NULL) {
+            if (RDB_expr_refers(argp, tbp))
+                return RDB_TRUE;
+            argp = argp->nextp;
         }
+
+        return RDB_FALSE;
+    }
     }
     /* Should never be reached */
     abort();
@@ -933,23 +934,23 @@ RDB_bool
 RDB_expr_refers_var(const RDB_expression *exp, const char *attrname)
 {
     switch (exp->kind) {
-        case RDB_EX_OBJ:
-        case RDB_EX_TBP:
-            return RDB_FALSE;
-        case RDB_EX_VAR:
-            return (RDB_bool) (strcmp(exp->def.varname, attrname) == 0);
-        case RDB_EX_GET_COMP:
-            return RDB_expr_refers_var(exp->def.op.args.firstp, attrname);
-        case RDB_EX_RO_OP:
-        {
-            RDB_expression *argp = exp->def.op.args.firstp;
-            while (argp != NULL) {
-                if (RDB_expr_refers_var(argp, attrname))
-                    return RDB_TRUE;
-                argp = argp->nextp;
-            }            
-            return RDB_FALSE;
+    case RDB_EX_OBJ:
+    case RDB_EX_TBP:
+        return RDB_FALSE;
+    case RDB_EX_VAR:
+        return (RDB_bool) (strcmp(exp->def.varname, attrname) == 0);
+    case RDB_EX_GET_COMP:
+        return RDB_expr_refers_var(exp->def.op.args.firstp, attrname);
+    case RDB_EX_RO_OP:
+    {
+        RDB_expression *argp = exp->def.op.args.firstp;
+        while (argp != NULL) {
+            if (RDB_expr_refers_var(argp, attrname))
+                return RDB_TRUE;
+            argp = argp->nextp;
         }
+        return RDB_FALSE;
+    }
     }
     /* Should never be reached */
     abort();
@@ -994,42 +995,42 @@ RDB_invrename_expr(RDB_expression *exp, RDB_expression *texp,
     RDB_expression *argp;
 
     switch (exp->kind) {
-        case RDB_EX_GET_COMP:
-            return RDB_invrename_expr(exp->def.op.args.firstp, texp, ecp);
-        case RDB_EX_RO_OP:
-            argp = exp->def.op.args.firstp;
-            while (argp != NULL) {
-                if (RDB_invrename_expr(argp, texp, ecp) != RDB_OK)
-                    return RDB_ERROR;
-                argp = argp->nextp;
-            }
-            return RDB_OK;
-        case RDB_EX_OBJ:
-        case RDB_EX_TBP:
-            return RDB_OK;
-        case RDB_EX_VAR:
-            /* Search attribute name in dest attrs */
-            argp = texp->def.op.args.firstp->nextp;
-            while (argp != NULL) {
-                RDB_expression *toargp = argp->nextp;
-                if (strcmp(RDB_obj_string(&toargp->def.obj),
-                        exp->def.varname) == 0)
-                    break;
-                argp = toargp->nextp;
+    case RDB_EX_GET_COMP:
+        return RDB_invrename_expr(exp->def.op.args.firstp, texp, ecp);
+    case RDB_EX_RO_OP:
+        argp = exp->def.op.args.firstp;
+        while (argp != NULL) {
+            if (RDB_invrename_expr(argp, texp, ecp) != RDB_OK)
+                return RDB_ERROR;
+            argp = argp->nextp;
+        }
+        return RDB_OK;
+    case RDB_EX_OBJ:
+    case RDB_EX_TBP:
+        return RDB_OK;
+    case RDB_EX_VAR:
+        /* Search attribute name in dest attrs */
+        argp = texp->def.op.args.firstp->nextp;
+        while (argp != NULL) {
+            RDB_expression *toargp = argp->nextp;
+            if (strcmp(RDB_obj_string(&toargp->def.obj),
+                    exp->def.varname) == 0)
+                break;
+            argp = toargp->nextp;
+        }
+
+        /* If found, replace it */
+        if (argp != NULL) {
+            char *from = RDB_obj_string(&argp->def.obj);
+            char *name = RDB_realloc(exp->def.varname, strlen(from) + 1, ecp);
+            if (name == NULL) {
+                return RDB_ERROR;
             }
 
-            /* If found, replace it */
-            if (argp != NULL) {
-                char *from = RDB_obj_string(&argp->def.obj);
-                char *name = RDB_realloc(exp->def.varname, strlen(from) + 1, ecp);
-                if (name == NULL) {
-                    return RDB_ERROR;
-                }
-
-                strcpy(name, from);
-                exp->def.varname = name;
-            }
-            return RDB_OK;
+            strcpy(name, from);
+            exp->def.varname = name;
+        }
+        return RDB_OK;
     }
     abort();
 }
@@ -1041,44 +1042,44 @@ RDB_resolve_exprnames(RDB_expression **expp, RDB_expression *texp,
     RDB_expression *argp;
 
     switch ((*expp)->kind) {
-        case RDB_EX_GET_COMP:
-            return RDB_resolve_exprnames(&(*expp)->def.op.args.firstp,
-                    texp, ecp);
-        case RDB_EX_RO_OP:
-            argp = (*expp)->def.op.args.firstp;
-            (*expp)->def.op.args.firstp = NULL;
-            while (argp != NULL) {
-                RDB_expression *nextp = argp->nextp;
-                if (RDB_resolve_exprnames(&argp, texp, ecp) != RDB_OK)
-                    return RDB_ERROR;
-                RDB_add_arg(*expp, argp);
-                argp = nextp;
-            }
-            return RDB_OK;
-        case RDB_EX_OBJ:
-        case RDB_EX_TBP:
-            return RDB_OK;
-        case RDB_EX_VAR:
-            /* Search attribute name in attrs */
-            argp = texp;
-            while (argp != NULL) {
-                if (strcmp(RDB_obj_string(&argp->nextp->def.obj),
-                        (*expp)->def.varname) == 0)
-                    break;
-                argp = argp->nextp->nextp;
+    case RDB_EX_GET_COMP:
+        return RDB_resolve_exprnames(&(*expp)->def.op.args.firstp,
+                texp, ecp);
+    case RDB_EX_RO_OP:
+        argp = (*expp)->def.op.args.firstp;
+        (*expp)->def.op.args.firstp = NULL;
+        while (argp != NULL) {
+            RDB_expression *nextp = argp->nextp;
+            if (RDB_resolve_exprnames(&argp, texp, ecp) != RDB_OK)
+                return RDB_ERROR;
+            RDB_add_arg(*expp, argp);
+            argp = nextp;
+        }
+        return RDB_OK;
+    case RDB_EX_OBJ:
+    case RDB_EX_TBP:
+        return RDB_OK;
+    case RDB_EX_VAR:
+        /* Search attribute name in attrs */
+        argp = texp;
+        while (argp != NULL) {
+            if (strcmp(RDB_obj_string(&argp->nextp->def.obj),
+                    (*expp)->def.varname) == 0)
+                break;
+            argp = argp->nextp->nextp;
+        }
+
+        if (argp != NULL) {
+            RDB_expression *exp = RDB_dup_expr(argp, ecp);
+            if (exp == NULL) {
+                return RDB_ERROR;
             }
 
-            if (argp != NULL) {
-                RDB_expression *exp = RDB_dup_expr(argp, ecp);
-                if (exp == NULL) {
-                    return RDB_ERROR;
-                }
-
-                exp->nextp = (*expp)->nextp;
-                RDB_del_expr(*expp, ecp);
-                *expp = exp;
-            }
-            return RDB_OK;
+            exp->nextp = (*expp)->nextp;
+            RDB_del_expr(*expp, ecp);
+            *expp = exp;
+        }
+        return RDB_OK;
     }
     abort();
 }

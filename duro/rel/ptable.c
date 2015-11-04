@@ -94,12 +94,12 @@ RDB_create_public_table_from_type(const char *name,
         goto error;
     }
 
+    /* Free the type because the RDB_create_XXX_table_from_type functions manage the type */
     RDB_del_nonscalar_type(reltyp, ecp);
     RDB_free(allkey.strv);
     return RDB_OK;
 
 error:
-    RDB_del_nonscalar_type(reltyp, ecp);
     RDB_free(allkey.strv);
     return RDB_ERROR;
 }
@@ -123,8 +123,12 @@ RDB_create_public_table(const char *name,
         return RDB_ERROR;
     }
 
-    return RDB_create_public_table_from_type(name, tbtyp, keyc, keyv,
-            ecp, txp);
+    if (RDB_create_public_table_from_type(name, tbtyp, keyc, keyv,
+            ecp, txp) != RDB_OK) {
+        RDB_del_nonscalar_type(tbtyp, ecp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
 }
 
 /**

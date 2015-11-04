@@ -66,6 +66,7 @@ resolve_target(RDB_expression *exp, Duro_interp *interp, RDB_exec_context *ecp)
     const char *varname;
     RDB_object *objp;
     RDB_object *prop;
+    RDB_expr_list *arglistp;
     const char *opname = RDB_expr_op_name(exp);
 
     if (opname != NULL) {
@@ -106,11 +107,11 @@ resolve_target(RDB_expression *exp, Duro_interp *interp, RDB_exec_context *ecp)
             }
             return prop;
         }
+        arglistp = RDB_expr_op_args((RDB_expression *)exp);
         if (strcmp(opname, "[]") == 0
-                && RDB_expr_list_length(RDB_expr_op_args((RDB_expression *) exp)) == 2) {
+                && RDB_expr_list_length(arglistp) == 2) {
             RDB_int idx;
             RDB_object idxobj;
-            RDB_expr_list *arglistp = RDB_expr_op_args((RDB_expression *)exp);
 
             /*
              * Resolve array subscription
@@ -143,19 +144,18 @@ resolve_target(RDB_expression *exp, Duro_interp *interp, RDB_exec_context *ecp)
             RDB_destroy_obj(&idxobj, ecp);
             return RDB_array_get(arrp, idx, ecp);
         }
-        if (strcmp(opname, ".") == 0) {
+        if (strcmp(opname, ".") == 0 && RDB_expr_list_length(arglistp) == 2) {
             RDB_object idobj;
             RDB_object *resp;
-            RDB_expr_list *arglistp = RDB_expr_op_args((RDB_expression *)exp);
 
             /* Check if it's a tuple attribute */
             objp = resolve_target(RDB_expr_list_get(arglistp, 0), interp, ecp);
 
             if (objp != NULL) {
                 if (RDB_is_tuple(objp)) {
-                resp = RDB_tuple_get(objp, RDB_expr_var_name(RDB_expr_list_get(arglistp, 1)));
-                if (resp != NULL)
-                    return resp;
+                    resp = RDB_tuple_get(objp, RDB_expr_var_name(RDB_expr_list_get(arglistp, 1)));
+                    if (resp != NULL)
+                        return resp;
                 } else if (RDB_obj_type(objp) != NULL) {
                     /* Type must be system-implemented with tuple as internal rep */
                     if (!objp->typ->def.scalar.sysimpl
@@ -163,7 +163,7 @@ resolve_target(RDB_expression *exp, Duro_interp *interp, RDB_exec_context *ecp)
                         RDB_raise_not_supported("unsupported the_ assignment target", ecp);
                         return NULL;
                     }
-                    prop = RDB_tuple_get(objp, opname);
+                    prop = RDB_tuple_get(objp, RDB_expr_var_name(RDB_expr_list_get(arglistp, 1)));
                     if (prop == NULL) {
                         RDB_raise_operator_not_found(opname, ecp);
                         return NULL;
@@ -227,12 +227,13 @@ comp_node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
     RDB_possrep *possrep;
     RDB_object **argpv = NULL;
     RDB_object *argv = NULL;
+    const char *propname = RDB_expr_var_name(RDB_expr_list_get(RDB_expr_op_args(dstexp), 1));
     RDB_type *typ = RDB_expr_type(RDB_expr_list_get(RDB_expr_op_args(dstexp), 0), &Duro_get_var_type, interp,
                 interp->envp, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
     if (typ == NULL)
         return RDB_ERROR;
 
-    possrep = RDB_comp_possrep(typ, RDB_expr_op_name(dstexp));
+    possrep = RDB_comp_possrep(typ, propname);
     if (possrep == NULL) {
         RDB_raise_name(RDB_expr_op_name(dstexp), ecp);
         return RDB_ERROR;
@@ -249,7 +250,7 @@ comp_node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
         RDB_init_obj(&argv[i]);
     }
 
-    i = comp_idx(possrep, RDB_expr_op_name(dstexp));
+    i = comp_idx(possrep, propname);
     if (RDB_evaluate(srcexp, &Duro_get_var, interp, interp->envp, ecp,
             interp->txnp != NULL ? &interp->txnp->tx : NULL,
             &argv[i]) != RDB_OK)
@@ -262,16 +263,20 @@ comp_node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
         nodep = nodep->nextp->nextp;
         if (nodep->xdata != NULL) {
             RDB_expression *fdstexp = nodep->xdata;
-            if (RDB_expr_kind(fdstexp) == RDB_EX_GET_COMP) {
+            const char *opname = RDB_expr_op_name(fdstexp);
+            RDB_expr_list *fdstarglist = RDB_expr_op_args(fdstexp);
+            if (opname != NULL && strcmp(opname, ".") == 0
+                    && RDB_expr_list_length(fdstarglist) == 2) {
                 RDB_bool iseq;
                 if (RDB_expr_equals(RDB_expr_list_get(RDB_expr_op_args(dstexp), 0),
-                        RDB_expr_list_get(RDB_expr_op_args(fdstexp), 0), ecp,
+                        RDB_expr_list_get(fdstarglist, 0), ecp,
                         interp->txnp != NULL ? &interp->txnp->tx : NULL, &iseq)
                         != RDB_OK) {
                     goto error;
                 }
                 if (iseq) {
-                    i = comp_idx(possrep, RDB_expr_op_name(fdstexp));
+                    i = comp_idx(possrep, RDB_expr_var_name(
+                            RDB_expr_list_get(fdstarglist, 1)));
                     if (i == -1) {
                         /* Invald component name or different possrep */
                         RDB_raise_syntax("invalid assignment", ecp);
@@ -343,9 +348,33 @@ error:
 }
 
 static int
+is_property(RDB_expression *exp, Duro_interp *interp,
+        RDB_exec_context *ecp, RDB_bool *resp)
+{
+    *resp = RDB_FALSE;
+    if (RDB_expr_is_op(exp, ".")) {
+        RDB_expr_list *args = RDB_expr_op_args(exp);
+        if (RDB_expr_list_length(args) == 2) {
+            RDB_type *typ = RDB_expr_type(RDB_expr_list_get(args, 0),
+                &Duro_get_var_type, interp, interp->envp, ecp,
+                interp->txnp != NULL ? &interp->txnp->tx : NULL);
+            if (typ == NULL) {
+                if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NAME_ERROR)
+                    return RDB_OK;
+                return RDB_ERROR;
+            }
+            if (RDB_type_is_scalar(typ))
+                *resp = RDB_TRUE;
+        }
+    }
+    return RDB_OK;
+}
+
+static int
 node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep, Duro_interp *interp,
         RDB_exec_context *ecp)
 {
+    RDB_bool isprop;
     RDB_expression *dstexp = nodep->xdata;
     RDB_expression *srcexp = RDB_parse_node_expr(
             nodep->val.children.firstp->nextp->nextp,
@@ -354,7 +383,11 @@ node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep, Duro_interp *interp,
         return RDB_ERROR;
     }
 
-    if (RDB_expr_kind(dstexp) == RDB_EX_GET_COMP) {
+    if (is_property(dstexp, interp, ecp, &isprop) != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    if (isprop) {
         return comp_node_to_copy(copyp, nodep, dstexp, srcexp, interp, ecp);
     }
 
