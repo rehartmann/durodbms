@@ -120,15 +120,19 @@ resolve_target(RDB_expression *exp, Duro_interp *interp, RDB_exec_context *ecp)
                     if (resp != NULL)
                         return resp;
                 } else if (RDB_obj_type(objp) != NULL) {
+                    const char *propname;
+
                     /* Type must be system-implemented with tuple as internal rep */
                     if (!objp->typ->def.scalar.sysimpl
                             || objp->typ->def.scalar.repv[0].compc <= 1) {
-                        RDB_raise_not_supported("unsupported the_ assignment target", ecp);
+                        RDB_raise_not_supported("unsupported property assignment target", ecp);
                         return NULL;
                     }
-                    prop = RDB_tuple_get(objp, RDB_expr_var_name(RDB_expr_list_get(arglistp, 1)));
+
+                    propname = RDB_expr_var_name(RDB_expr_list_get(arglistp, 1));
+                    prop = RDB_tuple_get(objp, propname);
                     if (prop == NULL) {
-                        RDB_raise_operator_not_found(opname, ecp);
+                        RDB_raise_operator_not_found(propname, ecp);
                         return NULL;
                     }
                     if (prop->typ == NULL) {
@@ -136,7 +140,8 @@ resolve_target(RDB_expression *exp, Duro_interp *interp, RDB_exec_context *ecp)
 
                         for (i = 0;
                              i < objp->typ->def.scalar.repv[0].compc
-                                    && strcmp(objp->typ->def.scalar.repv[0].compv[i].name, opname) != 0;
+                                    && strcmp(objp->typ->def.scalar.repv[0].compv[i].name,
+                                              propname) != 0;
                              i++);
                         if (i >= objp->typ->def.scalar.repv[0].compc) {
                             RDB_raise_internal("component not found", ecp);

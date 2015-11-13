@@ -474,7 +474,7 @@ test deftypemri {user-defined type with multiple possreps and incomplete impleme
 declaration with unimplemented type caught
 }
 
-test deftypemarr {user-defined type with array possreps} -setup $SETUP -cleanup $CLEANUP -body {
+test deftypemarr {user-defined type with multiple possreps and array component} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -486,7 +486,7 @@ test deftypemarr {user-defined type with array possreps} -setup $SETUP -cleanup 
 		init lines(array string());
 		
 		implement type text as array string;
-		
+
 		operator lines(l array string) returns text;
 		    return l;
 		end operator;
@@ -550,6 +550,7 @@ test deftypemarr {user-defined type with array possreps} -setup $SETUP -cleanup 
         catch err type_mismatch_error;
             ;
         end try;
+        commit;
     }
 } -result {one
 two
@@ -564,7 +565,93 @@ two
 
 one
 }
+
+test deftypearr {system implemented user-defined type with array component} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+		type text2
+		    possrep lines { lines array string }
+		init lines(array string());
+
+		implement type text2;
+		end implement;
+		commit;
+
+        begin tx;
+        var i int;
+        var t text2;
+        t := lines(array('one','two'));
         
+        for i := 0 to length(t.lines) - 1;
+            io.put_line(t.lines[i]);
+        end for;
+
+        length(t.lines) := 3;
+
+        for i := 0 to length(t.lines) - 1;
+            io.put_line(t.lines[i]);
+        end for;
+
+        length(the_lines(t)) := 1;
+        for i := 0 to length(the_lines(t)) - 1;
+            io.put_line(t.lines[i]);
+        end for;
+        commit;
+    }
+} -result {one
+two
+one
+two
+
+one
+}
+
+test deftypearr2 {system implemented user-defined type with array and scalar component} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+		type text2
+		    possrep lines { lines array string, n int }
+		init lines(array string(), 0);
+
+		implement type text2;
+		end implement;
+		commit;
+
+        begin tx;
+        var i int;
+        var t text2;
+        t := lines(array('one','two'), 1);
+        
+        for i := 0 to length(t.lines) - 1;
+            io.put_line(t.lines[i]);
+        end for;
+
+        length(t.lines) := 3;
+
+        for i := 0 to length(t.lines) - 1;
+            io.put_line(t.lines[i]);
+        end for;
+
+        length(t.lines) := 1;
+        for i := 0 to length(t.lines) - 1;
+            io.put_line(t.lines[i]);
+        end for;
+        commit;
+    }
+} -result {one
+two
+one
+two
+
+one
+}
+
 test deftypecmp {user-defined type with comparison operator} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');

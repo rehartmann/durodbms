@@ -251,14 +251,15 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
 
         compc = typ->def.scalar.repv[0].compc;
         if (compc == 1) {
-            arep = typ->def.scalar.repv[0].compv[0].typ;
+            arep = RDB_dup_nonscalar_type(typ->def.scalar.repv[0].compv[0].typ,
+                    ecp);
         } else {
             /* More than one component, so internal rep is a tuple */
-            arep = RDB_new_tuple_type(typ->def.scalar.repv[0].compc,
+            arep = RDB_new_tuple_type(compc,
                     typ->def.scalar.repv[0].compv, ecp);
-            if (arep == NULL)
-                return RDB_ERROR;
         }
+        if (arep == NULL)
+            return RDB_ERROR;
 
         typ->def.scalar.arep = arep;
         typ->ireplen = arep->ireplen;
