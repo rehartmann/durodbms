@@ -151,7 +151,7 @@ RDB_expr_resolve_varnames
 RDB_eq
 RDB_expr_to_vtable
 RDB_tuple_attr
-RDB_expr_comp
+RDB_expr_property
 RDB_ro_op
 RDB_expr_obj
 RDB_del_expr
