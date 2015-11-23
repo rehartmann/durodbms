@@ -13,16 +13,16 @@ tables or the data format changes. If this version number differs between two
 releases, the two releases are incompatible and accessing a database written
 by one release from the other release results in a version_mismatch_error.
 
-<p>DuroDBMS 1.0 is compatible with DuroDBMS 0.26. Previous versions are not compatible;
-data created using these versions must be migrated.
-
 <p>DuroDBMS 1.1 is compatible with DuroDBMS 1.0 with one exception: Expressions containing
 invocations of the_ operators are stored in a different format. Virtual tables and constraints
 containing such operator invocations must be dropped under the old version and recreated
 under the new version.
 
+<p>DuroDBMS 1.0 is compatible with DuroDBMS 0.26. Previous versions are not compatible;
+data created using these versions must be migrated.
+
 <p>Currently DuroDBMS contains no tool that migrates data to a newer version.
-So the only safe way to migrate data from an old version to a new one
+So the only safe way to migrate data from an old version to a incompatible new one
 is to create a new database environment and re-create the database(s), 
 user-defined types and operators, tables and database constraints.
 
