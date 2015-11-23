@@ -23,7 +23,7 @@ proc tables {flag tx} {
         duro::table expr t \
                 "extend ((sys_rtables $cond) \
                         join (sys_dbtables where dbname = \"$db\")) \
-                : { tablename_string := the_name(tablename) } \
+                : { tablename_string := tablename.name } \
                 { tablename_string }" $tx
         set arr [duro::array create t $tx]
         set i 0
@@ -38,7 +38,7 @@ proc tables {flag tx} {
         duro::table expr t \
                 "extend ((sys_vtables $cond) \
                         join (sys_dbtables where dbname = \"$db\")) \
-                : { tablename_string := the_name(tablename) } \
+                : { tablename_string := tablename.name } \
                 { tablename_string }" $tx
         set arr [duro::array create t $tx]
         duro::array foreach tpl $arr {
