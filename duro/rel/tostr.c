@@ -178,6 +178,25 @@ append_utype_obj(RDB_object *objp, const RDB_object *srcp,
     int i;
     int ret;
     RDB_possrep *possrep = &srcp->typ->def.scalar.repv[0]; /* Take 1st possrep */
+    char *lastdot = strrchr(RDB_type_name(srcp->typ), '.');
+
+    if (lastdot != NULL) {
+        /* Append package name */
+        RDB_object pkgname;
+        RDB_init_obj(&pkgname);
+
+        if (RDB_string_n_to_obj(&pkgname, RDB_type_name(srcp->typ),
+                lastdot - RDB_type_name(srcp->typ) + 1, ecp) != RDB_OK) {
+            RDB_destroy_obj(&pkgname, ecp);
+            return RDB_ERROR;
+        }
+
+        if (RDB_append_string(objp, RDB_obj_string(&pkgname), ecp) != RDB_OK) {
+            RDB_destroy_obj(&pkgname, ecp);
+            return RDB_ERROR;
+        }
+        RDB_destroy_obj(&pkgname, ecp);
+    }
 
     ret = RDB_append_string(objp, possrep->name, ecp);
     if (ret != RDB_OK)
