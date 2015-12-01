@@ -4,7 +4,7 @@ Installation procedure for DuroDBMS
 DuroDBMS uses SCons to build itself. Type:
 
 scons
-scons jni	(optional, builds the JNI interface)
+scons jni	(optional, builds the Java interface)
 scons test  (optional, runs the tests)
 scons install
 
@@ -12,7 +12,7 @@ SCons is available from www.scons.org.
 
 To compile DuroDBMS, you need GNU Libtool, Berkeley DB (6.1 recommended) and Tcl (8.1 or later).
 
-Building the JNI interface requires Java Development Kit 7. 
+Building the Java interface requires Java Development Kit 7. 
 
 'scons test' requires the tcltest package.
 
