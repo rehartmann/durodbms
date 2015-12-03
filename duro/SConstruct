@@ -10,7 +10,6 @@ import os
 #
 
 bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.6.1')
-with_durotcl = int(ARGUMENTS.get('with_durotcl', 1))
 
 release = '1.1'
 
@@ -125,6 +124,8 @@ if env['PLATFORM'] == 'win32':
 else:
     libdurotcl = env.SharedLibrary('durotcl', [durotclsrc, libduro])
 
+env.Alias('tcl', libdurotcl)
+
 #
 # Interpreter
 #
@@ -176,9 +177,6 @@ env.Command('docs/javadoc/index.html', Glob('../jduro/src/net/sf/duro/*.java'),
 
 Default(libduro)
 Default(durodt)
-
-if with_durotcl:
-     Default(libdurotcl)
 
 #
 # Tests

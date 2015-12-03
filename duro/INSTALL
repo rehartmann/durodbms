@@ -5,8 +5,13 @@ DuroDBMS uses SCons to build itself. Type:
 
 scons
 scons jni	(optional, builds the Java interface)
+scons tcl	(optional, builds the Tcl interface)
 scons test  (optional, runs the tests)
 scons install
+
+'scons test' will build the Tcl interface because the tests depend on it.
+If Tcl is not available, running the tests will not be possible.
+Duroadmin will not be available either.
 
 SCons is available from www.scons.org.
 
@@ -16,7 +21,7 @@ Building the Java interface requires Java Development Kit 7.
 
 'scons test' requires the tcltest package.
 
-Berkeley DB is assumed to be located in /usr/local/BerkeleyDB.5.3.
+Berkeley DB is assumed to be located in /usr/local/BerkeleyDB.6.1.
 If Berkeley DB is located in a different directory, you can
 pass this directory to SCons using the bdbhome variable, so
 if Berkeley DB is located in /usr instead of /usr/local,
@@ -36,10 +41,3 @@ variable to scons, e. g.:
 scons installdir=/usr install
 
 This will install DuroDBMS in /usr/duro.1.1
-
-To build DuroDBMS without Tcl support, use:
-
-scons with_durotcl=0
-
-Note that since most tests depend on Durotcl, running the tests will not
-be possible in this case. Duroadmin will not be available either.
