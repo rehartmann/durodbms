@@ -9,9 +9,9 @@ scons tcl	(optional, builds the Tcl interface)
 scons test  (optional, runs the tests)
 scons install
 
-'scons test' will build the Tcl interface because the tests depend on it.
-If Tcl is not available, running the tests will not be possible.
-Duroadmin will not be available either.
+'scons test' will build the Tcl interface if it has not already been built
+because the tests depend on it. If Tcl is not available, running the tests
+will not be possible. Duroadmin will not be available either.
 
 SCons is available from www.scons.org.
 
