@@ -1,5 +1,10 @@
 Summary of Changes to DuroDBMS
 
+DuroDBMS 1.2
+
+- Duro D/T raises a type_constraint_violation_error when reading an integer
+  literal which does not fit in an integer.
+
 DuroDBMS 1.1
 
 - Accessing properties is now possible using value.property in addition

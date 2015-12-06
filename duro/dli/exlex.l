@@ -656,7 +656,14 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
 }
 
 [0-9]+ {
-    yylval = RDB_new_parse_expr(RDB_int_to_expr((RDB_int) atoi(yytext),
+    long lv = strtol(yytext, NULL, 10);
+    if (lv > RDB_INT_MAX || (errno == ERANGE && lv == LONG_MAX)) {
+	    RDB_raise_type_constraint_violation("integer value too high",
+	            RDB_parse_ecp); 
+        yylval = NULL;
+        return TOK_INVALID;
+	}
+    yylval = RDB_new_parse_expr(RDB_int_to_expr((RDB_int) lv,
     		RDB_parse_ecp), whitecommp, RDB_parse_ecp);
     whitecommp = NULL;
     if (yylval == NULL)
