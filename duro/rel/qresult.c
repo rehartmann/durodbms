@@ -35,9 +35,9 @@ struct RDB_summval {
     RDB_object val;
 };
 
-static void
+static int
 summ_step(struct RDB_summval *svalp, const RDB_object *addvalp,
-        const char *opname, RDB_int count)
+        const char *opname, RDB_int count, RDB_exec_context *ecp)
 {
     if (strcmp(opname, "count") == 0) {
         svalp->val.val.int_val++;
@@ -47,10 +47,21 @@ summ_step(struct RDB_summval *svalp, const RDB_object *addvalp,
                 + addvalp->val.float_val)
                 / (count + 1);
     } else if (strcmp(opname, "sum") == 0) {
-            if (svalp->val.typ == &RDB_INTEGER)
-                svalp->val.val.int_val += addvalp->val.int_val;
-            else
-                svalp->val.val.float_val += addvalp->val.float_val;
+        if (svalp->val.typ == &RDB_INTEGER) {
+            if (addvalp->val.int_val > 0) {
+                if (svalp->val.val.int_val > RDB_INT_MAX - addvalp->val.int_val) {
+                    RDB_raise_type_constraint_violation("integer overflow", ecp);
+                    return RDB_ERROR;
+                }
+            } else {
+                if (svalp->val.val.int_val < RDB_INT_MIN - addvalp->val.int_val) {
+                    RDB_raise_type_constraint_violation("integer overflow", ecp);
+                    return RDB_ERROR;
+                }
+            }
+            svalp->val.val.int_val += addvalp->val.int_val;
+        } else
+            svalp->val.val.float_val += addvalp->val.float_val;
     } else if (strcmp(opname, "max") == 0) {
             if (svalp->val.typ == &RDB_INTEGER) {
                 if (addvalp->val.int_val > svalp->val.val.int_val)
@@ -74,6 +85,7 @@ summ_step(struct RDB_summval *svalp, const RDB_object *addvalp,
         if (!addvalp->val.bool_val)
             svalp->val.val.bool_val = RDB_FALSE;
     }
+    return RDB_OK;
 }
 
 static int
@@ -129,7 +141,7 @@ do_summarize(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg,
                 attrobjp->store_typ = attrobjp->typ;
                 ret = RDB_obj_to_field(&keyfv[i], attrobjp, ecp);
                 if (ret != RDB_OK)
-                    return RDB_ERROR;
+                    goto cleanup;
             }
 
             /* Read added attributes from table #2 */
@@ -188,13 +200,15 @@ do_summarize(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg,
                             goto cleanup;
                         }
                     }
-                    summ_step(&svalv[i], &addval, opname, count);
+                    ret = summ_step(&svalv[i], &addval, opname, count, ecp);
+                    if (ret != RDB_OK)
+                        goto cleanup;
                     RDB_destroy_obj(&addval, ecp);
 
                     svalv[i].val.store_typ = svalv[i].val.typ;
                     ret = RDB_obj_to_field(&nonkeyfv[i], &svalv[i].val, ecp);
                     if (ret != RDB_OK)
-                        return RDB_ERROR;
+                        goto cleanup;
                     argp = argp->nextp->nextp;
                 }
                 if (hasavg) {
@@ -374,7 +388,7 @@ summarize_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     if (tb2typ == NULL)
         goto error;
 
-    reltyp = RDB_summarize_type(&exp->def.op.args, 0, NULL, ecp, txp);
+    reltyp = RDB_summarize_type(&exp->def.op.args, NULL, NULL, ecp, txp);
     if (reltyp == NULL)
         goto error;
 

@@ -1268,7 +1268,7 @@ test const {constants} -setup $SETUP -cleanup $CLEANUP -body {
 24
 }
 
-test format {printf-style formatting} -setup $SETUP -cleanup $CLEANUP -body {
+test format {printf-style formatting} -body {
     exec $testdir/../../dli/durodt << {
         io.put_line(format('%%!%5.2fxx%03d %s.', 1.2, 12, 'foo '));
         
@@ -1287,6 +1287,21 @@ test format {printf-style formatting} -setup $SETUP -cleanup $CLEANUP -body {
         end try;
     }
 } -result {%! 1.20xx012 foo .
+}
+
+test limits {arithmetic overflow} -body {
+    exec $testdir/../../dli/durodt << {
+        var v init 2000000000;
+        
+        try
+            v := v + 2000000000;
+            var s init cast_as_string(v);
+            io.put_line(if s = '4000000000' then 'ok' else s);
+        catch e type_constraint_violation_error;
+            io.put_line('ok');
+        end try;
+    }
+} -result {ok
 }
 
 cleanupTests

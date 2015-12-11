@@ -666,7 +666,8 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
         return extend_type(exp, getfnp, getarg, envp, ecp, txp);
     }
     if (strcmp(exp->def.op.name, "summarize") == 0) {
-        return RDB_summarize_type(&exp->def.op.args, 0, NULL, ecp, txp);
+        return RDB_summarize_type(&exp->def.op.args, getfnp, getarg,
+                ecp, txp);
     }
     if (strcmp(exp->def.op.name, "tuple") == 0) {
         return tuple_type(exp, getfnp, getarg, envp, ecp, txp);
@@ -1170,13 +1171,10 @@ RDB_check_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
     return RDB_OK;
 }
 
-/** @addtogroup expr
- * @{
- */
-
 RDB_type *
 RDB_summarize_type(RDB_expr_list *expsp,
-        int avgc, char **avgv, RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_gettypefn *getfnp, void *getarg,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     RDB_type *newtyp;
@@ -1193,12 +1191,12 @@ RDB_summarize_type(RDB_expr_list *expsp,
     }
 
     addc = (expc - 2) / 2;
-    attrc = addc + avgc;
+    attrc = addc;
 
-    tb1typ = RDB_expr_type(expsp->firstp, NULL, NULL, NULL, ecp, txp);
+    tb1typ = RDB_expr_type(expsp->firstp, getfnp, getarg, NULL, ecp, txp);
     if (tb1typ == NULL)
         return NULL;
-    tb2typ = RDB_expr_type(expsp->firstp->nextp, NULL, NULL, NULL, ecp, txp);
+    tb2typ = RDB_expr_type(expsp->firstp->nextp, getfnp, getarg, NULL, ecp, txp);
     if (tb2typ == NULL)
         goto error;
 
@@ -1229,10 +1227,6 @@ RDB_summarize_type(RDB_expr_list *expsp,
         }
         argp = argp->nextp->nextp;
     }
-    for (i = 0; i < avgc; i++) {
-        attrv[addc + i].name = avgv[i];
-        attrv[addc + i].typ = &RDB_INTEGER;
-    }
 
     newtyp = RDB_extend_relation_type(tb2typ, attrc, attrv, ecp);
     if (newtyp == NULL) {
@@ -1246,6 +1240,10 @@ error:
     RDB_free(attrv);
     return NULL;
 }
+
+/** @addtogroup expr
+ * @{
+ */
 
 /**
  * Get the type of an expression. The type is managed by the expression.

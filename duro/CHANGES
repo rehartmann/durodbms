@@ -2,8 +2,8 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 1.2
 
-- Duro D/T raises a type_constraint_violation_error when reading an integer
-  literal which does not fit in an integer.
+- Added checking for integer overflow. An integer overflow results in a
+  type_constraint_violation_error being raised.
 
 DuroDBMS 1.1
 

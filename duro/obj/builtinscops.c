@@ -20,6 +20,7 @@
 #endif
 
 #include <stdio.h>
+#include <errno.h>
 
 int
 RDB_eq_bool(int argc, RDB_object *argv[], RDB_operator *op,
@@ -80,13 +81,17 @@ cast_as_integer_string(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     char *endp;
-
-    RDB_int_to_obj(retvalp, (RDB_int)
-            strtol(argv[0]->val.bin.datap, &endp, 10));
+    long lv = strtol(RDB_obj_string(argv[0]), &endp, 10);
     if (*endp != '\0') {
         RDB_raise_invalid_argument("conversion to integer failed", ecp);
         return RDB_ERROR;
     }
+    if (lv > RDB_INT_MAX || (errno == ERANGE && lv == LONG_MAX)) {
+        RDB_raise_type_constraint_violation("integer number too large", ecp);
+        return RDB_ERROR;
+    }
+
+    RDB_int_to_obj(retvalp, (RDB_int) lv);
     return RDB_OK;
 }
 
@@ -668,6 +673,10 @@ static int
 negate_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
+    if (argv[0]->val.int_val == RDB_INT_MIN) {
+        RDB_raise_type_constraint_violation("integer overflow", ecp);
+        return RDB_ERROR;
+    }
     RDB_int_to_obj(retvalp, -argv[0]->val.int_val);
     return RDB_OK;
 }
@@ -684,6 +693,18 @@ static int
 add_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
+    if (argv[1]->val.int_val > 0) {
+        if (argv[0]->val.int_val > RDB_INT_MAX - argv[1]->val.int_val) {
+            RDB_raise_type_constraint_violation("integer overflow", ecp);
+            return RDB_ERROR;
+        }
+    } else {
+        if (argv[0]->val.int_val < RDB_INT_MIN - argv[1]->val.int_val) {
+            RDB_raise_type_constraint_violation("integer overflow", ecp);
+            return RDB_ERROR;
+        }
+    }
+
     RDB_int_to_obj(retvalp, argv[0]->val.int_val + argv[1]->val.int_val);
     return RDB_OK;
 }
@@ -701,6 +722,18 @@ static int
 subtract_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
+    if (argv[1]->val.int_val > 0) {
+        if (argv[0]->val.int_val < RDB_INT_MIN + argv[1]->val.int_val) {
+            RDB_raise_type_constraint_violation("integer overflow", ecp);
+            return RDB_ERROR;
+        }
+    } else {
+        if (argv[0]->val.int_val > RDB_INT_MAX + argv[1]->val.int_val) {
+            RDB_raise_type_constraint_violation("integer overflow", ecp);
+            return RDB_ERROR;
+        }
+    }
+
     RDB_int_to_obj(retvalp, argv[0]->val.int_val - argv[1]->val.int_val);
     return RDB_OK;
 }
@@ -718,7 +751,12 @@ static int
 multiply_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_int_to_obj(retvalp, argv[0]->val.int_val * argv[1]->val.int_val);
+    long long prod = (long long) argv[0]->val.int_val * argv[1]->val.int_val;
+    if (prod > RDB_INT_MAX || prod < RDB_INT_MIN) {
+        RDB_raise_type_constraint_violation("integer overflow", ecp);
+        return RDB_ERROR;
+    }
+    RDB_int_to_obj(retvalp, (RDB_int) prod);
     return RDB_OK;
 }
 
@@ -726,8 +764,7 @@ static int
 multiply_float(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_float_to_obj(retvalp,
-            argv[0]->val.float_val * argv[1]->val.float_val);
+    RDB_float_to_obj(retvalp, argv[0]->val.float_val * argv[1]->val.float_val);
     return RDB_OK;
 }
 

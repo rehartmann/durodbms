@@ -597,9 +597,21 @@ RDB_sum(RDB_object *tbp, RDB_expression *exp, RDB_exec_context *ecp,
                 != RDB_OK) {
             goto error;
         }
-        if (attrtyp == &RDB_INTEGER)
-            resultp->val.int_val += RDB_obj_int(&hobj);
-        else
+        if (attrtyp == &RDB_INTEGER) {
+            int a = RDB_obj_int(&hobj);
+            if (a > 0) {
+                if (resultp->val.int_val > RDB_INT_MAX - a) {
+                    RDB_raise_type_constraint_violation("integer overflow", ecp);
+                    goto error;
+                }
+            } else {
+                if (resultp->val.int_val < RDB_INT_MIN - a) {
+                    RDB_raise_type_constraint_violation("integer overflow", ecp);
+                    goto error;
+                }
+            }
+            resultp->val.int_val += a;
+        } else
             resultp->val.float_val += RDB_obj_float(&hobj);
     }
 

@@ -81,7 +81,7 @@ extend = EXTEND expression ':' '{' [id ':=' expression {',' id ':=' expression}]
 update = UPDATE expression ':' '{' [id ':=' expression {',' id ':=' expression}] '}'.
 
 summarize = SUMMARIZE expression PER expression
-           ':' '{' [summary AS id {',' summary AS id}] '}'.
+           ':' '{' [id ':=' expression {',' id ':=' expression}] '}'.
 
 divideby = expression DIVIDEBY expression PER expression.
 
