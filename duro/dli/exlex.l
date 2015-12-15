@@ -18,6 +18,11 @@
 #include "parsenode.h"
 #include "exparse.h"
 #include <ctype.h>
+#include <math.h>
+
+#ifdef _WIN32
+#define isfinite _finite
+#endif
 
 enum {
     COMMENT_BUF_SIZE = 64
@@ -658,7 +663,7 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
 [0-9]+ {
     long lv = strtol(yytext, NULL, 10);
     if (lv > RDB_INT_MAX || (errno == ERANGE && lv == LONG_MAX)) {
-	    RDB_raise_type_constraint_violation("integer value too high",
+	    RDB_raise_type_constraint_violation("integer number too large",
 	            RDB_parse_ecp); 
         yylval = NULL;
         return TOK_INVALID;
@@ -672,7 +677,14 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
 }
 
 [0-9]+"."[0-9]+[Ee][0-9]+ {
-    yylval = RDB_new_parse_expr(RDB_float_to_expr((RDB_float) atof(yytext),
+    double v = strtod(yytext, NULL);
+    if (!isfinite(v)) {
+	    RDB_raise_type_constraint_violation("floating point number too large",
+	            RDB_parse_ecp); 
+        yylval = NULL;
+        return TOK_INVALID;
+	}
+    yylval = RDB_new_parse_expr(RDB_float_to_expr((RDB_float) v,
     		RDB_parse_ecp), whitecommp, RDB_parse_ecp);
     whitecommp = NULL;
     if (yylval == NULL)
@@ -681,7 +693,14 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
 }
 
 [0-9]+"."[0-9]+	{
-    yylval = RDB_new_parse_expr(RDB_float_to_expr((RDB_float) atof(yytext),
+    double v = strtod(yytext, NULL);
+    if (!isfinite(v)) {
+	    RDB_raise_type_constraint_violation("floating point number too large",
+	            RDB_parse_ecp); 
+        yylval = NULL;
+        return TOK_INVALID;
+	}
+    yylval = RDB_new_parse_expr(RDB_float_to_expr((RDB_float) v,
     		RDB_parse_ecp), whitecommp, RDB_parse_ecp);
     whitecommp = NULL;
     if (yylval == NULL)

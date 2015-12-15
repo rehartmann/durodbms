@@ -22,6 +22,10 @@
 #include <stdio.h>
 #include <errno.h>
 
+#ifdef _WIN32
+#define isfinite _finite
+#endif
+
 int
 RDB_eq_bool(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
@@ -49,6 +53,11 @@ static int
 cast_as_integer_float(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
+    if (argv[0]->val.float_val > RDB_INT_MAX
+            || argv[0]->val.float_val < RDB_INT_MIN) {
+        RDB_raise_type_constraint_violation("floating point overflow", ecp);
+        return RDB_ERROR;
+    }
     RDB_int_to_obj(retvalp, (RDB_int) argv[0]->val.float_val);
     return RDB_OK;
 }
@@ -108,13 +117,18 @@ cast_as_float_string(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     char *endp;
+    RDB_float fv = (RDB_float) strtod(argv[0]->val.bin.datap, &endp);
 
-    RDB_float_to_obj(retvalp, (RDB_float)
-            strtod(argv[0]->val.bin.datap, &endp));
     if (*endp != '\0') {
         RDB_raise_invalid_argument("conversion to float failed", ecp);
         return RDB_ERROR;
     }
+    if (!isfinite(fv)) {
+        RDB_raise_type_constraint_violation("floating point overflow", ecp);
+        return RDB_ERROR;
+    }
+
+    RDB_float_to_obj(retvalp, fv);
     return RDB_OK;
 }
 
@@ -713,8 +727,13 @@ static int
 add_float(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_float_to_obj(retvalp,
-            argv[0]->val.float_val + argv[1]->val.float_val);
+    RDB_float fv = argv[0]->val.float_val + argv[1]->val.float_val;
+    if (!isfinite(fv)) {
+        RDB_raise_type_constraint_violation("floating point overflow", ecp);
+        return RDB_ERROR;
+    }
+
+    RDB_float_to_obj(retvalp, fv);
     return RDB_OK;
 }
 
@@ -742,8 +761,12 @@ static int
 subtract_float(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_float_to_obj(retvalp,
-            argv[0]->val.float_val - argv[1]->val.float_val);
+    RDB_float fv = argv[0]->val.float_val - argv[1]->val.float_val;
+    if (!isfinite(fv)) {
+        RDB_raise_type_constraint_violation("floating point overflow", ecp);
+        return RDB_ERROR;
+    }
+    RDB_float_to_obj(retvalp, fv);
     return RDB_OK;
 }
 
@@ -764,7 +787,12 @@ static int
 multiply_float(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_float_to_obj(retvalp, argv[0]->val.float_val * argv[1]->val.float_val);
+    RDB_float fv = argv[0]->val.float_val * argv[1]->val.float_val;
+    if (!isfinite(fv)) {
+        RDB_raise_type_constraint_violation("floating point overflow", ecp);
+        return RDB_ERROR;
+    }
+    RDB_float_to_obj(retvalp, fv);
     return RDB_OK;
 }
 
@@ -784,12 +812,12 @@ static int
 divide_float(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
-    if (argv[1]->val.float_val == 0.0) {
-        RDB_raise_invalid_argument("division by zero", ecp);
+    double q = argv[0]->val.float_val / argv[1]->val.float_val;
+    if (!isfinite(q)) {
+        RDB_raise_type_constraint_violation("floating point overflow", ecp);
         return RDB_ERROR;
     }
-    RDB_float_to_obj(retvalp,
-            argv[0]->val.float_val / argv[1]->val.float_val);
+    RDB_float_to_obj(retvalp, (RDB_float) q);
     return RDB_OK;
 }
 
