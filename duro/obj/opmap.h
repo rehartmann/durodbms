@@ -8,13 +8,13 @@
  * See the file COPYING for redistribution information.
  */
 
-#include "object.h"
 #include "operator.h"
 #include <gen/hashmap.h>
 
 #define RDB_VAR_PARAMS (-1)
 
 typedef struct RDB_transaction RDB_transaction;
+typedef struct RDB_object RDB_object;
 
 typedef struct {
     RDB_hashmap map;
@@ -30,7 +30,11 @@ int
 RDB_put_op(RDB_op_map *, RDB_operator *, RDB_exec_context *);
 
 RDB_operator *
-RDB_get_op(const RDB_op_map *, const char *name, int argc, RDB_type *argtv[],
+RDB_get_op(const RDB_op_map *, const char *, int, RDB_type *[],
+        RDB_exec_context *);
+
+RDB_operator *
+RDB_get_op_by_args(const RDB_op_map *, const char *, int, RDB_object *[],
         RDB_exec_context *);
 
 int

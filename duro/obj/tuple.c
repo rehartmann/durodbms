@@ -6,6 +6,8 @@
  */
 
 #include "tuple.h"
+#include "excontext.h"
+#include "object.h"
 #include "objinternal.h"
 #include <gen/hashtabit.h>
 #include <gen/strfns.h>

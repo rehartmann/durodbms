@@ -16,6 +16,7 @@
 #include "stable.h"
 #include "transform.h"
 #include <gen/strfns.h>
+#include <obj/objmatch.h>
 #include <obj/objinternal.h>
 
 #include <string.h>

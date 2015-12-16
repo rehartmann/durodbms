@@ -8,7 +8,9 @@
  * Declares an internal function for inserting tuples into tables.
  */
 
-#include "rdb.h"
+typedef struct RDB_object RDB_object;
+typedef struct RDB_exec_context RDB_exec_context;
+typedef struct RDB_transaction RDB_transaction;
 
 int
 RDB_insert_real(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *,

@@ -296,9 +296,6 @@ RDB_expr_type_tpltyp(RDB_expression *, const RDB_type *,
 RDB_type *
 RDB_tuple_type(const RDB_object *, RDB_exec_context *);
 
-RDB_bool
-RDB_obj_matches_type(RDB_object *, RDB_type *);
-
 int
 RDB_check_expr_type(RDB_expression *exp, const RDB_type *,
         const RDB_type *, RDB_getobjfn *, void *, RDB_environment *,

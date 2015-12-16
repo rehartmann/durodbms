@@ -7,7 +7,8 @@
  */
 
 #include "rdb.h"
-#include "internal.h"
+
+typedef struct RDB_dbroot RDB_dbroot;
 
 int
 RDB_cat_insert(RDB_object *, RDB_exec_context *, RDB_transaction *);

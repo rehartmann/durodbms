@@ -8,9 +8,10 @@
 #ifndef TUPLE_H_
 #define TUPLE_H_
 
-#include "object.h"
-#include "excontext.h"
 #include "type.h"
+
+typedef struct RDB_exec_context RDB_exec_context;
+typedef struct RDB_object RDB_object;
 
 int
 RDB_tuple_set(RDB_object *, const char *, const RDB_object *,

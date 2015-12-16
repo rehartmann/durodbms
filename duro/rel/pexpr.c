@@ -1,12 +1,11 @@
 /*
- * pexpr.c
- *
- *  Created on: 13.01.2013
- *      Author: Rene Hartmann
+ * Copyright (C) 2013-2014 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #include "pexpr.h"
 #include "tostr.h"
+
 #include <errno.h>
 #include <string.h>
 

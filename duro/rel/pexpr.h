@@ -1,8 +1,6 @@
 /*
- * pexpr.h
- *
- *  Created on: 13.01.2013
- *      Author: rene
+ * Copyright (C) 2013-2014 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #ifndef PEXPR_H_

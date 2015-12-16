@@ -7,9 +7,10 @@
 
 #include "opmap.h"
 #include "type.h"
+#include "objmatch.h"
+#include "objinternal.h"
 #include <gen/hashmapit.h>
 #include <gen/strfns.h>
-#include <obj/objinternal.h>
 
 void
 RDB_init_op_map(RDB_op_map *opmap)
@@ -119,7 +120,7 @@ RDB_get_op(const RDB_op_map *opmap, const char *name, int argc,
             int i;
 
             for (i = 0; (i < argc)
-                    && (argtv[i] == NULL || opep->op->paramv[i].typ == NULL
+                    && (opep->op->paramv[i].typ == NULL
                         || RDB_type_matches(argtv[i], opep->op->paramv[i].typ));
                  i++);
             if (i == argc) {
@@ -145,6 +146,57 @@ RDB_get_op(const RDB_op_map *opmap, const char *name, int argc,
     } else {
         RDB_raise_operator_not_found(name, ecp);
     }    
+
+    return NULL;
+}
+
+RDB_operator *
+RDB_get_op_by_args(const RDB_op_map *opmap, const char *name, int argc,
+        RDB_object *argv[], RDB_exec_context *ecp)
+{
+    RDB_bool argc_match = RDB_FALSE;
+    struct op_entry *opep;
+    struct op_entry *firstopep = RDB_hashmap_get(&opmap->map, name);
+    if (firstopep == NULL) {
+        RDB_raise_operator_not_found(name, ecp);
+        return NULL;
+    }
+
+    /*
+     * Find an operator with same signature
+     */
+    opep = firstopep;
+    while (opep != NULL) {
+        if (RDB_operator_param_count(opep->op) == argc) {
+            int i;
+
+            for (i = 0; (i < argc)
+                    && (opep->op->paramv[i].typ == NULL
+                            || RDB_obj_matches_type(argv[i], opep->op->paramv[i].typ));
+                 i++);
+            if (i == argc) {
+                /* Found */
+                return opep->op;
+            }
+            argc_match = RDB_TRUE;
+        }
+        opep = opep->nextp;
+    }
+
+    /* If not, found, search completely generic operator (argc == RDB_VAR_PARAMS) */
+    opep = firstopep;
+    while (opep != NULL) {
+        if (RDB_operator_param_count(opep->op) == RDB_VAR_PARAMS) {
+            return opep->op;
+        }
+        opep = opep->nextp;
+    }
+
+    if (argc_match) {
+        RDB_raise_type_mismatch(name, ecp);
+    } else {
+        RDB_raise_operator_not_found(name, ecp);
+    }
 
     return NULL;
 }

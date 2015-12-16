@@ -8,7 +8,8 @@
 #ifndef CAT_OP_H_
 #define CAT_OP_H_
 
-#include <rel/rdb.h>
+typedef struct RDB_transaction RDB_transaction;
+typedef struct RDB_exec_context RDB_exec_context;
 
 int
 RDB_cat_load_ro_op(const char *, RDB_exec_context *, RDB_transaction *);
