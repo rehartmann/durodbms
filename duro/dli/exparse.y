@@ -148,6 +148,7 @@ yyerror(const char *);
 %token TOK_I_DELETE "I_DELETE"
 %token TOK_UPDATE "UPDATE"
 %token TOK_TYPE "TYPE"
+%token TOK_IS "IS"
 %token TOK_POSSREP "POSSREP"
 %token TOK_CONSTRAINT "CONSTRAINT"
 %token TOK_OPERATOR "OPERATOR"
@@ -1378,54 +1379,98 @@ update_op_def: TOK_OPERATOR TOK_ID '(' id_type_commalist ')' TOK_UPDATES '{' id_
     }    
     ;
 
-type_def: TOK_TYPE TOK_ID ordering possrep_def_list TOK_INIT expression ';' {
+type_def: TOK_TYPE TOK_ID supertypes ordering ne_possrep_def_list
+        TOK_INIT expression ';'
+    {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
             RDB_parse_del_node($2, RDB_parse_ecp);
-            if ($3 != NULL)
-                RDB_parse_del_node($3, RDB_parse_ecp);
-            RDB_parse_del_node($4, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            if ($4 != NULL)
+                RDB_parse_del_node($4, RDB_parse_ecp);
             RDB_parse_del_node($5, RDB_parse_ecp);
             RDB_parse_del_node($6, RDB_parse_ecp);
             RDB_parse_del_node($7, RDB_parse_ecp);
+            RDB_parse_del_node($8, RDB_parse_ecp);
             YYABORT;
         }
         RDB_parse_add_child($$, $1);
         RDB_parse_add_child($$, $2);
-        if ($3 != NULL)
-            RDB_parse_add_child($$, $3);
-        RDB_parse_add_child($$, $4);
+        RDB_parse_add_child($$, $3);
+        if ($4 != NULL)
+            RDB_parse_add_child($$, $4);
         RDB_parse_add_child($$, $5);
         RDB_parse_add_child($$, $6);
         RDB_parse_add_child($$, $7);
+        RDB_parse_add_child($$, $8);
     }
-    | TOK_TYPE TOK_ID ordering possrep_def_list TOK_CONSTRAINT expression
-            TOK_INIT expression ';' {
+    | TOK_TYPE TOK_ID supertypes ordering ne_possrep_def_list
+            TOK_CONSTRAINT expression TOK_INIT expression ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
             RDB_parse_del_node($2, RDB_parse_ecp);
-            if ($3 != NULL)
-                RDB_parse_del_node($3, RDB_parse_ecp);
-            RDB_parse_del_node($4, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            if ($4 != NULL)
+                RDB_parse_del_node($4, RDB_parse_ecp);
             RDB_parse_del_node($5, RDB_parse_ecp);
             RDB_parse_del_node($6, RDB_parse_ecp);
             RDB_parse_del_node($7, RDB_parse_ecp);
             RDB_parse_del_node($8, RDB_parse_ecp);
             RDB_parse_del_node($9, RDB_parse_ecp);
+            RDB_parse_del_node($10, RDB_parse_ecp);
             YYABORT;
         }
         RDB_parse_add_child($$, $1);
         RDB_parse_add_child($$, $2);
-        if ($3 != NULL)
-            RDB_parse_add_child($$, $3);
-        RDB_parse_add_child($$, $4);
+        RDB_parse_add_child($$, $3);
+        if ($4 != NULL)
+            RDB_parse_add_child($$, $4);
         RDB_parse_add_child($$, $5);
         RDB_parse_add_child($$, $6);
         RDB_parse_add_child($$, $7);
         RDB_parse_add_child($$, $8);
         RDB_parse_add_child($$, $9);
+        RDB_parse_add_child($$, $10);
+    }
+    | TOK_TYPE TOK_ID supertypes TOK_UNION ordering ';' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            RDB_parse_del_node($4, RDB_parse_ecp);
+            if ($5 != NULL)
+                RDB_parse_del_node($5, RDB_parse_ecp);
+            RDB_parse_del_node($6, RDB_parse_ecp);
+            YYABORT;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+        if ($5 != NULL)
+            RDB_parse_add_child($$, $5);
+        RDB_parse_add_child($$, $6);
+    }
+    ;
+
+supertypes: /* Empty */ {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            YYABORT;
+        }
+    }
+    | TOK_IS ne_id_commalist {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            YYABORT;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
     }
     ;
 
@@ -1520,7 +1565,7 @@ possrep_def: TOK_POSSREP '{' id_type_commalist '}' {
         RDB_parse_add_child($$, $5);
 	}
 
-possrep_def_list: possrep_def {
+ne_possrep_def_list: possrep_def {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -1528,7 +1573,7 @@ possrep_def_list: possrep_def {
         }
         RDB_parse_add_child($$, $1);
     }
-	| possrep_def_list possrep_def {
+	| ne_possrep_def_list possrep_def {
         $$ = $1;
         RDB_parse_add_child($$, $2);
 	}

@@ -68,11 +68,11 @@ RDB_parse_add_child(RDB_parse_node *pnodep, RDB_parse_node *childp) {
     }
 }
 
-RDB_int
+int
 RDB_parse_nodelist_length(const RDB_parse_node *pnodep)
 {
     RDB_parse_node *nodep = pnodep->val.children.firstp;
-    RDB_int cnt = 0;
+    int cnt = 0;
     while (nodep != NULL) {
         cnt++;
         nodep = nodep->nextp;
@@ -393,6 +393,8 @@ RDB_token_name(int tok)
         return "UPDATE";
     case TOK_TYPE:
         return "TYPE";
+    case TOK_IS:
+        return "IS";
     case TOK_POSSREP:
         return "POSSREP";
     case TOK_CONSTRAINT:

@@ -28,20 +28,20 @@ test std_output {Standard output} -match regexp -body {
 
 test file_output {File Output} -match regexp -body {
     exec $testdir/../../dli/durodt << {
-        VAR is io.iostream_id;
+        VAR istrm io.iostream_id;
 
-        io.open(is, 'out.txt', 'w');
+        io.open(istrm, 'out.txt', 'w');
 
-        io.put(is, 'Test ');
-        io.put(is, 3);
-        io.put(is, 1.7);
-        io.put(is, TRUE);
+        io.put(istrm, 'Test ');
+        io.put(istrm, 3);
+        io.put(istrm, 1.7);
+        io.put(istrm, TRUE);
 
-        io.put_line(is, 'Duro');
+        io.put_line(istrm, 'Duro');
 
-        io.put(is, X'4464'); io.put_line('');
+        io.put(istrm, X'4464'); io.put_line('');
 
-        io.close(is);
+        io.close(istrm);
     }
     set f [open out.txt r]
     puts [read $f]
@@ -89,28 +89,28 @@ test file_input {File input} -body {
     close $f    
 
     set res [exec $testdir/../../dli/durodt << {
-        VAR is io.iostream_id;
+        VAR istrm io.iostream_id;
 
-        io.open(is, 'in.txt', 'r');
+        io.open(istrm, 'in.txt', 'r');
         VAR line string;
-        io.get_line(is, line);
+        io.get_line(istrm, line);
         io.put_line(line);
-        io.get_line(is, line);
+        io.get_line(istrm, line);
         io.put_line(line);
-        io.put(io.eof(is)); io.put_line('');
-        io.get_line(is, line);
+        io.put(io.eof(istrm)); io.put_line('');
+        io.get_line(istrm, line);
         io.put_line(line);
-        io.put(io.eof(is)); io.put_line('');
-        io.close(is);
+        io.put(io.eof(istrm)); io.put_line('');
+        io.close(istrm);
 
-        io.open(is, 'in.txt', 'r');
+        io.open(istrm, 'in.txt', 'r');
         VAR bin binary;
-        io.read(is, bin, 7);
+        io.read(istrm, bin, 7);
         io.put(bin); io.put_line('');
 
-        io.seek(is, 4);
-        io.read(is, bin, 2);
-        io.close(is);
+        io.seek(istrm, 4);
+        io.read(istrm, bin, 2);
+        io.close(istrm);
         io.put(bin); io.put_line('');
     }]
     file delete -force in.txt

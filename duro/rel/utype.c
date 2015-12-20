@@ -163,6 +163,21 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
                 RDB_expression *constraintp, RDB_expression *initexp,
                 int flags, RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    return RDB_define_subtype(name, 0, NULL, repc, repv, constraintp, initexp,
+            flags, ecp, txp);
+}
+
+/**
+ *
+Defines a type like {@link RDB_define_type}, but allows to specify
+supertypes using the arguments <var>suptypec</var> and <var>suptypev</var>.
+*/
+int
+RDB_define_subtype(const char *name, int suptypec, RDB_type *suptypev[],
+                int repc, const RDB_possrep repv[],
+                RDB_expression *constraintp, RDB_expression *initexp,
+                int flags, RDB_exec_context *ecp, RDB_transaction *txp)
+{
     RDB_object tpl;
     RDB_object conval;
     RDB_object initval;
@@ -194,9 +209,35 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
         }
     }
 
-    /* Check if initexp is a selector invocation */
-    if (check_init(initexp, repc, repv, name, ecp, txp) != RDB_OK)
-        return RDB_ERROR;
+    if (repc > 0) {
+        /* Check if initexp is a selector invocation */
+        if (check_init(initexp, repc, repv, name, ecp, txp) != RDB_OK)
+            return RDB_ERROR;
+    }
+
+    /* Check supertypes */
+    for (i = 0; i < suptypec; i++) {
+        if (!RDB_type_is_scalar(suptypev[i])) {
+            RDB_raise_invalid_argument("supertype must be scalar", ecp);
+            return RDB_ERROR;
+        }
+        if (suptypev[i]->def.scalar.repc > 0) {
+            RDB_raise_not_supported("supertype must be a dummy type", ecp);
+            return RDB_ERROR;
+        }
+    }
+
+    if (repc == 0) {
+        if (!(RDB_TYPE_UNION & flags)) {
+            RDB_raise_invalid_argument(
+                    "type without possreps must be a union type", ecp);
+            return RDB_ERROR;
+        }
+    } else {
+        if (RDB_TYPE_UNION & flags) {
+            RDB_raise_not_supported("union types with possreps not supported", ecp);
+        }
+    }
 
     RDB_init_obj(&tpl);
     RDB_init_obj(&conval);
@@ -230,8 +271,13 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
         goto error;
 
     /* Store init expression in tuple */
-    if (RDB_expr_to_bin(&initval, initexp, ecp) != RDB_OK)
-        goto error;
+    if (repc > 0) {
+        if (RDB_expr_to_bin(&initval, initexp, ecp) != RDB_OK)
+            goto error;
+    } else {
+        if (RDB_binary_set(&initval, (size_t) 0, NULL, (size_t) 0, ecp) != RDB_OK)
+            goto error;
+    }
     if (RDB_tuple_set(&tpl, "init", &initval, ecp) != RDB_OK)
         goto error;
 
@@ -291,6 +337,13 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
         }
     }
 
+    for (i = 0; i < suptypec; i++ ) {
+        if (RDB_cat_insert_subtype(name, RDB_type_name(suptypev[i]), ecp, txp)
+                != RDB_OK) {
+            goto error;
+        }
+    }
+
     RDB_destroy_obj(&typedata, ecp);
     RDB_destroy_obj(&conval, ecp);
     RDB_destroy_obj(&initval, ecp);
@@ -305,45 +358,6 @@ error:
     RDB_destroy_obj(&tpl, ecp);
 
     return RDB_ERROR;
-}
-
-int
-RDB_del_type(RDB_type *typ, RDB_exec_context *ecp)
-{
-    int ret = RDB_OK;
-
-    if (RDB_type_is_scalar(typ)) {
-        RDB_free(typ->name);
-        if (typ->def.scalar.repc > 0) {
-            int i, j;
-
-            for (i = 0; i < typ->def.scalar.repc; i++) {
-                RDB_free(typ->def.scalar.repv[i].name);
-                for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
-                    RDB_free(typ->def.scalar.repv[i].compv[j].name);
-                    if (!RDB_type_is_scalar(typ->def.scalar.repv[i].compv[j].typ)) {
-                        RDB_del_nonscalar_type(typ->def.scalar.repv[i].compv[j].typ, ecp);
-                    }
-                }
-                RDB_free(typ->def.scalar.repv[i].compv);
-            }
-            RDB_free(typ->def.scalar.repv);
-        }
-        if (typ->def.scalar.arep != NULL
-                && !RDB_type_is_scalar(typ->def.scalar.arep)) {
-            ret = RDB_del_nonscalar_type(typ->def.scalar.arep, ecp);
-        }
-        if (typ->def.scalar.init_val_is_valid) {
-            ret = RDB_destroy_obj(&typ->def.scalar.init_val, ecp);
-        }
-        if (typ->def.scalar.initexp != NULL) {
-            ret = RDB_del_expr(typ->def.scalar.initexp, ecp);
-        }
-        RDB_free(typ);
-    } else {
-        ret = RDB_del_nonscalar_type(typ, ecp);
-    }
-    return ret;
 }
 
 /**
@@ -602,6 +616,7 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         }
         return NULL;
     }
+    typ->def.scalar.suptypev = NULL;
 
     /*
      * Put type into type map

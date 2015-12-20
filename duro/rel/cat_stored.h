@@ -9,7 +9,10 @@
 #define CAT_STORED_H_
 
 #include "rdb.h"
-#include "internal.h"
+
+typedef struct RDB_dbroot RDB_dbroot;
+
+struct RDB_tbindex;
 
 int
 RDB_cat_insert_index(const char *, int, const RDB_seq_item[],

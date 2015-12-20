@@ -244,14 +244,12 @@ RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         goto error;
 
-    typ = RDB_alloc(sizeof (RDB_type), ecp);
+    typ = RDB_new_scalar_type(name, RDB_tuple_get_int(&tpl, "arep_len"),
+            RDB_tuple_get_bool(&tpl, "sysimpl"),
+            RDB_tuple_get_bool(&tpl, "ordered"), ecp);
     if (typ == NULL) {
-        RDB_raise_no_memory(ecp);
         goto error;
     }
-    typ->kind = RDB_TP_SCALAR;
-    typ->compare_op = NULL;
-    typ->def.scalar.repc = 0;
 
     typedatap = RDB_tuple_get(&tpl, "arep_type");
     if (RDB_binary_length(typedatap) != 0) {
@@ -260,12 +258,6 @@ RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
             goto error;
     } else {
         typ->def.scalar.arep = NULL;
-    }
-
-    typ->name = RDB_dup_str(name);
-    if (typ->name == NULL) {
-        RDB_raise_no_memory(ecp);
-        goto error;
     }
 
     cvalp = RDB_tuple_get(&tpl, "constraint");
@@ -290,13 +282,6 @@ RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
     } else {
         typ->def.scalar.initexp = NULL;
     }
-    typ->def.scalar.init_val_is_valid = RDB_FALSE;
-
-    typ->ireplen = RDB_tuple_get_int(&tpl, "arep_len");
-    typ->def.scalar.sysimpl = RDB_tuple_get_bool(&tpl, "sysimpl");
-    typ->def.scalar.repc = 0;
-    typ->def.scalar.builtin = RDB_FALSE;
-    typ->def.scalar.ordered = RDB_tuple_get_bool(&tpl, "ordered");
 
     /*
      * Get possrep info from sys_possreps
@@ -736,4 +721,27 @@ RDB_cat_check_type_used(RDB_type *typ, RDB_exec_context *ecp,
         return RDB_ERROR;
 
     return RDB_destroy_obj(&tpl, ecp);
+}
+
+int
+RDB_cat_insert_subtype(const char *typename, const char *supertypename,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_object tpl;
+
+    RDB_init_obj(&tpl);
+    if (RDB_tuple_set_string(&tpl, "typename", typename, ecp) != RDB_OK)
+        goto error;
+    if (RDB_tuple_set_string(&tpl, "supertypename", supertypename, ecp) != RDB_OK)
+        goto error;
+    if (RDB_insert(RDB_tx_db(txp)->dbrootp->subtype_tbp, &tpl, ecp, txp)
+            != RDB_OK) {
+        goto error;
+    }
+    RDB_destroy_obj(&tpl, ecp);
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&tpl, ecp);
+    return RDB_ERROR;
 }

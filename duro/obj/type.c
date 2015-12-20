@@ -63,9 +63,11 @@ RDB_type_is_valid(const RDB_type *typ)
          * the type is invalid.
          */
         if (typ->def.scalar.repc > 1 && RDB_type_is_ordered(typ)
-        && typ->compare_op == NULL) {
+                && typ->compare_op == NULL) {
             return RDB_FALSE;
         }
+        if (RDB_type_is_union(typ))
+            return RDB_TRUE;
         return (RDB_bool) (typ->ireplen != RDB_NOT_IMPLEMENTED);
     }
     abort();
@@ -182,7 +184,44 @@ RDB_dup_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
 }
 
 /**
- * Create a RDB_type struct for a tuple type
+ * Create a RDB_type struct for a scalar type
+ * and returns a pointer to it.
+ */
+RDB_type *
+RDB_new_scalar_type(const char *name, RDB_int ireplen, RDB_bool sysimpl,
+        RDB_bool ordered, RDB_exec_context *ecp)
+{
+    RDB_type *typ = RDB_alloc(sizeof (RDB_type), ecp);
+    if (typ == NULL)
+        return NULL;
+
+    typ->name = RDB_dup_str(name);
+    if (typ->name == NULL) {
+        RDB_free(typ);
+        RDB_raise_no_memory(ecp);
+        return NULL;
+    }
+
+    typ->kind = RDB_TP_SCALAR;
+    typ->compare_op = NULL;
+    typ->def.scalar.repc = 0;
+
+    typ->def.scalar.init_val_is_valid = RDB_FALSE;
+
+    typ->ireplen = ireplen;
+    typ->def.scalar.sysimpl = sysimpl;
+    typ->def.scalar.repc = 0;
+    typ->def.scalar.builtin = RDB_FALSE;
+    typ->def.scalar.ordered = ordered;
+
+    typ->def.scalar.suptypec = 0;
+
+    return typ;
+}
+
+
+/**
+ * Creates a RDB_type struct for a tuple type
  * and returns a pointer to it.
 The attributes are specified by <var>attrc</var> and <var>attrv</var>.
 The fields defaultp and options of RDB_attr are ignored.
@@ -272,7 +311,7 @@ error:
 }
 
 /**
- * Create a RDB_type struct for a relation type and return a pointer to it.
+ * Creates a RDB_type struct for a relation type and returns a pointer to it.
 The attributes are specified by <var>attrc</var> and <var>attrv</var>.
 The fields defaultp and options of RDB_attr are ignored.
 
@@ -302,7 +341,7 @@ RDB_new_relation_type(int attrc, const RDB_attr attrv[],
 }
 
 /**
- * Create a RDB_type struct for a relation type from a tuple type.
+ * Creates a RDB_type struct for a relation type from a tuple type.
 
 @returns
 
@@ -1597,4 +1636,53 @@ RDB_type_is_generic(const RDB_type *typ) {
         return RDB_FALSE;
     }
     abort();
+}
+
+RDB_bool
+RDB_type_is_union(const RDB_type *typ)
+{
+    return RDB_type_is_scalar(typ)
+            && !typ->def.scalar.builtin
+            && typ->def.scalar.repc == 0;
+}
+
+int
+RDB_del_type(RDB_type *typ, RDB_exec_context *ecp)
+{
+    int ret = RDB_OK;
+
+    if (RDB_type_is_scalar(typ)) {
+        RDB_free(typ->name);
+        if (typ->def.scalar.repc > 0) {
+            int i, j;
+
+            for (i = 0; i < typ->def.scalar.repc; i++) {
+                RDB_free(typ->def.scalar.repv[i].name);
+                for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
+                    RDB_free(typ->def.scalar.repv[i].compv[j].name);
+                    if (!RDB_type_is_scalar(typ->def.scalar.repv[i].compv[j].typ)) {
+                        RDB_del_nonscalar_type(typ->def.scalar.repv[i].compv[j].typ, ecp);
+                    }
+                }
+                RDB_free(typ->def.scalar.repv[i].compv);
+            }
+            RDB_free(typ->def.scalar.repv);
+        }
+        if (typ->def.scalar.arep != NULL
+                && !RDB_type_is_scalar(typ->def.scalar.arep)) {
+            ret = RDB_del_nonscalar_type(typ->def.scalar.arep, ecp);
+        }
+        if (typ->def.scalar.init_val_is_valid) {
+            ret = RDB_destroy_obj(&typ->def.scalar.init_val, ecp);
+        }
+        if (typ->def.scalar.initexp != NULL) {
+            ret = RDB_del_expr(typ->def.scalar.initexp, ecp);
+        }
+        if (typ->def.scalar.suptypec > 0)
+            RDB_free(typ->def.scalar.suptypev);
+        RDB_free(typ);
+    } else {
+        ret = RDB_del_nonscalar_type(typ, ecp);
+    }
+    return ret;
 }

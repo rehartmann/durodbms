@@ -21,8 +21,8 @@
 #include <string.h>
 
 enum {
-    MAJOR_VERSION = 0,
-    MINOR_VERSION = 26
+    MAJOR_VERSION = 1,
+    MINOR_VERSION = 2
 };
 
 /*
@@ -175,6 +175,13 @@ static RDB_attr version_info_attrv[] = {
     { "micro_version", &RDB_INTEGER, NULL, 0 }
 };
 static RDB_string_vec version_info_keyv[] = { { 0, NULL } };
+
+static RDB_attr subtype_attrv[] = {
+    { "typename", &RDB_STRING, NULL, 0 },
+    { "supertypename", &RDB_STRING, NULL, 0 },
+};
+static char *subtype_keyattrv[] = { "typename", "supertypename" };
+static RDB_string_vec subtype_keyv[] = { { 2, subtype_keyattrv } };
 
 int
 RDB_cat_dbtables_insert(RDB_object *tbp, RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
@@ -1352,6 +1359,13 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         return ret;
     }
 
+    ret = provide_systable("sys_subtype", 2, subtype_attrv,
+            1, subtype_keyv, create, ecp, txp, txp->dbp->dbrootp->envp,
+            &dbrootp->subtype_tbp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
     if (create) {
         /* Add referential constraint INDEX -> RTABLE */
         RDB_expression *exp = index_rtable_constraint(dbrootp, ecp);
@@ -1422,6 +1436,10 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         ret = open_indexes(dbrootp->version_info_tbp, dbrootp, ecp, txp);
         if (ret != RDB_OK)
             return ret;
+
+        ret = open_indexes(dbrootp->subtype_tbp, dbrootp, ecp, txp);
+        if (ret != RDB_OK)
+            return ret;
     }
     return RDB_OK;
 }
@@ -1434,7 +1452,6 @@ RDB_cat_create_db(RDB_exec_context *ecp, RDB_transaction *txp)
     ret = RDB_cat_insert(txp->dbp->dbrootp->table_attr_tbp, ecp, txp);
     if (ret != RDB_OK) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_ELEMENT_EXISTS_ERROR) {
-            RDB_clear_err(ecp);
             /*
              * The catalog table already exists, but not in this database,
              * so associate it with this database too
@@ -1478,12 +1495,13 @@ RDB_cat_create_db(RDB_exec_context *ecp, RDB_transaction *txp)
             ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->indexes_tbp, RDB_tx_db(txp), ecp, txp);
             if (ret != RDB_OK) 
                 return ret;
-
             ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->constraints_tbp, RDB_tx_db(txp), ecp, txp);
             if (ret != RDB_OK) 
                 return ret;
-
             ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->version_info_tbp, RDB_tx_db(txp), ecp, txp);
+            if (ret != RDB_OK)
+                return ret;
+            ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->subtype_tbp, RDB_tx_db(txp), ecp, txp);
         }
         return ret;
     }
@@ -1562,8 +1580,11 @@ RDB_cat_create_db(RDB_exec_context *ecp, RDB_transaction *txp)
     if (ret != RDB_OK) {
         return ret;
     }
-
-    return ret;
+    ret = RDB_cat_insert(txp->dbp->dbrootp->subtype_tbp, ecp, txp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+    return RDB_OK;
 }
 
 static int

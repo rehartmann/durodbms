@@ -6,6 +6,7 @@
  * See the file COPYING for redistribution information.
  */
 
+#include "rdb.h"
 #include "obj/opmap.h"
 #include "obj/object.h"
 #include <rec/cursor.h>
@@ -87,6 +88,7 @@ typedef struct RDB_dbroot {
     RDB_object *indexes_tbp;
     RDB_object *constraints_tbp;
     RDB_object *version_info_tbp;
+    RDB_object *subtype_tbp;
 } RDB_dbroot;
 
 typedef struct RDB_tbindex {
@@ -393,9 +395,6 @@ RDB_getter_name(const RDB_type *, const char *,
 int
 RDB_setter_name(const RDB_type *typ, const char *,
         RDB_object *, RDB_exec_context *);
-
-int
-RDB_del_type(RDB_type *, RDB_exec_context *);
 
 RDB_operator *
 RDB_get_cmp_op(RDB_type *, RDB_exec_context *, RDB_transaction *);

@@ -6,6 +6,7 @@
  */
 
 #include "cat_stored.h"
+#include "internal.h"
 #include <gen/strfns.h>
 #include <obj/objinternal.h>
 

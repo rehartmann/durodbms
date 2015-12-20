@@ -173,7 +173,8 @@ typedef struct {
  */
 
 enum {
-    RDB_TYPE_ORDERED = 1
+    RDB_TYPE_ORDERED = 1,
+    RDB_TYPE_UNION = 2
 };
 
 /**
@@ -386,9 +387,14 @@ RDB_infer_keys(RDB_expression *, RDB_getobjfn *, void *,
         RDB_string_vec **, RDB_bool *);
 
 int
-RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
+RDB_define_type(const char *, int, const RDB_possrep[],
                 RDB_expression *, RDB_expression *, int,
                 RDB_exec_context *, RDB_transaction *);
+
+int
+RDB_define_subtype(const char *, int, RDB_type *[], int, const RDB_possrep[],
+        RDB_expression *, RDB_expression *, int, RDB_exec_context *,
+        RDB_transaction *);
 
 RDB_type *
 RDB_get_type(const char *name, RDB_exec_context *, RDB_transaction *);

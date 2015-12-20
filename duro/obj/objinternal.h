@@ -135,4 +135,7 @@ RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *);
 int
 RDB_enlarge_array_buf(RDB_object *, RDB_int, RDB_exec_context *);
 
+int
+RDB_del_type(RDB_type *, RDB_exec_context *);
+
 #endif /* OBJINTERNAL_H_ */

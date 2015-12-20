@@ -464,6 +464,7 @@ error:
 }
 
 /** @} */
+/** @} */
 
 int
 RDB_getter_name(const RDB_type *typ, const char *compname,

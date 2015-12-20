@@ -182,11 +182,11 @@ test utype {user-defined types} -setup $SETUP -body {
     #
     
     duro::table create T3 {
-        {IS INTSET}
-    } {{IS}} $tx
+        {iset INTSET}
+    } {{iset}} $tx
     
     set sil {1 2}
-    set stpl [list IS INTLIST('$sil')]
+    set stpl [list iset INTLIST('$sil')]
     duro::insert T3 $stpl $tx
     
     set tpl [duro::expr {TUPLE FROM T3} $tx]
@@ -194,7 +194,7 @@ test utype {user-defined types} -setup $SETUP -body {
         error "TUPLE FROM T3 should be $stpl, but is $tpl"
     }
 
-    set il [duro::expr {the_INTLIST((TUPLE FROM T3).IS)} $tx]
+    set il [duro::expr {the_INTLIST((TUPLE FROM T3).iset)} $tx]
     if {![string equal $il $sil]} {
         error "the_INTLIST should be $sil, but is $il"
     }
@@ -214,7 +214,7 @@ test utype {user-defined types} -setup $SETUP -body {
     duro::commit $tx
     
     # Test setter
-    
+
     # Close DB environment
     duro::env close $dbenv
 }

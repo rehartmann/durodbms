@@ -62,6 +62,10 @@ Duro_exec_vardef(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *e
     RDB_init_obj(objp);
 
     if (initexp == NULL) {
+        if (RDB_type_is_union(typ)) {
+            RDB_raise_invalid_argument("INIT value required for union type", ecp);
+            goto error;
+        }
         if (RDB_set_init_value(objp, typ, interp->envp, ecp) != RDB_OK) {
             goto error;
         }

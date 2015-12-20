@@ -64,7 +64,7 @@ RDB_parse_del_node(RDB_parse_node *, RDB_exec_context *);
 int
 RDB_parse_del_nodelist(RDB_parse_node *, RDB_exec_context *);
 
-RDB_int
+int
 RDB_parse_nodelist_length(const RDB_parse_node *);
 
 RDB_parse_node *

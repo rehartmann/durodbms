@@ -107,6 +107,9 @@ typedef struct RDB_type {
             RDB_expression *initexp;
             RDB_object init_val;
             RDB_bool init_val_is_valid;
+
+            int suptypec;
+            struct RDB_type *suptypev;
         } scalar;
     } def;
 } RDB_type;
@@ -147,6 +150,9 @@ RDB_bool
 RDB_type_is_generic(const RDB_type *);
 
 RDB_bool
+RDB_type_is_union(const RDB_type *);
+
+RDB_bool
 RDB_type_depends_type(const RDB_type *, const RDB_type *);
 
 RDB_bool
@@ -175,6 +181,10 @@ RDB_base_type(const RDB_type *typ);
 
 RDB_attr *
 RDB_type_attrs(RDB_type *, int *);
+
+RDB_type *
+RDB_new_scalar_type(const char *, RDB_int, RDB_bool, RDB_bool,
+        RDB_exec_context *);
 
 RDB_type *
 RDB_new_tuple_type(int attrc, const RDB_attr[],

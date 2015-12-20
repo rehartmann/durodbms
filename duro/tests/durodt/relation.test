@@ -678,7 +678,7 @@ test ra {relational algebra} -setup $SETUP -cleanup $CLEANUP -body {
         insert t2 relation { tuple {a 2}, tuple {a 3} };
 
         -- project / INTERSECT
-        io.put(with (p := t1 { a }, is := p intersect t2): (tuple from is).a); io.put_line('');
+        io.put(with (p := t1 { a }, ist := p intersect t2): (tuple from ist).a); io.put_line('');
 
         -- SEMIMINUS / NOT MATCHING
         var tp init tuple from (t1 SEMIMINUS t2);
@@ -1784,12 +1784,13 @@ test double_rtable {creating a table with the same name twice} -setup $SETUP -cl
         insert r rel { tup { no 2, name 'two' }, tup { no 3, name 'three' } };
         commit;
 
+        begin tx;
         try
-            begin tx;
             var r real rel { n int, s string } key { n };
             commit;
         catch err element_exists_error;
             io.put_line('2nd creation caught');
+            rollback;
         end try;
 
         begin tx;
@@ -1805,6 +1806,25 @@ test double_rtable {creating a table with the same name twice} -setup $SETUP -cl
     }
 } -result {2nd creation caught
 01 Test
+}
+
+test drop_nested_tx {dropping table in nested transaction} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+        var r real relation { no int, name string } key {no};
+
+        insert r rel { tup { no 2, name 'two' }, tup { no 3, name 'three' } };
+        commit;
+
+        begin tx;
+        begin tx;
+        drop var r;
+        commit;
+        commit;
+    }
 }
 
 test serial {system-generated attribute values} -setup $SETUP -cleanup $CLEANUP -body {

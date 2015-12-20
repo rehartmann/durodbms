@@ -12,6 +12,7 @@
 #include "ioop.h"
 #include "exparse.h"
 #include "parse.h"
+#include "parsenode.h"
 #include <gen/hashmap.h>
 #include <gen/hashmapit.h>
 #include <gen/releaseno.h>
@@ -1204,59 +1205,97 @@ exec_typedef(const RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context 
 {
     int i, j;
     int flags;
+    int llen;
     int repc;
-    RDB_possrep *repv;
+    RDB_possrep *repv = NULL;
     RDB_parse_node *nodep, *prnodep;
     RDB_expression *initexp;
     RDB_expression *constraintp = NULL;
     RDB_object nameobj;
     const char *namp;
+    RDB_type **suptypev = NULL;
+    int suptypec = 0;
 
     if (interp->txnp == NULL) {
         RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
+    llen = RDB_parse_nodelist_length(stmtp->nextp);
+    if (llen > 0) {
+        llen = RDB_parse_nodelist_length(stmtp->nextp->val.children.firstp->nextp);
+        suptypec = (llen + 1) / 2;
+        suptypev = RDB_alloc (sizeof(RDB_type *) * suptypec, ecp);
+        if (suptypev == NULL)
+            return RDB_ERROR;
+        nodep = stmtp->nextp->val.children.firstp->nextp->val.children.firstp;
+        for (i = 0; i < suptypec; i++) {
+            RDB_expression *exp = RDB_parse_node_expr(nodep, ecp, NULL);
+            if (exp == NULL)
+                goto error;
+            suptypev[i] = RDB_get_type(RDB_expr_var_name(exp), ecp, &interp->txnp->tx);
+            if (suptypev[i] == NULL)
+                goto error;
+            if (nodep->nextp != NULL)
+                nodep = nodep->nextp->nextp;
+        }
+    }
+
     RDB_init_obj(&nameobj);
 
-    if (stmtp->nextp->kind == RDB_NODE_TOK) {
-        /* Token must be ORDERED */
-        flags = RDB_TYPE_ORDERED;
-        prnodep = stmtp->nextp->nextp;
+    if (stmtp->nextp->nextp->kind == RDB_NODE_TOK) {
+        if (stmtp->nextp->nextp->val.token == TOK_UNION) {
+            flags = RDB_TYPE_UNION;
+            prnodep = stmtp->nextp->nextp->nextp;
+        } else {
+            flags = 0;
+            prnodep = stmtp->nextp->nextp;
+        }
+        if (prnodep->kind == RDB_NODE_TOK && prnodep->val.token == TOK_ORDERED) {
+            flags |= RDB_TYPE_ORDERED;
+            prnodep = prnodep->nextp;
+        }
     } else {
         flags = 0;
-        prnodep = stmtp->nextp;
+        prnodep = stmtp->nextp->nextp;
     }
 
-    repc = RDB_parse_nodelist_length(prnodep);
-    repv = RDB_alloc(repc * sizeof(RDB_possrep), ecp);
-    if (repv == NULL)
-        goto error;
-    for (i = 0; i < repc; i++) {
-        repv[i].compv = NULL;
-    }
-
-    nodep = prnodep->val.children.firstp;
-    for (i = 0; i < repc; i++) {
-        if (parserep_to_rep(nodep, interp, &repv[i], ecp) != RDB_OK)
-            goto error;
-        nodep = nodep->nextp;
-    }
-
-    if (prnodep->nextp->val.token == TOK_CONSTRAINT) {
-        constraintp = RDB_parse_node_expr(prnodep->nextp->nextp, ecp,
-                &interp->txnp->tx);
-        if (constraintp == NULL)
-        	goto error;
-        initexp = RDB_parse_node_expr(prnodep->nextp->nextp->nextp->nextp, ecp,
-                &interp->txnp->tx);
-        if (initexp == NULL)
-            goto error;
+    if (RDB_TYPE_UNION & flags) {
+        repc = 0;
+        repv = NULL;
+        constraintp = NULL;
+        initexp = NULL;
     } else {
-        initexp = RDB_parse_node_expr(prnodep->nextp->nextp, ecp,
-                &interp->txnp->tx);
-        if (initexp == NULL)
+        repc = RDB_parse_nodelist_length(prnodep);
+        repv = RDB_alloc(repc * sizeof(RDB_possrep), ecp);
+        if (repv == NULL)
             goto error;
+        for (i = 0; i < repc; i++) {
+            repv[i].compv = NULL;
+        }
+
+        nodep = prnodep->val.children.firstp;
+        for (i = 0; i < repc; i++) {
+            if (parserep_to_rep(nodep, interp, &repv[i], ecp) != RDB_OK)
+                goto error;
+            nodep = nodep->nextp;
+        }
+
+        if (prnodep->nextp->val.token == TOK_CONSTRAINT) {
+            constraintp = RDB_parse_node_expr(prnodep->nextp->nextp, ecp,
+                    &interp->txnp->tx);
+            if (constraintp == NULL)
+                goto error;
+            initexp = RDB_parse_node_expr(prnodep->nextp->nextp->nextp->nextp, ecp,
+                    &interp->txnp->tx);
+            if (initexp == NULL)
+                goto error;
+        } else {
+            initexp = RDB_parse_node_expr(prnodep->nextp->nextp, ecp,
+                    &interp->txnp->tx);
+            if (initexp == NULL)
+                goto error;
+        }
     }
 
     /* If we're within PACKAGE, prepend package name */
@@ -1268,8 +1307,8 @@ exec_typedef(const RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context 
         namp = RDB_expr_var_name(stmtp->exp);
     }
 
-    if (RDB_define_type(namp, repc, repv, constraintp, initexp, flags, ecp,
-            &interp->txnp->tx) != RDB_OK)
+    if (RDB_define_subtype(namp, suptypec, suptypev, repc, repv, constraintp,
+            initexp, flags, ecp, &interp->txnp->tx) != RDB_OK)
         goto error;
 
     for (i = 0; i < repc; i++) {
@@ -1279,6 +1318,7 @@ exec_typedef(const RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context 
         }
         RDB_free(repv[i].compv);
     }
+    RDB_free(suptypev);
     RDB_free(repv);
     if (RDB_parse_get_interactive())
         printf("Type %s defined.\n", RDB_expr_var_name(stmtp->exp));
@@ -1286,6 +1326,7 @@ exec_typedef(const RDB_parse_node *stmtp, Duro_interp *interp, RDB_exec_context 
     return RDB_OK;
 
 error:
+    RDB_free(suptypev);
     if (repv != NULL) {
         for (i = 0; i < repc; i++) {
             if (repv[i].compv != NULL) {

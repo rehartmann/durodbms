@@ -1,14 +1,15 @@
 /*
- * cat_type.h
+ * Catalog functions dealing with types.
  *
- *  Created on: 02.09.2012
- *      Author: Rene Hartmann
+ * Copyright (C) 2012, 2015 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
-
 #ifndef CAT_TYPE_H_
 #define CAT_TYPE_H_
 
-#include <rel/rdb.h>
+typedef struct RDB_type RDB_type;
+typedef struct RDB_exec_context RDB_exec_context;
+typedef struct RDB_transaction RDB_transaction;
 
 int
 RDB_cat_get_type(const char *, RDB_exec_context *, RDB_transaction *,
@@ -16,5 +17,9 @@ RDB_cat_get_type(const char *, RDB_exec_context *, RDB_transaction *,
 
 int
 RDB_cat_check_type_used(RDB_type *, RDB_exec_context *, RDB_transaction *);
+
+int
+RDB_cat_insert_subtype(const char *, const char *, RDB_exec_context *,
+        RDB_transaction *);
 
 #endif /* CAT_TYPE_H_ */

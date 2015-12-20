@@ -11,6 +11,7 @@
 #include "typeimpl.h"
 #include "serialize.h"
 #include "catalog.h"
+#include <obj/objinternal.h>
 #include <gen/hashmapit.h>
 #include <gen/hashtabit.h>
 #include <gen/strfns.h>
@@ -244,6 +245,7 @@ close_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     close_table(dbrootp->indexes_tbp, dbrootp->envp, ecp);
     close_table(dbrootp->constraints_tbp, dbrootp->envp, ecp);
     close_table(dbrootp->version_info_tbp, dbrootp->envp, ecp);
+    close_table(dbrootp->subtype_tbp, dbrootp->envp, ecp);
 }
 
 static int
@@ -379,6 +381,8 @@ assoc_systables(RDB_dbroot *dbrootp, RDB_database *dbp, RDB_exec_context *ecp)
     if (RDB_assoc_table_db(dbrootp->constraints_tbp, dbp, ecp) != RDB_OK)
         return RDB_ERROR;
     if (RDB_assoc_table_db(dbrootp->version_info_tbp, dbp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_assoc_table_db(dbrootp->subtype_tbp, dbp, ecp) != RDB_OK)
         return RDB_ERROR;
     return RDB_OK;
 }
