@@ -108,8 +108,8 @@ typedef struct RDB_type {
             RDB_object init_val;
             RDB_bool init_val_is_valid;
 
-            int suptypec;
-            struct RDB_type *suptypev;
+            int supertypec;
+            struct RDB_type **supertypev;
         } scalar;
     } def;
 } RDB_type;

@@ -170,7 +170,7 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
 /**
  *
 Defines a type like {@link RDB_define_type}, but allows to specify
-supertypes using the arguments <var>suptypec</var> and <var>suptypev</var>.
+supertypes using the arguments <var>supertypec</var> and <var>supertypev</var>.
 */
 int
 RDB_define_subtype(const char *name, int suptypec, RDB_type *suptypev[],
@@ -556,6 +556,45 @@ RDB_comp_possrep(const RDB_type *typ, const char *name)
     return NULL;
 }
 
+static int
+get_supertypes(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
+        RDB_type ***suptypevp)
+{
+    int i;
+    RDB_object supertypes;
+    RDB_object *tplp;
+    int suptypec;
+    RDB_type **suptypev = NULL;
+
+    RDB_init_obj(&supertypes);
+
+    if (RDB_cat_get_supertypes(name, ecp, txp, &supertypes) != RDB_OK)
+        goto error;
+
+    suptypec = RDB_array_length(&supertypes, ecp);
+    suptypev = RDB_alloc(suptypec * sizeof(RDB_type *), ecp);
+    if (suptypev == NULL)
+        goto error;
+
+    for (i = 0; i < suptypec; i++) {
+        tplp = RDB_array_get(&supertypes, (RDB_int) i, ecp);
+        if (tplp == NULL)
+            goto error;
+
+        suptypev[i] = RDB_get_type(RDB_tuple_get_string(tplp, "supertypename"),
+                ecp, txp);
+    }
+
+    *suptypevp = suptypev;
+    RDB_destroy_obj(&supertypes, ecp);
+    return suptypec;
+
+error:
+    RDB_free(suptypev);
+    RDB_destroy_obj(&supertypes, ecp);
+    return RDB_ERROR;
+}
+
 /**
 Returns a pointer to RDB_type structure which
 represents the type with the name <var>name</var>.
@@ -616,7 +655,6 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         }
         return NULL;
     }
-    typ->def.scalar.suptypev = NULL;
 
     /*
      * Put type into type map
@@ -626,6 +664,17 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         RDB_raise_no_memory(ecp);
         return NULL;
     }
+
+    /*
+     * Read supertypes from catalog
+     */
+    ret = get_supertypes(name, ecp, txp, &typ->def.scalar.supertypev);
+    if (ret < 0) {
+        RDB_hashmap_put(&txp->dbp->dbrootp->utypemap, name, NULL);
+        RDB_del_type(typ, ecp);
+        return NULL;
+    }
+    typ->def.scalar.supertypec = ret;
 
     if (typ->ireplen != RDB_NOT_IMPLEMENTED) {
         /* Evaluate init expression */

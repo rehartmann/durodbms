@@ -214,7 +214,7 @@ RDB_new_scalar_type(const char *name, RDB_int ireplen, RDB_bool sysimpl,
     typ->def.scalar.builtin = RDB_FALSE;
     typ->def.scalar.ordered = ordered;
 
-    typ->def.scalar.suptypec = 0;
+    typ->def.scalar.supertypec = 0;
 
     return typ;
 }
@@ -1678,8 +1678,8 @@ RDB_del_type(RDB_type *typ, RDB_exec_context *ecp)
         if (typ->def.scalar.initexp != NULL) {
             ret = RDB_del_expr(typ->def.scalar.initexp, ecp);
         }
-        if (typ->def.scalar.suptypec > 0)
-            RDB_free(typ->def.scalar.suptypev);
+        if (typ->def.scalar.supertypec > 0)
+            RDB_free(typ->def.scalar.supertypev);
         RDB_free(typ);
     } else {
         ret = RDB_del_nonscalar_type(typ, ecp);
