@@ -682,6 +682,8 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         if (RDB_evaluate(typ->def.scalar.initexp, NULL, NULL, NULL,
                 ecp, txp, &typ->def.scalar.init_val) != RDB_OK) {
             RDB_destroy_obj(&typ->def.scalar.init_val, ecp);
+            RDB_hashmap_put(&txp->dbp->dbrootp->utypemap, name, NULL);
+            RDB_del_type(typ, ecp);
             return NULL;
         }
         typ->def.scalar.init_val_is_valid = RDB_TRUE;

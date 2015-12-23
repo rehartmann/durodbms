@@ -1244,17 +1244,24 @@ copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_type *srctyp = RDB_obj_type(srcvalp);
+    if (srctyp != NULL && !RDB_type_is_scalar(srctyp))
+        srctyp = NULL;
 
     if (RDB_copy_obj_data(dstvalp, srcvalp, ecp, txp) != RDB_OK)
         return RDB_ERROR;
 
-    /*
-     * Copy type information so copying works even if the destination
-     * has been newly initialized usind RDB_init_obj().
-     */
-    if (srctyp != NULL && RDB_type_is_scalar(srctyp)) {
+    /* Set type if it was scalar */
+    if (srctyp != NULL) {
         dstvalp->typ = srctyp;
     }
+
+    /* If the type is a dummy type, set impl_typ */
+    if (dstvalp->typ != NULL && RDB_type_is_dummy(dstvalp->typ)
+            && srcvalp->typ != NULL) {
+        dstvalp->impl_typ = RDB_type_is_dummy(srcvalp->typ) ?
+                srcvalp->impl_typ : srcvalp->typ;
+    }
+
     return RDB_OK;
 } 
 
@@ -1761,10 +1768,22 @@ check_assign_types(int insc, const RDB_ma_insert insv[],
         /* If destination carries a value, types must match */
         if (copyv[i].dstp->kind != RDB_OB_INITIAL
                 && copyv[i].dstp->typ != NULL) {
-            if (!RDB_obj_matches_type(copyv[i].srcp, copyv[i].dstp->typ)) {
-                RDB_raise_type_mismatch("source does not match destination",
-                        ecp);
-                return RDB_ERROR;
+            if (RDB_type_is_scalar(copyv[i].dstp->typ)) {
+                if (copyv[i].srcp->typ == NULL) {
+                    RDB_raise_invalid_argument("source lacks type information", ecp);
+                    return RDB_ERROR;
+                }
+                if(!RDB_is_subtype(copyv[i].srcp->typ, copyv[i].dstp->typ)) {
+                    RDB_raise_type_mismatch("source does not match destination",
+                            ecp);
+                    return RDB_ERROR;
+                }
+            } else {
+                if (!RDB_obj_matches_type(copyv[i].srcp, copyv[i].dstp->typ)) {
+                    RDB_raise_type_mismatch("source does not match destination",
+                            ecp);
+                    return RDB_ERROR;
+                }
             }
         }
     }

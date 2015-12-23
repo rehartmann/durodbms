@@ -64,13 +64,20 @@ struct RDB_object {
      */
 
     /*
-     * The type of the RDB_object.
+     * The type of the RDB_object. Corresponds to the declared type in TTM.
      * If the value is non-scalar and not a table, it is NULL by default,
      * but can be set by calling RDB_obj_set_typeinfo().
      * In this case, the caller is responsible for managing the type
      * (e.g. destroying the type when the RDB_object is destroyed).
      */
     RDB_type *typ;
+
+    /*
+     * An implemented type (with an internal represenation) if typ is a
+     * dummy type.
+     * Currently it is the MST because all supertypes are dummy types.
+     */
+    RDB_type *impl_typ;
 
     enum RDB_obj_kind kind;
     union {

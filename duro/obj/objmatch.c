@@ -35,7 +35,7 @@ array_matches_type(const RDB_object *arrp, RDB_type *typ)
     return result;
 }
 
-/*
+/**
  * Check if *objp has type *typ.
  * If *objp does not carry type information it must be a tuple.
  */
@@ -71,4 +71,3 @@ RDB_obj_matches_type(const RDB_object *objp, RDB_type *typ)
     }
     abort();
 }
-

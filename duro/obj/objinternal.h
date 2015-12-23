@@ -138,4 +138,7 @@ RDB_enlarge_array_buf(RDB_object *, RDB_int, RDB_exec_context *);
 int
 RDB_del_type(RDB_type *, RDB_exec_context *);
 
+RDB_type *
+RDB_obj_impl_type(const RDB_object *);
+
 #endif /* OBJINTERNAL_H_ */

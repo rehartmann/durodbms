@@ -110,6 +110,8 @@ RDB_type_depends_type(const RDB_type *typ, const RDB_type *dtyp)
     case RDB_TP_ARRAY:
         return RDB_type_depends_type(typ->def.basetyp, dtyp);
     case RDB_TP_SCALAR:
+        if (RDB_is_subtype(typ, dtyp))
+            return RDB_TRUE;
         for (i = 0; i < typ->def.scalar.repc; i++) {
             for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
                 if (RDB_type_depends_type(typ->def.scalar.repv[i].compv[j].typ, dtyp))
@@ -592,6 +594,22 @@ char *
 RDB_type_name(const RDB_type *typ)
 {
     return typ->name;
+}
+
+RDB_bool
+RDB_is_subtype(const RDB_type *typ1, const RDB_type *typ2)
+{
+    int i;
+
+    if (RDB_type_equals(typ1, typ2))
+        return RDB_TRUE;
+    if (!RDB_type_is_scalar(typ1) || !RDB_type_is_scalar(typ2))
+        return RDB_FALSE;
+    for (i = 0; i < typ1->def.scalar.supertypec; i++) {
+        if (RDB_is_subtype(typ1->def.scalar.supertypev[i], typ2))
+            return RDB_TRUE;
+    }
+    return RDB_FALSE;
 }
 
 /*@}*/
@@ -1639,11 +1657,17 @@ RDB_type_is_generic(const RDB_type *typ) {
 }
 
 RDB_bool
-RDB_type_is_union(const RDB_type *typ)
+RDB_type_is_dummy(const RDB_type *typ)
 {
     return RDB_type_is_scalar(typ)
             && !typ->def.scalar.builtin
             && typ->def.scalar.repc == 0;
+}
+
+RDB_bool
+RDB_type_is_union(const RDB_type *typ)
+{
+    return RDB_type_is_dummy(typ);
 }
 
 int

@@ -616,20 +616,35 @@ RDB_obj_type(const RDB_object *objp)
 }
 
 /**
- * Set the type information for *<var>objp</var>.
- * This should be used only for tuples and arrays, which, unlike scalars
+ * Set the type information for *<var>objp</var> to *<var>typ</var>.
+ * This can be used only for tuples and arrays, which, unlike scalars
  * and tables, do not to carry explicit type information by default.
  * The caller must manage the type; it is not automatically destroyed
  * when *<var>objp</var> is destroyed (except if *<var>objp</var> is embedded in an
  * expression, in which case the expression takes responsibility for destroying the type).
+ *
+ * If *<var>typ</var> is a dummy type and the existing type is not a dummy
+ * type, the existing type becomes the implemented type.
  */
 void
 RDB_obj_set_typeinfo(RDB_object *objp, RDB_type *typ)
 {
+    if (RDB_type_is_dummy(typ) && objp->typ != NULL
+            && RDB_type_is_scalar(objp->typ) && !RDB_type_is_dummy(objp->typ)) {
+        objp->impl_typ = objp->typ;
+    }
     objp->typ = typ;
 }
 
 /*@}*/
+
+RDB_type *
+RDB_obj_impl_type(const RDB_object *objp)
+{
+    if (objp->typ == NULL)
+        return NULL;
+    return RDB_type_is_dummy(objp->typ) ? objp->impl_typ : objp->typ;
+}
 
 /* Works only for scalar types */
 void

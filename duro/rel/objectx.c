@@ -852,6 +852,7 @@ RDB_set_init_value(RDB_object *objp, RDB_type *typ, RDB_environment *envp,
 /**
  * Copy RDB_object, but not the type information, except for tables.
  * If the RDB_object wraps a table, it must be a real table.
+ * No type checking takes place.
  */
 int
 RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
@@ -862,9 +863,10 @@ RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
     void *datap;
 
     if (dstvalp->kind != RDB_OB_INITIAL && srcvalp->kind != dstvalp->kind) {
-        RDB_raise_type_mismatch("source type does not match destination type",
-                ecp);
-        return RDB_ERROR;
+        ret = RDB_destroy_obj(dstvalp, ecp);
+        RDB_init_obj(dstvalp);
+        if (ret != RDB_OK)
+            return RDB_ERROR;
     }
 
     switch (srcvalp->kind) {

@@ -153,6 +153,12 @@ RDB_bool
 RDB_type_is_union(const RDB_type *);
 
 RDB_bool
+RDB_type_is_dummy(const RDB_type *);
+
+RDB_bool
+RDB_is_subtype(const RDB_type *, const RDB_type *);
+
+RDB_bool
 RDB_type_depends_type(const RDB_type *, const RDB_type *);
 
 RDB_bool
