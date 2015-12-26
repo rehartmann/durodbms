@@ -120,7 +120,7 @@ op_drop_stmt = DROP OPERATOR id ';'.
 
 return_stmt = RETURN [expression] ';'.
 
-type_def_stmt = TYPE id [ORDERED] possrep {possrep} [CONSTRAINT expression]
+type_def_stmt = TYPE id [IS id {',' id}] [ORDERED] possrep {possrep} [CONSTRAINT expression]
         | TYPE id [IS id {',' id}] UNION [ORDERED].
 
 possrep = POSSREP [id type {',' id type}].
