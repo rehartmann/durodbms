@@ -88,8 +88,8 @@ check_init(RDB_expression *initexp, int repc, const RDB_possrep repv[], const ch
         argtyp = RDB_expr_type(argp, NULL, NULL, NULL, ecp, txp);
         if (argtyp == NULL)
             goto error;
-        if (!RDB_type_equals(argtyp, repv[i].compv[j].typ)) {
-            RDB_raise_type_mismatch("INIT expression argument type dot match selector", ecp);
+        if (!RDB_is_subtype(argtyp, repv[i].compv[j].typ)) {
+            RDB_raise_type_mismatch("INIT expression argument type does not match selector", ecp);
             goto error;
         }
         argp = argp->nextp;

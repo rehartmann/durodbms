@@ -229,6 +229,11 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
     if (typ == NULL)
         return RDB_ERROR;
 
+    if (typ->def.scalar.repc == 0) {
+        RDB_raise_invalid_argument("cannot implement dummy type", ecp);
+        return RDB_ERROR;
+    }
+
     typ->def.scalar.sysimpl = (arep == NULL) && (areplen == RDB_SYS_REP);
 
     /* Load selector etc. to check if they have been provided */
