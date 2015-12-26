@@ -1779,14 +1779,17 @@ create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type *rty
 
     if (*RDB_obj_string(&interp->pkg_name) == '\0') {
         return RDB_create_ro_op(name, paramc, paramv, rtyp,
-                libname, symname, sourcep, ecp, txp);
+                symname != NULL ? libname : NULL,
+                symname != NULL ? symname : NULL,
+                sourcep, ecp, txp);
     }
     RDB_init_obj(&opnameobj);
     if (Duro_package_q_id(&opnameobj, name, interp, ecp) != RDB_OK)
         goto error;
 
     if (RDB_create_ro_op(RDB_obj_string(&opnameobj), paramc, paramv, rtyp,
-            libname, symname, sourcep, ecp, txp) != RDB_OK)
+            symname[0] != '\0' ? libname : NULL, symname[0] != '\0' ? symname : NULL,
+            sourcep, ecp, txp) != RDB_OK)
         goto error;
     RDB_destroy_obj(&opnameobj, ecp);
     return RDB_OK;
@@ -1879,6 +1882,7 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     const char *opname;
     RDB_object opnameobj; /* Only used when the name is modified */
     RDB_object *lwsp;
+    RDB_bool is_spec;
     RDB_bool subtx = RDB_FALSE;
     RDB_parse_node *stmtp = parentp->val.children.firstp->nextp;
     RDB_parameter *paramv = NULL;
@@ -1938,13 +1942,23 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     lwsp = parentp->val.children.firstp->whitecommp;
     parentp->val.children.firstp->whitecommp = NULL;
 
-    /*
-     * 'Un-parse' the defining code
-     */
-    if (Duro_parse_node_to_obj_string(&code, parentp, ecp,
-            interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx) != RDB_OK) {
-        parentp->val.children.firstp->whitecommp = lwsp;
-        goto error;
+    if (ro)
+        is_spec = (RDB_bool) stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->kind == RDB_NODE_TOK;
+    else
+        is_spec = RDB_FALSE;
+
+    if (is_spec) {
+        if (RDB_string_to_obj(&code, "", ecp) != RDB_OK)
+            goto error;
+    } else {
+        /*
+         * 'Un-parse' the defining code
+         */
+        if (Duro_parse_node_to_obj_string(&code, parentp, ecp,
+                interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx) != RDB_OK) {
+            parentp->val.children.firstp->whitecommp = lwsp;
+            goto error;
+        }
     }
     parentp->val.children.firstp->whitecommp = lwsp;
 
@@ -2004,11 +2018,11 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
         } else {
             ret = create_ro_op(opname, paramc, paramv, rtyp,
 #ifdef _WIN32
-                    "duro",
+                    is_spec ? NULL : "duro",
 #else
-                    "libduro",
+                    is_spec ? NULL : "libduro",
 #endif
-                    "Duro_dt_invoke_ro_op",
+                    is_spec ? NULL : "Duro_dt_invoke_ro_op",
                     RDB_obj_string(&code), interp, ecp,
                     interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
         }

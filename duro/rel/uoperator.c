@@ -15,6 +15,12 @@
 #include <string.h>
 #include <stdlib.h>
 
+static const char IS_PREFIX[] = "is_";
+static size_t IS_PREFIX_LEN = sizeof(IS_PREFIX) - 1;
+
+static const char TREAT_AS_PREFIX[] = "treat_as_";
+static size_t TREAT_AS_PREFIX_LEN = sizeof(TREAT_AS_PREFIX) - 1;
+
 /*
  * Convert paramv to an array of binary type representations
  */
@@ -152,10 +158,10 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_tuple_set_string(&tpl, "lib", libname, ecp);
+    ret = RDB_tuple_set_string(&tpl, "lib", symname != NULL ? libname : "", ecp);
     if (ret != RDB_OK)
         goto cleanup;
-    ret = RDB_tuple_set_string(&tpl, "symbol", symname, ecp);
+    ret = RDB_tuple_set_string(&tpl, "symbol", symname != NULL ? symname : "", ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -448,7 +454,6 @@ RDB_call_ro_op_by_name_e(const char *name, int argc, RDB_object *argv[],
 {
     RDB_operator *op;
     int ret;
-    /* RDB_type **argtv; */
     int i;
 
     /*
@@ -524,8 +529,21 @@ RDB_call_ro_op_by_name_e(const char *name, int argc, RDB_object *argv[],
         goto error;
     }
 
+    if (op->opfn.ro_fp == NULL) {
+        RDB_raise_operator_not_found("operator is not implemented", ecp);
+        return RDB_ERROR;
+    }
+
     /* Set return type to make it available to the function */
     retvalp->typ = op->rtyp;
+
+    /* If the argument type is a dummy type, set parameter type */
+    if (op->paramc != RDB_VAR_PARAMS) {
+        for (i = 0; i < argc; i++) {
+            if (RDB_type_is_scalar(op->paramv[i].typ))
+                argv[i]->typ = op->paramv[i].typ;
+        }
+    }
 
     ret = (*op->opfn.ro_fp)(argc, argv, op, ecp, txp, retvalp);
     if (ret != RDB_OK)
@@ -904,6 +922,121 @@ RDB_obj_not_equals(int argc, RDB_object *argv[], RDB_operator *op,
     return RDB_OK;
 }
 
+static int
+RDB_op_is_type(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_type *typ;
+    RDB_type *objtyp;
+    if (argc != 1) {
+        RDB_raise_invalid_argument("exactly one argument is required", ecp);
+        return RDB_ERROR;
+    }
+    objtyp = RDB_obj_impl_type(argv[0]);
+    if (objtyp == NULL) {
+        RDB_bool_to_obj(retvalp, RDB_FALSE);
+        return RDB_OK;
+    }
+    typ = RDB_get_type(RDB_operator_name(op) + IS_PREFIX_LEN, ecp, txp);
+    if (typ == NULL)
+        return RDB_ERROR;
+    RDB_bool_to_obj(retvalp, RDB_is_subtype(objtyp, typ));
+    return RDB_OK;
+}
+
+static int
+RDB_op_treat_as_type(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_type *typ;
+    RDB_type *objtyp;
+    if (argc != 1) {
+        RDB_raise_invalid_argument("exactly one argument is required", ecp);
+        return RDB_ERROR;
+    }
+    objtyp = RDB_obj_impl_type(argv[0]);
+    if (objtyp == NULL) {
+        RDB_bool_to_obj(retvalp, RDB_FALSE);
+        return RDB_OK;
+    }
+    typ = RDB_get_type(RDB_operator_name(op) + TREAT_AS_PREFIX_LEN, ecp, txp);
+    if (typ == NULL)
+        return RDB_ERROR;
+    if (!RDB_is_subtype(objtyp, typ)) {
+        RDB_raise_type_mismatch(RDB_operator_name(op), ecp);
+        return RDB_ERROR;
+    }
+    if (RDB_copy_obj(retvalp, argv[0], ecp) != RDB_OK)
+        return RDB_ERROR;
+    RDB_obj_set_typeinfo(retvalp, typ);
+    return RDB_OK;
+}
+
+static RDB_operator *
+provide_eq_neq(const char *name, RDB_type *argtyp, RDB_dbroot *dbrootp,
+        RDB_exec_context *ecp)
+{
+    RDB_operator *op;
+    RDB_type *argtv[2];
+    argtv[0] = argtv[1] = argtyp;
+
+    if (strcmp(name, "=") == 0) {
+        op = RDB_new_op_data(name, 2, argtv, &RDB_BOOLEAN, ecp);
+        if (op == NULL) {
+            return NULL;
+        }
+        op->opfn.ro_fp = &RDB_dfl_obj_equals;
+        if (RDB_put_op(&dbrootp->ro_opmap, op, ecp) != RDB_OK)
+            return NULL;
+        return op;
+    }
+    op = RDB_new_op_data(name, 2, argtv, &RDB_BOOLEAN, ecp);
+    if (op == NULL) {
+        return NULL;
+    }
+    op->opfn.ro_fp = &RDB_obj_not_equals;
+    if (RDB_put_op(&dbrootp->ro_opmap, op, ecp) != RDB_OK)
+        return NULL;
+    return op;
+}
+
+static RDB_operator *
+provide_is_op(const char *name, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_operator *op;
+    if (RDB_get_type(name + IS_PREFIX_LEN, ecp, txp) == NULL)
+        return NULL;
+
+    op = RDB_new_op_data(name, -1, NULL, &RDB_BOOLEAN, ecp);
+    if (op == NULL) {
+        return NULL;
+    }
+    op->opfn.ro_fp = &RDB_op_is_type;
+    if (RDB_put_op(&dbrootp->ro_opmap, op, ecp) != RDB_OK)
+        return NULL;
+    return op;
+}
+
+static RDB_operator *
+provide_treat_as_op(const char *name, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_operator *op;
+    RDB_type *typ = RDB_get_type(name + TREAT_AS_PREFIX_LEN, ecp, txp);
+    if (typ == NULL)
+        return NULL;
+
+    op = RDB_new_op_data(name, -1, NULL, typ, ecp);
+    if (op == NULL) {
+        return NULL;
+    }
+    op->opfn.ro_fp = &RDB_op_treat_as_type;
+    if (RDB_put_op(&dbrootp->ro_opmap, op, ecp) != RDB_OK)
+        return NULL;
+    return op;
+}
+
 /*
  * Get operator by name and types.
  * If txp is NULL and envp is not NULL
@@ -981,31 +1114,19 @@ RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
      */
     if (argc == 2 && RDB_type_is_scalar(argtv[0])
             && argtv[0]->def.scalar.repc > 0
-            && RDB_type_equals(argtv[0], argtv[1])) {
-        int ret;
+            && RDB_type_equals(argtv[0], argtv[1])
+            && (strcmp(name, "=") == 0
+                || strcmp(name, "<>") == 0)) {
+        return provide_eq_neq(name, argtv[0], dbrootp, ecp);
+    }
 
-        if (strcmp(name, "=") == 0) {
-            op = RDB_new_op_data(name, 2, argtv, &RDB_BOOLEAN, ecp);
-            if (op == NULL) {
-                return NULL;
-            }
-            op->opfn.ro_fp = &RDB_dfl_obj_equals;
-            ret = RDB_put_op(&dbrootp->ro_opmap, op, ecp);
-            if (ret != RDB_OK)
-                return NULL;
-            return op;
-        }
-        if (strcmp(name, "<>") == 0) {
-            op = RDB_new_op_data(name, 2, argtv, &RDB_BOOLEAN, ecp);
-            if (op == NULL) {
-                return NULL;
-            }
-            op->opfn.ro_fp = &RDB_obj_not_equals;
-            ret = RDB_put_op(&dbrootp->ro_opmap, op, ecp);
-            if (ret != RDB_OK)
-                return NULL;
-            return op;
-        }
+    if (strlen(name) > IS_PREFIX_LEN
+            && strncmp(name, IS_PREFIX, IS_PREFIX_LEN) == 0) {
+        return provide_is_op(name, dbrootp, ecp, txp);
+    }
+    if (strlen(name) > TREAT_AS_PREFIX_LEN
+            && strncmp(name, TREAT_AS_PREFIX, TREAT_AS_PREFIX_LEN) == 0) {
+        return provide_treat_as_op(name, dbrootp, ecp, txp);
     }
 
     /*
@@ -1033,6 +1154,38 @@ RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     return op;
 }
 
+static int
+check_return_type(RDB_operator *op, int argc, RDB_object *argv[],
+        RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    /* Get operator by argument types to check if the return type matches */
+    if (argc > 0) {
+        int i;
+        RDB_operator *top;
+        RDB_type **argtv = RDB_alloc(sizeof (RDB_type *) * argc, ecp);
+        if (argtv == NULL) {
+            return RDB_ERROR;
+        }
+        for (i = 0; i < argc; i++) {
+            argtv[i] = RDB_obj_type(argv[i]);
+            if (argtv[i] == NULL) {
+                RDB_raise_invalid_argument("missing type information",  ecp);
+                RDB_free(argtv);
+                return RDB_ERROR;
+            }
+        }
+        top = RDB_get_ro_op(RDB_operator_name(op), argc, argtv, envp, ecp, txp);
+        RDB_free(argtv);
+        if (top == NULL)
+            return RDB_ERROR;
+        if (!RDB_type_equals(RDB_operator_type(op), RDB_operator_type(top))) {
+            RDB_raise_invalid_argument("return type mismatch",  ecp);
+            return RDB_ERROR;
+        }
+    }
+    return RDB_OK;
+}
+
 /*
  * Get operator by name and values.
  * If txp is NULL and envp is not NULL
@@ -1050,8 +1203,11 @@ RDB_get_ro_op_by_args(const char *name, int argc, RDB_object *argv[],
 
     /* Lookup operator in built-in operator map */
     op = RDB_get_op_by_args(&RDB_builtin_ro_op_map, name, argc, argv, ecp);
-    if (op != NULL)
+    if (op != NULL) {
+        if (check_return_type(op, argc, argv, envp, ecp, txp) != RDB_OK)
+            return NULL;
         return op;
+    }
 
     /*
      * If search in builtin type map failed due to a type mismatch,
@@ -1093,6 +1249,8 @@ RDB_get_ro_op_by_args(const char *name, int argc, RDB_object *argv[],
     op = RDB_get_op_by_args(&dbrootp->ro_opmap, name, argc, argv, ecp);
     if (op != NULL) {
         RDB_clear_err(ecp);
+        if (check_return_type(op, argc, argv, envp, ecp, txp) != RDB_OK)
+            return NULL;
         return op;
     }
 
@@ -1113,33 +1271,20 @@ RDB_get_ro_op_by_args(const char *name, int argc, RDB_object *argv[],
         if (RDB_type_is_scalar(arg1typ)
                 && arg1typ->def.scalar.repc > 0
                 && RDB_type_equals(arg1typ, RDB_obj_type(argv[1]))) {
-            int ret;
-            RDB_type *argtv[2];
-            argtv[0] = argtv[1] = arg1typ;
-
-            if (strcmp(name, "=") == 0) {
-                op = RDB_new_op_data(name, 2, argtv, &RDB_BOOLEAN, ecp);
-                if (op == NULL) {
-                    return NULL;
-                }
-                op->opfn.ro_fp = &RDB_dfl_obj_equals;
-                ret = RDB_put_op(&dbrootp->ro_opmap, op, ecp);
-                if (ret != RDB_OK)
-                    return NULL;
-                return op;
-            }
-            if (strcmp(name, "<>") == 0) {
-                op = RDB_new_op_data(name, 2, argtv, &RDB_BOOLEAN, ecp);
-                if (op == NULL) {
-                    return NULL;
-                }
-                op->opfn.ro_fp = &RDB_obj_not_equals;
-                ret = RDB_put_op(&dbrootp->ro_opmap, op, ecp);
-                if (ret != RDB_OK)
-                    return NULL;
-                return op;
+            if (strcmp(name, "=") == 0
+                    || strcmp(name, "<>") == 0) {
+                return provide_eq_neq(name, arg1typ, dbrootp, ecp);
             }
         }
+    }
+
+    if (strlen(name) > IS_PREFIX_LEN
+            && strncmp(name, IS_PREFIX, IS_PREFIX_LEN) == 0) {
+        return provide_is_op(name, dbrootp, ecp, txp);
+    }
+    if (strlen(name) > TREAT_AS_PREFIX_LEN
+            && strncmp(name, TREAT_AS_PREFIX, TREAT_AS_PREFIX_LEN) == 0) {
+        return provide_treat_as_op(name, dbrootp, ecp, txp);
     }
 
     /*
@@ -1164,6 +1309,8 @@ RDB_get_ro_op_by_args(const char *name, int argc, RDB_object *argv[],
         return NULL;
     }
 
+    if (check_return_type(op, argc, argv, envp, ecp, txp) != RDB_OK)
+        return NULL;
     return op;
 }
 

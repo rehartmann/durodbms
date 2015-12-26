@@ -561,11 +561,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     argp = exp->def.op.args.firstp;
     for (i = 0; i < argc; i++) {
         valpv[i] = expr_obj(argp, getfnp, getdata, ecp, txp);
-        if (valpv[i] == NULL) {
-            if (argp->kind == RDB_EX_VAR) {
-                ret = RDB_ERROR;
-                goto cleanup;
-            }
+        if (valpv[i] == NULL || (valpv[i]->typ != NULL && RDB_type_is_dummy(valpv[i]->typ))) {
             ret = RDB_evaluate(argp, getfnp, getdata, envp, ecp, txp, &arginfov[i].val);
             if (ret != RDB_OK)
                 goto cleanup;

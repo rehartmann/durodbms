@@ -1,0 +1,115 @@
+#!/bin/sh
+# Execute tclsh from the user's PATH \
+exec tclsh "$0" ${1+"$@"}
+
+#
+# Test scalar definitions and operations
+#
+
+package require tcltest 2.2
+eval ::tcltest::configure $argv
+namespace import ::tcltest::*
+
+set testdir [::tcltest::configure -testdir]
+
+set ::SETUP {
+    removeDirectory dbenv
+    makeDirectory dbenv
+    cd $::tcltest::temporaryDirectory
+    exec $testdir/../../dli/durodt << {
+        create_env('dbenv');
+        create_db('D');
+    }
+}
+
+set ::CLEANUP {
+    removeDirectory dbenv
+}
+
+test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+        begin tx;
+
+        type shape union;
+
+        type circle is shape
+        possrep { radius int }
+        init circle(0);
+
+        type rectangle is shape
+        possrep { width int, height int }
+        init rectangle(0, 0);
+
+        implement type circle;
+        end implement;
+        
+        implement type rectangle;
+        end implement;
+
+        commit;
+        
+        begin tx;
+
+        var s shape init circle(1);
+    
+        io.put(is_shape(s)); io.put_line('');
+        io.put(is_circle(s)); io.put_line('');
+        io.put(is_rectangle(s)); io.put_line('');
+    
+        try
+            io.put(s.radius);
+            io.put_line('getting property from variable of dummy type succeeded');
+        catch e invalid_argument_error;
+            ;
+        end try;
+    
+        io.put(treat_as_circle(s).radius);
+        io.put_line('');
+    
+        try
+            var r rectangle init treat_as_rectangle(s);
+            io.put_line('treating circle as rectangle succeeded');
+        catch e type_mismatch_error;
+            ;
+        end try;
+
+        try
+            var r rectangle init treat_as_circle(s);
+            io.put_line('initializing rectangle with circle succeeded');
+        catch e type_mismatch_error;
+            ;
+        end try;
+
+        operator width(s shape) returns integer;
+        end operator;
+        
+        operator width(c circle) returns integer;
+            return c.radius * 2;
+        end operator;
+
+        operator width(r rectangle) returns integer;
+            return r.width;
+        end operator;
+        
+        io.put(width(s)); io.put_line('');
+        
+        s := rectangle(4, 2);
+        io.put(width(s)); io.put_line('');
+ 
+        s := circle(3);
+        io.put(width(s)); io.put_line('');        
+    
+        commit;
+    }
+} -result {TRUE
+TRUE
+FALSE
+1
+2
+4
+6
+}
+
+cleanupTests

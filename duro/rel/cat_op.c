@@ -176,6 +176,8 @@ RDB_cat_load_ro_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp
                 op->opfn.ro_fp = &RDB_sys_gt;
         } else if (strcmp(symname, "RDB_sys_get") == 0) {
                 op->opfn.ro_fp = &RDB_sys_get;
+        } else if (symname[0] == '\0') {
+            op->opfn.ro_fp = NULL;
         } else {
             op->opfn.ro_fp = (RDB_ro_op_func *) lt_dlsym(op->modhdl, symname);
             if (op->opfn.ro_fp == NULL) {

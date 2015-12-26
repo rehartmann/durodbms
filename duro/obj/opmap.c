@@ -150,6 +150,20 @@ RDB_get_op(const RDB_op_map *opmap, const char *name, int argc,
     return NULL;
 }
 
+static RDB_bool
+obj_has_type(RDB_object *objp, RDB_type *typ)
+{
+    RDB_type *objtyp;
+    if (!RDB_type_is_scalar(typ))
+        return RDB_obj_matches_type(objp, typ);
+    objtyp = objp->typ;
+    if (objtyp == NULL)
+        return RDB_obj_matches_type(objp, typ);
+    if (RDB_type_is_dummy(objtyp))
+        objtyp = objp->impl_typ;
+    return RDB_type_equals(objtyp, typ);
+}
+
 RDB_operator *
 RDB_get_op_by_args(const RDB_op_map *opmap, const char *name, int argc,
         RDB_object *argv[], RDB_exec_context *ecp)
@@ -172,7 +186,7 @@ RDB_get_op_by_args(const RDB_op_map *opmap, const char *name, int argc,
 
             for (i = 0; (i < argc)
                     && (opep->op->paramv[i].typ == NULL
-                            || RDB_obj_matches_type(argv[i], opep->op->paramv[i].typ));
+                            || obj_has_type(argv[i], opep->op->paramv[i].typ));
                  i++);
             if (i == argc) {
                 /* Found */

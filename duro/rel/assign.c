@@ -1243,16 +1243,18 @@ static int
 copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    RDB_type *srctyp = RDB_obj_type(srcvalp);
-    if (srctyp != NULL && !RDB_type_is_scalar(srctyp))
-        srctyp = NULL;
+    RDB_type *restore_typ = RDB_obj_type(dstvalp);
+    if (restore_typ == NULL)
+        restore_typ = RDB_obj_type(srcvalp);
+    if (restore_typ != NULL && !RDB_type_is_scalar(restore_typ))
+        restore_typ = NULL;
 
     if (RDB_copy_obj_data(dstvalp, srcvalp, ecp, txp) != RDB_OK)
         return RDB_ERROR;
 
     /* Set type if it was scalar */
-    if (srctyp != NULL) {
-        dstvalp->typ = srctyp;
+    if (restore_typ != NULL) {
+        dstvalp->typ = restore_typ;
     }
 
     /* If the type is a dummy type, set impl_typ */
