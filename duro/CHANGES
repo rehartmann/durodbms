@@ -2,6 +2,8 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 1.2
 
+- Added a limited form of subtyping. Only dummy types can be supertypes.
+
 - Added checking for integer overflow. An integer overflow results in a
   type_constraint_violation_error being raised.
 

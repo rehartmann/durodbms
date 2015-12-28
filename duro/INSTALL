@@ -21,11 +21,10 @@ Building the Java interface requires Java Development Kit 7.
 
 'scons test' requires the tcltest package.
 
-Berkeley DB is assumed to be located in /usr/local/BerkeleyDB.6.1.
-If Berkeley DB is located in a different directory, you can
-pass this directory to SCons using the bdbhome variable, so
-if Berkeley DB is located in /usr instead of /usr/local,
-you may use:
+On Unix-like systems, Berkeley DB is assumed to be located in
+/usr/local/BerkeleyDB.6.1. If Berkeley DB is located in a different directory,
+you can pass this directory to SCons using the bdbhome variable, so
+if Berkeley DB is located in /usr instead of /usr/local, you may use:
 
 scons bdbhome=/usr/BerkeleyDB.6.1
 
@@ -33,11 +32,11 @@ The location of Berkeley DB may also be specified using
 the environment. With Visual C++, the variables LIB and INCLUDE
 can be used.
 
-By default, DuroDBMS is installed in C:\duro.1.1 on Windows, and
-/usr/local/duro.1.1 on all other systems.
+By default, DuroDBMS is installed in C:\duro.1.2 on Windows, and
+/usr/local/duro.1.2 on all other systems.
 You can specify a different directory by passing an installdir
 variable to scons, e. g.:
 
 scons installdir=/usr install
 
-This will install DuroDBMS in /usr/duro.1.1
+This will install DuroDBMS in /usr/duro.1.2.
