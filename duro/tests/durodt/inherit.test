@@ -112,4 +112,45 @@ FALSE
 6
 }
 
+test returntype {Return type conflict} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+        begin tx;
+
+        type shape union;
+
+        type circle is shape
+        possrep { radius int }
+        init circle(0);
+
+        implement type circle;
+        end implement;
+
+        commit;
+        
+        begin tx;
+        
+        operator area(s shape) returns int;
+        end operator;
+
+        operator area(c circle) returns float;
+            return 3.14159 * cast_as_float(c.radius * c.radius);
+        end operator;
+
+        var s shape init circle(0);
+
+        try        
+        	io.put(area(s));
+        	io.put_line('');
+        	io.put_line('read-only operator call succeeded'
+        	        || ' despite conflicting return type');
+        catch e type_mismatch_error;
+            ;
+        end try;
+
+        commit;
+    }
+} -result {}
+
 cleanupTests

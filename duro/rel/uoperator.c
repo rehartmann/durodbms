@@ -1179,7 +1179,7 @@ check_return_type(RDB_operator *op, int argc, RDB_object *argv[],
         if (top == NULL)
             return RDB_ERROR;
         if (!RDB_type_equals(RDB_operator_type(op), RDB_operator_type(top))) {
-            RDB_raise_invalid_argument("return type mismatch",  ecp);
+            RDB_raise_type_mismatch("return type mismatch",  ecp);
             return RDB_ERROR;
         }
     }
