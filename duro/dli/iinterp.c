@@ -328,13 +328,13 @@ add_io(Duro_interp *interp, RDB_exec_context *ecp) {
 
 static RDB_operator *
 interp_get_op(Duro_interp *interp, const char *opname, int argc,
-        RDB_type *argtv[], RDB_exec_context *ecp) {
-    RDB_operator *op = RDB_get_op(&interp->sys_upd_op_map, opname, argc, argtv, ecp);
+        RDB_object *argpv[], RDB_exec_context *ecp) {
+    RDB_operator *op = RDB_get_op_by_args(&interp->sys_upd_op_map, opname, argc, argpv, ecp);
     if (op == NULL) {
         RDB_bool type_mismatch =
                 (RDB_obj_type(RDB_get_err(ecp)) == &RDB_TYPE_MISMATCH_ERROR);
 
-        op = RDB_get_update_op(opname, argc, argtv, interp->envp, ecp,
+        op = RDB_get_update_op_by_args(opname, argc, argpv, interp->envp, ecp,
                 interp->txnp != NULL ? &interp->txnp->tx : NULL);
         /*
          * If the operator was not found and no transaction is running start a transaction
@@ -348,7 +348,7 @@ interp_get_op(Duro_interp *interp, const char *opname, int argc,
                 return NULL;
             if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
                 return NULL;
-            op = RDB_get_update_op(opname, argc, argtv, NULL, ecp, &tx);
+            op = RDB_get_update_op_by_args(opname, argc, argpv, NULL, ecp, &tx);
             if (RDB_commit(ecp, &tx) != RDB_OK)
                 return NULL;
         }
@@ -374,15 +374,16 @@ interp_get_op(Duro_interp *interp, const char *opname, int argc,
 static int
 exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
 {
-    int i;
     RDB_expression *exp;
-    RDB_type *argtv[DURO_MAX_LLEN];
     RDB_object *argpv[DURO_MAX_LLEN];
     RDB_object argv[DURO_MAX_LLEN];
     RDB_operator *op;
-    RDB_parse_node *argp = nodep->nextp->nextp->val.children.firstp;
+    RDB_parameter *paramp;
+    const char *varname;
     const char *opname;
     RDB_object qop_nameobj;
+    int i;
+    RDB_parse_node *argp = nodep->nextp->nextp->val.children.firstp;
     int argc = 0;
 
     RDB_init_obj(&qop_nameobj);
@@ -403,7 +404,7 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
     }
 
     /*
-     * Get argument types
+     * Evaluate arguments
      */
     while (argp != NULL) {
         if (argc > 0)
@@ -411,21 +412,50 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
         exp = RDB_parse_node_expr(argp, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
         if (exp == NULL)
             goto error;
-        argtv[argc] = RDB_expr_type(exp, &Duro_get_var_type, interp,
-                interp->envp, ecp,
-                interp->txnp != NULL ? &interp->txnp->tx : NULL);
-        if (argtv[argc] == NULL)
-            goto error;
+        varname = RDB_expr_var_name(exp);
+        if (varname != NULL) {
+            /*
+             * If the expression is a variable, look it up
+             * (If the parameter is not an update parameter,
+             * the callee must not modify the variable)
+             */
+            argpv[argc] = Duro_lookup_sym(varname, interp, ecp);
+            if (argpv[argc] == NULL) {
+                goto error;
+            }
+        } else {
+            if (RDB_expr_is_table_ref(exp)) {
+                /* Special handling of table refs */
+                argpv[argc] = RDB_expr_obj(exp);
+            } else {
+                RDB_init_obj(&argv[argc]);
+                if (RDB_evaluate(exp, &Duro_get_var, interp, interp->envp, ecp,
+                        interp->txnp != NULL ? &interp->txnp->tx : NULL, &argv[argc]) != RDB_OK) {
+                    RDB_destroy_obj(&argv[argc], ecp);
+                    goto error;
+                }
+                /* Set type if missing */
+                if (RDB_obj_type(&argv[argc]) == NULL) {
+                    RDB_type *typ = RDB_expr_type(exp, &Duro_get_var_type,
+                            interp, interp->envp, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
+                    if (typ == NULL) {
+                        RDB_destroy_obj(&argv[argc], ecp);
+                        goto error;
+                    }
+                    RDB_obj_set_typeinfo(&argv[argc], typ);
+                }
+                argpv[argc] = &argv[argc];
+            }
+        }
 
         argp = argp->nextp;
-        argpv[argc] = NULL;
         argc++;
     }
 
     /*
      * Get operator
      */
-    op = interp_get_op(interp, opname, argc, argtv, ecp);
+    op = interp_get_op(interp, opname, argc, argpv, ecp);
     if (op == NULL) {
         const char *calling_opname;
         const char *ldotpos;
@@ -455,78 +485,31 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
             goto error;
         }
         op = interp_get_op(interp, RDB_obj_string(&opnameobj),
-                    argc, argtv, ecp);
+                    argc, argpv, ecp);
         RDB_destroy_obj(&opnameobj, ecp);
         if (op == NULL)
             goto error;
     }
-    argp = nodep->nextp->nextp->val.children.firstp;
-    i = 0;
-    while (argp != NULL) {
-        RDB_parameter *paramp;
-        const char *varname;
 
-        if (i > 0)
-            argp = argp->nextp;
-        exp = RDB_parse_node_expr(argp, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
-        if (exp == NULL)
-            goto error;
+    for (i = 0; i < argc; i++) {
         paramp = RDB_get_parameter(op, i);
         /*
          * paramp may be NULL for n-ary operators
          */
-        varname = RDB_expr_var_name(exp);
-        if (varname != NULL) {
+        if (paramp != NULL && paramp->update) {
             /*
-             * If the expression is a variable, look it up
-             * (If the parameter is not an update parameter,
-             * the callee must not modify the variable)
+             * If it's an update argument and the argument is not a variable,
+             * raise an error
              */
-            argpv[i] = Duro_lookup_sym(varname, interp, ecp);
-            if (argpv[i] == NULL) {
-                goto error;
-            }
-            if (paramp != NULL && paramp->update && RDB_obj_is_const(argpv[i])) {
-                RDB_raise_invalid_argument("constant not allowed", ecp);
-                goto error;
-            }
-        } else {
-            if (RDB_expr_is_table_ref(exp)) {
-                /* Special handling of table refs */
-                argpv[i] = RDB_expr_obj(exp);
-            } else if (paramp != NULL && paramp->update) {
-                /*
-                 * If it's an update argument and the argument is not a variable,
-                 * raise an error
-                 */
+            if (argpv[i] == &argv[i]) {
                 RDB_raise_invalid_argument(
                         "update argument must be a variable", ecp);
                 goto error;
-            }
-        }
-
-        /* If the expression has not been resolved as a variable, evaluate it */
-        if (argpv[i] == NULL) {
-            RDB_init_obj(&argv[i]);
-            if (RDB_evaluate(exp, &Duro_get_var, interp, interp->envp, ecp,
-                    interp->txnp != NULL ? &interp->txnp->tx : NULL, &argv[i]) != RDB_OK) {
-                RDB_destroy_obj(&argv[i], ecp);
+            } else if (RDB_obj_is_const(argpv[i])) {
+                RDB_raise_invalid_argument("constant not allowed", ecp);
                 goto error;
             }
-            /* Set type if missing */
-            if (RDB_obj_type(&argv[i]) == NULL) {
-                RDB_type *typ = RDB_expr_type(exp, &Duro_get_var_type,
-                        interp, interp->envp, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
-                if (typ == NULL) {
-                    RDB_destroy_obj(&argv[i], ecp);
-                    goto error;
-                }
-                RDB_obj_set_typeinfo(&argv[i], typ);
-            }
-            argpv[i] = &argv[i];
         }
-        argp = argp->nextp;
-        i++;
     }
 
     /* Invoke function */

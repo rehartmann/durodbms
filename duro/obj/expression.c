@@ -442,7 +442,8 @@ RDB_tuple_attr(RDB_expression *arg, const char *attrname,
  * Extract qualified id from '.' operator expression
  */
 int
-RDB_expr_attr_qid(const RDB_expression *exp, RDB_object *idobjp, RDB_exec_context *ecp)
+RDB_expr_attr_qid(const RDB_expression *exp, RDB_object *idobjp,
+        RDB_exec_context *ecp)
 {
     RDB_expr_list *arglistp = RDB_expr_op_args((RDB_expression *) exp);
     RDB_expression *arg1p = RDB_expr_list_get(arglistp, 0);

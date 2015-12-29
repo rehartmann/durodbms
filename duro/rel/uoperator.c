@@ -378,6 +378,7 @@ obj_is_table(const RDB_object *objp)
     return (RDB_bool) (typ->kind == RDB_TP_RELATION);
 }
 
+/*
 static RDB_type **
 valv_to_typev(int valc, RDB_object **valv, RDB_exec_context *ecp)
 {
@@ -396,6 +397,7 @@ valv_to_typev(int valc, RDB_object **valv, RDB_exec_context *ecp)
     }
     return typv;
 }
+*/
 
 /**
  * RDB_call_ro_op_by_name invokes the read-only operator with the name <var>name</var>,
@@ -656,6 +658,76 @@ RDB_get_update_op(const char *name, int argc, RDB_type *argtv[],
 }
 
 /**
+ * Like @ref RDB_get_update_op, but looks the operator up
+ * by arguments instead of parameter types.
+ */
+RDB_operator *
+RDB_get_update_op_by_args(const char *name, int argc, RDB_object *argv[],
+                RDB_environment *envp, RDB_exec_context *ecp,
+                RDB_transaction *txp)
+{
+    RDB_bool type_mismatch = RDB_FALSE;
+    RDB_dbroot *dbrootp;
+    RDB_operator *op = RDB_get_op_by_args(&RDB_builtin_upd_op_map, name, argc, argv,
+            ecp);
+    if (op != NULL)
+        return op;
+    if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_TYPE_MISMATCH_ERROR)
+        type_mismatch = RDB_TRUE;
+
+    if (txp != NULL) {
+        dbrootp = RDB_tx_db(txp)->dbrootp;
+    } else if (envp != NULL) {
+        dbrootp = RDB_env_xdata(envp);
+        /* Dbroot not initialized */
+        if (dbrootp == NULL) {
+            RDB_raise_operator_not_found(name, ecp);
+            return NULL;
+        }
+    } else {
+        RDB_raise_operator_not_found(name, ecp);
+        return NULL;
+    }
+
+    /*
+     * Try to get the operator from operator map
+     */
+    op = RDB_get_op_by_args(&dbrootp->upd_opmap, name, argc, argv, ecp);
+    if (op != NULL)
+        return op;
+
+    if (type_mismatch && RDB_obj_type(RDB_get_err(ecp))
+            == &RDB_OPERATOR_NOT_FOUND_ERROR) {
+        RDB_raise_type_mismatch("", ecp);
+    }
+
+    /*
+     * The operator has not already been loaded into memory, so get it
+     * from the catalog if a transaction is available
+     */
+    if (txp == NULL)
+        return NULL;
+
+    RDB_clear_err(ecp);
+    if (RDB_cat_load_upd_op(name, ecp, txp) == (RDB_int) RDB_ERROR)
+        return NULL;
+
+    op = RDB_get_op_by_args(&dbrootp->upd_opmap, name, argc, argv, ecp);
+    if (op == NULL) {
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+            RDB_raise_operator_not_found(name, ecp);
+        }
+        return NULL;
+    }
+    if (RDB_env_trace(txp->envp) > 0) {
+        fputs("Update operator ", stderr);
+        fputs(name, stderr);
+        fputs(" loaded from catalog\n", stderr);
+    }
+    return op;
+}
+
+/**
  * Invokes the update operator with the name <var>name</var>,
 passing the arguments in <var>argc</var> and <var>argv</var>.
 
@@ -686,15 +758,7 @@ int
 RDB_call_update_op_by_name(const char *name, int argc, RDB_object *argv[],
                    RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_operator *op;
-    RDB_type **argtv;
-
-    argtv = valv_to_typev(argc, argv, ecp);
-    if (argtv == NULL) {
-        return RDB_ERROR;
-    }
-    op = RDB_get_update_op(name, argc, argtv, NULL, ecp, txp);
-    RDB_free(argtv);
+    RDB_operator *op = RDB_get_update_op_by_args(name, argc, argv, NULL, ecp, txp);
     if (op == NULL) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_OPERATOR_NOT_FOUND_ERROR) {
             RDB_raise_operator_not_found(name, ecp);

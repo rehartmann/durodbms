@@ -46,7 +46,7 @@ RDB_operator_type(const RDB_operator *op)
 }
 
 /**
- * Return number of parameters of opeator *<var>op</var>.
+ * Return number of parameters of operator *<var>op</var>.
  */
 int
 RDB_operator_param_count(const RDB_operator *op)

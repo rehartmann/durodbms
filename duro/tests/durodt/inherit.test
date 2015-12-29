@@ -82,6 +82,8 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
             ;
         end try;
 
+        -- Test read-only operator
+
         operator width(s shape) returns integer;
         end operator;
         
@@ -102,6 +104,18 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
         io.put(width(s)); io.put_line('');        
     
         commit;
+        /*
+        -- Test update operator with read-only argument
+        begin tx;
+        
+        operator print(c circle) updates {};
+            io.put_line('radius: ' || cast_as_int(c.radius));
+        end operator;
+
+        print(s);
+        
+        commit;
+        */
     }
 } -result {TRUE
 TRUE
@@ -129,7 +143,7 @@ test returntype {Return type conflict} -setup $SETUP -cleanup $CLEANUP -body {
 
         commit;
         
-        begin tx;
+        begin tx;        
         
         operator area(s shape) returns int;
         end operator;

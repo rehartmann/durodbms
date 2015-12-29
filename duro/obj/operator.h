@@ -23,7 +23,7 @@ typedef int RDB_ro_op_func(int, RDB_object *[], RDB_operator *,
 typedef int RDB_upd_op_func(int, RDB_object *[], RDB_operator *,
     RDB_exec_context *, RDB_transaction *);
 
-/**@addtogroup operator
+/**@addtogroup op
  * @{
  */
 

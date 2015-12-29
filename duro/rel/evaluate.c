@@ -355,7 +355,8 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
      */
 
     if (strcmp(exp->def.op.name, "extend") == 0) {
-        RDB_type *typ = RDB_expr_type(exp->def.op.args.firstp, NULL, NULL,
+        RDB_type *typ = RDB_expr_type(exp->def.op.args.firstp,
+                getfnp != NULL ? get_type : NULL, getfnp != NULL ? &gtinfo : NULL,
                 envp, ecp, txp);
         if (typ == NULL)
             return RDB_ERROR;
@@ -473,6 +474,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
                     txp, &obj);
             if (ret != RDB_OK) {
                 RDB_object varnameobj;
+                RDB_exec_context ec;
 
                 RDB_destroy_obj(&obj, ecp);
 
@@ -481,10 +483,13 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
 
                 /* Interpret as qualified variable name */
                 RDB_init_obj(&varnameobj);
-                if (RDB_expr_attr_qid(exp, &varnameobj, ecp) != RDB_OK) {
+                RDB_init_exec_context(&ec);
+                if (RDB_expr_attr_qid(exp, &varnameobj, &ec) != RDB_OK) {
+                    RDB_destroy_exec_context(&ec);
                     RDB_destroy_obj(&varnameobj, ecp);
                     return RDB_ERROR;
                 }
+                RDB_destroy_exec_context(&ec);
                 ret = evaluate_var(RDB_obj_string(&varnameobj), getfnp, getdata,
                         ecp, txp, valp);
                 RDB_destroy_obj(&varnameobj, ecp);
