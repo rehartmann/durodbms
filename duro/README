@@ -8,7 +8,7 @@ The following software is required for compiling and running DuroDBMS:
 - Berkeley DB Transactional Data Store (release 6.1 or later)
 - POSIX.2 regular expressions
 - GNU Libtool
-- Tcl 8.5 or later
+- Tcl 8.5 or later (optional)
 - SCons 1.2.0 or later
 - GNU Readline (not under MS Windows)
 
