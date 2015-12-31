@@ -1584,8 +1584,8 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
         return RDB_ERROR;
     }
     /*
-     * If the argument type is scalar and differs from parameter type,
-     * set argument type to parameter type and restore it afterwards
+     * If the argument type is scalar and differs from the parameter type,
+     * set argument type to the parameter type and restore it afterwards
      */
     for (i = 0; i < argc; i++) {
         RDB_type *argtyp = RDB_obj_type(argv[i]);
