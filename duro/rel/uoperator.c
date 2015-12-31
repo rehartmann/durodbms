@@ -539,14 +539,6 @@ RDB_call_ro_op_by_name_e(const char *name, int argc, RDB_object *argv[],
     /* Set return type to make it available to the function */
     retvalp->typ = op->rtyp;
 
-    /* If the argument type is a dummy type, set parameter type */
-    if (op->paramc != RDB_VAR_PARAMS) {
-        for (i = 0; i < argc; i++) {
-            if (RDB_type_is_scalar(op->paramv[i].typ))
-                argv[i]->typ = op->paramv[i].typ;
-        }
-    }
-
     ret = (*op->opfn.ro_fp)(argc, argv, op, ecp, txp, retvalp);
     if (ret != RDB_OK)
         goto error;

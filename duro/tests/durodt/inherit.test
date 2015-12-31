@@ -67,7 +67,7 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
     
         io.put(treat_as_circle(s).radius);
         io.put_line('');
-    
+
         try
             var r rectangle init treat_as_rectangle(s);
             io.put_line('treating circle as rectangle succeeded');
@@ -86,7 +86,7 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
 
         operator width(s shape) returns integer;
         end operator;
-        
+
         operator width(c circle) returns integer;
             return c.radius * 2;
         end operator;
@@ -96,26 +96,25 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
         end operator;
         
         io.put(width(s)); io.put_line('');
-        
+
         s := rectangle(4, 2);
         io.put(width(s)); io.put_line('');
- 
+
         s := circle(3);
-        io.put(width(s)); io.put_line('');        
-    
+        io.put(width(s)); io.put_line('');
+
         commit;
-        /*
+
         -- Test update operator with read-only argument
         begin tx;
         
         operator print(c circle) updates {};
-            io.put_line('radius: ' || cast_as_int(c.radius));
+            io.put_line('radius: ' || cast_as_string(c.radius));
         end operator;
 
         print(s);
         
         commit;
-        */
     }
 } -result {TRUE
 TRUE
@@ -124,6 +123,7 @@ FALSE
 2
 4
 6
+radius: 3
 }
 
 test returntype {Return type conflict} -setup $SETUP -cleanup $CLEANUP -body {

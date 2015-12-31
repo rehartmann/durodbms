@@ -1479,6 +1479,7 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     Duro_return_info retinfo;
     varmap_node *ovarmapp;
     int isselector;
+    RDB_type **stored_argtypv;
     RDB_type *getter_utyp = NULL;
     RDB_operator *parent_op;
     Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
@@ -1573,9 +1574,39 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     parent_op = interp->inner_op;
     interp->inner_op = op;
-    ret = exec_stmts(opdatap->stmtlistp, interp, ecp, &retinfo);
-    interp->inner_op = parent_op;
     interp->err_line = -1;
+
+    stored_argtypv = RDB_alloc(sizeof(RDB_type *) * argc, ecp);
+    if (stored_argtypv == NULL) {
+        if (getter_utyp != NULL) {
+            RDB_obj_set_typeinfo(argv[0], getter_utyp);
+        }
+        return RDB_ERROR;
+    }
+    /*
+     * If the argument type is scalar and differs from parameter type,
+     * set argument type to parameter type and restore it afterwards
+     */
+    for (i = 0; i < argc; i++) {
+        RDB_type *argtyp = RDB_obj_type(argv[i]);
+        RDB_type *paramtyp = RDB_get_parameter(op, i)->typ;
+        if (argtyp != NULL && RDB_type_is_scalar(argtyp)
+                && argtyp != paramtyp && (i > 0 || getter_utyp == NULL)) {
+            stored_argtypv[i] = argtyp;
+            RDB_obj_set_typeinfo(argv[i], paramtyp);
+        } else {
+            stored_argtypv[i] = NULL;
+        }
+    }
+
+    ret = exec_stmts(opdatap->stmtlistp, interp, ecp, &retinfo);
+    for (i = 0; i < argc; i++) {
+        if (stored_argtypv[i] != NULL) {
+            RDB_obj_set_typeinfo(argv[i], stored_argtypv[i]);
+        }
+    }
+    RDB_free(stored_argtypv);
+    interp->inner_op = parent_op;
 
     /* Set type of return value to the user-defined type */
     if (isselector) {
@@ -1636,6 +1667,7 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     varmap_node *ovarmapp;
     Duro_op_data *opdatap;
     RDB_operator *parent_op;
+    RDB_type **stored_argtypv;
     RDB_type *setter_utyp = NULL;
     Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
 
@@ -1713,7 +1745,36 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     interp->err_line = -1;
 
+    stored_argtypv = RDB_alloc(sizeof(RDB_type *) * argc, ecp);
+    if (stored_argtypv == NULL) {
+        if (setter_utyp != NULL) {
+            RDB_obj_set_typeinfo(argv[0], setter_utyp);
+        }
+        return RDB_ERROR;
+    }
+    /*
+     * If the argument type is scalar and differs from parameter type,
+     * set argument type to parameter type and restore it afterwards
+     */
+    for (i = 0; i < argc; i++) {
+        RDB_type *argtyp = RDB_obj_type(argv[i]);
+        RDB_type *paramtyp = RDB_get_parameter(op, i)->typ;
+        if (argtyp != NULL && RDB_type_is_scalar(argtyp)
+                && argtyp != paramtyp && (i > 0 || setter_utyp == NULL)) {
+            stored_argtypv[i] = argtyp;
+            RDB_obj_set_typeinfo(argv[i], paramtyp);
+        } else {
+            stored_argtypv[i] = NULL;
+        }
+    }
+
     ret = exec_stmts(opdatap->stmtlistp, interp, ecp, NULL);
+    for (i = 0; i < argc; i++) {
+        if (stored_argtypv[i] != NULL) {
+            RDB_obj_set_typeinfo(argv[i], stored_argtypv[i]);
+        }
+    }
+    RDB_free(stored_argtypv);
     interp->inner_op = parent_op;
 
     if (setter_utyp != NULL) {

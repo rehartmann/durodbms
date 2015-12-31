@@ -504,6 +504,10 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             }
 
             if (obj.typ != NULL && RDB_type_is_scalar(obj.typ)) {
+                if (RDB_type_is_dummy(obj.typ)) {
+                    RDB_raise_invalid_argument("cannot get property of dummy type", ecp);
+                    return RDB_ERROR;
+                }
                 ret = RDB_obj_property(&obj, attrname, valp, envp, ecp, txp);
                 RDB_destroy_obj(&obj, ecp);
                 return ret;
@@ -566,7 +570,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     argp = exp->def.op.args.firstp;
     for (i = 0; i < argc; i++) {
         valpv[i] = expr_obj(argp, getfnp, getdata, ecp, txp);
-        if (valpv[i] == NULL || (valpv[i]->typ != NULL && RDB_type_is_dummy(valpv[i]->typ))) {
+        if (valpv[i] == NULL) {
             ret = RDB_evaluate(argp, getfnp, getdata, envp, ecp, txp, &arginfov[i].val);
             if (ret != RDB_OK)
                 goto cleanup;

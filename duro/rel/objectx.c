@@ -625,23 +625,26 @@ RDB_obj_property(const RDB_object *objp, const char *propname, RDB_object *propv
         RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
+    RDB_type *objtyp = objp->typ;
+    if (RDB_type_is_dummy(objtyp))
+        objtyp = objp->impl_typ;
 
-    if (!RDB_type_is_scalar(objp->typ) || objp->typ->def.scalar.repc == 0) {
-        RDB_raise_invalid_argument("component not found", ecp);
+    if (!RDB_type_is_scalar(objtyp) || objtyp->def.scalar.repc == 0) {
+        RDB_raise_invalid_argument("property not found", ecp);
         return RDB_ERROR;
     }
 
-    if (objp->typ->def.scalar.sysimpl) {
-        if (objp->typ->def.scalar.repv[0].compc == 1) {
+    if (objtyp->def.scalar.sysimpl) {
+        if (objtyp->def.scalar.repv[0].compc == 1) {
             RDB_type *comptyp;
 
             /* Actual rep is type of the only component - check component name */
-            if (strcmp(propname, objp->typ->def.scalar.repv[0].compv[0].name)
+            if (strcmp(propname, objtyp->def.scalar.repv[0].compv[0].name)
                     != 0) {
                 RDB_raise_invalid_argument("component not found", ecp);
                 return RDB_ERROR;
             }
-            comptyp = objp->typ->def.scalar.repv[0].compv[0].typ;
+            comptyp = objtyp->def.scalar.repv[0].compv[0].typ;
 
             /* If *propvalp carries a value, it must match the type */
             if (propvalp->kind != RDB_OB_INITIAL
@@ -668,13 +671,13 @@ RDB_obj_property(const RDB_object *objp, const char *propname, RDB_object *propv
         char *opname;
         RDB_object *argv[1];
 
-        opname = RDB_alloc(strlen(objp->typ->name) + strlen(propname)
+        opname = RDB_alloc(strlen(objtyp->name) + strlen(propname)
                 + strlen(RDB_GETTER_INFIX) + 1, ecp);
         if (opname == NULL) {
             return RDB_ERROR;
         }
 
-        strcpy(opname, objp->typ->name);
+        strcpy(opname, objtyp->name);
         strcat(opname, RDB_GETTER_INFIX);
         strcat(opname, propname);
         argv[0] = (RDB_object *) objp;
