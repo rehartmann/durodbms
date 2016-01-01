@@ -1568,6 +1568,7 @@ RDB_parse_stmt(RDB_exec_context *ecp)
         goto error;
     }
 
+    RDB_clear_err(RDB_parse_ecp);
     RDB_parse_start_stmt();
     pret = yyparse();
     if (pret != 0) {

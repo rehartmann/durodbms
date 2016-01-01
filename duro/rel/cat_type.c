@@ -747,7 +747,7 @@ error:
 }
 
 static RDB_expression *
-subtypes_query(const char *name, RDB_exec_context *ecp, RDB_database *dbp)
+supertypes_query(const char *name, RDB_exec_context *ecp, RDB_database *dbp)
 {
     RDB_expression *exp;
     RDB_expression *tbarg;
@@ -783,8 +783,66 @@ error:
     return NULL;
 }
 
+static RDB_expression *
+subtypes_query(const char *name, RDB_exec_context *ecp, RDB_database *dbp)
+{
+    RDB_expression *exp;
+    RDB_expression *tbarg;
+    RDB_expression *arg = RDB_var_ref("supertypename", ecp);
+    if (arg == NULL)
+        return NULL;
+    exp = RDB_ro_op("=", ecp);
+    if (exp == NULL)
+        goto error;
+    RDB_add_arg(exp, arg);
+    arg = RDB_string_to_expr(name, ecp);
+    if (arg == NULL) {
+        RDB_del_expr(exp, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, arg);
+    arg = exp;
+    exp = RDB_ro_op("where", ecp);
+    if (exp == NULL)
+        goto error;
+    tbarg = RDB_table_ref(dbp->dbrootp->subtype_tbp, ecp);
+    if (tbarg == NULL) {
+        RDB_del_expr(exp, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, tbarg);
+    RDB_add_arg(exp, arg);
+    return exp;
+
+error:
+    if (arg != NULL)
+        RDB_del_expr(arg, ecp);
+    return NULL;
+}
+
 int
 RDB_cat_get_supertypes(const char *name, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *supertypes)
+{
+    int ret;
+    RDB_object *subtypes_tbp;
+    RDB_expression *subtypes_query_exp = supertypes_query(name, ecp, RDB_tx_db(txp));
+    if (subtypes_query_exp == NULL)
+        return RDB_ERROR;
+
+    subtypes_tbp = RDB_expr_to_vtable(subtypes_query_exp, ecp, txp);
+    if (subtypes_tbp == NULL) {
+        RDB_del_expr(subtypes_query_exp, ecp);
+        return RDB_ERROR;
+    }
+
+    ret = RDB_table_to_array (supertypes, subtypes_tbp, 0, NULL, 0, ecp, txp);
+    RDB_drop_table(subtypes_tbp, ecp, txp);
+    return ret;
+}
+
+int
+RDB_cat_get_subtypes(const char *name, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *supertypes)
 {
     int ret;

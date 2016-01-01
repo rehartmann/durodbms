@@ -26,14 +26,30 @@ RDB_obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
 {
     int ret;
     size_t len;
+    RDB_type *impltyp = objp->store_typ;
 
-    *lenp = 0;
+    if (RDB_type_is_dummy(objp->store_typ)) {
+        /* Add space for the type name size and the type name */
+        impltyp = objp->typ;
+        if (RDB_type_is_dummy(impltyp))
+            impltyp = objp->impl_typ;
+        *lenp = sizeof (size_t);
+        *lenp += strlen(impltyp->name) + 1;
+    } else {
+        *lenp = 0;
+    }
 
     switch(objp->kind) {
     case RDB_OB_TUPLE:
     {
         int i;
-        RDB_type *tpltyp = objp->store_typ;
+        RDB_type *tpltyp;
+
+        if (RDB_type_is_dummy(objp->store_typ)) {
+            tpltyp = RDB_type_is_dummy(objp->typ) ? objp->impl_typ : objp->typ;
+        } else {
+            tpltyp = objp->store_typ;
+        }
 
         if (RDB_type_is_scalar(tpltyp))
             tpltyp = tpltyp->def.scalar.arep;
@@ -82,9 +98,10 @@ RDB_obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
     }
     default: ;
     }
-    *lenp = objp->store_typ->ireplen;
-    if (*lenp == RDB_VARIABLE_LEN)
-        *lenp = objp->val.bin.len;
+    if (impltyp->ireplen == RDB_VARIABLE_LEN)
+        *lenp += objp->val.bin.len;
+    else
+        *lenp += impltyp->ireplen;
     return RDB_OK;
 }
 
@@ -347,7 +364,21 @@ RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
 {
     RDB_exec_context ec;
     const void *srcp;
+    RDB_type *impltyp;
     RDB_byte *bp = dstp;
+
+    if (RDB_type_is_dummy(objp->store_typ)) {
+        size_t typenamsz;
+        impltyp = RDB_type_is_dummy(objp->typ) ?
+                objp->impl_typ : objp->typ;
+        typenamsz = strlen(impltyp->name) + 1;
+        memcpy(bp, &typenamsz, sizeof(size_t));
+        memcpy(bp + sizeof(size_t), impltyp->name, typenamsz);
+        len -= sizeof(size_t) + typenamsz;
+        bp += sizeof(size_t) + typenamsz;
+    } else {
+        impltyp = objp->store_typ;
+    }
 
     switch (objp->kind) {
     /*
@@ -356,29 +387,28 @@ RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
      */
     case RDB_OB_TUPLE:
     {
-        RDB_type *tpltyp = objp->store_typ;
         int i;
         char *lastwritten = NULL;
 
         RDB_init_exec_context(&ec);
 
         /* If the type is scalar, use internal rep */
-        if (tpltyp->kind == RDB_TP_SCALAR)
-            tpltyp = tpltyp->def.scalar.arep;
+        if (impltyp->kind == RDB_TP_SCALAR)
+            impltyp = impltyp->def.scalar.arep;
 
         /*
          * Write attributes in alphabetical order of their names,
          * so the order corresponds with serializes tuple types.
          * See RDB_serialize_type().
          */
-        for (i = 0; i < tpltyp->def.tuple.attrc; i++) {
+        for (i = 0; i < impltyp->def.tuple.attrc; i++) {
             RDB_object *attrp;
-            int attridx = RDB_next_attr_sorted(tpltyp, lastwritten);
+            int attridx = RDB_next_attr_sorted(impltyp, lastwritten);
 
-            attrp = RDB_tuple_get(objp, tpltyp->def.tuple.attrv[attridx].name);
-            bp = obj_to_len_irep(bp, attrp, tpltyp->def.tuple.attrv[attridx].typ,
+            attrp = RDB_tuple_get(objp, impltyp->def.tuple.attrv[attridx].name);
+            bp = obj_to_len_irep(bp, attrp, impltyp->def.tuple.attrv[attridx].typ,
                     &ec);
-            lastwritten = tpltyp->def.tuple.attrv[attridx].name;
+            lastwritten = impltyp->def.tuple.attrv[attridx].name;
         }
         RDB_destroy_exec_context(&ec);
         break;
@@ -500,11 +530,32 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
      * No type information for non-scalar types
      * (except tables, in this case irep_to_table() will set the type)
      */
-    if (RDB_type_is_scalar(typ))
-        valp->typ = typ;
-    else
-        valp->typ = NULL;
     kind = RDB_val_kind(typ);
+    if (RDB_type_is_scalar(typ)) {
+        valp->typ = typ;
+        if (RDB_type_is_dummy(typ)) {
+            size_t impltypsz;
+            char *tnamp;
+
+            memcpy(&impltypsz, datap, sizeof(size_t));
+            tnamp = (char*) datap + sizeof(size_t);
+
+            /* Check for terminating nullbyte */
+            if (tnamp[impltypsz - 1] != '\0') {
+                RDB_raise_data_corrupted("invalid type name", ecp);
+                return RDB_ERROR;
+            }
+            valp->impl_typ = RDB_get_subtype(typ, tnamp);
+            if (valp->impl_typ == NULL) {
+                RDB_raise_type_not_found(tnamp, ecp);
+                return RDB_ERROR;
+            }
+            datap = tnamp + impltypsz;
+            kind = RDB_val_kind(valp->impl_typ);
+        }
+    } else {
+        valp->typ = NULL;
+    }
 
     switch (kind) {
     case RDB_OB_INITIAL:
@@ -532,7 +583,8 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
         }
         break;
     case RDB_OB_TUPLE:
-        ret = irep_to_tuple(valp, typ, datap, ecp);
+        ret = irep_to_tuple(valp, RDB_type_is_dummy(typ) ?
+                valp->impl_typ : typ, datap, ecp);
         if (ret > 0)
             ret = RDB_OK;
         return ret;

@@ -135,7 +135,7 @@ RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
                 goto cleanup;
             }
         } else {
-            if (!RDB_type_equals(valp->typ, attrtyp)) {
+            if (!RDB_is_subtype(valp->typ, attrtyp)) {
                 RDB_raise_type_mismatch(
                         "tuple attribute type does not match table attribute type",
                         ecp);

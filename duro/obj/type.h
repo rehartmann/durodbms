@@ -110,6 +110,8 @@ typedef struct RDB_type {
 
             int supertypec;
             struct RDB_type **supertypev;
+            int subtypec;
+            struct RDB_type **subtypev;
         } scalar;
     } def;
 } RDB_type;

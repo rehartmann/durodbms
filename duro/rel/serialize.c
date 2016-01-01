@@ -186,10 +186,6 @@ RDB_serialize_obj(RDB_object *valp, int *posp, const RDB_object *argvalp,
         return RDB_ERROR;
     }
 
-    if (argvalp->kind == RDB_OB_TUPLE && typ->ireplen == 0) {
-        fprintf(stderr, "Himmisackzement!");
-    }
-
     len = typ->ireplen;
     if (len == (size_t) RDB_VARIABLE_LEN) {
         /*

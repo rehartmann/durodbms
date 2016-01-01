@@ -177,7 +177,9 @@ append_utype_obj(RDB_object *objp, const RDB_object *srcp,
     int compc;
     int i;
     int ret;
-    RDB_possrep *possrep = &srcp->typ->def.scalar.repv[0]; /* Take 1st possrep */
+    RDB_possrep *possrep = RDB_type_is_dummy(srcp->typ) ?
+            &srcp->impl_typ->def.scalar.repv[0] :
+            &srcp->typ->def.scalar.repv[0]; /* Take 1st possrep */
     char *lastdot = strrchr(RDB_type_name(srcp->typ), '.');
 
     if (lastdot != NULL) {
@@ -307,7 +309,9 @@ append_obj(RDB_object *objp, const RDB_object *srcp, RDB_environment *envp,
 
     if (typ != NULL) {
         if (RDB_type_is_scalar(typ)) {
-            if (srcp->typ->def.scalar.repc > 0) {
+            if (srcp->typ->def.scalar.repc > 0
+                    || (RDB_type_is_dummy(srcp->typ)
+                       && srcp->impl_typ->def.scalar.repc > 0)) {
                  /* Type with possreps - generate selector */
                  ret = append_utype_obj(objp, srcp, envp, ecp, txp);
              } else if (srcp->typ == &RDB_STRING) {

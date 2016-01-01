@@ -109,6 +109,29 @@ error:
     return RDB_ERROR;
 }
 
+static int
+add_subtype(RDB_type *typ, RDB_type *subtyp, RDB_exec_context *ecp)
+{
+    int i;
+    RDB_type **subtypev;
+
+    for (i = 0; i < typ->def.scalar.subtypec; i++) {
+        if (typ->def.scalar.subtypev[i] == subtyp)
+            return RDB_OK;
+    }
+    if (typ->def.scalar.subtypec == 0) {
+        subtypev = RDB_alloc(sizeof (RDB_type *), ecp);
+    } else {
+        subtypev = RDB_realloc(typ->def.scalar.subtypev,
+                sizeof (RDB_type *) * (typ->def.scalar.subtypec + 1), ecp);
+    }
+    if (subtypev == NULL)
+        return RDB_ERROR;
+    subtypev[typ->def.scalar.subtypec++] = subtyp;
+    typ->def.scalar.subtypev = subtypev;
+    return RDB_OK;
+}
+
 /** @addtogroup type
  * @{
  *
@@ -228,6 +251,11 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
     typ = RDB_get_type(name, ecp, txp);
     if (typ == NULL)
         return RDB_ERROR;
+
+    for (i = 0; i < typ->def.scalar.supertypec; i++) {
+        if (add_subtype(typ->def.scalar.supertypev[i], typ, ecp) != RDB_OK)
+            return RDB_ERROR;
+    }
 
     if (typ->def.scalar.repc == 0) {
         RDB_raise_invalid_argument("cannot implement dummy type", ecp);

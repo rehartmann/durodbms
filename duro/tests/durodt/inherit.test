@@ -114,6 +114,23 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
 
         print(s);
         
+        var pshapes private relation { shno int, sh shape };
+
+        insert pshapes tup { shno 1, sh s };
+        insert pshapes tup { shno 2, sh rectangle(4, 5) };
+
+        var sha array tuple same_heading_as(pshapes);
+        load sha from pshapes order(shno asc);
+
+        io.put(treat_as_circle(sha[0].sh).radius);
+        io.put_line('');
+
+        var rec init treat_as_rectangle(sha[1].sh);
+        io.put(rec.width);
+        io.put(' ');
+        io.put(rec.height);
+        io.put_line('');
+
         commit;
     }
 } -result {TRUE
@@ -124,6 +141,8 @@ FALSE
 4
 6
 radius: 3
+3
+4 5
 }
 
 test returntype {Return type conflict} -setup $SETUP -cleanup $CLEANUP -body {

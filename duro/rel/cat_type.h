@@ -27,4 +27,8 @@ int
 RDB_cat_get_supertypes(const char *, RDB_exec_context *, RDB_transaction *,
         RDB_object *);
 
+int
+RDB_cat_get_subtypes(const char *, RDB_exec_context *, RDB_transaction *,
+        RDB_object *);
+
 #endif /* CAT_TYPE_H_ */

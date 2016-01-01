@@ -102,6 +102,22 @@ error:
     return RDB_ERROR;
 }
 
+RDB_type *
+RDB_get_subtype(RDB_type *typ, const char *name)
+{
+    int i;
+    RDB_type *subtyp;
+
+    if (strcmp(typ->name, name) == 0)
+        return typ;
+    for (i = 0; i< typ->def.scalar.subtypec; i++) {
+        subtyp = RDB_get_subtype(typ->def.scalar.subtypev[i], name);
+        if (subtyp != NULL)
+            return subtyp;
+    }
+    return NULL;
+}
+
 /** @addtogroup type
  * @{
  */
@@ -595,6 +611,45 @@ error:
     return RDB_ERROR;
 }
 
+static int
+get_subtypes(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
+        RDB_type ***suptypevp)
+{
+    int i;
+    RDB_object subtypes;
+    RDB_object *tplp;
+    int subtypec;
+    RDB_type **subtypev = NULL;
+
+    RDB_init_obj(&subtypes);
+
+    if (RDB_cat_get_subtypes(name, ecp, txp, &subtypes) != RDB_OK)
+        goto error;
+
+    subtypec = RDB_array_length(&subtypes, ecp);
+    subtypev = RDB_alloc(subtypec * sizeof(RDB_type *), ecp);
+    if (subtypev == NULL)
+        goto error;
+
+    for (i = 0; i < subtypec; i++) {
+        tplp = RDB_array_get(&subtypes, (RDB_int) i, ecp);
+        if (tplp == NULL)
+            goto error;
+
+        subtypev[i] = RDB_get_type(RDB_tuple_get_string(tplp, "typename"),
+                ecp, txp);
+    }
+
+    *suptypevp = subtypev;
+    RDB_destroy_obj(&subtypes, ecp);
+    return subtypec;
+
+error:
+    RDB_free(subtypev);
+    RDB_destroy_obj(&subtypes, ecp);
+    return RDB_ERROR;
+}
+
 /**
 Returns a pointer to RDB_type structure which
 represents the type with the name <var>name</var>.
@@ -666,7 +721,7 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     }
 
     /*
-     * Read supertypes from catalog
+     * Read supertypes and subtypes from catalog
      */
     ret = get_supertypes(name, ecp, txp, &typ->def.scalar.supertypev);
     if (ret < 0) {
@@ -675,6 +730,14 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         return NULL;
     }
     typ->def.scalar.supertypec = ret;
+
+    ret = get_subtypes(name, ecp, txp, &typ->def.scalar.subtypev);
+    if (ret < 0) {
+        RDB_hashmap_put(&txp->dbp->dbrootp->utypemap, name, NULL);
+        RDB_del_type(typ, ecp);
+        return NULL;
+    }
+    typ->def.scalar.subtypec = ret;
 
     if (typ->ireplen != RDB_NOT_IMPLEMENTED) {
         /* Evaluate init expression */

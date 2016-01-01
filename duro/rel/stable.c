@@ -329,6 +329,9 @@ create_indexes(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp,
 static int
 replen(const RDB_type *typ)
 {
+    if (RDB_type_is_dummy(typ)) {
+        return RDB_VARIABLE_LEN;
+    }
     switch(typ->kind) {
     case RDB_TP_TUPLE:
     {
