@@ -993,7 +993,7 @@ RDB_op_is_type(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_bool_to_obj(retvalp, RDB_FALSE);
         return RDB_OK;
     }
-    typ = RDB_get_type(RDB_operator_name(op) + IS_PREFIX_LEN, ecp, txp);
+    typ = RDB_get_subtype(RDB_obj_type(argv[0]), RDB_operator_name(op) + IS_PREFIX_LEN);
     if (typ == NULL)
         return RDB_ERROR;
     RDB_bool_to_obj(retvalp, RDB_is_subtype(objtyp, typ));
@@ -1011,16 +1011,14 @@ RDB_op_treat_as_type(int argc, RDB_object *argv[], RDB_operator *op,
         return RDB_ERROR;
     }
     objtyp = RDB_obj_impl_type(argv[0]);
-    if (objtyp == NULL) {
+    if (objtyp == NULL || !RDB_type_is_scalar(objtyp)) {
         RDB_bool_to_obj(retvalp, RDB_FALSE);
         return RDB_OK;
     }
-    typ = RDB_get_type(RDB_operator_name(op) + TREAT_AS_PREFIX_LEN, ecp, txp);
-    if (typ == NULL)
-        return RDB_ERROR;
-    if (!RDB_is_subtype(objtyp, typ)) {
-        RDB_raise_type_mismatch(RDB_operator_name(op), ecp);
-        return RDB_ERROR;
+    typ = RDB_get_subtype(objtyp, RDB_operator_name(op) + TREAT_AS_PREFIX_LEN);
+    if (typ == NULL) {
+        RDB_bool_to_obj(retvalp, RDB_FALSE);
+        return RDB_OK;
     }
     if (RDB_copy_obj(retvalp, argv[0], ecp) != RDB_OK)
         return RDB_ERROR;
@@ -1057,14 +1055,10 @@ provide_eq_neq(const char *name, RDB_type *argtyp, RDB_dbroot *dbrootp,
 }
 
 static RDB_operator *
-provide_is_op(const char *name, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+provide_is_op(const char *name, RDB_type *supertyp, RDB_dbroot *dbrootp,
+        RDB_exec_context *ecp)
 {
-    RDB_operator *op;
-    if (RDB_get_type(name + IS_PREFIX_LEN, ecp, txp) == NULL)
-        return NULL;
-
-    op = RDB_new_op_data(name, -1, NULL, &RDB_BOOLEAN, ecp);
+    RDB_operator *op = RDB_new_op_data(name, -1, NULL, &RDB_BOOLEAN, ecp);
     if (op == NULL) {
         return NULL;
     }
@@ -1075,13 +1069,15 @@ provide_is_op(const char *name, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
 }
 
 static RDB_operator *
-provide_treat_as_op(const char *name, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+provide_treat_as_op(const char *name, RDB_dbroot *dbrootp, RDB_type *supertyp,
+        RDB_exec_context *ecp)
 {
     RDB_operator *op;
-    RDB_type *typ = RDB_get_type(name + TREAT_AS_PREFIX_LEN, ecp, txp);
-    if (typ == NULL)
+    RDB_type *typ = RDB_get_subtype(supertyp, name + TREAT_AS_PREFIX_LEN);
+    if (typ == NULL) {
+        RDB_raise_type_mismatch(name + TREAT_AS_PREFIX_LEN, ecp);
         return NULL;
+    }
 
     op = RDB_new_op_data(name, -1, NULL, typ, ecp);
     if (op == NULL) {
@@ -1177,12 +1173,14 @@ RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     }
 
     if (strlen(name) > IS_PREFIX_LEN
-            && strncmp(name, IS_PREFIX, IS_PREFIX_LEN) == 0) {
-        return provide_is_op(name, dbrootp, ecp, txp);
+            && strncmp(name, IS_PREFIX, IS_PREFIX_LEN) == 0
+            && RDB_type_is_scalar(argtv[0])) {
+        return provide_is_op(name, argtv[0], dbrootp, ecp);
     }
     if (strlen(name) > TREAT_AS_PREFIX_LEN
-            && strncmp(name, TREAT_AS_PREFIX, TREAT_AS_PREFIX_LEN) == 0) {
-        return provide_treat_as_op(name, dbrootp, ecp, txp);
+            && strncmp(name, TREAT_AS_PREFIX, TREAT_AS_PREFIX_LEN) == 0
+            && RDB_type_is_scalar(argtv[0])) {
+        return provide_treat_as_op(name, dbrootp, argtv[0], ecp);
     }
 
     /*
@@ -1335,12 +1333,14 @@ RDB_get_ro_op_by_args(const char *name, int argc, RDB_object *argv[],
     }
 
     if (strlen(name) > IS_PREFIX_LEN
-            && strncmp(name, IS_PREFIX, IS_PREFIX_LEN) == 0) {
-        return provide_is_op(name, dbrootp, ecp, txp);
+            && strncmp(name, IS_PREFIX, IS_PREFIX_LEN) == 0
+            && RDB_type_is_scalar(RDB_obj_type(argv[0]))) {
+        return provide_is_op(name, RDB_obj_type(argv[0]), dbrootp, ecp);
     }
     if (strlen(name) > TREAT_AS_PREFIX_LEN
-            && strncmp(name, TREAT_AS_PREFIX, TREAT_AS_PREFIX_LEN) == 0) {
-        return provide_treat_as_op(name, dbrootp, ecp, txp);
+            && strncmp(name, TREAT_AS_PREFIX, TREAT_AS_PREFIX_LEN) == 0
+            && RDB_type_is_scalar(RDB_obj_type(argv[0]))) {
+        return provide_treat_as_op(name, dbrootp, RDB_obj_type(argv[0]), ecp);
     }
 
     /*

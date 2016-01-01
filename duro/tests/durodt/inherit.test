@@ -114,6 +114,8 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
 
         print(s);
         
+        commit;
+
         var pshapes private relation { shno int, sh shape };
 
         insert pshapes tup { shno 1, sh s };
@@ -130,8 +132,6 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
         io.put(' ');
         io.put(rec.height);
         io.put_line('');
-
-        commit;
     }
 } -result {TRUE
 TRUE
