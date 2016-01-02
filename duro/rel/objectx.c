@@ -30,9 +30,7 @@ RDB_obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
 
     if (RDB_type_is_dummy(objp->store_typ)) {
         /* Add space for the type name size and the type name */
-        impltyp = objp->typ;
-        if (RDB_type_is_dummy(impltyp))
-            impltyp = objp->impl_typ;
+        impltyp = RDB_obj_impl_type(objp);
         *lenp = sizeof (size_t);
         *lenp += strlen(impltyp->name) + 1;
     } else {
@@ -75,7 +73,14 @@ RDB_obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
         return RDB_OK;
     }
     case RDB_OB_TABLE:
-        return RDB_table_ilen(objp, lenp, ecp);
+    {
+        size_t len;
+
+        if (RDB_table_ilen(objp, &len, ecp) != RDB_OK)
+            return RDB_ERROR;
+        *lenp += len;
+        return RDB_OK;
+    }
     case RDB_OB_ARRAY:
     {
         RDB_object *elemp;
@@ -335,11 +340,10 @@ table_to_irep(void *dstp, RDB_object *tbp, size_t len)
     RDB_init_obj(&tpl);
 
     while ((ret = RDB_next_tuple(qrp, &tpl, &ec, NULL)) == RDB_OK) {
-        tpl.store_typ = RDB_type_is_scalar(tbp->store_typ) ?
-                tbp->store_typ->def.scalar.arep->def.basetyp
-                : tbp->store_typ->def.basetyp;
-        ret = RDB_obj_ilen(&tpl, &l, &ec);
-        if (ret != RDB_OK) {
+        tpl.store_typ = RDB_type_is_scalar(tbp->typ) ?
+                RDB_obj_impl_type(tbp)->def.scalar.arep->def.basetyp
+                : tbp->typ->def.basetyp;
+        if (RDB_obj_ilen(&tpl, &l, &ec) != RDB_OK) {
             RDB_destroy_exec_context(&ec);
             return;
         }
@@ -414,7 +418,7 @@ RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
         break;
     }
     case RDB_OB_TABLE:
-        table_to_irep(dstp, (RDB_object *) objp, len);
+        table_to_irep(bp, (RDB_object *) objp, len);
         break;
     case RDB_OB_ARRAY:
     {
@@ -551,6 +555,7 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
                 return RDB_ERROR;
             }
             datap = tnamp + impltypsz;
+            len -= sizeof(size_t) + impltypsz;
             kind = RDB_val_kind(valp->impl_typ);
         }
     } else {
@@ -583,17 +588,23 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
         }
         break;
     case RDB_OB_TUPLE:
-        ret = irep_to_tuple(valp, RDB_type_is_dummy(typ) ?
-                valp->impl_typ : typ, datap, ecp);
+        ret = irep_to_tuple(valp, RDB_type_is_dummy(typ) ? valp->impl_typ : typ,
+                datap, ecp);
         if (ret > 0)
             ret = RDB_OK;
         return ret;
     case RDB_OB_TABLE:
     {
-        if (irep_to_table(valp, typ, datap, len, ecp) != RDB_OK)
+        if (irep_to_table(valp, RDB_type_is_dummy(typ) ? valp->impl_typ : typ,
+                datap, len, ecp) != RDB_OK)
             return RDB_ERROR;
-        if (RDB_type_is_scalar(typ))
+        if (RDB_type_is_scalar(typ)) {
+            if (valp->typ != NULL && !RDB_type_is_scalar(valp->typ)) {
+                if (RDB_del_nonscalar_type(valp->typ, ecp) != RDB_OK)
+                    return RDB_ERROR;
+            }
             valp->typ = typ;
+        }
         return RDB_OK;
     }
     case RDB_OB_ARRAY:
@@ -705,10 +716,16 @@ RDB_obj_property(const RDB_object *objp, const char *propname, RDB_object *propv
                 RDB_raise_type_mismatch("invalid component type", ecp);
                 return RDB_ERROR;
             }
-            ret = RDB_copy_obj_data(propvalp, objp, ecp, NULL);
-            if (ret != RDB_OK)
+            if (RDB_copy_obj_data(propvalp, objp, ecp, NULL) != RDB_OK)
                 return RDB_ERROR;
-            propvalp->typ = comptyp;
+            if (propvalp->typ != NULL && !RDB_type_is_scalar(propvalp->typ)) {
+                if (RDB_del_nonscalar_type(propvalp->typ, ecp) != RDB_OK)
+                    return RDB_ERROR;
+            }
+            propvalp->typ = RDB_dup_nonscalar_type(comptyp, ecp);
+            if (propvalp->typ == NULL)
+                return RDB_ERROR;
+            ret = RDB_OK;
         } else {
             /* Actual rep is tuple */
             RDB_object *elemp = RDB_tuple_get(objp, propname);
@@ -959,7 +976,7 @@ RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
             } else {
                 /* Type is scalar with relation type as actual rep */
                 reltyp = RDB_dup_nonscalar_type(
-                        srcvalp->typ->def.scalar.arep, ecp);
+                        RDB_obj_impl_type(srcvalp)->def.scalar.arep, ecp);
             }
             if (reltyp == NULL)
                 return RDB_ERROR;

@@ -588,20 +588,22 @@ get_supertypes(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
         goto error;
 
     suptypec = RDB_array_length(&supertypes, ecp);
-    suptypev = RDB_alloc(suptypec * sizeof(RDB_type *), ecp);
-    if (suptypev == NULL)
-        goto error;
-
-    for (i = 0; i < suptypec; i++) {
-        tplp = RDB_array_get(&supertypes, (RDB_int) i, ecp);
-        if (tplp == NULL)
+    if (suptypec > 0) {
+        suptypev = RDB_alloc(suptypec * sizeof(RDB_type *), ecp);
+        if (suptypev == NULL)
             goto error;
 
-        suptypev[i] = RDB_get_type(RDB_tuple_get_string(tplp, "supertypename"),
-                ecp, txp);
+        for (i = 0; i < suptypec; i++) {
+            tplp = RDB_array_get(&supertypes, (RDB_int) i, ecp);
+            if (tplp == NULL)
+                goto error;
+
+            suptypev[i] = RDB_get_type(RDB_tuple_get_string(tplp, "supertypename"),
+                    ecp, txp);
+        }
+        *suptypevp = suptypev;
     }
 
-    *suptypevp = suptypev;
     RDB_destroy_obj(&supertypes, ecp);
     return suptypec;
 
@@ -627,20 +629,22 @@ get_subtypes(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
         goto error;
 
     subtypec = RDB_array_length(&subtypes, ecp);
-    subtypev = RDB_alloc(subtypec * sizeof(RDB_type *), ecp);
-    if (subtypev == NULL)
-        goto error;
-
-    for (i = 0; i < subtypec; i++) {
-        tplp = RDB_array_get(&subtypes, (RDB_int) i, ecp);
-        if (tplp == NULL)
+    if (subtypec > 0) {
+        subtypev = RDB_alloc(subtypec * sizeof(RDB_type *), ecp);
+        if (subtypev == NULL)
             goto error;
 
-        subtypev[i] = RDB_get_type(RDB_tuple_get_string(tplp, "typename"),
-                ecp, txp);
-    }
+        for (i = 0; i < subtypec; i++) {
+            tplp = RDB_array_get(&subtypes, (RDB_int) i, ecp);
+            if (tplp == NULL)
+                goto error;
 
-    *suptypevp = subtypev;
+            subtypev[i] = RDB_get_type(RDB_tuple_get_string(tplp, "typename"),
+                    ecp, txp);
+        }
+
+        *suptypevp = subtypev;
+    }
     RDB_destroy_obj(&subtypes, ecp);
     return subtypec;
 
@@ -953,6 +957,10 @@ RDB_sys_select(int argc, RDB_object *argv[],
                 return RDB_ERROR;
             }
         }
+    }
+    if (retvalp->typ != NULL && !RDB_type_is_scalar(retvalp->typ)) {
+        if (RDB_del_nonscalar_type(retvalp->typ, ecp) != RDB_OK)
+            return RDB_ERROR;
     }
     retvalp->typ = typ;
     return RDB_OK;

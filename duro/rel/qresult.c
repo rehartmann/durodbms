@@ -2272,7 +2272,7 @@ RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 	    }
         tpltyp = qrp->val.stored.tbp->typ->kind == RDB_TP_RELATION ?
                 qrp->val.stored.tbp->typ->def.basetyp
-                : qrp->val.stored.tbp->typ->def.scalar.arep->def.basetyp;
+                : RDB_obj_impl_type(qrp->val.stored.tbp)->def.scalar.arep->def.basetyp;
         return RDB_next_stored_tuple(qrp, qrp->val.stored.tbp, tplp, RDB_TRUE,
                 RDB_FALSE, tpltyp, ecp, txp);
     }

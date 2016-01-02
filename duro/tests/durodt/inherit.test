@@ -186,4 +186,35 @@ test returntype {Return type conflict} -setup $SETUP -cleanup $CLEANUP -body {
     }
 } -result {}
 
+test subtypes_rel_array_rep {Subtypes with relation and array representations} \
+        -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+        begin tx;
+
+        type rel_or_array union;
+
+        type reltype is rel_or_array possrep { r rel { s string } } init reltype(rel { tup { s '' } });
+        
+        implement type reltype;
+        end implement;
+
+        -- Type with array rep is yet to come
+
+        commit;
+
+        var pr private rel { n int, r rel_or_array } key {n};
+
+        insert pr tup{n 1, r reltype(rel{tup{s 'yo'}})};
+
+        var raha array tuple same_heading_as(pr);
+        load raha from pr order(n asc);
+
+        io.put((tuple from treat_as_reltype(raha[0].r).r).s);
+        io.put_line('');
+    }
+} -result {yo
+}
+
 cleanupTests

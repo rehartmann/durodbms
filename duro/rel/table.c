@@ -203,9 +203,9 @@ RDB_table_ilen(const RDB_object *tbp, size_t *lenp, RDB_exec_context *ecp)
 
     *lenp = 0;
     while ((ret = RDB_next_tuple(qrp, &tpl, ecp, NULL)) == RDB_OK) {
-        tpl.store_typ = RDB_type_is_scalar(tbp->store_typ) ?
-                tbp->store_typ->def.scalar.arep->def.basetyp
-                : tbp->store_typ->def.basetyp;
+        tpl.store_typ = RDB_type_is_scalar(tbp->typ) ?
+                RDB_obj_impl_type(tbp)->def.scalar.arep->def.basetyp
+                : tbp->typ->def.basetyp;
         ret = RDB_obj_ilen(&tpl, &len, ecp);
         if (ret != RDB_OK) {
              RDB_destroy_obj(&tpl, ecp);

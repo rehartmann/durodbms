@@ -1254,6 +1254,10 @@ copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp, RDB_exec_context *ecp,
 
     /* Set type if it was scalar */
     if (restore_typ != NULL) {
+        if (dstvalp->typ != NULL && !RDB_type_is_scalar(dstvalp->typ)) {
+            if (RDB_del_nonscalar_type(dstvalp->typ, ecp) != RDB_OK)
+                return RDB_ERROR;
+        }
         dstvalp->typ = restore_typ;
     }
 
