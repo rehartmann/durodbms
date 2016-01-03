@@ -670,14 +670,17 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p,
 }
 
 /**
-Copy the value of property <var>propname</var>
-of *<var>objp</var> *<var>propvalp</var>.
+ * Copy the value of property <var>propname</var>
+ * of *<var>objp</var> *<var>propvalp</var>.
+ *
+ * There must be type information associated with *<var>objp</var>.
 
-There must be type information associated with *<var>objp</var>.
+ * If <var>txp</var> is NULL and <var>envp</var> is not, <var>envp</var> is used
+ * to look up the getter operator from memory.
+ * If <var>txp</var> is not NULL, <var>envp</var> is ignored.
 
-If <var>txp</var> is NULL and <var>envp</var> is not, <var>envp</var> is used
-to look up the getter operator from memory.
-If <var>txp</var> is not NULL, <var>envp</var> is ignored.
+ * *<var>propvalp</var> will carry type information. If the property type is non-scalar and
+ * not a relation type, it is managed by the type of *<var>objp</var>.
 
 If an error occurs, an error value is left in *<var>ecp</var>.
 
@@ -739,9 +742,13 @@ RDB_obj_property(const RDB_object *objp, const char *propname, RDB_object *propv
                 if (RDB_del_nonscalar_type(propvalp->typ, ecp) != RDB_OK)
                     return RDB_ERROR;
             }
-            propvalp->typ = RDB_dup_nonscalar_type(comptyp, ecp);
-            if (propvalp->typ == NULL)
-                return RDB_ERROR;
+            if (RDB_type_is_relation(comptyp)) {
+                propvalp->typ = RDB_dup_nonscalar_type(comptyp, ecp);
+                if (propvalp->typ == NULL)
+                    return RDB_ERROR;
+            } else {
+                propvalp->typ = comptyp;
+            }
             ret = RDB_OK;
         } else {
             /* Actual rep is tuple */

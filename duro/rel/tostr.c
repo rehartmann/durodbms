@@ -225,10 +225,6 @@ append_utype_obj(RDB_object *objp, const RDB_object *srcp,
             return ret;
         }
         ret = append_obj(objp, &compobj, envp, ecp, txp);
-        if (!RDB_type_is_scalar(RDB_obj_type(&compobj))
-                && !RDB_type_is_relation(RDB_obj_type(&compobj))) {
-            RDB_del_nonscalar_type(RDB_obj_type(&compobj), ecp);
-        }
         RDB_destroy_obj(&compobj, ecp);
         if (ret != RDB_OK)
             return ret;

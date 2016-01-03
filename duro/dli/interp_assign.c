@@ -299,7 +299,7 @@ comp_node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
         RDB_free(argpv);
     if (argv != NULL) {
         for (i = 0; i < possrep->compc; i++)
-            RDB_init_obj(&argv[i]);
+            RDB_init_obj(&argv[i]); /* !! ? */
         RDB_free(argv);
     }
     return RDB_OK;
