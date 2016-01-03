@@ -83,12 +83,22 @@ RDB_obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
     }
     case RDB_OB_ARRAY:
     {
+        RDB_type *arrtyp;
         RDB_object *elemp;
         int i = 0;
 
+        if (RDB_type_is_dummy(objp->store_typ)) {
+            arrtyp = RDB_type_is_dummy(objp->typ) ? objp->impl_typ : objp->typ;
+        } else {
+            arrtyp = objp->store_typ;
+        }
+
+        if (RDB_type_is_scalar(arrtyp))
+            arrtyp = arrtyp->def.scalar.arep;
+
         while ((elemp = RDB_array_get((RDB_object *)objp, (RDB_int) i++,
                 ecp)) != NULL) {
-            elemp->store_typ = objp->store_typ->def.basetyp;
+            elemp->store_typ = arrtyp->def.basetyp;
             if (elemp->store_typ->ireplen == RDB_VARIABLE_LEN)
                 *lenp += sizeof (size_t);
             ret = RDB_obj_ilen(elemp, &len, ecp);
@@ -250,7 +260,10 @@ irep_to_array(RDB_object *arrp, RDB_type *typ, const void *datap, size_t len,
     int i;
     RDB_object tpl;
     int arrlen = 0;
-    RDB_byte *bp = (RDB_byte *)datap;
+    RDB_byte *bp = (RDB_byte *) datap;
+
+    if (RDB_type_is_scalar(typ))
+        typ = typ->def.scalar.arep;
 
     RDB_init_obj(&tpl);
 
@@ -427,9 +440,12 @@ RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
 
         RDB_init_exec_context(&ec);
 
+        if (impltyp->kind == RDB_TP_SCALAR)
+            impltyp = impltyp->def.scalar.arep;
+
         while ((elemp = RDB_array_get((RDB_object *) objp, (RDB_int) i++,
                 &ec)) != NULL) {
-            elemp->typ = objp->store_typ->def.basetyp;
+            elemp->typ = impltyp->def.basetyp;
             bp = obj_to_len_irep(bp, elemp, elemp->typ, &ec);
         }
         if (RDB_obj_type(RDB_get_err(&ec)) != &RDB_NOT_FOUND_ERROR) {
@@ -608,7 +624,8 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
         return RDB_OK;
     }
     case RDB_OB_ARRAY:
-        return irep_to_array(valp, typ, datap, len, ecp);
+        return irep_to_array(valp, RDB_type_is_dummy(typ) ? valp->impl_typ : typ,
+                datap, len, ecp);
     }
     valp->kind = kind;
     return RDB_OK;
@@ -711,8 +728,8 @@ RDB_obj_property(const RDB_object *objp, const char *propname, RDB_object *propv
 
             /* If *propvalp carries a value, it must match the type */
             if (propvalp->kind != RDB_OB_INITIAL
-                     && (propvalp->typ == NULL
-                         || !RDB_type_equals(propvalp->typ, comptyp))) {
+                    && (propvalp->typ == NULL
+                            || !RDB_type_equals(propvalp->typ, comptyp))) {
                 RDB_raise_type_mismatch("invalid component type", ecp);
                 return RDB_ERROR;
             }

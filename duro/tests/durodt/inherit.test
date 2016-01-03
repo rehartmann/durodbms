@@ -196,8 +196,13 @@ test subtypes_rel_array_rep {Subtypes with relation and array representations} \
         type rel_or_array union;
 
         type reltype is rel_or_array possrep { r rel { s string } } init reltype(rel { tup { s '' } });
-        
+
         implement type reltype;
+        end implement;
+
+        type arrtype is rel_or_array possrep { a array string } init arrtype(array string());
+
+        implement type arrtype;
         end implement;
 
         -- Type with array rep is yet to come
@@ -207,14 +212,21 @@ test subtypes_rel_array_rep {Subtypes with relation and array representations} \
         var pr private rel { n int, r rel_or_array } key {n};
 
         insert pr tup{n 1, r reltype(rel{tup{s 'yo'}})};
+        insert pr tup{n 2, r arrtype(array('foo', 'bar'))};
 
         var raha array tuple same_heading_as(pr);
         load raha from pr order(n asc);
 
         io.put((tuple from treat_as_reltype(raha[0].r).r).s);
         io.put_line('');
+
+        io.put(treat_as_arrtype(raha[1].r).a[0]);
+        io.put(' ');
+        io.put(treat_as_arrtype(raha[1].r).a[1]);
+        io.put_line('');
     }
 } -result {yo
+foo bar
 }
 
 cleanupTests
