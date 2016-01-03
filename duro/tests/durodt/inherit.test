@@ -103,6 +103,14 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
         s := circle(3);
         io.put(width(s)); io.put_line('');
 
+        var s2 shape init rectangle(3, 3);
+        io.put(s = s2); io.put_line('');
+        
+        s2 := circle(3);
+        io.put(s = s2); io.put_line('');
+
+        io.put(s = circle(3)); io.put_line('');
+
         commit;
 
         -- Test update operator with read-only argument
@@ -140,6 +148,9 @@ FALSE
 2
 4
 6
+FALSE
+TRUE
+TRUE
 radius: 3
 3
 4 5

@@ -161,6 +161,9 @@ RDB_bool
 RDB_is_subtype(const RDB_type *, const RDB_type *);
 
 RDB_bool
+RDB_share_subtype(const RDB_type *, const RDB_type *);
+
+RDB_bool
 RDB_type_depends_type(const RDB_type *, const RDB_type *);
 
 RDB_bool

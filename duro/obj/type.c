@@ -613,6 +613,25 @@ RDB_is_subtype(const RDB_type *typ1, const RDB_type *typ2)
     return RDB_FALSE;
 }
 
+RDB_bool
+RDB_share_subtype(const RDB_type *typ1, const RDB_type *typ2)
+{
+    int i;
+
+    if (!RDB_type_is_scalar(typ1) || !RDB_type_is_scalar(typ2))
+        return RDB_FALSE;
+
+    if (RDB_is_subtype(typ1, typ2))
+        return RDB_TRUE;
+
+    /* Try to find subtype which is a subtype of typ2 */
+    for (i = 0; i < typ1->def.scalar.subtypec; i++) {
+        if (RDB_share_subtype(typ1->def.scalar.subtypev[i], typ2))
+            return RDB_TRUE;
+    }
+    return RDB_FALSE;
+}
+
 /*@}*/
 
 RDB_type *

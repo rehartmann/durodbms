@@ -378,27 +378,6 @@ obj_is_table(const RDB_object *objp)
     return (RDB_bool) (typ->kind == RDB_TP_RELATION);
 }
 
-/*
-static RDB_type **
-valv_to_typev(int valc, RDB_object **valv, RDB_exec_context *ecp)
-{
-    int i;
-    RDB_type **typv = RDB_alloc(sizeof (RDB_type *) * valc, ecp);
-    if (typv == NULL)
-        return NULL;
-
-    for (i = 0; i < valc; i++) {
-        typv[i] = RDB_obj_type(valv[i]);
-        if (typv[i] == NULL) {
-            RDB_raise_invalid_argument("cannot determine argument type", ecp);
-            RDB_free(typv);
-            return NULL;
-        }
-    }
-    return typv;
-}
-*/
-
 /**
  * RDB_call_ro_op_by_name invokes the read-only operator with the name <var>name</var>,
 passing the arguments in <var>argc</var> and <var>argv</var>.
@@ -896,21 +875,33 @@ RDB_dfl_obj_equals(int argc, RDB_object *argv[], RDB_operator *op,
 {
     int ret;
     RDB_bool res;
+    RDB_type *impltyp1 = RDB_obj_impl_type(argv[0]);
+    RDB_type *impltyp2 = RDB_obj_impl_type(argv[1]);
     RDB_type *arep = NULL;
 
     if (argv[0]->kind != argv[1]->kind) {
-        RDB_raise_type_mismatch("", ecp);
-        return RDB_ERROR;
+        RDB_bool_to_obj(retvalp, RDB_FALSE);
+        return RDB_OK;
+    }
+
+    if (impltyp1 != NULL && impltyp2 != NULL
+            && !RDB_type_equals(impltyp1, impltyp2)) {
+        if (!RDB_type_is_scalar(impltyp1)) {
+            RDB_raise_type_mismatch("", ecp);
+            return RDB_ERROR;
+        }
+        RDB_bool_to_obj(retvalp, RDB_FALSE);
+        return RDB_OK;
     }
 
     /*
      * Check if there is a comparison function associated with the type
      */
-    if (argv[0]->typ != NULL && RDB_type_is_scalar(argv[0]->typ)) {
-        if (argv[0]->typ->compare_op != NULL) {
-            arep = argv[0]->typ;
-        } else if (argv[0]->typ->def.scalar.arep != NULL) {
-            arep = argv[0]->typ->def.scalar.arep;
+    if (impltyp1 != NULL && RDB_type_is_scalar(impltyp1)) {
+        if (impltyp1->compare_op != NULL) {
+            arep = impltyp1;
+        } else if (impltyp1->def.scalar.arep != NULL) {
+            arep = impltyp1->def.scalar.arep;
         }
     }
 
@@ -949,10 +940,6 @@ RDB_dfl_obj_equals(int argc, RDB_object *argv[], RDB_operator *op,
             RDB_bool_to_obj(retvalp, res);
             break;
         case RDB_OB_TABLE:
-            if (!RDB_type_equals(argv[0]->typ, argv[1]->typ)) {
-                RDB_raise_type_mismatch("", ecp);
-                return RDB_ERROR;
-            }
             if (RDB_table_equals(argv[0], argv[1], ecp, txp, &res) != RDB_OK)
                 return RDB_ERROR;
             RDB_bool_to_obj(retvalp, res);
@@ -1165,8 +1152,8 @@ RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
      * Provide "=" and "<>" for types with possreps
      */
     if (argc == 2 && RDB_type_is_scalar(argtv[0])
-            && argtv[0]->def.scalar.repc > 0
-            && RDB_type_equals(argtv[0], argtv[1])
+            && (!argtv[0]->def.scalar.builtin || argtv[0]->def.scalar.repc > 0)
+            && RDB_share_subtype(argtv[0], argtv[1])
             && (strcmp(name, "=") == 0
                 || strcmp(name, "<>") == 0)) {
         return provide_eq_neq(name, argtv[0], dbrootp, ecp);
@@ -1323,8 +1310,8 @@ RDB_get_ro_op_by_args(const char *name, int argc, RDB_object *argv[],
     if (argc == 2) {
         RDB_type *arg1typ = RDB_obj_type(argv[0]);
         if (RDB_type_is_scalar(arg1typ)
-                && arg1typ->def.scalar.repc > 0
-                && RDB_type_equals(arg1typ, RDB_obj_type(argv[1]))) {
+                && (!arg1typ->def.scalar.builtin || arg1typ->def.scalar.repc > 0)
+                && RDB_share_subtype(arg1typ, RDB_obj_type(argv[1]))) {
             if (strcmp(name, "=") == 0
                     || strcmp(name, "<>") == 0) {
                 return provide_eq_neq(name, arg1typ, dbrootp, ecp);

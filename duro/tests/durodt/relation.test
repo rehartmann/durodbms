@@ -2069,4 +2069,35 @@ test nested_rollback {nested transactions rolled back} -setup $SETUP -cleanup $C
 } -result {0
 }
 
+test equality {table equality} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+        begin tx;
+
+        var r1 real rel {n int, s string}
+            init rel { tup { n 1, s 'a' } } key {n};
+        var r2 real init r1;
+        io.put(r1 = r2);
+        io.put_line('');
+
+        insert r2 tup { n 2, s 'n' };
+
+        io.put(r1 = r2);
+        io.put_line('');
+
+        var r3 real rel {n int, t string} key {n};
+        try
+            io.put(r1 = r3);
+            io.put_line('');
+            io.put_line('comparing tables of different types for equality succeeded');
+        catch e type_mismatch_error;
+            ;
+        end try;
+        commit;
+    }
+} -result {TRUE
+FALSE
+}
+
 cleanupTests
