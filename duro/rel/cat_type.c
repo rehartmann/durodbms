@@ -861,3 +861,53 @@ RDB_cat_get_subtypes(const char *name, RDB_exec_context *ecp,
     RDB_drop_table(subtypes_tbp, ecp, txp);
     return ret;
 }
+
+/* Delete type from database */
+int
+RDB_cat_del_type(const char *name, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_int cnt;
+    RDB_expression *argp;
+    RDB_expression *wherep = RDB_ro_op("=", ecp);
+    if (wherep == NULL) {
+        return RDB_ERROR;
+    }
+    argp = RDB_var_ref("typename", ecp);
+    if (argp == NULL) {
+        RDB_del_expr(wherep, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(wherep, argp);
+    argp = RDB_string_to_expr(name, ecp);
+    if (argp == NULL) {
+        RDB_del_expr(wherep, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(wherep, argp);
+
+    cnt = RDB_delete(txp->dbp->dbrootp->types_tbp, wherep, ecp, txp);
+    if (cnt == 0) {
+        RDB_raise_name("type not found", ecp);
+        return RDB_ERROR;
+    }
+    if (cnt == (RDB_int) RDB_ERROR) {
+        RDB_del_expr(wherep, ecp);
+        return RDB_ERROR;
+    }
+
+    cnt = RDB_delete(txp->dbp->dbrootp->possrepcomps_tbp, wherep, ecp,
+            txp);
+    if (cnt == (RDB_int) RDB_ERROR) {
+        RDB_del_expr(wherep, ecp);
+        return RDB_ERROR;
+    }
+
+    cnt = RDB_delete(txp->dbp->dbrootp->subtype_tbp, wherep, ecp,
+            txp);
+    RDB_del_expr(wherep, ecp);
+    if (cnt == (RDB_int) RDB_ERROR) {
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}

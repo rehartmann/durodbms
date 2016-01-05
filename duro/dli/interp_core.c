@@ -290,6 +290,7 @@ Duro_put_var(const char *name, RDB_object *objp, Duro_interp *interp,
     return RDB_OK;
 }
 
+/* Find a variable which depends on a type */
 static const char *
 var_of_type(RDB_hashmap *mapp, RDB_type *typ)
 {
@@ -305,7 +306,6 @@ var_of_type(RDB_hashmap *mapp, RDB_type *typ)
         if (datap != NULL) {
             RDB_type *vtyp = RDB_obj_type((RDB_object *) datap);
 
-            /* If the types are equal, return variable name */
             if (vtyp != NULL && RDB_type_depends_type(vtyp, typ))
                 return namp;
         }

@@ -240,4 +240,76 @@ test subtypes_rel_array_rep {Subtypes with relation and array representations} \
 foo bar
 }
 
+test droptypes {Drop types} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+        begin tx;
+        type t1 union;
+        commit;
+    }
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+        begin tx;
+        
+        type t2 is t1 possrep { n int } init t2(0);
+        
+        try
+            drop type t1;
+            io.put_line('dropping supertype succeeded');
+        catch err in_use_error;
+            ;
+        end try;
+        
+        drop type t2;
+        
+        drop type t1;
+
+        try
+        	var t t2;
+            io.put_line('creating variable of dropped type succeeded');
+        catch err type_not_found_error;
+            ;
+        end try;
+        
+        commit;
+    }
+} -result {}
+
+test multiple {Multiple inheritance} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+        begin tx;
+
+        type engine_driven union;
+        
+        type road_vehicle union;
+
+        type car is engine_driven, road_vehicle
+            possrep { model string, performance int }
+            init car('', 0);
+
+        implement type car;
+        end implement;
+
+        var ed engine_driven init car('M', 88);
+
+        io.put(is_engine_driven(ed));
+        io.put_line('');
+        io.put(is_road_vehicle(ed));
+        io.put_line('');
+        io.put(is_car(ed));
+        io.put_line('');
+
+        var rv road_vehicle init treat_as_road_vehicle(ed);
+        
+        commit;
+    }
+} -result {TRUE
+TRUE
+TRUE
+}
+
 cleanupTests

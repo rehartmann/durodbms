@@ -96,7 +96,7 @@ RDB_type_depends_type(const RDB_type *typ, const RDB_type *dtyp)
     int i;
     int j;
 
-    if (typ == dtyp)
+    if (RDB_is_subtype(typ, dtyp))
         return RDB_TRUE;
 
     switch (typ->kind) {

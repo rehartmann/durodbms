@@ -423,4 +423,7 @@ RDB_get_tuple_attr_type(const char *, void *);
 RDB_type *
 RDB_get_subtype(RDB_type *, const char *);
 
+RDB_type *
+RDB_get_supertype_of_subtype(RDB_type *, const char *);
+
 #endif

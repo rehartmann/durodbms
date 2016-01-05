@@ -118,6 +118,38 @@ RDB_get_subtype(RDB_type *typ, const char *name)
     return NULL;
 }
 
+RDB_type *
+RDB_get_supertype(RDB_type *typ, const char *name)
+{
+    int i;
+    RDB_type *supertyp;
+
+    if (strcmp(typ->name, name) == 0)
+        return typ;
+    for (i = 0; i< typ->def.scalar.supertypec; i++) {
+        supertyp = RDB_get_supertype(typ->def.scalar.supertypev[i], name);
+        if (supertyp != NULL)
+            return supertyp;
+    }
+    return NULL;
+}
+
+RDB_type *
+RDB_get_supertype_of_subtype(RDB_type *typ, const char *name)
+{
+    int i;
+    RDB_type *supertyp = RDB_get_supertype(typ, name);
+    if (supertyp != NULL)
+        return supertyp;
+
+    for (i = 0; i< typ->def.scalar.subtypec; i++) {
+        supertyp = RDB_get_supertype_of_subtype(typ->def.scalar.subtypev[i], name);
+        if (supertyp != NULL)
+            return supertyp;
+    }
+    return NULL;
+}
+
 /** @addtogroup type
  * @{
  */
@@ -181,6 +213,29 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
 {
     return RDB_define_subtype(name, 0, NULL, repc, repv, constraintp, initexp,
             flags, ecp, txp);
+}
+
+static int
+add_subtype(RDB_type *typ, RDB_type *subtyp, RDB_exec_context *ecp)
+{
+    int i;
+    RDB_type **subtypev;
+
+    for (i = 0; i < typ->def.scalar.subtypec; i++) {
+        if (typ->def.scalar.subtypev[i] == subtyp)
+            return RDB_OK;
+    }
+    if (typ->def.scalar.subtypec == 0) {
+        subtypev = RDB_alloc(sizeof (RDB_type *), ecp);
+    } else {
+        subtypev = RDB_realloc(typ->def.scalar.subtypev,
+                sizeof (RDB_type *) * (typ->def.scalar.subtypec + 1), ecp);
+    }
+    if (subtypev == NULL)
+        return RDB_ERROR;
+    subtypev[typ->def.scalar.subtypec++] = subtyp;
+    typ->def.scalar.subtypev = subtypev;
+    return RDB_OK;
 }
 
 /**
@@ -360,6 +415,16 @@ RDB_define_subtype(const char *name, int suptypec, RDB_type *suptypev[],
         }
     }
 
+    if (suptypec > 0) {
+        RDB_type *typ = RDB_get_type(name, ecp, txp);
+        if (typ == NULL)
+            goto error;
+        for (i = 0; i < suptypec; i++) {
+            if (add_subtype(suptypev[i], typ, ecp) != RDB_OK)
+                goto error;
+        }
+    }
+
     RDB_destroy_obj(&typedata, ecp);
     RDB_destroy_obj(&conval, ecp);
     RDB_destroy_obj(&initval, ecp);
@@ -374,6 +439,25 @@ error:
     RDB_destroy_obj(&tpl, ecp);
 
     return RDB_ERROR;
+}
+
+/* Remove type *subtyp from array of subtypes */
+static void
+remove_subtype(RDB_type *typ, const RDB_type *subtyp)
+{
+    int i;
+
+    for (i = 0; i < typ->def.scalar.subtypec; i++) {
+        if (typ->def.scalar.subtypev[i] == subtyp) {
+            if (i < typ->def.scalar.subtypec - 1) {
+                /* Replace i-th subtype by the last one */
+                typ->def.scalar.subtypev[i] =
+                        typ->def.scalar.subtypev[typ->def.scalar.subtypec - 1];
+            }
+            --typ->def.scalar.subtypec;
+        }
+        return;
+    }
 }
 
 /**
@@ -404,9 +488,8 @@ in which case the transaction may be implicitly rolled back.
 int
 RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_int cnt;
+    int i;
     RDB_type *typ;
-    RDB_expression *wherep, *argp;
     RDB_type *ntp = NULL;
 
     if (!RDB_tx_is_running(txp)) {
@@ -426,9 +509,18 @@ RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     if (typ == NULL)
         return RDB_ERROR;
 
+    if (typ->def.scalar.subtypec > 0) {
+        RDB_raise_in_use("type has a subtype", ecp);
+        return RDB_ERROR;
+    }
+
     /* Check if the type is still used by a table */
     if (RDB_cat_check_type_used(typ, ecp, txp) != RDB_OK)
         return RDB_ERROR;
+
+    for (i = 0; i < typ->def.scalar.supertypec; i++) {
+        remove_subtype(typ->def.scalar.supertypev[i], typ);
+    }
 
     if (typ->def.scalar.sysimpl) {
         /* Delete system-generated selector */
@@ -466,39 +558,8 @@ RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
             return RDB_ERROR;
     }
 
-    /* Delete type from database */
-    wherep = RDB_ro_op("=", ecp);
-    if (wherep == NULL) {
+    if (RDB_cat_del_type(name, ecp, txp) != RDB_OK)
         return RDB_ERROR;
-    }
-    argp = RDB_var_ref("typename", ecp);
-    if (argp == NULL) {
-        RDB_del_expr(wherep, ecp);
-        return RDB_ERROR;
-    }
-    RDB_add_arg(wherep, argp);
-    argp = RDB_string_to_expr(name, ecp);
-    if (argp == NULL) {
-        RDB_del_expr(wherep, ecp);
-        return RDB_ERROR;
-    }
-    RDB_add_arg(wherep, argp);
-
-    cnt = RDB_delete(txp->dbp->dbrootp->types_tbp, wherep, ecp, txp);
-    if (cnt == 0) {
-        RDB_raise_name("type not found", ecp);
-        return RDB_ERROR;
-    }
-    if (cnt == (RDB_int) RDB_ERROR) {
-        RDB_del_expr(wherep, ecp);
-        return RDB_ERROR;
-    }
-    cnt = RDB_delete(txp->dbp->dbrootp->possrepcomps_tbp, wherep, ecp,
-            txp);
-    RDB_del_expr(wherep, ecp);
-    if (cnt == (RDB_int) RDB_ERROR) {
-        return RDB_ERROR;
-    }
 
     /*
      * Delete type in memory
@@ -680,6 +741,7 @@ RDB_type *
 RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_type *typ;
+    int i;
     int ret;
 
     /*
@@ -774,6 +836,11 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
                     return NULL;
             }
         }
+    }
+
+    for (i = 0; i < typ->def.scalar.supertypec; i++) {
+        if (add_subtype(typ->def.scalar.supertypev[i], typ, ecp) != RDB_OK)
+            return NULL;
     }
 
     return typ;

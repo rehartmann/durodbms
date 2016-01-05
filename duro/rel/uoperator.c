@@ -980,9 +980,12 @@ RDB_op_is_type(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_bool_to_obj(retvalp, RDB_FALSE);
         return RDB_OK;
     }
-    typ = RDB_get_subtype(RDB_obj_type(argv[0]), RDB_operator_name(op) + IS_PREFIX_LEN);
-    if (typ == NULL)
+    typ = RDB_get_supertype_of_subtype(RDB_obj_type(argv[0]),
+            RDB_operator_name(op) + IS_PREFIX_LEN);
+    if (typ == NULL) {
+        RDB_raise_type_mismatch(RDB_operator_name(op) + IS_PREFIX_LEN, ecp);
         return RDB_ERROR;
+    }
     RDB_bool_to_obj(retvalp, RDB_is_subtype(objtyp, typ));
     return RDB_OK;
 }
@@ -991,25 +994,19 @@ static int
 RDB_op_treat_as_type(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_type *typ;
     RDB_type *objtyp;
     if (argc != 1) {
         RDB_raise_invalid_argument("exactly one argument is required", ecp);
         return RDB_ERROR;
     }
     objtyp = RDB_obj_impl_type(argv[0]);
-    if (objtyp == NULL || !RDB_type_is_scalar(objtyp)) {
-        RDB_bool_to_obj(retvalp, RDB_FALSE);
-        return RDB_OK;
-    }
-    typ = RDB_get_subtype(objtyp, RDB_operator_name(op) + TREAT_AS_PREFIX_LEN);
-    if (typ == NULL) {
-        RDB_bool_to_obj(retvalp, RDB_FALSE);
-        return RDB_OK;
+    if (objtyp == NULL || !RDB_is_subtype(objtyp, op->rtyp)) {
+        RDB_raise_type_mismatch(RDB_type_name(op->rtyp), ecp);
+        return RDB_ERROR;
     }
     if (RDB_copy_obj(retvalp, argv[0], ecp) != RDB_OK)
         return RDB_ERROR;
-    RDB_obj_set_typeinfo(retvalp, typ);
+    RDB_obj_set_typeinfo(retvalp, op->rtyp);
     return RDB_OK;
 }
 
@@ -1042,7 +1039,7 @@ provide_eq_neq(const char *name, RDB_type *argtyp, RDB_dbroot *dbrootp,
 }
 
 static RDB_operator *
-provide_is_op(const char *name, RDB_type *supertyp, RDB_dbroot *dbrootp,
+provide_is_op(const char *name, RDB_dbroot *dbrootp,
         RDB_exec_context *ecp)
 {
     RDB_operator *op = RDB_new_op_data(name, -1, NULL, &RDB_BOOLEAN, ecp);
@@ -1056,17 +1053,10 @@ provide_is_op(const char *name, RDB_type *supertyp, RDB_dbroot *dbrootp,
 }
 
 static RDB_operator *
-provide_treat_as_op(const char *name, RDB_dbroot *dbrootp, RDB_type *supertyp,
+provide_treat_as_op(const char *name, RDB_dbroot *dbrootp, RDB_type *ttyp,
         RDB_exec_context *ecp)
 {
-    RDB_operator *op;
-    RDB_type *typ = RDB_get_subtype(supertyp, name + TREAT_AS_PREFIX_LEN);
-    if (typ == NULL) {
-        RDB_raise_type_mismatch(name + TREAT_AS_PREFIX_LEN, ecp);
-        return NULL;
-    }
-
-    op = RDB_new_op_data(name, -1, NULL, typ, ecp);
+    RDB_operator *op = RDB_new_op_data(name, -1, NULL, ttyp, ecp);
     if (op == NULL) {
         return NULL;
     }
@@ -1162,12 +1152,22 @@ RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     if (strlen(name) > IS_PREFIX_LEN
             && strncmp(name, IS_PREFIX, IS_PREFIX_LEN) == 0
             && RDB_type_is_scalar(argtv[0])) {
-        return provide_is_op(name, argtv[0], dbrootp, ecp);
+        RDB_type *ttyp = RDB_get_supertype_of_subtype(argtv[0], name + IS_PREFIX_LEN);
+        if (ttyp == NULL) {
+            RDB_raise_type_mismatch(name + IS_PREFIX_LEN, ecp);
+            return NULL;
+        }
+        return provide_is_op(name, dbrootp, ecp);
     }
     if (strlen(name) > TREAT_AS_PREFIX_LEN
             && strncmp(name, TREAT_AS_PREFIX, TREAT_AS_PREFIX_LEN) == 0
             && RDB_type_is_scalar(argtv[0])) {
-        return provide_treat_as_op(name, dbrootp, argtv[0], ecp);
+        RDB_type *ttyp = RDB_get_supertype_of_subtype(argtv[0], name + TREAT_AS_PREFIX_LEN);
+        if (ttyp == NULL) {
+            RDB_raise_type_mismatch(name + TREAT_AS_PREFIX_LEN, ecp);
+            return NULL;
+        }
+        return provide_treat_as_op(name, dbrootp, ttyp, ecp);
     }
 
     /*
@@ -1319,15 +1319,27 @@ RDB_get_ro_op_by_args(const char *name, int argc, RDB_object *argv[],
         }
     }
 
-    if (strlen(name) > IS_PREFIX_LEN
-            && strncmp(name, IS_PREFIX, IS_PREFIX_LEN) == 0
-            && RDB_type_is_scalar(RDB_obj_type(argv[0]))) {
-        return provide_is_op(name, RDB_obj_type(argv[0]), dbrootp, ecp);
-    }
-    if (strlen(name) > TREAT_AS_PREFIX_LEN
-            && strncmp(name, TREAT_AS_PREFIX, TREAT_AS_PREFIX_LEN) == 0
-            && RDB_type_is_scalar(RDB_obj_type(argv[0]))) {
-        return provide_treat_as_op(name, dbrootp, RDB_obj_type(argv[0]), ecp);
+    if (argc == 1) {
+        if (strlen(name) > IS_PREFIX_LEN
+                && strncmp(name, IS_PREFIX, IS_PREFIX_LEN) == 0
+                && RDB_type_is_scalar(RDB_obj_type(argv[0]))) {
+            RDB_type *ttyp = RDB_get_supertype_of_subtype(RDB_obj_type(argv[0]), name + IS_PREFIX_LEN);
+            if (ttyp == NULL) {
+                RDB_raise_type_mismatch(name + IS_PREFIX_LEN, ecp);
+                return NULL;
+            }
+            return provide_is_op(name, dbrootp, ecp);
+        }
+        if (strlen(name) > TREAT_AS_PREFIX_LEN
+                && strncmp(name, TREAT_AS_PREFIX, TREAT_AS_PREFIX_LEN) == 0
+                && RDB_type_is_scalar(RDB_obj_type(argv[0]))) {
+            RDB_type *ttyp = RDB_get_supertype_of_subtype(RDB_obj_type(argv[0]), name + TREAT_AS_PREFIX_LEN);
+            if (ttyp == NULL) {
+                RDB_raise_type_mismatch(name + TREAT_AS_PREFIX_LEN, ecp);
+                return NULL;
+            }
+            return provide_treat_as_op(name, dbrootp, ttyp, ecp);
+        }
     }
 
     /*
