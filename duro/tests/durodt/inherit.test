@@ -294,6 +294,13 @@ test multiple {Multiple inheritance} -setup $SETUP -cleanup $CLEANUP -body {
         implement type car;
         end implement;
 
+        type bicycle is road_vehicle
+            possrep { model string }
+            init bicycle('');
+
+        implement type bicycle;
+        end implement;
+
         var ed engine_driven init car('M', 88);
 
         io.put(is_engine_driven(ed));
@@ -303,13 +310,45 @@ test multiple {Multiple inheritance} -setup $SETUP -cleanup $CLEANUP -body {
         io.put(is_car(ed));
         io.put_line('');
 
+        -- Test treat_as
         var rv road_vehicle init treat_as_road_vehicle(ed);
+
+        io.put_line('');
+        
+        rv := bicycle('B');
+        io.put(is_bicycle(rv));
+        io.put_line('');
+        io.put(is_engine_driven(rv));
+        io.put_line('');
+        io.put(is_road_vehicle(rv));
+        io.put_line('');
+        io.put(is_car(rv));
+        io.put_line('');
+
+        try
+            io.put(is_integer(rv));
+            io.put_line(' is_integer(road_vehicle) succeeded');
+        catch err type_mismatch_error;
+            ;
+        end try;
+
+        try
+            io.put(is_engine_driven(bicycle('C')));
+            io.put_line(' is_engine_driven(bicycle) succeeded');
+        catch err type_mismatch_error;
+            ;
+        end try;
         
         commit;
     }
 } -result {TRUE
 TRUE
 TRUE
+
+TRUE
+FALSE
+TRUE
+FALSE
 }
 
 cleanupTests

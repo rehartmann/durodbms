@@ -970,23 +970,28 @@ RDB_op_is_type(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_type *typ;
-    RDB_type *objtyp;
     if (argc != 1) {
         RDB_raise_invalid_argument("exactly one argument is required", ecp);
         return RDB_ERROR;
     }
-    objtyp = RDB_obj_impl_type(argv[0]);
-    if (objtyp == NULL) {
-        RDB_bool_to_obj(retvalp, RDB_FALSE);
-        return RDB_OK;
+    if (RDB_obj_type(argv[0]) == NULL) {
+        RDB_raise_invalid_argument("argument type required", ecp);
+        return RDB_ERROR;
     }
+
+    /*
+     * Raise error if the declared type and the target type do not have
+     * a common subtype
+     */
     typ = RDB_get_supertype_of_subtype(RDB_obj_type(argv[0]),
             RDB_operator_name(op) + IS_PREFIX_LEN);
     if (typ == NULL) {
         RDB_raise_type_mismatch(RDB_operator_name(op) + IS_PREFIX_LEN, ecp);
         return RDB_ERROR;
     }
-    RDB_bool_to_obj(retvalp, RDB_is_subtype(objtyp, typ));
+
+    /* Check if the implemented type is subtype of the target type */
+    RDB_bool_to_obj(retvalp, RDB_is_subtype(RDB_obj_impl_type(argv[0]), typ));
     return RDB_OK;
 }
 
@@ -994,13 +999,15 @@ static int
 RDB_op_treat_as_type(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_type *objtyp;
     if (argc != 1) {
         RDB_raise_invalid_argument("exactly one argument is required", ecp);
         return RDB_ERROR;
     }
-    objtyp = RDB_obj_impl_type(argv[0]);
-    if (objtyp == NULL || !RDB_is_subtype(objtyp, op->rtyp)) {
+    if (RDB_obj_type(argv[0]) == NULL) {
+        RDB_raise_invalid_argument("argument type required", ecp);
+        return RDB_ERROR;
+    }
+    if (!RDB_is_subtype(RDB_obj_impl_type(argv[0]), op->rtyp)) {
         RDB_raise_type_mismatch(RDB_type_name(op->rtyp), ecp);
         return RDB_ERROR;
     }

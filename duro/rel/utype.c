@@ -118,7 +118,7 @@ RDB_get_subtype(RDB_type *typ, const char *name)
     return NULL;
 }
 
-RDB_type *
+static RDB_type *
 RDB_get_supertype(RDB_type *typ, const char *name)
 {
     int i;
