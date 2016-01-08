@@ -1,8 +1,8 @@
 /*
- * type.h
+ * Type functions and definitions
  *
- *  Created on: 29.09.2013
- *      Author: Rene Hartmann
+ * Copyright (C) 2013-2016 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #ifndef TYPE_H_
@@ -114,6 +114,7 @@ typedef struct RDB_type {
             struct RDB_type **subtypev;
         } scalar;
     } def;
+    RDB_bool locked;
 } RDB_type;
 
 /**@addtogroup tuple
@@ -259,7 +260,7 @@ RDB_project_relation_type(const RDB_type *typ, int, const char *[],
                           RDB_exec_context *);
 
 RDB_type *
-RDB_group_type(RDB_type *, int, char *[], const char *,
+RDB_group_type(const RDB_type *, int, char *[], const char *,
         RDB_exec_context *);
 
 RDB_type *
@@ -272,5 +273,8 @@ RDB_rename_tuple_type(const RDB_type *, int, const RDB_renaming[],
 RDB_type *
 RDB_rename_relation_type(const RDB_type *, int, const RDB_renaming[],
         RDB_exec_context *);
+
+void
+RDB_lock_type(RDB_type *);
 
 #endif /* TYPE_H_ */

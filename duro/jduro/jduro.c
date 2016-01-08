@@ -983,6 +983,12 @@ JDuro_duro_obj_to_jobj(JNIEnv *env, const RDB_object *objp, RDB_bool updatable,
         goto error;
     }
 
+    /*
+     * Keep the type from being free'd by disconnect() or DROP TYPE
+     * because it may still be accessed from Java
+     */
+    RDB_lock_type(RDB_obj_type(cobjp));
+
     clazz = (*env)->FindClass(env, "net/sf/duro/DefaultPossrepObject");
     if (clazz == NULL)
         goto error;

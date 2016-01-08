@@ -1,8 +1,8 @@
 /*
- * tuple.h
+ * Tuple functions and definitions
  *
- *  Created on: 29.09.2013
- *      Author: rene
+ * Copyright (C) 2013-2015 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #ifndef TUPLE_H_

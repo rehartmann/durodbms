@@ -219,9 +219,10 @@ RDB_new_scalar_type(const char *name, RDB_int ireplen, RDB_bool sysimpl,
     typ->def.scalar.supertypec = 0;
     typ->def.scalar.subtypec = 0;
 
+    typ->locked = RDB_FALSE;
+
     return typ;
 }
-
 
 /**
  * Creates a RDB_type struct for a tuple type
@@ -630,6 +631,16 @@ RDB_share_subtype(const RDB_type *typ1, const RDB_type *typ2)
             return RDB_TRUE;
     }
     return RDB_FALSE;
+}
+
+/**
+ * Mark *<var>typ</var> as locked.
+ * If a scalar type is locked its memory is not freed.
+ */
+void
+RDB_lock_type(RDB_type *typ)
+{
+    typ->locked = RDB_TRUE;
 }
 
 /*@}*/
@@ -1416,7 +1427,7 @@ RDB_unwrap_relation_type(const RDB_type *typ, int attrc, char *attrv[],
 }
 
 RDB_type *
-RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
+RDB_group_type(const RDB_type *typ, int attrc, char *attrv[], const char *gattr,
         RDB_exec_context *ecp)
 {
     int i, j;
@@ -1696,6 +1707,8 @@ RDB_del_type(RDB_type *typ, RDB_exec_context *ecp)
     int ret = RDB_OK;
 
     if (RDB_type_is_scalar(typ)) {
+        if (typ->locked)
+            return RDB_OK;
         RDB_free(typ->name);
         if (typ->def.scalar.repc > 0) {
             int i, j;
