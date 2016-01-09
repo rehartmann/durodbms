@@ -15,7 +15,7 @@
  */
 
 /**
- * Return the idx-th parameter of *<var>op</var>
+ * Returns the idx-th parameter of *<var>op</var>
  */
 RDB_parameter *
 RDB_get_parameter(const RDB_operator *op, int idx)
@@ -203,4 +203,11 @@ RDB_free_op_data(RDB_operator *op, RDB_exec_context *ecp)
     ret = RDB_destroy_obj(&op->cretime, ecp);
     RDB_free(op);
     return ret;
+}
+
+RDB_bool
+RDB_operator_is_implemented(const RDB_operator *op)
+{
+    return (RDB_bool) (op->rtyp == NULL ? op->opfn.upd_fp != NULL
+            : op->opfn.ro_fp != NULL);
 }

@@ -110,4 +110,7 @@ RDB_new_op_data(const char *, int, RDB_type *[], RDB_type *,
 int
 RDB_free_op_data(RDB_operator *, RDB_exec_context *);
 
+RDB_bool
+RDB_operator_is_implemented(const RDB_operator *);
+
 #endif /* OPERATOR_H_ */

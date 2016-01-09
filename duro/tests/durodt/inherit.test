@@ -111,6 +111,12 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
 
         io.put(s = circle(3)); io.put_line('');
 
+        operator width2(s shape) returns integer;
+            return width(s) * 2;
+        end operator;
+
+        io.put(width2(s)); io.put_line('');
+
         commit;
 
         -- Test update operator with read-only argument
@@ -120,8 +126,15 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
             io.put_line('radius: ' || cast_as_string(c.radius));
         end operator;
 
+        operator print_shape(s shape) updates {};
+            io.put('shape: ');
+            print(s);
+        end operator;
+
         print(s);
-        
+
+        print_shape(s);
+
         commit;
 
         var pshapes private relation { shno int, sh shape };
@@ -151,7 +164,9 @@ FALSE
 FALSE
 TRUE
 TRUE
+12
 radius: 3
+shape: radius: 3
 3
 4 5
 }

@@ -510,11 +510,6 @@ RDB_call_ro_op_by_name_e(const char *name, int argc, RDB_object *argv[],
         goto error;
     }
 
-    if (op->opfn.ro_fp == NULL) {
-        RDB_raise_operator_not_found("operator is not implemented", ecp);
-        return RDB_ERROR;
-    }
-
     /* Set return type to make it available to the function */
     retvalp->typ = op->rtyp;
 
@@ -539,14 +534,14 @@ error:
 }
 
 /**
- * Return the update operator with the name <var>name</var>
-and the signature given by <var>argc</var> and <var>argtv</var>.
+ * Returns a pointer to an update operator with the name <var>name</var>
+whose signature matches the parameter types given by <var>argc</var> and <var>argtv</var>.
 A value of NULL in argtv matches any type.
 
 If <var>txp</var> is NULL, <var>envp</var> is used to look up the
 operator in memory. If <var>txp</var> is not NULL, <var>envp</var> is ignored.
 
-@returns the update operator, or NULL if an error occurred,
+@returns a pointer to the update operator, or NULL if an error occurred,
 in which case *<var>ecp</var> carries the error information.
 
 @par Errors:
@@ -629,8 +624,28 @@ RDB_get_update_op(const char *name, int argc, RDB_type *argtv[],
 }
 
 /**
- * Like @ref RDB_get_update_op, but looks the operator up
- * by arguments instead of parameter types.
+ * Returns a pointer to the implemented update operator with the name <var>name</var>
+which matches the arguments given by <var>argc</var> and <var>argv</var>.
+A value of NULL in argtv matches any type.
+
+If <var>txp</var> is NULL, <var>envp</var> is used to look up the
+operator in memory. If <var>txp</var> is not NULL, <var>envp</var> is ignored.
+
+@returns a pointer to the update operator, or NULL if an error occurred,
+in which case *<var>ecp</var> carries the error information.
+
+@par Errors:
+
+<dl>
+<dt>invalid_argument_error
+<dd>Both <var>txp</var> and <var>envp</var> are NULL.
+<dt>operator_not_found_error
+<dd>An update operator that matches the name and arguments could not be
+found.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
  */
 RDB_operator *
 RDB_get_update_op_by_args(const char *name, int argc, RDB_object *argv[],
@@ -1074,7 +1089,7 @@ provide_treat_as_op(const char *name, RDB_dbroot *dbrootp, RDB_type *ttyp,
 }
 
 /*
- * Get operator by name and types.
+ * Get operator by name and parameter types.
  * If txp is NULL and envp is not NULL
  * envp will be used to look up the operator in memory.
  * If txp is not NULL, envp is ignored.
@@ -1235,7 +1250,7 @@ check_return_type(RDB_operator *op, int argc, RDB_object *argv[],
 }
 
 /*
- * Get operator by name and values.
+ * Get implemented operator by name and arguments.
  * If txp is NULL and envp is not NULL
  * envp will be used to look up the operator in memory.
  * If txp is not NULL, envp is ignored.

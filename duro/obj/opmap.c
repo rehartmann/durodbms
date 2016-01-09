@@ -161,7 +161,7 @@ obj_has_type(RDB_object *objp, RDB_type *typ)
         return RDB_obj_matches_type(objp, typ);
     if (RDB_type_is_dummy(objtyp))
         objtyp = objp->impl_typ;
-    return RDB_type_equals(objtyp, typ);
+    return RDB_is_subtype(objtyp, typ);
 }
 
 RDB_operator *
@@ -181,7 +181,8 @@ RDB_get_op_by_args(const RDB_op_map *opmap, const char *name, int argc,
      */
     opep = firstopep;
     while (opep != NULL) {
-        if (RDB_operator_param_count(opep->op) == argc) {
+        if (RDB_operator_param_count(opep->op) == argc
+                && RDB_operator_is_implemented(opep->op)) {
             int i;
 
             for (i = 0; (i < argc)

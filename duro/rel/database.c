@@ -1244,8 +1244,8 @@ in which case the transaction may be implicitly rolled back.
 
 If a call failed with a name_error, subsequent attempts to get the
 same table from the same connection will also fail.
-This is to prevent multiple attempts to read the same table from
-the catalog.
+This is to prevent costly multiple attempts to resolve variables by
+searching them as tables in the catalog.
 */
 RDB_object *
 RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
@@ -1292,8 +1292,11 @@ RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     }
 
     RDB_free_obj(tbp, ecp);
-    if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NAME_ERROR)
-        RDB_hashmap_put(&txp->dbp->tbmap, name, &null_tb);
+    if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NAME_ERROR) {
+        /* Remember failed attempt */
+        if (RDB_hashmap_put(&txp->dbp->tbmap, name, &null_tb) != RDB_OK)
+            RDB_raise_no_memory(ecp);
+    }
     return NULL;
 }
 
