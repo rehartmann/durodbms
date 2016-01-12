@@ -1670,6 +1670,7 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     RDB_type **stored_argtypv;
     RDB_type *setter_utyp = NULL;
     Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
+    RDB_bool ro_arg_type_altered = RDB_FALSE;
 
     if (interp->interrupted) {
         interp->interrupted = 0;
@@ -1754,7 +1755,7 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     }
     /*
      * If the argument type is scalar and differs from parameter type,
-     * set argument type to parameter type and restore it afterwards
+     * set argument type to parameter type
      */
     for (i = 0; i < argc; i++) {
         RDB_type *argtyp = RDB_obj_type(argv[i]);
@@ -1769,8 +1770,17 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     ret = exec_stmts(opdatap->stmtlistp, interp, ecp, NULL);
+
+    /* Restore argument types, check if types of read-only arguments changed */
     for (i = 0; i < argc; i++) {
         if (stored_argtypv[i] != NULL) {
+            /*
+            if (!RDB_get_parameter(op, i)->update
+                    && (RDB_obj_type(argv[i]) != RDB_get_parameter(op, i)->typ
+                       || !RDB_is_subtype(RDB_obj_impl_type(argv[i]), RDB_get_parameter(op, i)->typ))) {
+                ro_arg_type_altered = RDB_TRUE;
+            }
+            */
             RDB_obj_set_typeinfo(argv[i], stored_argtypv[i]);
         }
     }
@@ -1794,6 +1804,11 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     Duro_set_current_varmap(interp, ovarmapp);
     Duro_destroy_varmap(&vars.map);
+
+    if (ro_arg_type_altered) {
+        RDB_raise_type_mismatch("type of read-only argument was changed", ecp);
+        return RDB_ERROR;
+    }
 
     /* Catch LEAVE */
     if (ret == DURO_LEAVE) {

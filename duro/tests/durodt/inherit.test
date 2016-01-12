@@ -153,6 +153,61 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
         io.put(' ');
         io.put(rec.height);
         io.put_line('');
+        
+        -- Test update operators with update argument
+        begin tx;
+
+        operator expand(c circle, factor int) updates { c };
+            c.radius := c.radius * factor;
+        end operator;
+
+        expand(s, 2);
+        io.put(treat_as_circle(s).radius);
+        io.put_line('');
+
+        operator to_rectangle(s shape) updates { s };
+            if is_circle(s) then
+                var r init treat_as_circle(s).radius;
+                s := rectangle(r / 2, r / 2);
+            end if;
+        end operator;
+        
+        to_rectangle(s);
+        io.put(is_circle(s));
+        io.put_line('');
+        io.put(is_rectangle(s));
+        io.put_line('');
+        io.put(treat_as_rectangle(s).width);
+        io.put_line('');
+        io.put(treat_as_rectangle(s).height);
+        io.put_line('');
+        
+        -- Changing the DT must fail
+        var c circle;
+        try
+            to_rectangle(c);
+            io.put_line('changing DT from circle to rectangle succeeded');
+        catch e type_mismatch_error;
+            ;
+        end try;
+
+        /*
+        try
+            operator to_rectangle_hack(s shape) updates { };
+                if is_circle(s) then
+                    var r init treat_as_circle(s).radius;
+                    s := rectangle(r / 2, r / 2);
+                end if;
+            end operator;
+
+            to_rectangle_hack(c);
+            io.put_line('changing DT from circle to rectangle via non-update parameter succeeded');
+        catch e type_mismatch_error;
+            ;
+        end try;
+        */
+
+        commit;
     }
 } -result {TRUE
 TRUE
@@ -169,6 +224,11 @@ radius: 3
 shape: radius: 3
 3
 4 5
+6
+FALSE
+TRUE
+3
+3
 }
 
 test returntype {Return type conflict} -setup $SETUP -cleanup $CLEANUP -body {
@@ -353,7 +413,7 @@ test multiple {Multiple inheritance} -setup $SETUP -cleanup $CLEANUP -body {
         catch err type_mismatch_error;
             ;
         end try;
-        
+
         commit;
     }
 } -result {TRUE

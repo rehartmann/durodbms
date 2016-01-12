@@ -187,7 +187,13 @@ RDB_get_op_by_args(const RDB_op_map *opmap, const char *name, int argc,
 
             for (i = 0; (i < argc)
                     && (opep->op->paramv[i].typ == NULL
-                            || obj_has_type(argv[i], opep->op->paramv[i].typ));
+                            || (obj_has_type(argv[i], opep->op->paramv[i].typ)
+                                && (opep->op->rtyp != NULL
+                                    || !opep->op->paramv[i].update
+                                    || RDB_obj_type(argv[i]) == NULL
+                                    || !RDB_type_is_scalar(opep->op->paramv[i].typ)
+                                    || RDB_is_subtype(opep->op->paramv[i].typ,
+                                            RDB_obj_type(argv[i])))));
                  i++);
             if (i == argc) {
                 /* Found */

@@ -25,6 +25,7 @@
 <li><a href="#datetime">Date and time</a>
 <li><a href="#user-ops">User-defined operators</a>
 <li><a href="#user-types">User-defined types</a>
+<li><a href="#subtyping">Subtyping</a>
 <li><a href="#exception">Exception handling</a>
 <li><a href="#packages">Packages</a>
 <li><a href="#performance">Performance</a>
@@ -48,7 +49,7 @@ for more information on <cite>TTM</cite> and Tutorial D.
 
 <pre>
 durodt
-Duro D/T library version 1.1
+Duro D/T library version 1.2
 Implicit transactions enabled.
 no db>
 </pre>
@@ -1065,6 +1066,32 @@ D> io.put(p.theta); io.put_line('');
 0.7853981634
 D> 
 </pre>
+
+<h2 id="subtyping">Subtyping</h2>
+
+<p>With version 1.2, Duro D/T supports subtyping, however,
+suptyping support is limited in that only dummy types can be supertypes.
+
+<p>The following example code creates a parent type and two subtypes:
+
+<pre>
+D> type shape union;
+Type shape defined.
+D> type circle is shape possrep { radius int } init circle(0);
+Type circle defined.
+D> type rectangle is shape possrep { width int, height int } init rectangle(0,0);
+Type rectangle defined.
+D> implement type circle;
+D> end implement;
+Type circle implemented.
+D> implement type rectangle;
+D> end implement;
+Type rectangle implemented.
+D> 
+</pre>
+
+<p>Note that the parent type must be declared as a union type and that
+it must not be implemented.
 
 <h2 id="exception">Exception handling</h2>
 

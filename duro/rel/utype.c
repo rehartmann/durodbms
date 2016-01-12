@@ -155,8 +155,7 @@ RDB_get_supertype_of_subtype(RDB_type *typ, const char *name)
  */
 
 /**
- *
-Defines a type with the name <var>name</var> and
+ * Defines a type with the name <var>name</var> and
 <var>repc</var> possible representations.
 The individual possible representations are
 described by the elements of <var>repv</var>.
@@ -168,12 +167,20 @@ as an attribute with the same name as the type.
 <var>initexp</var> specifies the initializer.
 The expression must be of the type being defined.
 
-<var>flags</var> can be 0 or RDB_TYPE_ORDERED.
-If <var>flags</var> is RDB_TYPE_ORDERED, the type being defined is an ordered type.
+<var>flags</var> must be 0 or constructed by bitwise OR-ing one or more of the
+following values:
+
+<dl>
+<dt>RDB_TYPE_ORDERED
+<dd>The type being defined is an ordered type.
 If a type is ordered and has more than one possrep,
 or if the possrep contains a component of a type that is not ordered,
 a user-defined comparison operator must be provided.
 (See RDB_implement_type()).
+<dt>RDB_TYPE_UNION
+<dd>The type being defined is a union type.
+Currently, only dummy types can (and must) be union types.
+</dl>
 
 @returns
 
@@ -741,6 +748,7 @@ RDB_type *
 RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_type *typ;
+    RDB_type **typv;
     int i;
     int ret;
 
@@ -789,21 +797,27 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     /*
      * Read supertypes and subtypes from catalog
      */
-    ret = get_supertypes(name, ecp, txp, &typ->def.scalar.supertypev);
+    ret = get_supertypes(name, ecp, txp, &typv);
     if (ret < 0) {
         RDB_hashmap_put(&txp->dbp->dbrootp->utypemap, name, NULL);
         RDB_del_type(typ, ecp);
         return NULL;
     }
+    if (typ->def.scalar.supertypec > 0)
+        RDB_free(typ->def.scalar.supertypev);
     typ->def.scalar.supertypec = ret;
+    typ->def.scalar.supertypev = typv;
 
-    ret = get_subtypes(name, ecp, txp, &typ->def.scalar.subtypev);
+    ret = get_subtypes(name, ecp, txp, &typv);
     if (ret < 0) {
         RDB_hashmap_put(&txp->dbp->dbrootp->utypemap, name, NULL);
         RDB_del_type(typ, ecp);
         return NULL;
     }
+    if (typ->def.scalar.subtypec > 0)
+        RDB_free(typ->def.scalar.subtypev);
     typ->def.scalar.subtypec = ret;
+    typ->def.scalar.subtypev = typv;
 
     if (typ->ireplen != RDB_NOT_IMPLEMENTED) {
         /* Evaluate init expression */
