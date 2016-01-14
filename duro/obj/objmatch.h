@@ -12,6 +12,6 @@ typedef struct RDB_type RDB_type;
 typedef struct RDB_object RDB_object;
 
 RDB_bool
-RDB_obj_matches_type(const RDB_object *, RDB_type *);
+RDB_obj_matches_type(const RDB_object *, const RDB_type *);
 
 #endif /* OBJMATCH_H_ */

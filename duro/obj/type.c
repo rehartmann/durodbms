@@ -701,7 +701,7 @@ RDB_type_matches(const RDB_type *typ1, const RDB_type *typ2)
         }
         return RDB_TRUE;
     }
-    return RDB_type_equals(typ1, typ2);
+    return RDB_is_subtype(typ1, typ2);
 }
 
 /*

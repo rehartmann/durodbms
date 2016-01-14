@@ -1774,13 +1774,11 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     /* Restore argument types, check if types of read-only arguments changed */
     for (i = 0; i < argc; i++) {
         if (stored_argtypv[i] != NULL) {
-            /*
             if (!RDB_get_parameter(op, i)->update
                     && (RDB_obj_type(argv[i]) != RDB_get_parameter(op, i)->typ
-                       || !RDB_is_subtype(RDB_obj_impl_type(argv[i]), RDB_get_parameter(op, i)->typ))) {
+                       || !RDB_obj_matches_type(argv[i], stored_argtypv[i]))) {
                 ro_arg_type_altered = RDB_TRUE;
             }
-            */
             RDB_obj_set_typeinfo(argv[i], stored_argtypv[i]);
         }
     }

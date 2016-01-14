@@ -35,6 +35,7 @@ along with DuroDBMS; if not, write to the Free Software Foundation, Inc.,
 #include <obj/tuple.h>
 #include <obj/array.h>
 #include <obj/operator.h>
+#include <obj/objmatch.h>
 
 #include <stdlib.h>
 

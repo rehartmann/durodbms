@@ -10,11 +10,12 @@
 #include "tuple.h"
 #include "array.h"
 #include "builtintypes.h"
+#include "objinternal.h"
 
 #include <stdlib.h>
 
 static RDB_bool
-array_matches_type(const RDB_object *arrp, RDB_type *typ)
+array_matches_type(const RDB_object *arrp, const RDB_type *typ)
 {
     RDB_exec_context ec;
     RDB_object *elemp;
@@ -40,11 +41,11 @@ array_matches_type(const RDB_object *arrp, RDB_type *typ)
  * If *objp does not carry type information it must be a tuple.
  */
 RDB_bool
-RDB_obj_matches_type(const RDB_object *objp, RDB_type *typ)
+RDB_obj_matches_type(const RDB_object *objp, const RDB_type *typ)
 {
     int i;
     RDB_object *attrobjp;
-    RDB_type *objtyp = RDB_obj_type(objp);
+    RDB_type *objtyp = RDB_obj_impl_type(objp);
     if (objtyp != NULL) {
         return RDB_type_matches(objtyp, typ);
     }

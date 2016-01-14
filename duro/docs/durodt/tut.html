@@ -1093,6 +1093,19 @@ D>
 <p>Note that the parent type must be declared as a union type and that
 it must not be implemented.
 
+<p>Duro D/T supports type testing and TREAT (see <cite>TTM</cite>, IM prescription 14).
+
+<p>Example:
+
+<pre>
+D> var s shape init circle(1);
+D> io.put(is_circle(s)); io.put_line('');
+TRUE
+D> io.put(treat_as_circle(s).radius); io.put_line('');
+1
+D> 
+</pre>
+
 <h2 id="exception">Exception handling</h2>
 
 <p>By default, if an error occurs, execution stops.

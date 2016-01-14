@@ -191,7 +191,6 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
             ;
         end try;
 
-        /*
         try
             operator to_rectangle_hack(s shape) updates { };
                 if is_circle(s) then
@@ -205,7 +204,6 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
         catch e type_mismatch_error;
             ;
         end try;
-        */
 
         commit;
     }

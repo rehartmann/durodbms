@@ -16,7 +16,6 @@
 #include "stable.h"
 #include "transform.h"
 #include <gen/strfns.h>
-#include <obj/objmatch.h>
 #include <obj/objinternal.h>
 
 #include <string.h>
@@ -1779,17 +1778,11 @@ check_assign_types(int insc, const RDB_ma_insert insv[],
                     RDB_raise_invalid_argument("source lacks type information", ecp);
                     return RDB_ERROR;
                 }
-                if(!RDB_is_subtype(copyv[i].srcp->typ, copyv[i].dstp->typ)) {
-                    RDB_raise_type_mismatch("source does not match destination",
-                            ecp);
-                    return RDB_ERROR;
-                }
-            } else {
-                if (!RDB_obj_matches_type(copyv[i].srcp, copyv[i].dstp->typ)) {
-                    RDB_raise_type_mismatch("source does not match destination",
-                            ecp);
-                    return RDB_ERROR;
-                }
+            }
+            if (!RDB_obj_matches_type(copyv[i].srcp, copyv[i].dstp->typ)) {
+                RDB_raise_type_mismatch("source does not match destination",
+                        ecp);
+                return RDB_ERROR;
             }
         }
     }
