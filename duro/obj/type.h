@@ -173,6 +173,12 @@ RDB_type_has_possreps(const RDB_type *);
 RDB_possrep *
 RDB_type_possreps(const RDB_type *, int *);
 
+RDB_possrep *
+RDB_comp_possrep(const RDB_type *, const char *);
+
+RDB_attr *
+RDB_type_property(const RDB_type *, const char *);
+
 char *
 RDB_type_name(const RDB_type *);
 

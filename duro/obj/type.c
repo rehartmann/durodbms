@@ -145,6 +145,51 @@ RDB_type_possreps(const RDB_type *typ, int *possrepcp) {
 }
 
 /**
+ * Returns a pointer to a RDB_possrep structure representing the
+ * possible representation of type <var>typ</var> containing
+ * a component named <var>name</var>.
+ * The structure is managed by the type.
+ *
+ * @returns A pointer to the RDB_possrep structure or NULL
+ * if the component does not exist.
+ */
+RDB_possrep *
+RDB_comp_possrep(const RDB_type *typ, const char *name)
+{
+    int i, j;
+
+    for (i = 0; i < typ->def.scalar.repc; i++) {
+        for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
+            if (strcmp(typ->def.scalar.repv[i].compv[j].name, name) == 0) {
+                return &typ->def.scalar.repv[i];
+            }
+        }
+    }
+    return NULL;
+}
+
+/**
+ * Return a pointer to the RDB_attr structure describing a property,
+ * or NULL if the property does not exist
+ */
+RDB_attr *
+RDB_type_property(const RDB_type *typ, const char *propname)
+{
+    int i, j;
+
+    if (typ->kind != RDB_TP_SCALAR)
+        return NULL;
+
+    for (i = 0; i < typ->def.scalar.repc; i++) {
+        for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
+            if (strcmp(typ->def.scalar.repv[i].compv[j].name, propname) == 0)
+                return &typ->def.scalar.repv[i].compv[j];
+        }
+    }
+    return NULL;
+}
+
+/**
  * If *<var>typ</var> is non-scalar, RDB_dup_nonscalar_creates a copy of it.
 
 @returns

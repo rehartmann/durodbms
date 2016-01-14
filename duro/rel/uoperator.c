@@ -18,9 +18,6 @@
 static const char IS_PREFIX[] = "is_";
 static size_t IS_PREFIX_LEN = sizeof(IS_PREFIX) - 1;
 
-static const char TREAT_AS_PREFIX[] = "treat_as_";
-static size_t TREAT_AS_PREFIX_LEN = sizeof(TREAT_AS_PREFIX) - 1;
-
 /*
  * Convert paramv to an array of binary type representations
  */
@@ -1181,12 +1178,12 @@ RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         }
         return provide_is_op(name, dbrootp, ecp);
     }
-    if (strlen(name) > TREAT_AS_PREFIX_LEN
-            && strncmp(name, TREAT_AS_PREFIX, TREAT_AS_PREFIX_LEN) == 0
+    if (strlen(name) > RDB_TREAT_PREFIX_LEN
+            && strncmp(name, RDB_TREAT_PREFIX, RDB_TREAT_PREFIX_LEN) == 0
             && RDB_type_is_scalar(argtv[0])) {
-        RDB_type *ttyp = RDB_get_supertype_of_subtype(argtv[0], name + TREAT_AS_PREFIX_LEN);
+        RDB_type *ttyp = RDB_get_supertype_of_subtype(argtv[0], name + RDB_TREAT_PREFIX_LEN);
         if (ttyp == NULL) {
-            RDB_raise_type_mismatch(name + TREAT_AS_PREFIX_LEN, ecp);
+            RDB_raise_type_mismatch(name + RDB_TREAT_PREFIX_LEN, ecp);
             return NULL;
         }
         return provide_treat_as_op(name, dbrootp, ttyp, ecp);
@@ -1352,12 +1349,12 @@ RDB_get_ro_op_by_args(const char *name, int argc, RDB_object *argv[],
             }
             return provide_is_op(name, dbrootp, ecp);
         }
-        if (strlen(name) > TREAT_AS_PREFIX_LEN
-                && strncmp(name, TREAT_AS_PREFIX, TREAT_AS_PREFIX_LEN) == 0
+        if (strlen(name) > RDB_TREAT_PREFIX_LEN
+                && strncmp(name, RDB_TREAT_PREFIX, RDB_TREAT_PREFIX_LEN) == 0
                 && RDB_type_is_scalar(RDB_obj_type(argv[0]))) {
-            RDB_type *ttyp = RDB_get_supertype_of_subtype(RDB_obj_type(argv[0]), name + TREAT_AS_PREFIX_LEN);
+            RDB_type *ttyp = RDB_get_supertype_of_subtype(RDB_obj_type(argv[0]), name + RDB_TREAT_PREFIX_LEN);
             if (ttyp == NULL) {
-                RDB_raise_type_mismatch(name + TREAT_AS_PREFIX_LEN, ecp);
+                RDB_raise_type_mismatch(name + RDB_TREAT_PREFIX_LEN, ecp);
                 return NULL;
             }
             return provide_treat_as_op(name, dbrootp, ttyp, ecp);

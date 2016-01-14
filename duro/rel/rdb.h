@@ -41,6 +41,9 @@ along with DuroDBMS; if not, write to the Free Software Foundation, Inc.,
 
 #define RDB_THE_PREFIX "the_"
 
+#define RDB_TREAT_PREFIX "treat_as_"
+#define RDB_TREAT_PREFIX_LEN (sizeof(RDB_TREAT_PREFIX) - 1)
+
 typedef struct RDB_expression RDB_expression;
 
 /**@addtogroup array
@@ -411,9 +414,6 @@ RDB_type_attr_type(const RDB_type *, const char *);
 
 RDB_bool
 RDB_is_selector(const RDB_operator *);
-
-RDB_possrep *
-RDB_comp_possrep(const RDB_type *, const char *);
 
 RDB_database *
 RDB_tx_db(RDB_transaction *);

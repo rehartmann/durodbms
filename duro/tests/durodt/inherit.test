@@ -82,6 +82,25 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
             ;
         end try;
 
+        try
+            s.radius := 2;
+            io.put_line('assigning property of variable with dummy type as DT succeeded');
+        catch invalid_argument_error;
+            ;
+        end try;
+
+        try
+            treat_as_x(s).y := 1;
+            io.put_line('Assigning TREAT with non-existing type succeeded');
+        catch e type_mismatch_error;
+            ;
+        end try;
+
+        treat_as_circle(s).radius := 3;
+
+        io.put(treat_as_circle(s).radius);
+        io.put_line('');
+
         -- Test read-only operator
 
         operator width(s shape) returns integer;
@@ -211,7 +230,8 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
 TRUE
 FALSE
 1
-2
+3
+6
 4
 6
 FALSE

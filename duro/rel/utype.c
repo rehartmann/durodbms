@@ -616,30 +616,6 @@ RDB_is_selector(const RDB_operator *op)
     return (RDB_bool) (RDB_get_possrep(op->rtyp, RDB_operator_name(op)) != NULL);
 }
 
-/**
- * Returns a pointer to a RDB_possrep structure representing the
- * possible representation of type <var>typ</var> containing
- * a component named <var>name</var>.
- * The structure is managed by the type.
- *
- * @returns A pointer to the RDB_possrep structure or NULL
- * if the component does not exist.
- */
-RDB_possrep *
-RDB_comp_possrep(const RDB_type *typ, const char *name)
-{
-    int i, j;
-
-    for (i = 0; i < typ->def.scalar.repc; i++) {
-        for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
-            if (strcmp(typ->def.scalar.repv[i].compv[j].name, name) == 0) {
-                return &typ->def.scalar.repv[i];
-            }
-        }
-    }
-    return NULL;
-}
-
 static int
 get_supertypes(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
         RDB_type ***suptypevp)

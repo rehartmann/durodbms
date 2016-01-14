@@ -708,12 +708,10 @@ RDB_obj_property(const RDB_object *objp, const char *propname, RDB_object *propv
         RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    RDB_type *objtyp = objp->typ;
-    if (RDB_type_is_dummy(objtyp))
-        objtyp = objp->impl_typ;
+    RDB_type *objtyp = RDB_obj_impl_type(objp);
 
     if (!RDB_type_is_scalar(objtyp) || objtyp->def.scalar.repc == 0) {
-        RDB_raise_invalid_argument("property not found", ecp);
+        RDB_raise_invalid_argument("no properties found", ecp);
         return RDB_ERROR;
     }
 
@@ -724,7 +722,7 @@ RDB_obj_property(const RDB_object *objp, const char *propname, RDB_object *propv
             /* Actual rep is type of the only component - check component name */
             if (strcmp(propname, objtyp->def.scalar.repv[0].compv[0].name)
                     != 0) {
-                RDB_raise_invalid_argument("component not found", ecp);
+                RDB_raise_invalid_argument("property not found", ecp);
                 return RDB_ERROR;
             }
             comptyp = objtyp->def.scalar.repv[0].compv[0].typ;
@@ -733,7 +731,7 @@ RDB_obj_property(const RDB_object *objp, const char *propname, RDB_object *propv
             if (propvalp->kind != RDB_OB_INITIAL
                     && (propvalp->typ == NULL
                             || !RDB_type_equals(propvalp->typ, comptyp))) {
-                RDB_raise_type_mismatch("invalid component type", ecp);
+                RDB_raise_type_mismatch("invalid property type", ecp);
                 return RDB_ERROR;
             }
             if (RDB_copy_obj_data(propvalp, objp, ecp, NULL) != RDB_OK)
@@ -754,7 +752,7 @@ RDB_obj_property(const RDB_object *objp, const char *propname, RDB_object *propv
             /* Actual rep is tuple */
             RDB_object *elemp = RDB_tuple_get(objp, propname);
             if (elemp == NULL) {
-                RDB_raise_invalid_argument("component not found", ecp);
+                RDB_raise_invalid_argument("property not found", ecp);
                 return RDB_ERROR;
             }
             ret = RDB_copy_obj(propvalp, elemp, ecp);
@@ -808,8 +806,9 @@ RDB_obj_set_property(RDB_object *objp, const char *propname,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
+    RDB_type *objtyp = RDB_obj_impl_type(objp);
 
-    if (objp->typ->def.scalar.sysimpl) {
+    if (objtyp->def.scalar.sysimpl) {
         /* Setter is implemented by the system */
         RDB_attr *compp;
 
@@ -818,7 +817,7 @@ RDB_obj_set_property(RDB_object *objp, const char *propname,
             return RDB_ERROR;
         }
 
-        compp = RDB_prop_attr(objp->typ, propname);
+        compp = RDB_prop_attr(objtyp, propname);
         if (compp == NULL) {
             RDB_raise_invalid_argument("invalid property", ecp);
             return RDB_ERROR;
@@ -829,7 +828,7 @@ RDB_obj_set_property(RDB_object *objp, const char *propname,
             return RDB_ERROR;
         }
 
-        if (objp->typ->def.scalar.repv[0].compc == 1) {
+        if (objtyp->def.scalar.repv[0].compc == 1) {
             ret = RDB_copy_obj_data(objp, propvalp, ecp, NULL);
         } else {
             ret = RDB_tuple_set(objp, propname, propvalp, ecp);
@@ -841,13 +840,13 @@ RDB_obj_set_property(RDB_object *objp, const char *propname,
         RDB_type *argtv[2];
         RDB_operator *op;
 
-        opname = RDB_alloc(strlen(objp->typ->name) + strlen(propname)
+        opname = RDB_alloc(strlen(objtyp->name) + strlen(propname)
                 + strlen(RDB_SETTER_INFIX) + 1, ecp);
         if (opname == NULL) {
             return RDB_ERROR;
         }
 
-        strcpy(opname, objp->typ->name);
+        strcpy(opname, objtyp->name);
         strcat(opname, RDB_SETTER_INFIX);
         strcat(opname, propname);
         argv[0] = objp;
@@ -869,11 +868,11 @@ RDB_obj_set_property(RDB_object *objp, const char *propname,
     ret = RDB_check_type_constraint(objp, envp, ecp, txp);
     if (ret != RDB_OK) {
         /* Replace illegal value by init value */
-        if (!objp->typ->def.scalar.init_val_is_valid) {
+        if (!objtyp->def.scalar.init_val_is_valid) {
             RDB_raise_internal("missing init value", ecp);
             return RDB_ERROR;
         }
-        RDB_copy_obj_data(objp, &objp->typ->def.scalar.init_val, ecp, NULL);
+        RDB_copy_obj_data(objp, &objtyp->def.scalar.init_val, ecp, NULL);
     }
     return ret;
 }

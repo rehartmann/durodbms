@@ -162,6 +162,25 @@ resolve_target(RDB_expression *exp, Duro_interp *interp, RDB_exec_context *ecp)
             RDB_destroy_obj(&idobj, ecp);
             return resp;
         }
+        if (strlen(opname) > RDB_TREAT_PREFIX_LEN
+                && strncmp(opname, RDB_TREAT_PREFIX, RDB_TREAT_PREFIX_LEN) == 0
+                && RDB_expr_list_length(arglistp) == 1) {
+            RDB_object *argobjp;
+            RDB_type *typ = RDB_get_type(opname + RDB_TREAT_PREFIX_LEN, ecp,
+                    interp->txnp != NULL ? &interp->txnp->tx : NULL);
+            if (typ == NULL)
+                return NULL;
+            argobjp = resolve_target(RDB_expr_list_get(arglistp, 0), interp, ecp);
+            if (argobjp == NULL)
+                return NULL;
+
+            if (!RDB_obj_matches_type(argobjp, typ)) {
+                RDB_raise_type_mismatch(opname, ecp);
+                return NULL;
+            }
+            return argobjp;
+        }
+
         RDB_raise_syntax("invalid assignment target", ecp);
         return NULL;
     }
@@ -684,6 +703,7 @@ exec_length_assign(const RDB_parse_node *nodep, RDB_expression *argexp,
         int ret;
         RDB_object arrobj;
         RDB_object *dstobjp;
+        RDB_expression *dstexp;
 
         RDB_init_obj(&arrobj);
         if (RDB_evaluate(argexp, &Duro_get_var, interp, interp->envp, ecp,
@@ -696,8 +716,8 @@ exec_length_assign(const RDB_parse_node *nodep, RDB_expression *argexp,
             RDB_destroy_obj(&arrobj, ecp);
             return RDB_ERROR;
         }
-        dstobjp = resolve_target(RDB_expr_list_get(RDB_expr_op_args(argexp), 0),
-                interp, ecp);
+        dstexp = RDB_expr_list_get(RDB_expr_op_args(argexp), 0);
+        dstobjp = resolve_target(dstexp, interp, ecp);
         if (dstobjp == NULL) {
             RDB_destroy_obj(&arrobj, ecp);
             return RDB_ERROR;
@@ -717,14 +737,20 @@ exec_length_assign(const RDB_parse_node *nodep, RDB_expression *argexp,
  * Execute property assignment using the dot operator
  */
 static int
-exec_dot_assign_set(RDB_object *dstp, const RDB_parse_node *nodep, const RDB_expression *opexp,
+exec_dot_assign_set(RDB_object *dstp, const RDB_type *dsttyp,
+        const RDB_parse_node *nodep, const RDB_expression *opexp,
         Duro_interp *interp, RDB_exec_context *ecp)
 {
     int ret;
     RDB_expression *srcexp;
     RDB_object srcobj;
     RDB_expr_list *arglist = RDB_expr_op_args((RDB_expression *) opexp);
+    const char *propname = RDB_expr_var_name(RDB_expr_list_get(arglist, 1));
 
+    if (RDB_type_property(dsttyp, propname) == NULL) {
+        RDB_raise_invalid_argument("property not found", ecp);
+        return RDB_ERROR;
+    }
     srcexp = RDB_parse_node_expr(nodep->val.children.firstp->nextp->nextp, ecp,
             interp->txnp != NULL ? &interp->txnp->tx : NULL);
     if (srcexp == NULL)
@@ -738,7 +764,7 @@ exec_dot_assign_set(RDB_object *dstp, const RDB_parse_node *nodep, const RDB_exp
         return RDB_ERROR;
     }
 
-    ret = RDB_obj_set_property(dstp, RDB_expr_var_name(RDB_expr_list_get(arglist, 1)), &srcobj,
+    ret = RDB_obj_set_property(dstp, propname, &srcobj,
             interp->envp, ecp,
             interp->txnp != NULL ? &interp->txnp->tx : NULL);
     RDB_destroy_obj(&srcobj, ecp);
@@ -988,9 +1014,10 @@ Duro_exec_assign(const RDB_parse_node *listnodep, Duro_interp *interp,
                     RDB_expression *dstexp = RDB_expr_list_get(arglist, 0);
                     RDB_object *dstp = resolve_target(dstexp, interp, ecp);
                     if (dstp != NULL) {
-                        RDB_type *dsttyp = RDB_obj_type(dstp);
+                        RDB_type *dsttyp = RDB_expr_type(dstexp, &Duro_get_var_type, interp,
+                                        interp->envp, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
                         if (dsttyp != NULL && RDB_type_is_scalar(dsttyp))
-                            return exec_dot_assign_set(dstp, nodep, opexp, interp, ecp);
+                            return exec_dot_assign_set(dstp, dsttyp, nodep, opexp, interp, ecp);
                     }
                 }
             }
