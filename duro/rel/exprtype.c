@@ -793,7 +793,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
         if (RDB_type_is_scalar(typ)) {
             RDB_attr *attrp = RDB_prop_attr(typ, attrname);
             if (attrp == NULL) {
-                RDB_raise_invalid_argument("property not found", ecp);
+                RDB_raise_name(attrname, ecp);
                 return NULL;
             }
             return RDB_dup_nonscalar_type(attrp->typ, ecp);

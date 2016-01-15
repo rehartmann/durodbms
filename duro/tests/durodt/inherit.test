@@ -85,7 +85,7 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
         try
             s.radius := 2;
             io.put_line('assigning property of variable with dummy type as DT succeeded');
-        catch invalid_argument_error;
+        catch e name_error;
             ;
         end try;
 
@@ -224,6 +224,25 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
             ;
         end try;
 
+        s := rectangle(0, 0);
+        treat_as_rectangle(s).width := 1, treat_as_rectangle(s).height := 2;
+
+        io.put(treat_as_rectangle(s).width);
+        io.put(' ');
+        io.put(treat_as_rectangle(s).height);
+        io.put_line('');       
+
+        try
+            treat_as_rectangle(s).width := 1, s.height := 2;
+            io.put_line('property assignment of variable with dummy DT succeeded');
+        catch e name_error;
+            ;
+        end try;
+        io.put(treat_as_rectangle(s).width);
+        io.put(' ');
+        io.put(treat_as_rectangle(s).height);
+        io.put_line('');       
+
         commit;
     }
 } -result {TRUE
@@ -247,6 +266,8 @@ FALSE
 TRUE
 3
 3
+1 2
+1 2
 }
 
 test returntype {Return type conflict} -setup $SETUP -cleanup $CLEANUP -body {

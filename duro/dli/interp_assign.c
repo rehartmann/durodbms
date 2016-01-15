@@ -222,7 +222,7 @@ comp_node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
 
     possrep = RDB_comp_possrep(typ, propname);
     if (possrep == NULL) {
-        RDB_raise_name(RDB_expr_op_name(dstexp), ecp);
+        RDB_raise_name(propname, ecp);
         return RDB_ERROR;
     }
 
@@ -748,7 +748,7 @@ exec_dot_assign_set(RDB_object *dstp, const RDB_type *dsttyp,
     const char *propname = RDB_expr_var_name(RDB_expr_list_get(arglist, 1));
 
     if (RDB_type_property(dsttyp, propname) == NULL) {
-        RDB_raise_invalid_argument("property not found", ecp);
+        RDB_raise_name(propname, ecp);
         return RDB_ERROR;
     }
     srcexp = RDB_parse_node_expr(nodep->val.children.firstp->nextp->nextp, ecp,

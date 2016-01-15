@@ -692,8 +692,9 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 
 <dl>
 <dt>invalid_argument_error
-<dd>The type of *<var>valp</var> is not scalar, or it does not
-have a property <var>propname</var>.
+<dd>The type of *<var>valp</var> does not have any properties.
+<dt>name_error
+<dd>The property <var>propname</var> could not be found.
 <dt>operator_not_found_error
 <dd>The getter method for property <var>propname</var> has not been created.
 </dl>
@@ -722,7 +723,7 @@ RDB_obj_property(const RDB_object *objp, const char *propname, RDB_object *propv
             /* Actual rep is type of the only component - check component name */
             if (strcmp(propname, objtyp->def.scalar.repv[0].compv[0].name)
                     != 0) {
-                RDB_raise_invalid_argument("property not found", ecp);
+                RDB_raise_name(propname, ecp);
                 return RDB_ERROR;
             }
             comptyp = objtyp->def.scalar.repv[0].compv[0].typ;
@@ -752,7 +753,7 @@ RDB_obj_property(const RDB_object *objp, const char *propname, RDB_object *propv
             /* Actual rep is tuple */
             RDB_object *elemp = RDB_tuple_get(objp, propname);
             if (elemp == NULL) {
-                RDB_raise_invalid_argument("property not found", ecp);
+                RDB_raise_name(propname, ecp);
                 return RDB_ERROR;
             }
             ret = RDB_copy_obj(propvalp, elemp, ecp);
@@ -819,7 +820,7 @@ RDB_obj_set_property(RDB_object *objp, const char *propname,
 
         compp = RDB_prop_attr(objtyp, propname);
         if (compp == NULL) {
-            RDB_raise_invalid_argument("invalid property", ecp);
+            RDB_raise_name(propname, ecp);
             return RDB_ERROR;
         }
 
