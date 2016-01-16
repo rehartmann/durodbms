@@ -37,9 +37,6 @@ int
 Duro_add_varmap(Duro_interp *, RDB_exec_context *);
 
 void
-Duro_destroy_varmap(RDB_hashmap *);
-
-void
 Duro_remove_varmap(Duro_interp *);
 
 void

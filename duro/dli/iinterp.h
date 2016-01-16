@@ -4,6 +4,7 @@
 #include <rel/rdb.h>
 #include <obj/opmap.h>
 #include "parse.h"
+#include "varmap.h"
 
 #include <signal.h>
 #include <stdio.h>
@@ -22,7 +23,7 @@ typedef struct {
 } Duro_uop_info;
 
 typedef struct Duro_varmap_node {
-    RDB_hashmap map;
+    Duro_varmap map;
     struct Duro_varmap_node *parentp;
 } varmap_node;
 
@@ -53,7 +54,7 @@ typedef struct Duro_interp {
     RDB_op_map sys_upd_op_map;
 
     /* Top-level variables */
-    RDB_hashmap root_varmap;
+    Duro_varmap root_varmap;
 
     /* Name of current package */
     RDB_object pkg_name;

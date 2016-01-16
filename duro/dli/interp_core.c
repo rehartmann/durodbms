@@ -19,7 +19,7 @@ Duro_add_varmap(Duro_interp *interp, RDB_exec_context *ecp)
     if (nodep == NULL) {
         return RDB_ERROR;
     }
-    RDB_init_hashmap(&nodep->map, DEFAULT_VARMAP_SIZE);
+    Duro_init_varmap(&nodep->map, DEFAULT_VARMAP_SIZE);
     nodep->parentp = interp->current_varmapp;
     interp->current_varmapp = nodep;
     return RDB_OK;
@@ -44,27 +44,6 @@ drop_local_var(RDB_object *objp, RDB_exec_context *ecp)
 }
 
 void
-Duro_destroy_varmap(RDB_hashmap *map)
-{
-    RDB_hashmap_iter it;
-    void *datap;
-    RDB_exec_context ec;
-
-    RDB_init_exec_context(&ec);
-    RDB_init_hashmap_iter(&it, map);
-    for(;;) {
-        if (RDB_hashmap_next(&it, &datap) == NULL)
-            break;
-        if (datap != NULL) {
-            drop_local_var(datap, &ec);
-        }
-    }
-
-    RDB_destroy_hashmap(map);
-    RDB_destroy_exec_context(&ec);
-}
-
-void
 Duro_remove_varmap(Duro_interp *interp)
 {
     varmap_node *parentp = interp->current_varmapp->parentp;
@@ -76,7 +55,7 @@ Duro_remove_varmap(Duro_interp *interp)
 void
 Duro_init_vars(Duro_interp *interp)
 {
-    RDB_init_hashmap(&interp->root_varmap, DEFAULT_VARMAP_SIZE);
+    Duro_init_varmap(&interp->root_varmap, DEFAULT_VARMAP_SIZE);
     interp->current_varmapp = NULL;
 }
 
@@ -100,19 +79,22 @@ Duro_set_current_varmap(Duro_interp *interp, varmap_node *newvarmapp)
 static RDB_object *
 lookup_transient_var(Duro_interp *interp, const char *name, varmap_node *varmapp)
 {
-    RDB_object *objp;
+    Duro_var_entry *varentryp;
     varmap_node *nodep = varmapp;
 
     /* Search in local vars */
     while (nodep != NULL) {
-        objp = RDB_hashmap_get(&nodep->map, name);
-        if (objp != NULL)
-            return objp;
+        varentryp = Duro_varmap_get(&nodep->map, name);
+        if (varentryp != NULL && varentryp->varp != NULL)
+            return varentryp->varp;
         nodep = nodep->parentp;
     }
 
     /* Search in global transient vars */
-    return RDB_hashmap_get(&interp->root_varmap, name);
+    varentryp = Duro_varmap_get(&interp->root_varmap, name);
+    if (varentryp == NULL)
+        return NULL;
+    return varentryp->varp;
 }
 
 RDB_object *
@@ -180,7 +162,7 @@ Duro_exec_vardrop(const RDB_parse_node *nodep, Duro_interp *interp,
 {
     RDB_object nameobj;
     const char *varname;
-    RDB_object *objp = NULL;
+    Duro_var_entry *varentryp = NULL;
 
     if (interp->current_foreachp != NULL) {
         RDB_raise_not_supported("Dropping variables not supported in FOR .. IN loops", ecp);
@@ -200,24 +182,28 @@ Duro_exec_vardrop(const RDB_parse_node *nodep, Duro_interp *interp,
 
     /* Try to look up local variable */
     if (interp->current_varmapp != NULL) {
-        objp = RDB_hashmap_get(&interp->current_varmapp->map, varname);
-        if (objp != NULL) {
+        varentryp = Duro_varmap_get(&interp->current_varmapp->map, varname);
+        if (varentryp != NULL && varentryp->varp != NULL) {
+            RDB_object *varp = varentryp->varp;
             /* Delete key by putting NULL value */
-            if (RDB_hashmap_put(&interp->current_varmapp->map, varname, NULL) != RDB_OK)
+            if (Duro_varmap_put(&interp->current_varmapp->map, varname, NULL,
+                    RDB_TRUE, ecp) != RDB_OK) {
                 goto error;
+            }
+            /* Destroy transient variable */
+            return drop_local_var(varp, ecp);
         }
     }
-    if (objp == NULL) {
-        objp = RDB_hashmap_get(&interp->root_varmap, varname);
-        if (objp != NULL) {
-            if (RDB_hashmap_put(&interp->root_varmap, varname, NULL) != RDB_OK)
+    if (varentryp == NULL || varentryp->varp == NULL) {
+        varentryp = Duro_varmap_get(&interp->root_varmap, varname);
+        if (varentryp != NULL && varentryp->varp != NULL) {
+            RDB_object *varp = varentryp->varp;
+            if (Duro_varmap_put(&interp->root_varmap, varname, NULL, RDB_TRUE,
+                    ecp) != RDB_OK) {
                 goto error;
+            }
+            return drop_local_var(varp, ecp);
         }
-    }
-
-    if (objp != NULL) {
-        /* Destroy transient variable */
-        return drop_local_var(objp, ecp);
     }
 
     /*
@@ -282,9 +268,8 @@ int
 Duro_put_var(const char *name, RDB_object *objp, Duro_interp *interp,
         RDB_exec_context *ecp)
 {
-    if (RDB_hashmap_put(&interp->current_varmapp->map, name, objp)
-            != RDB_OK) {
-        RDB_raise_no_memory(ecp);
+    if (Duro_varmap_put(&interp->current_varmapp->map, name, objp, RDB_FALSE,
+            ecp) != RDB_OK) {
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -292,22 +277,21 @@ Duro_put_var(const char *name, RDB_object *objp, Duro_interp *interp,
 
 /* Find a variable which depends on a type */
 static const char *
-var_of_type(RDB_hashmap *mapp, RDB_type *typ)
+var_of_type(Duro_varmap *mapp, RDB_type *typ)
 {
-    RDB_hashmap_iter it;
-    const char *namp;
-    void *datap;
+    RDB_hashtable_iter it;
+    Duro_var_entry *entryp;
 
-    RDB_init_hashmap_iter(&it, mapp);
+    RDB_init_hashtable_iter(&it, &mapp->hashtab);
     for(;;) {
-        namp = RDB_hashmap_next(&it, &datap);
-        if (namp == NULL)
+        entryp = RDB_hashtable_next(&it);
+        if (entryp == NULL)
             break;
-        if (datap != NULL) {
-            RDB_type *vtyp = RDB_obj_type((RDB_object *) datap);
+        if (entryp->varp != NULL) {
+            RDB_type *vtyp = RDB_obj_type((RDB_object *) entryp->varp);
 
             if (vtyp != NULL && RDB_type_depends_type(vtyp, typ))
-                return namp;
+                return entryp->name;
         }
     }
     return NULL;
@@ -337,12 +321,12 @@ RDB_database *
 Duro_get_db(Duro_interp *interp, RDB_exec_context *ecp)
 {
     char *dbname;
-    RDB_object *dbnameobjp = RDB_hashmap_get(&interp->root_varmap, "current_db");
-    if (dbnameobjp == NULL) {
+    Duro_var_entry *varentryp = Duro_varmap_get(&interp->root_varmap, "current_db");
+    if (varentryp == NULL || varentryp->varp == NULL) {
         RDB_raise_resource_not_found("no database", ecp);
         return NULL;
     }
-    dbname = RDB_obj_string(dbnameobjp);
+    dbname = RDB_obj_string(varentryp->varp);
     if (*dbname == '\0') {
         RDB_raise_not_found("no database", ecp);
         return NULL;

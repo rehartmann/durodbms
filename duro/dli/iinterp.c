@@ -86,7 +86,7 @@ exit_op(int argc, RDB_object *argv[], RDB_operator *op,
     Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
     Duro_destroy_interp(interp);
     exit(0);
-}   
+}
 
 /*
  * Operator exit() with argument
@@ -194,8 +194,8 @@ static int
 disconnect_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_object *dbnameobjp;
     int ret;
+    Duro_var_entry *entryp;
     Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
 
     if (interp->envp == NULL) {
@@ -230,11 +230,11 @@ disconnect_op(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     /* If CURRENT_DB was set, set it to empty string */
-    dbnameobjp = RDB_hashmap_get(&interp->root_varmap, "current_db");
-    if (dbnameobjp == NULL || *RDB_obj_string(dbnameobjp) == '\0') {
+    entryp = Duro_varmap_get(&interp->root_varmap, "current_db");
+    if (entryp == NULL || entryp->varp == NULL || *RDB_obj_string(entryp->varp) == '\0') {
         return RDB_OK;
     }
-    return RDB_string_to_obj(dbnameobjp, "", ecp);
+    return RDB_string_to_obj(entryp->varp, "", ecp);
 }
 
 static int
@@ -311,16 +311,17 @@ add_io(Duro_interp *interp, RDB_exec_context *ecp) {
         return RDB_ERROR;
     }
 
-    if (RDB_hashmap_put(&interp->root_varmap, "io.stdin", Duro_stdin_objp) != RDB_OK) {
+    if (Duro_varmap_put(&interp->root_varmap, "io.stdin", Duro_stdin_objp,
+            RDB_TRUE, ecp) != RDB_OK) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    if (RDB_hashmap_put(&interp->root_varmap, "io.stdout", Duro_stdout_objp) != RDB_OK) {
-        RDB_raise_no_memory(ecp);
+    if (Duro_varmap_put(&interp->root_varmap, "io.stdout", Duro_stdout_objp,
+            RDB_TRUE, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (RDB_hashmap_put(&interp->root_varmap, "io.stderr", Duro_stderr_objp) != RDB_OK) {
-        RDB_raise_no_memory(ecp);
+    if (Duro_varmap_put(&interp->root_varmap, "io.stderr", Duro_stderr_objp,
+            RDB_TRUE, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -1531,14 +1532,13 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_set_op_cleanup_fn(op, &free_opdata);
     }
 
-    RDB_init_hashmap(&vars.map, 256);
+    Duro_init_varmap(&vars.map, 256);
     vars.parentp = NULL;
     ovarmapp = Duro_set_current_varmap(interp, &vars);
 
     for (i = 0; i < argc; i++) {
-        if (RDB_hashmap_put(&vars.map, opdatap->argnamev[i], argv[i])
-                != RDB_OK) {
-            RDB_raise_no_memory(ecp);
+        if (Duro_varmap_put(&vars.map, opdatap->argnamev[i], argv[i], RDB_FALSE,
+                ecp) != RDB_OK) {
             return RDB_ERROR;
         }
     }
@@ -1621,7 +1621,8 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
      * Keep arguments from being destroyed
      */
     for (i = 0; i < argc; i++) {
-        if (RDB_hashmap_put(&vars.map, opdatap->argnamev[i], NULL) != RDB_OK) {
+        if (Duro_varmap_put(&vars.map, opdatap->argnamev[i], NULL, RDB_TRUE,
+                ecp) != RDB_OK) {
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
@@ -1719,14 +1720,13 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_set_op_cleanup_fn(op, &free_opdata);
     }
 
-    RDB_init_hashmap(&vars.map, 256);
+    Duro_init_varmap(&vars.map, 256);
     vars.parentp = NULL;
     ovarmapp = Duro_set_current_varmap(interp, &vars);
 
     for (i = 0; i < argc; i++) {
-        if (RDB_hashmap_put(&vars.map, opdatap->argnamev[i],
-                argv[i]) != RDB_OK) {
-            RDB_raise_no_memory(ecp);
+        if (Duro_varmap_put(&vars.map, opdatap->argnamev[i],
+                argv[i], RDB_FALSE, ecp) != RDB_OK) {
             return RDB_ERROR;
         }
     }
@@ -1793,8 +1793,8 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
      * Keep arguments from being destroyed
      */
     for (i = 0; i < argc; i++) {
-        if (RDB_hashmap_put(&vars.map, opdatap->argnamev[i], NULL)
-                != RDB_OK) {
+        if (Duro_varmap_put(&vars.map, opdatap->argnamev[i], NULL, RDB_TRUE,
+                ecp) != RDB_OK) {
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
@@ -3092,12 +3092,13 @@ Duro_process_stmt(Duro_interp *interp, RDB_exec_context *ecp)
 {
     int ret;
     RDB_parse_node *stmtp;
-    RDB_object *dbnameobjp = RDB_hashmap_get(&interp->root_varmap, "current_db");
+    Duro_var_entry *dbnameentryp = Duro_varmap_get(&interp->root_varmap, "current_db");
 
     if (RDB_parse_get_interactive()) {
         /* Build interp->prompt */
-        if (dbnameobjp != NULL && *RDB_obj_string(dbnameobjp) != '\0') {
-            ret = RDB_string_to_obj(&interp->prompt, RDB_obj_string(dbnameobjp), ecp);
+        if (dbnameentryp != NULL && dbnameentryp->varp != NULL
+                && *RDB_obj_string(dbnameentryp->varp) != '\0') {
+            ret = RDB_string_to_obj(&interp->prompt, RDB_obj_string(dbnameentryp->varp), ecp);
         } else {
             ret = RDB_string_to_obj(&interp->prompt, "no db", ecp);
         }
@@ -3238,15 +3239,13 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
 
     RDB_bool_to_obj(interp->implicit_tx_objp, RDB_FALSE);
 
-    if (RDB_hashmap_put(&interp->root_varmap, "current_db",
-            interp->current_db_objp) != RDB_OK) {
-        RDB_raise_no_memory(ecp);
+    if (Duro_varmap_put(&interp->root_varmap, "current_db",
+            interp->current_db_objp, RDB_FALSE, ecp) != RDB_OK) {
         goto error;
     }
 
-    if (RDB_hashmap_put(&interp->root_varmap, "implicit_tx", interp->implicit_tx_objp)
-            != RDB_OK) {
-        RDB_raise_no_memory(ecp);
+    if (Duro_varmap_put(&interp->root_varmap, "implicit_tx",
+            interp->implicit_tx_objp, RDB_FALSE, ecp) != RDB_OK) {
         goto error;
     }
 

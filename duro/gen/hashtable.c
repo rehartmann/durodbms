@@ -1,4 +1,6 @@
 /*
+ * Hashtable functions
+ *
  * Copyright (C) 2005 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
@@ -70,7 +72,7 @@ RDB_hashtable_put(RDB_hashtable *hp, void *entryp, void *arg)
         int oldcapacity = hp->capacity;
         int i;
     
-        /* Build new empty table with twice the size */
+        /* Build new empty table, doubling the size */
         hp->capacity *= 2;
         hp->entries = malloc(sizeof(void *) * hp->capacity);
         if (hp->entries == NULL)

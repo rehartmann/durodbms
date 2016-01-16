@@ -13,6 +13,7 @@
 int
 Duro_exec_vardef(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
 {
+    Duro_var_entry *entryp;
     RDB_object *objp;
     RDB_type *typ = NULL;
     RDB_expression *initexp = NULL;
@@ -49,8 +50,9 @@ Duro_exec_vardef(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *e
     /*
      * Check if the variable already exists
      */
-    if (RDB_hashmap_get(interp->current_varmapp != NULL ?
-            &interp->current_varmapp->map : &interp->root_varmap, varname) != NULL) {
+    entryp = Duro_varmap_get(interp->current_varmapp != NULL ?
+            &interp->current_varmapp->map : &interp->root_varmap, varname);
+    if (entryp != NULL && entryp->varp != NULL) {
         RDB_raise_element_exists(varname, ecp);
         return RDB_ERROR;
     }
@@ -107,13 +109,15 @@ Duro_exec_vardef(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *e
 
     if (interp->current_varmapp != NULL) {
         /* We're in local scope */
-        if (RDB_hashmap_put(&interp->current_varmapp->map, varname, objp) != RDB_OK) {
+        if (Duro_varmap_put(&interp->current_varmapp->map, varname, objp,
+                RDB_FALSE, ecp) != RDB_OK) {
             RDB_raise_no_memory(ecp);
             goto error;
         }
     } else {
         /* Global scope */
-        if (RDB_hashmap_put(&interp->root_varmap, varname, objp) != RDB_OK) {
+        if (Duro_varmap_put(&interp->root_varmap, varname, objp, RDB_FALSE, ecp)
+                != RDB_OK) {
             RDB_raise_no_memory(ecp);
             goto error;
         }
@@ -264,6 +268,7 @@ int
 Duro_exec_vardef_private(RDB_parse_node *nodep, Duro_interp *interp,
         RDB_exec_context *ecp)
 {
+    Duro_var_entry *entryp;
     RDB_parse_node *keylistnodep;
     RDB_parse_node *defaultnodep;
     RDB_attr *default_attrv = NULL;
@@ -317,8 +322,9 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, Duro_interp *interp,
     /*
      * Check if the variable already exists
      */
-    if (RDB_hashmap_get(interp->current_varmapp != NULL ?
-            &interp->current_varmapp->map : &interp->root_varmap, varname) != NULL) {
+    entryp = Duro_varmap_get(interp->current_varmapp != NULL ?
+            &interp->current_varmapp->map : &interp->root_varmap, varname);
+    if (entryp != NULL && entryp->varp != NULL) {
         RDB_raise_element_exists(varname, ecp);
         return RDB_ERROR;
     }
@@ -384,12 +390,14 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, Duro_interp *interp,
     }
 
     if (interp->current_varmapp != NULL) {
-        if (RDB_hashmap_put(&interp->current_varmapp->map, varname, tbp) != RDB_OK) {
+        if (Duro_varmap_put(&interp->current_varmapp->map, varname, tbp,
+                RDB_FALSE, ecp) != RDB_OK) {
             RDB_destroy_obj(tbp, ecp);
             goto error;
         }
     } else {
-        if (RDB_hashmap_put(&interp->root_varmap, varname, tbp) != RDB_OK) {
+        if (Duro_varmap_put(&interp->root_varmap, varname, tbp, RDB_FALSE, ecp)
+                != RDB_OK) {
             RDB_destroy_obj(tbp, ecp);
             goto error;
         }
@@ -567,6 +575,7 @@ int
 Duro_exec_vardef_public(RDB_parse_node *nodep, Duro_interp *interp,
         RDB_exec_context *ecp)
 {
+    Duro_var_entry *entryp;
     RDB_parse_node *keylistnodep;
     int keyc;
     RDB_string_vec *keyv;
@@ -600,8 +609,9 @@ Duro_exec_vardef_public(RDB_parse_node *nodep, Duro_interp *interp,
     /*
      * Check if the variable already exists
      */
-    if (RDB_hashmap_get(interp->current_varmapp != NULL ?
-            &interp->current_varmapp->map : &interp->root_varmap, varname) != NULL) {
+    entryp = Duro_varmap_get(interp->current_varmapp != NULL ?
+            &interp->current_varmapp->map : &interp->root_varmap, varname);
+    if (entryp != NULL && entryp->varp != NULL) {
         RDB_raise_element_exists(varname, ecp);
         return RDB_ERROR;
     }
@@ -654,6 +664,7 @@ int
 Duro_exec_constdef(RDB_parse_node *nodep, Duro_interp *interp,
         RDB_exec_context *ecp)
 {
+    Duro_var_entry *entryp;
     RDB_object *objp;
     RDB_expression *initexp = NULL;
     const char *constname = RDB_expr_var_name(nodep->exp);
@@ -667,8 +678,9 @@ Duro_exec_constdef(RDB_parse_node *nodep, Duro_interp *interp,
     /*
      * Check if the variable already exists
      */
-    if (RDB_hashmap_get(interp->current_varmapp != NULL ?
-            &interp->current_varmapp->map : &interp->root_varmap, constname) != NULL) {
+    entryp = Duro_varmap_get(interp->current_varmapp != NULL ?
+            &interp->current_varmapp->map : &interp->root_varmap, constname);
+    if (entryp != NULL && entryp->varp != NULL) {
         RDB_raise_element_exists(constname, ecp);
         return RDB_ERROR;
     }
@@ -698,15 +710,14 @@ Duro_exec_constdef(RDB_parse_node *nodep, Duro_interp *interp,
 
     if (interp->current_varmapp != NULL) {
         /* We're in local scope */
-        if (RDB_hashmap_put(&interp->current_varmapp->map, constname, objp)
-                != RDB_OK) {
-            RDB_raise_no_memory(ecp);
+        if (Duro_varmap_put(&interp->current_varmapp->map, constname, objp,
+                RDB_TRUE, ecp) != RDB_OK) {
             goto error;
         }
     } else {
         /* Global scope */
-        if (RDB_hashmap_put(&interp->root_varmap, constname, objp) != RDB_OK) {
-            RDB_raise_no_memory(ecp);
+        if (Duro_varmap_put(&interp->root_varmap, constname, objp, RDB_TRUE, ecp)
+                != RDB_OK) {
             goto error;
         }
     }

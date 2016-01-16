@@ -21,8 +21,8 @@ hash_str(const void *entryp, void *arg)
 static RDB_bool
 str_equals(const void *e1p, const void *e2p, void *arg)
 {
-    return (RDB_bool) strcmp(((RDB_kv_pair *) e1p)->key,
-            ((RDB_kv_pair *) e2p)->key) == 0;
+    return (RDB_bool) (strcmp(((RDB_kv_pair *) e1p)->key,
+            ((RDB_kv_pair *) e2p)->key) == 0);
 }
 
 void
@@ -37,7 +37,7 @@ RDB_destroy_hashmap(RDB_hashmap *hp)
     RDB_kv_pair *entryp;
     RDB_hashtable_iter hiter;
 
-    RDB_init_hashtable_iter(&hiter, (RDB_hashtable *) &hp->tab);
+    RDB_init_hashtable_iter(&hiter, &hp->tab);
     while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
         free(entryp->key);
         free(entryp);
