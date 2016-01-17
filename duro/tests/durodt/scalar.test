@@ -919,7 +919,21 @@ test defroop {read-only user-defined operators} -setup $SETUP -cleanup $CLEANUP 
         end operator;
         
         io.put_line(test4params(1, 'x', 5, true));
-        
+
+        -- Try to modify variable through read-only operator
+        operator illegal_update(i int) returns int;
+            i := i + 1;
+            return i;
+        end operator;
+
+        try
+            var i int;
+            io.put(illegal_update(i));
+            io.put_line(' updating varible through read-only operator succeeded');
+        catch e name_error;
+            ;
+        end try;
+
         commit;
     }
 } -result {a = 1, b = 1, c = 8, d = 15

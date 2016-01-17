@@ -226,12 +226,6 @@ RDB_binary_length(const RDB_object *);
 int
 RDB_binary_resize(RDB_object *, size_t, RDB_exec_context *);
 
-RDB_bool
-RDB_obj_is_const(const RDB_object *);
-
-void
-RDB_obj_set_const(RDB_object *, RDB_bool);
-
 void
 RDB_datetime_to_tm(struct tm *, const RDB_object *);
 

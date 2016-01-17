@@ -22,8 +22,7 @@
 #include <time.h>
 
 enum {
-    STR_BUF_INC = 16,
-    CONSTANT = 8
+    STR_BUF_INC = 16
 };
 
 /**@defgroup generic Scalar and generic functions
@@ -700,21 +699,6 @@ RDB_obj_to_string(RDB_object *dstp, const RDB_object *srcp,
         return RDB_ERROR;
     }
     return RDB_OK;
-}
-
-RDB_bool
-RDB_obj_is_const(const RDB_object *objp)
-{
-    return objp->flags & CONSTANT ? RDB_TRUE : RDB_FALSE;
-}
-
-void
-RDB_obj_set_const(RDB_object *objp, RDB_bool isconst)
-{
-    if (isconst)
-        objp->flags |= CONSTANT;
-    else
-        objp->flags &= ~CONSTANT;
 }
 
 void

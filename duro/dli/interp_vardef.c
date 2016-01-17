@@ -690,7 +690,6 @@ Duro_exec_constdef(RDB_parse_node *nodep, Duro_interp *interp,
         return RDB_ERROR;
     }
     RDB_init_obj(objp);
-    RDB_obj_set_const(objp, RDB_TRUE);
 
     if (RDB_evaluate(initexp, &Duro_get_var, interp, interp->envp, ecp,
             interp->txnp != NULL ? &interp->txnp->tx : NULL,

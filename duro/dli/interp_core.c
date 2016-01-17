@@ -72,8 +72,8 @@ Duro_set_current_varmap(Duro_interp *interp, varmap_node *newvarmapp)
     return ovarmapp;
 }
 
-static RDB_object *
-lookup_transient_var(Duro_interp *interp, const char *name, varmap_node *varmapp)
+static Duro_var_entry *
+lookup_transient_var_e(Duro_interp *interp, const char *name, varmap_node *varmapp)
 {
     Duro_var_entry *varentryp;
     varmap_node *nodep = varmapp;
@@ -82,7 +82,7 @@ lookup_transient_var(Duro_interp *interp, const char *name, varmap_node *varmapp
     while (nodep != NULL) {
         varentryp = Duro_varmap_get(&nodep->map, name);
         if (varentryp != NULL && varentryp->varp != NULL)
-            return varentryp->varp;
+            return varentryp;
         nodep = nodep->parentp;
     }
 
@@ -90,29 +90,39 @@ lookup_transient_var(Duro_interp *interp, const char *name, varmap_node *varmapp
     varentryp = Duro_varmap_get(&interp->root_varmap, name);
     if (varentryp == NULL)
         return NULL;
-    return varentryp->varp;
+    return varentryp;
 }
 
 RDB_object *
 Duro_lookup_transient_var(Duro_interp *interp, const char *name)
 {
-    return lookup_transient_var(interp, name, interp->current_varmapp);
+    Duro_var_entry *entryp = lookup_transient_var_e(interp, name,
+            interp->current_varmapp);
+    return entryp != NULL ? entryp->varp : NULL;
+}
+
+Duro_var_entry *
+Duro_lookup_transient_var_e(Duro_interp *interp, const char *name)
+{
+    return lookup_transient_var_e(interp, name, interp->current_varmapp);
 }
 
 RDB_object *
 Duro_get_var(const char *name, void *arg)
 {
     Duro_interp *interp = arg;
-    return lookup_transient_var(interp, name, interp->current_varmapp);
+    Duro_var_entry *entryp = lookup_transient_var_e(interp, name,
+            interp->current_varmapp);
+    return entryp != NULL ? entryp->varp : NULL;
 }
 
 RDB_type *
 Duro_get_var_type(const char *name, void *arg)
 {
     Duro_interp *interp = arg;
-    RDB_object *objp = lookup_transient_var(interp, name,
+    Duro_var_entry *entryp = lookup_transient_var_e(interp, name,
             interp->current_varmapp);
-    return objp != NULL ? RDB_obj_type(objp) : NULL;
+    return entryp != NULL ? RDB_obj_type(entryp->varp) : NULL;
 }
 
 int

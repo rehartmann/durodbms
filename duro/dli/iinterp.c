@@ -378,6 +378,7 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
     RDB_expression *exp;
     RDB_object *argpv[DURO_MAX_LLEN];
     RDB_object argv[DURO_MAX_LLEN];
+    int argflags[DURO_MAX_LLEN];
     RDB_operator *op;
     RDB_parameter *paramp;
     const char *varname;
@@ -420,7 +421,7 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
              * (If the parameter is not an update parameter,
              * the callee must not modify the variable)
              */
-            argpv[argc] = Duro_lookup_sym(varname, interp, ecp);
+            argpv[argc] = Duro_lookup_sym(varname, interp, &argflags[argc], ecp);
             if (argpv[argc] == NULL) {
                 goto error;
             }
@@ -447,6 +448,7 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
                 }
                 argpv[argc] = &argv[argc];
             }
+            argflags[argc] = 0;
         }
 
         argp = argp->nextp;
@@ -506,7 +508,7 @@ exec_call(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ec
                 RDB_raise_invalid_argument(
                         "update argument must be a variable", ecp);
                 goto error;
-            } else if (RDB_obj_is_const(argpv[i])) {
+            } else if (DURO_VAR_CONST & argflags[i]) {
                 RDB_raise_invalid_argument("constant not allowed", ecp);
                 goto error;
             }
@@ -1480,9 +1482,9 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     Duro_return_info retinfo;
     varmap_node *ovarmapp;
     int isselector;
-    RDB_type **stored_argtypv;
     RDB_type *getter_utyp = NULL;
     RDB_operator *parent_op;
+    RDB_type *stored_argtypv[DURO_MAX_LLEN];
     Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
 
     if (interp->interrupted) {
@@ -1576,13 +1578,6 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     interp->inner_op = op;
     interp->err_line = -1;
 
-    stored_argtypv = RDB_alloc(sizeof(RDB_type *) * argc, ecp);
-    if (stored_argtypv == NULL) {
-        if (getter_utyp != NULL) {
-            RDB_obj_set_typeinfo(argv[0], getter_utyp);
-        }
-        return RDB_ERROR;
-    }
     /*
      * If the argument type is scalar and differs from the parameter type,
      * set argument type to the parameter type and restore it afterwards
@@ -1605,7 +1600,6 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
             RDB_obj_set_typeinfo(argv[i], stored_argtypv[i]);
         }
     }
-    RDB_free(stored_argtypv);
     interp->inner_op = parent_op;
 
     /* Set type of return value to the user-defined type */
@@ -1657,10 +1651,9 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     varmap_node *ovarmapp;
     Duro_op_data *opdatap;
     RDB_operator *parent_op;
-    RDB_type **stored_argtypv;
+    RDB_type *stored_argtypv[DURO_MAX_LLEN];
     RDB_type *setter_utyp = NULL;
     Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
-    RDB_bool ro_arg_type_altered = RDB_FALSE;
 
     if (interp->interrupted) {
         interp->interrupted = 0;
@@ -1736,13 +1729,6 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     interp->err_line = -1;
 
-    stored_argtypv = RDB_alloc(sizeof(RDB_type *) * argc, ecp);
-    if (stored_argtypv == NULL) {
-        if (setter_utyp != NULL) {
-            RDB_obj_set_typeinfo(argv[0], setter_utyp);
-        }
-        return RDB_ERROR;
-    }
     /*
      * If the argument type is scalar and differs from parameter type,
      * set argument type to parameter type
@@ -1761,18 +1747,12 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     ret = exec_stmts(opdatap->stmtlistp, interp, ecp, NULL);
 
-    /* Restore argument types, check if types of read-only arguments changed */
+    /* Restore argument types */
     for (i = 0; i < argc; i++) {
         if (stored_argtypv[i] != NULL) {
-            if (!RDB_get_parameter(op, i)->update
-                    && (RDB_obj_type(argv[i]) != RDB_get_parameter(op, i)->typ
-                       || !RDB_obj_matches_type(argv[i], stored_argtypv[i]))) {
-                ro_arg_type_altered = RDB_TRUE;
-            }
             RDB_obj_set_typeinfo(argv[i], stored_argtypv[i]);
         }
     }
-    RDB_free(stored_argtypv);
     interp->inner_op = parent_op;
 
     if (setter_utyp != NULL) {
@@ -1781,11 +1761,6 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     Duro_set_current_varmap(interp, ovarmapp);
     Duro_destroy_varmap(&vars.map);
-
-    if (ro_arg_type_altered) {
-        RDB_raise_type_mismatch("type of read-only argument was changed", ecp);
-        return RDB_ERROR;
-    }
 
     /* Catch LEAVE */
     if (ret == DURO_LEAVE) {
@@ -1924,6 +1899,11 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     RDB_parameter *paramv = NULL;
     int paramc = ((int) RDB_parse_nodelist_length(stmtp->nextp->nextp) + 1) / 3;
 
+    if (paramc > DURO_MAX_LLEN) {
+        RDB_raise_not_supported("too many parameters", ecp);
+        return RDB_ERROR;
+    }
+
     RDB_init_obj(&code);
     RDB_init_obj(&opnameobj);
 
@@ -1979,7 +1959,8 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     parentp->val.children.firstp->whitecommp = NULL;
 
     if (ro)
-        is_spec = (RDB_bool) stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->kind == RDB_NODE_TOK;
+        is_spec = (RDB_bool) stmtp->nextp->nextp->nextp->nextp->nextp->nextp
+                ->nextp->kind == RDB_NODE_TOK;
     else
         is_spec = RDB_FALSE;
 
@@ -3509,8 +3490,9 @@ Duro_dt_prompt(Duro_interp *interp)
 RDB_object *
 Duro_lookup_var(const char *name, Duro_interp *interp, RDB_exec_context *ecp)
 {
-    RDB_object *objp = Duro_lookup_sym(name, interp, ecp);
-    if (objp != NULL && RDB_obj_is_const(objp)) {
+    int flags;
+    RDB_object *objp = Duro_lookup_sym(name, interp, &flags, ecp);
+    if (objp != NULL && (DURO_VAR_CONST & flags)) {
         RDB_raise_name(name, ecp);
         return NULL;
     }
@@ -3522,20 +3504,24 @@ Duro_lookup_var(const char *name, Duro_interp *interp, RDB_exec_context *ecp)
  * containing its value.
  */
 RDB_object *
-Duro_lookup_sym(const char *name, Duro_interp *interp, RDB_exec_context *ecp)
+Duro_lookup_sym(const char *name, Duro_interp *interp, int *flagsp,
+        RDB_exec_context *ecp)
 {
-    RDB_object *objp = Duro_lookup_transient_var(interp, name);
-    if (objp != NULL) {
-        return objp;
+    Duro_var_entry *entryp = Duro_lookup_transient_var_e(interp,  name);
+    if (entryp != NULL) {
+        if (flagsp != NULL)
+            *flagsp = entryp->flags;
+        return entryp->varp;
     }
 
-    if (interp->txnp != NULL) {
-        /* Try to get table from DB */
-        objp = RDB_get_table(name, ecp, &interp->txnp->tx);
-    }
-    if (objp == NULL)
+    if (interp->txnp == NULL) {
         RDB_raise_name(name, ecp);
-    return objp;
+        return NULL;
+    }
+    /* Try to get table from DB */
+    if (flagsp != NULL)
+        *flagsp = 0;
+    return RDB_get_table(name, ecp, &interp->txnp->tx);
 }
 
 /**

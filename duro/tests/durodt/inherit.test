@@ -220,7 +220,7 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
 
             to_rectangle_hack(c);
             io.put_line('changing DT from circle to rectangle via non-update parameter succeeded');
-        catch e type_mismatch_error;
+        catch e name_error;
             ;
         end try;
 
