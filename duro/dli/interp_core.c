@@ -36,11 +36,7 @@ drop_local_var(RDB_object *objp, RDB_exec_context *ecp)
             return RDB_ERROR;
     }
 
-    if (RDB_destroy_obj(objp, ecp) != RDB_OK)
-        return RDB_ERROR;
-
-    RDB_free(objp);
-    return RDB_OK;
+    return RDB_free_obj(objp, ecp);
 }
 
 void
@@ -187,7 +183,7 @@ Duro_exec_vardrop(const RDB_parse_node *nodep, Duro_interp *interp,
             RDB_object *varp = varentryp->varp;
             /* Delete key by putting NULL value */
             if (Duro_varmap_put(&interp->current_varmapp->map, varname, NULL,
-                    RDB_TRUE, ecp) != RDB_OK) {
+                    DURO_VAR_CONST, ecp) != RDB_OK) {
                 goto error;
             }
             /* Destroy transient variable */
@@ -198,8 +194,8 @@ Duro_exec_vardrop(const RDB_parse_node *nodep, Duro_interp *interp,
         varentryp = Duro_varmap_get(&interp->root_varmap, varname);
         if (varentryp != NULL && varentryp->varp != NULL) {
             RDB_object *varp = varentryp->varp;
-            if (Duro_varmap_put(&interp->root_varmap, varname, NULL, RDB_TRUE,
-                    ecp) != RDB_OK) {
+            if (Duro_varmap_put(&interp->root_varmap, varname, NULL,
+                    DURO_VAR_CONST, ecp) != RDB_OK) {
                 goto error;
             }
             return drop_local_var(varp, ecp);

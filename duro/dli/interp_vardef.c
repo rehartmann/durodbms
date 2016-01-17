@@ -110,14 +110,14 @@ Duro_exec_vardef(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *e
     if (interp->current_varmapp != NULL) {
         /* We're in local scope */
         if (Duro_varmap_put(&interp->current_varmapp->map, varname, objp,
-                RDB_FALSE, ecp) != RDB_OK) {
+                DURO_VAR_FREE, ecp) != RDB_OK) {
             RDB_raise_no_memory(ecp);
             goto error;
         }
     } else {
         /* Global scope */
-        if (Duro_varmap_put(&interp->root_varmap, varname, objp, RDB_FALSE, ecp)
-                != RDB_OK) {
+        if (Duro_varmap_put(&interp->root_varmap, varname, objp,
+                DURO_VAR_FREE, ecp) != RDB_OK) {
             RDB_raise_no_memory(ecp);
             goto error;
         }
@@ -391,13 +391,13 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, Duro_interp *interp,
 
     if (interp->current_varmapp != NULL) {
         if (Duro_varmap_put(&interp->current_varmapp->map, varname, tbp,
-                RDB_FALSE, ecp) != RDB_OK) {
+                DURO_VAR_FREE, ecp) != RDB_OK) {
             RDB_destroy_obj(tbp, ecp);
             goto error;
         }
     } else {
-        if (Duro_varmap_put(&interp->root_varmap, varname, tbp, RDB_FALSE, ecp)
-                != RDB_OK) {
+        if (Duro_varmap_put(&interp->root_varmap, varname, tbp, DURO_VAR_FREE,
+                ecp) != RDB_OK) {
             RDB_destroy_obj(tbp, ecp);
             goto error;
         }
@@ -711,13 +711,13 @@ Duro_exec_constdef(RDB_parse_node *nodep, Duro_interp *interp,
     if (interp->current_varmapp != NULL) {
         /* We're in local scope */
         if (Duro_varmap_put(&interp->current_varmapp->map, constname, objp,
-                RDB_TRUE, ecp) != RDB_OK) {
+                DURO_VAR_CONST | DURO_VAR_FREE, ecp) != RDB_OK) {
             goto error;
         }
     } else {
         /* Global scope */
-        if (Duro_varmap_put(&interp->root_varmap, constname, objp, RDB_TRUE, ecp)
-                != RDB_OK) {
+        if (Duro_varmap_put(&interp->root_varmap, constname, objp,
+                DURO_VAR_CONST | DURO_VAR_FREE, ecp) != RDB_OK) {
             goto error;
         }
     }

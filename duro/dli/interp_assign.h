@@ -1,8 +1,8 @@
 /*
- * interp_assign.h
+ * Definitions for variable assignment and similar functionalities
  *
- *  Created on: 07.12.2012
- *      Author: Rene Hartmann
+ * Copyright (C) 2012, 2014-2015 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #ifndef INTERP_ASSIGN_H_

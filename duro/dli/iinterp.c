@@ -1,7 +1,7 @@
 /*
  * Statement execution functions.
  *
- * Copyright (C) 2007, 2014-2015 Rene Hartmann.
+ * Copyright (C) 2007, 2014-2016 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -312,16 +312,16 @@ add_io(Duro_interp *interp, RDB_exec_context *ecp) {
     }
 
     if (Duro_varmap_put(&interp->root_varmap, "io.stdin", Duro_stdin_objp,
-            RDB_TRUE, ecp) != RDB_OK) {
+            DURO_VAR_CONST | DURO_VAR_FREE, ecp) != RDB_OK) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     if (Duro_varmap_put(&interp->root_varmap, "io.stdout", Duro_stdout_objp,
-            RDB_TRUE, ecp) != RDB_OK) {
+            DURO_VAR_CONST | DURO_VAR_FREE, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
     if (Duro_varmap_put(&interp->root_varmap, "io.stderr", Duro_stderr_objp,
-            RDB_TRUE, ecp) != RDB_OK) {
+            DURO_VAR_CONST | DURO_VAR_FREE, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -1537,7 +1537,7 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     ovarmapp = Duro_set_current_varmap(interp, &vars);
 
     for (i = 0; i < argc; i++) {
-        if (Duro_varmap_put(&vars.map, opdatap->argnamev[i], argv[i], RDB_FALSE,
+        if (Duro_varmap_put(&vars.map, opdatap->argnamev[i], argv[i], DURO_VAR_CONST,
                 ecp) != RDB_OK) {
             return RDB_ERROR;
         }
@@ -1615,17 +1615,6 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     if (getter_utyp != NULL) {
         RDB_obj_set_typeinfo(argv[0], getter_utyp);
-    }
-
-    /*
-     * Keep arguments from being destroyed
-     */
-    for (i = 0; i < argc; i++) {
-        if (Duro_varmap_put(&vars.map, opdatap->argnamev[i], NULL, RDB_TRUE,
-                ecp) != RDB_OK) {
-            RDB_raise_no_memory(ecp);
-            return RDB_ERROR;
-        }
     }
 
     Duro_set_current_varmap(interp, ovarmapp);
@@ -1726,7 +1715,8 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     for (i = 0; i < argc; i++) {
         if (Duro_varmap_put(&vars.map, opdatap->argnamev[i],
-                argv[i], RDB_FALSE, ecp) != RDB_OK) {
+                argv[i], RDB_get_parameter(op, i)->update ? 0 : DURO_VAR_CONST,
+                        ecp) != RDB_OK) {
             return RDB_ERROR;
         }
     }
@@ -1787,17 +1777,6 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     if (setter_utyp != NULL) {
         RDB_obj_set_typeinfo(argv[0], setter_utyp);
-    }
-
-    /*
-     * Keep arguments from being destroyed
-     */
-    for (i = 0; i < argc; i++) {
-        if (Duro_varmap_put(&vars.map, opdatap->argnamev[i], NULL, RDB_TRUE,
-                ecp) != RDB_OK) {
-            RDB_raise_no_memory(ecp);
-            return RDB_ERROR;
-        }
     }
 
     Duro_set_current_varmap(interp, ovarmapp);
@@ -3240,12 +3219,12 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
     RDB_bool_to_obj(interp->implicit_tx_objp, RDB_FALSE);
 
     if (Duro_varmap_put(&interp->root_varmap, "current_db",
-            interp->current_db_objp, RDB_FALSE, ecp) != RDB_OK) {
+            interp->current_db_objp, DURO_VAR_FREE, ecp) != RDB_OK) {
         goto error;
     }
 
     if (Duro_varmap_put(&interp->root_varmap, "implicit_tx",
-            interp->implicit_tx_objp, RDB_FALSE, ecp) != RDB_OK) {
+            interp->implicit_tx_objp, DURO_VAR_FREE, ecp) != RDB_OK) {
         goto error;
     }
 

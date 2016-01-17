@@ -1,8 +1,8 @@
 /*
- * varmap.c
+ * Definitions for storing transient variables in a map
  *
- *  Created on: 16.01.2016
- *      Author: rene
+ * Copyright (C) 2015 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #include "varmap.h"
@@ -14,6 +14,7 @@
 #include <gen/strfns.h>
 #include <obj/object.h>
 #include <obj/excontext.h>
+#include <obj/type.h>
 
 static unsigned
 hash_varentry(const void *entryp, void *arg)
@@ -39,20 +40,35 @@ Duro_destroy_varmap(Duro_varmap *varmap)
 {
     Duro_var_entry *entryp;
     RDB_hashtable_iter hiter;
+    RDB_exec_context ec;
+
+    RDB_init_exec_context(&ec);
 
     RDB_init_hashtable_iter(&hiter, &varmap->hashtab);
     while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
+        if (entryp->varp != NULL && DURO_VAR_FREE & entryp->flags) {
+            RDB_type *typ = RDB_obj_type(entryp->varp);
+
+            /* Array and tuple types must be destroyed */
+            if (!RDB_type_is_scalar(typ) && !RDB_type_is_relation(typ)) {
+                RDB_del_nonscalar_type(typ, &ec);
+            }
+
+            RDB_free_obj(entryp->varp, &ec);
+        }
         free(entryp->name);
-        free(entryp);
+        RDB_free(entryp);
     }
     RDB_destroy_hashtable_iter(&hiter);
 
     RDB_destroy_hashtable(&varmap->hashtab);
+
+    RDB_destroy_exec_context(&ec);
 }
 
 int
 Duro_varmap_put(Duro_varmap *varmap, const char *name,
-        RDB_object *varp, RDB_bool isconst, RDB_exec_context *ecp)
+        RDB_object *varp, int flags, RDB_exec_context *ecp)
 {
     int ret;
     Duro_var_entry entry;
@@ -80,7 +96,7 @@ Duro_varmap_put(Duro_varmap *varmap, const char *name,
         }
     }
     entryp->varp = varp;
-    entryp->is_const = isconst;
+    entryp->flags = flags;
     return RDB_OK;
 }
 
