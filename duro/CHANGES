@@ -7,6 +7,11 @@ DuroDBMS 1.2
 - Added checking for integer overflow. An integer overflow results in a
   type_constraint_violation_error being raised.
 
+- Updating arguments of read-only operators and read-only arguments of
+  update operators results in a runtime error.
+  
+- Removed RDB_obj_set_const() and RDB_obj_is_const().
+
 DuroDBMS 1.1
 
 - Accessing properties is now possible using value.property in addition

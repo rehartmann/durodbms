@@ -272,7 +272,7 @@ rel_ihdrs = Split('rel/catalog.h rel/cat_stored.h rel/cat_type.h rel/cat_op.h '
         'rel/pexpr.h')
 dli_hdrs = ['dli/parse.h', 'dli/parsenode.h', 'dli/iinterp.h', 'dli/varmap.h']
 dli_ihdrs = ['dli/exparse.h', 'dli/iinterp.h', 'dli/interp_core.h',
-        'dli/interp_assign.h', 'dli/interp_vardef.h'
+        'dli/interp_assign.h', 'dli/interp_vardef.h',
         'dli/ioop.h', 'dli/fcgi.h']
 durotcl_hdrs = ['tcl/duro.h']
 testlib_hdrs = ['tests/point.h']

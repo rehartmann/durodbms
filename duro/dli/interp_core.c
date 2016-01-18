@@ -26,7 +26,7 @@ Duro_add_varmap(Duro_interp *interp, RDB_exec_context *ecp)
 }
 
 static int
-drop_local_var(RDB_object *objp, RDB_exec_context *ecp)
+del_local_var(RDB_object *objp, RDB_exec_context *ecp)
 {
     RDB_type *typ = RDB_obj_type(objp);
 
@@ -189,26 +189,32 @@ Duro_exec_vardrop(const RDB_parse_node *nodep, Duro_interp *interp,
     /* Try to look up local variable */
     if (interp->current_varmapp != NULL) {
         varentryp = Duro_varmap_get(&interp->current_varmapp->map, varname);
-        if (varentryp != NULL && varentryp->varp != NULL) {
+        if (varentryp != NULL && varentryp->varp != NULL
+                && !(DURO_VAR_CONST & varentryp->flags)) {
             RDB_object *varp = varentryp->varp;
             /* Delete key by putting NULL value */
             if (Duro_varmap_put(&interp->current_varmapp->map, varname, NULL,
                     DURO_VAR_CONST, ecp) != RDB_OK) {
                 goto error;
             }
+            if (!(DURO_VAR_FREE & varentryp->flags))
+                return RDB_OK;
             /* Destroy transient variable */
-            return drop_local_var(varp, ecp);
+            return del_local_var(varp, ecp);
         }
     }
     if (varentryp == NULL || varentryp->varp == NULL) {
         varentryp = Duro_varmap_get(&interp->root_varmap, varname);
-        if (varentryp != NULL && varentryp->varp != NULL) {
+        if (varentryp != NULL && varentryp->varp != NULL
+                && !(DURO_VAR_CONST & varentryp->flags)) {
             RDB_object *varp = varentryp->varp;
             if (Duro_varmap_put(&interp->root_varmap, varname, NULL,
                     DURO_VAR_CONST, ecp) != RDB_OK) {
                 goto error;
             }
-            return drop_local_var(varp, ecp);
+            if (!(DURO_VAR_FREE & varentryp->flags))
+                return RDB_OK;
+            return del_local_var(varp, ecp);
         }
     }
 
