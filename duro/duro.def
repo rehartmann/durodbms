@@ -49,6 +49,7 @@ RDB_add_table
 RDB_create_table_index
 RDB_drop_table_index
 RDB_define_type
+RDB_define_subtype
 RDB_get_type
 RDB_tx_is_running
 RDB_tx_db
@@ -234,6 +235,10 @@ RDB_type_is_array
 RDB_is_tuple
 RDB_parse_node_expr
 RDB_base_type
+RDB_is_subtype
+RDB_share_subtype
+RDB_obj_matches_type
+RDB_lock_type
 RDB_del_nonscalar_type
 RDB_get_parameter
 RDB_operator_source

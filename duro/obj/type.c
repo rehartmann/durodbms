@@ -88,16 +88,13 @@ RDB_type_is_ordered(const RDB_type *typ)
 }
 
 /**
- * Determines if a type depends on another type.
+ * Determines if *typ depends on *dtyp.
  */
 RDB_bool
 RDB_type_depends_type(const RDB_type *typ, const RDB_type *dtyp)
 {
     int i;
     int j;
-
-    if (RDB_is_subtype(typ, dtyp))
-        return RDB_TRUE;
 
     switch (typ->kind) {
     case RDB_TP_TUPLE:
@@ -643,6 +640,10 @@ RDB_type_name(const RDB_type *typ)
     return typ->name;
 }
 
+/**
+ * Determines if *typ1 is a subtype of *typ2.
+ * Note that the subtype relationship is reflexive.
+ */
 RDB_bool
 RDB_is_subtype(const RDB_type *typ1, const RDB_type *typ2)
 {
@@ -659,6 +660,9 @@ RDB_is_subtype(const RDB_type *typ1, const RDB_type *typ2)
     return RDB_FALSE;
 }
 
+/**
+ * Determines if there is a type which is a subtype of both *typ1 and *typ2.
+ */
 RDB_bool
 RDB_share_subtype(const RDB_type *typ1, const RDB_type *typ2)
 {
@@ -670,7 +674,7 @@ RDB_share_subtype(const RDB_type *typ1, const RDB_type *typ2)
     if (RDB_is_subtype(typ1, typ2))
         return RDB_TRUE;
 
-    /* Try to find subtype which is a subtype of typ2 */
+    /* Try to find subtype which is also a subtype of typ2 */
     for (i = 0; i < typ1->def.scalar.subtypec; i++) {
         if (RDB_share_subtype(typ1->def.scalar.subtypev[i], typ2))
             return RDB_TRUE;

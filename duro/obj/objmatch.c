@@ -36,9 +36,16 @@ array_matches_type(const RDB_object *arrp, const RDB_type *typ)
     return result;
 }
 
+/** @addtogroup generic
+ * @{
+ */
+
 /**
- * Check if *objp has type *typ.
- * If *objp does not carry type information it must be a tuple.
+ * Determines if the DST of *objp matches *typ.
+ * *typ may be a generic tuple type. In this case, *objp must carry
+ * type information.
+ * *objp may not carry type information if it is an array or tuple.
+ * In this case, *typ must not be generic.
  */
 RDB_bool
 RDB_obj_matches_type(const RDB_object *objp, const RDB_type *typ)
@@ -72,3 +79,7 @@ RDB_obj_matches_type(const RDB_object *objp, const RDB_type *typ)
     }
     abort();
 }
+
+/**
+ * @}
+ */
