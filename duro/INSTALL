@@ -6,7 +6,7 @@ DuroDBMS uses SCons to build itself. Type:
 scons
 scons jni	(optional, builds the Java interface)
 scons tcl	(optional, builds the Tcl interface)
-scons test  (optional, runs the tests)
+scons test	(optional, runs the tests)
 scons install
 
 'scons test' will build the Tcl interface if it has not already been built
@@ -15,11 +15,13 @@ will not be possible. Duroadmin will not be available either.
 
 SCons is available from www.scons.org.
 
-To compile DuroDBMS, you need GNU Libtool, Berkeley DB (6.1 recommended) and Tcl (8.1 or later).
+To compile DuroDBMS, you need GNU Libtool and Berkeley DB (6.1 recommended).
 
 Building the Java interface requires Java Development Kit 7. 
 
-'scons test' requires the tcltest package.
+Building the Tcl interface requires Tcl (8.1 or later).
+
+'scons test' requires the Tcl interface and the tcltest package.
 
 On Unix-like systems, Berkeley DB is assumed to be located in
 /usr/local/BerkeleyDB.6.1. If Berkeley DB is located in a different directory,

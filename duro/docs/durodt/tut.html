@@ -1106,6 +1106,37 @@ D> io.put(treat_as_circle(s).radius); io.put_line('');
 D> 
 </pre>
 
+<h3>Subtyping with read-only operators</h3>
+
+<p>Example:
+
+<pre>
+D> operator area(s shape) returns integer;
+D> end operator;
+Read-only operator area created.
+D> operator area(r rectangle) returns integer;
+D> return r.width * r.height;
+D> end operator;
+Read-only operator area created.
+D> operator area(c circle) returns integer;
+D> return c.radius * 710 / 113;
+D> end operator;
+Read-only operator area created.
+D> var s2 shape init rectangle(3,4);
+D> io.put(area(s2)); io.put_line('');
+12
+D> s2 := circle(5);
+1 element affected.
+D> io.put(area(s2)); io.put_line('');
+31
+</pre>
+
+<h3>Subtyping with update operators</h3>
+
+<p>Example:
+
+
+
 <h2 id="exception">Exception handling</h2>
 
 <p>By default, if an error occurs, execution stops.
