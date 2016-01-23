@@ -40,20 +40,6 @@ void yy_switch_to_buffer(YY_BUFFER_STATE);
 
 /** @page update-ops Built-in system and connection operators
 
-@section system-ops System operators
-
-OPERATOR exit() UPDATES {};
-
-Exits the process with status code 0.
-
-OPERATOR exit(status int) UPDATES {};
-
-Exits the process with status code \a status.
-
-OPERATOR system(command string) UPDATES {};
-
-Executes command \a command.
-
 @section connection-ops Connection operators
 
 OPERATOR connect(envname string) UPDATES {};
@@ -75,44 +61,6 @@ OPERATOR create_db(dbname string) UPDATES {};
 Create a database named \a dbname.
 
 */
-
-/*
- * Operator exit() without arguments
- */
-static int
-exit_op(int argc, RDB_object *argv[], RDB_operator *op,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
-    Duro_destroy_interp(interp);
-    exit(0);
-}
-
-/*
- * Operator exit() with argument
- */
-static int
-exit_int_op(int argc, RDB_object *argv[], RDB_operator *op,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
-    int exitcode = RDB_obj_int(argv[0]);
-    Duro_destroy_interp(interp);
-    exit(exitcode);
-}   
-
-static int
-system_op(int argc, RDB_object *argv[], RDB_operator *op,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    int ret = system(RDB_obj_string(argv[0]));
-    if (ret == -1 || ret == 127) {
-        RDB_handle_errcode(errno, ecp, txp);
-        return RDB_ERROR;
-    }
-    RDB_int_to_obj(argv[1], (RDB_int) ret);
-    return RDB_OK;
-}
 
 int
 Duro_rollback_all(Duro_interp *interp, RDB_exec_context *ecp)
@@ -3109,16 +3057,12 @@ int
 Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
         RDB_environment *envp, const char *dbname)
 {
-    static RDB_parameter exit_int_params[1];
     static RDB_parameter connect_params[1];
     static RDB_parameter connect_create_params[2];
     static RDB_parameter create_db_params[1];
     static RDB_parameter create_env_params[1];
-    static RDB_parameter system_params[2];
     static RDB_parameter trace_params[2];
 
-    exit_int_params[0].typ = &RDB_INTEGER;
-    exit_int_params[0].update = RDB_FALSE;
     connect_params[0].typ = &RDB_STRING;
     connect_params[0].update = RDB_FALSE;
     connect_create_params[0].typ = &RDB_STRING;
@@ -3129,10 +3073,6 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
     create_db_params[0].update = RDB_FALSE;
     create_env_params[0].typ = &RDB_STRING;
     create_env_params[0].update = RDB_FALSE;
-    system_params[0].typ = &RDB_STRING;
-    system_params[0].update = RDB_FALSE;
-    system_params[1].typ = &RDB_INTEGER;
-    system_params[1].update = RDB_TRUE;
     trace_params[0].typ = &RDB_INTEGER;
     trace_params[0].update = RDB_FALSE;
 
@@ -3168,11 +3108,6 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
         goto error;
     RDB_init_obj(interp->implicit_tx_objp);
 
-    if (RDB_put_upd_op(&interp->sys_upd_op_map, "exit", 0, NULL, &exit_op, ecp) != RDB_OK)
-        goto error;
-    if (RDB_put_upd_op(&interp->sys_upd_op_map, "exit", 1, exit_int_params, &exit_int_op,
-            ecp) != RDB_OK)
-        goto error;
     if (RDB_put_upd_op(&interp->sys_upd_op_map, "connect", 1, connect_params, &connect_op,
             ecp) != RDB_OK)
         goto error;
@@ -3190,9 +3125,6 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
         goto error;
     if (RDB_put_upd_op(&interp->sys_upd_op_map, "trace", 1, trace_params,
             &trace_op, ecp) != RDB_OK)
-        goto error;
-    if (RDB_put_upd_op(&interp->sys_upd_op_map, "os.system", 2, system_params, &system_op,
-            ecp) != RDB_OK)
         goto error;
 
     /* Create current_db and implicit_tx in system package */

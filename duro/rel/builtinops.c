@@ -489,6 +489,8 @@ Converts the operand to a binary, without a terminating nullbyte.
 
 The operand, converted to string.
 
+<hr>
+
 <h3 id="serialize">OPERATOR serialize</h3>
 
 OPERATOR serialize (value <em>ANY</em>) RETURNS binary;
@@ -648,23 +650,85 @@ The IF-THEN-ELSE operator.
 
 <hr>
 
-<h3 id="op_getenv">OPERATOR getenv</h3>
+<h3 id="op_sqrt">OPERATOR sqrt</h3>
 
-PACKAGE os;
+OPERATOR sqrt(x float) RETURNS float;
 
-OPERATOR getenv (name string) RETURNS string;
-
-END PACKAGE;
-
-<h4>Description</h4>
-
-Reads the environment variable <var>name</var>.
-
-<h4>Return value</h4>
-
-The value of the environment variable <var>name</var>.
+The square root operator.
 
 <hr>
+
+<h3 id="op_abs">OPERATOR abs</h3>
+
+OPERATOR abs(x integer) RETURNS integer;
+
+OPERATOR abs(x float) RETURNS float;
+
+The abs(absolute value) operator.
+
+<hr>
+
+<h3 id="op_sin">OPERATOR sin</h3>
+
+OPERATOR sin (x float) RETURNS float;
+
+The sine operator.
+
+<hr>
+
+<h3 id="op_cos">OPERATOR cos</h3>
+
+OPERATOR cos(x float) RETURNS float;
+
+The cosine operator.
+
+<hr>
+
+<h3 id="op_atan">OPERATOR atan</h3>
+
+OPERATOR atan(x float) RETURNS float;
+
+The arc tangent operator.
+
+<hr>
+
+<h3 id="op_atan2">OPERATOR atan2</h3>
+
+OPERATOR atan2(y float, x float) RETURNS float;
+
+The atan2 operator.
+
+<hr>
+
+<h3 id="op_power">OPERATOR power</h3>
+
+OPERATOR power(b float, x float) RETURNS float;
+
+The power operator.
+
+<hr>
+
+<h3 id="op_exp">OPERATOR </h3>
+
+OPERATOR exp(x float) RETURNS float;
+
+The exponential function operator.
+
+<hr>
+
+<h3 id="op_ln">OPERATOR </h3>
+
+OPERATOR ln(x float) RETURNS float;
+
+The natural logarithm operator.
+
+<hr>
+
+<h3 id="op_log">OPERATOR </h3>
+
+OPERATOR log(x float) RETURNS float;
+
+The base 10 logarithm operator.
 
 @section tup-rel-ops Built-in tuple, relational, and array operators
 
@@ -863,46 +927,6 @@ The relational WHERE operator.
 OPERATOR wrap(R RELATION { * }, SRC_ATTRS ARRAY OF string, DST_ATTR string ...) RETURNS RELATION { * };
 
 The relational WRAP operator.
-
-<hr>
-
-<h3 id="op_sqrt">OPERATOR sqrt</h3>
-
-OPERATOR sqrt(x float) RETURNS float;
-
-The square root operator.
-
-<hr>
-
-<h3 id="op_sin">OPERATOR sin</h3>
-
-OPERATOR sin (x float) RETURNS float;
-
-The sine operator.
-
-<hr>
-
-<h3 id="op_cos">OPERATOR cos</h3>
-
-OPERATOR cos(x float) RETURNS float;
-
-The cosine operator.
-
-<hr>
-
-<h3 id="op_atan">OPERATOR atan</h3>
-
-OPERATOR atan(x float) RETURNS float;
-
-The arc tangent operator.
-
-<hr>
-
-<h3 id="op_atan2">OPERATOR atan2</h3>
-
-OPERATOR atan2(y float, x float) RETURNS float;
-
-The atan2 operator.
 
 */
 

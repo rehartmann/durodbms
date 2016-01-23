@@ -822,6 +822,24 @@ divide_float(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
+abs_int(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_int_to_obj(retvalp,
+            (RDB_int) abs((int) RDB_obj_int(argv[0])));
+    return RDB_OK;
+}
+
+static int
+abs_float(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_float_to_obj(retvalp,
+            (RDB_float) fabs((double) RDB_obj_float(argv[0])));
+    return RDB_OK;
+}
+
+static int
 math_sqrt(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
@@ -870,13 +888,51 @@ math_atan2(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-op_getenv(int argc, RDB_object *argv[], RDB_operator *op,
+math_power(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
-    char *valp = getenv(RDB_obj_string(argv[0]));
+    double p = pow((double) RDB_obj_float(argv[0]),
+            (double) RDB_obj_float(argv[1]));
+    if (!isfinite(p)) {
+        RDB_raise_invalid_argument("pow()", ecp);
+        return RDB_ERROR;
+    }
+    RDB_float_to_obj(retvalp, (RDB_float) p);
+    return RDB_OK;
+}
 
-    /* If the environment variable does not exist, return empty string */
-    return RDB_string_to_obj(retvalp, valp != NULL ? valp : "", ecp);
+static int
+math_exp(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_float_to_obj(retvalp, (RDB_float) exp((double) RDB_obj_float(argv[0])));
+    return RDB_OK;
+}
+
+static int
+math_ln(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    double p = log((double) RDB_obj_float(argv[0]));
+    if (!isfinite(p)) {
+        RDB_raise_invalid_argument("ln()", ecp);
+        return RDB_ERROR;
+    }
+    RDB_float_to_obj(retvalp, (RDB_float) p);
+    return RDB_OK;
+}
+
+static int
+math_log(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    double p = log10((double) RDB_obj_float(argv[0]));
+    if (!isfinite(p)) {
+        RDB_raise_invalid_argument("log()", ecp);
+        return RDB_ERROR;
+    }
+    RDB_float_to_obj(retvalp, (RDB_float) p);
+    return RDB_OK;
 }
 
 int
@@ -1220,13 +1276,18 @@ RDB_add_builtin_scalar_ro_ops(RDB_op_map *opmap, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
+    if (RDB_put_ro_op(opmap, "abs", 1, paramtv, &RDB_INTEGER, &abs_int, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+
     paramtv[0] = &RDB_FLOAT;
     paramtv[1] = &RDB_FLOAT;
 
     if (RDB_put_ro_op(opmap, "/", 2, paramtv, &RDB_FLOAT, &divide_float, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    paramtv[0] = &RDB_FLOAT;
+    if (RDB_put_ro_op(opmap, "abs", 1, paramtv, &RDB_FLOAT, &abs_float, ecp) != RDB_OK)
+        return RDB_ERROR;
 
     if (RDB_put_ro_op(opmap, "sqrt", 1, paramtv, &RDB_FLOAT, &math_sqrt, ecp) != RDB_OK)
         return RDB_ERROR;
@@ -1240,14 +1301,19 @@ RDB_add_builtin_scalar_ro_ops(RDB_op_map *opmap, RDB_exec_context *ecp)
     if (RDB_put_ro_op(opmap, "atan", 1, paramtv, &RDB_FLOAT, &math_atan, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    paramtv[1] = &RDB_FLOAT;
-
     if (RDB_put_ro_op(opmap, "atan2", 2, paramtv, &RDB_FLOAT, &math_atan2, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    paramtv[0] = &RDB_STRING;
+    if (RDB_put_ro_op(opmap, "power", 2, paramtv, &RDB_FLOAT, &math_power, ecp) != RDB_OK)
+        return RDB_ERROR;
 
-    if (RDB_put_ro_op(opmap, "os.getenv", 1, paramtv, &RDB_STRING, &op_getenv, ecp) != RDB_OK)
+    if (RDB_put_ro_op(opmap, "exp", 1, paramtv, &RDB_FLOAT, &math_exp, ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    if (RDB_put_ro_op(opmap, "ln", 1, paramtv, &RDB_FLOAT, &math_ln, ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    if (RDB_put_ro_op(opmap, "log", 1, paramtv, &RDB_FLOAT, &math_log, ecp) != RDB_OK)
         return RDB_ERROR;
 
     return RDB_OK;

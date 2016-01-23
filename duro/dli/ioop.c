@@ -11,6 +11,7 @@
 #include <rel/rdb.h>
 #include <rel/tostr.h>
 #include <rel/typeimpl.h>
+#include "iinterp.h"
 
 #include <errno.h>
 #include <string.h>
@@ -42,12 +43,14 @@ RDB_object *Duro_stdin_objp;
 RDB_object *Duro_stdout_objp;
 RDB_object *Duro_stderr_objp;
 
-/** @page io-ops Built-in I/O type and operators
+/** @page io-ops Built-in I/O and system operators
 
 These operators are only available in Duro D/T.
 They are part of the io package.
 
 TYPE iostream_id POSSREP { id integer };
+
+<hr>
 
 OPERATOR put_line(line string) UPDATES {};
 
@@ -69,18 +72,26 @@ OPERATOR put(data <em>ARRAY</em>) UPDATES {};
 
 Writes <var>data</var> to standard output.
 
+<hr>
+
 OPERATOR get_line(line string) UPDATES {line};
 
 Reads a line from standard input and stores it in <var>line</var>,
 without the trailing newline.
 
+<hr>
+
 OPERATOR read(data binary, count integer) UPDATES {data};
 
 Reads up to count bytes from standard input and stores it in <var>data</var>.
 
+<hr>
+
 OPERATOR put_line(ios io.iostream_id, line string) UPDATES {};
 
 Writes <var>line</var> to the I/O stream <var>ios</var>, followed by a newline.
+
+<hr>
 
 OPERATOR put(ios io.iostream_id, data string) UPDATES {};
 
@@ -100,41 +111,95 @@ OPERATOR put(ios io.iostream_id, data <em>ARRAY</em>) UPDATES {};
 
 Writes <var>data</var> to the I/O stream <var>ios</var>.
 
+<hr>
+
 OPERATOR get_line(ios io.iostream_id, line string) UPDATES {line};
 
 Reads a line from I/O stream <var>ios</var> and store it in line, without the trailing newline.
 
+<hr>
+
 OPERATOR read(ios io.iostream_id, data binary, count integer) UPDATES {data};
 
 Reads up to count bytes from <var>ios</var> and store it in <var>data</var>.
+
+<hr>
 
 OPERATOR open(ios io.iostream_id, path string, mode string) UPDATES {ios};
 
 Opens file <var>path</var> in mode <var>mode</var> and store the resulting I/O stream
 in <var>ios</var>.
 
+<hr>
+
 OPERATOR close(ios io.iostream_id) UPDATES {};
 
 Closes the I/O stream <var>ios</var>.
 
+<hr>
+
 OPERATOR seek(ios io.iostream_id, pos integer) UPDATES {};
 
 Sets the file position indicator for stream <var>ios</var> to <var>pos</var>.
+
+<hr>
 
 OPERATOR eof() RETURNS boolean;
 
 Returns TRUE if the end-of-file indicator was set while reading
 from standard input.
 
+<hr>
+
 OPERATOR eof(ios io.iostream_id) RETURNS boolean;
 
 Returns TRUE if the end-of-file indicator was set while reading
 from <var>ios</var>.
 
+<hr>
+
 OPERATOR tmpfile() RETURNS io.iostream_id;
 
 Opens a unique temporary file for reading and writing and returns an I/O stream.
 The file is automatically deleted when it is closed.
+
+<hr>
+
+The following operators are part of the 'os' package.
+
+OPERATOR chdir(path string) UPDATES {};
+
+Changes the current direcory to \a path.
+
+<hr>
+
+OPERATOR exit() UPDATES {};
+
+OPERATOR exit(status int) UPDATES {};
+
+Exits the current process.
+
+If an integer argument is given it will become the status value returned to the parent.
+
+<hr>
+
+OPERATOR system(command string, status int) UPDATES {status};
+
+Executes command \a command.
+
+<hr>
+
+OPERATOR getenv (name string) RETURNS string;
+
+<h4>Description</h4>
+
+Reads the environment variable <var>name</var>.
+
+<h4>Return value</h4>
+
+The value of the environment variable <var>name</var>.
+
+<hr>
 
 The following operator is part of the 'net' package.
 
@@ -715,6 +780,65 @@ op_net_hescape(int argc, RDB_object *argv[], RDB_operator *op,
     return RDB_net_hescape(resultp, RDB_obj_string(argv[0]), ecp);
 }
 
+static int
+op_getenv(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    char *valp = getenv(RDB_obj_string(argv[0]));
+
+    /* If the environment variable does not exist, return empty string */
+    return RDB_string_to_obj(retvalp, valp != NULL ? valp : "", ecp);
+}
+
+static int
+op_chdir(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    if (chdir(RDB_obj_string(argv[0])) == -1) {
+        RDB_errno_to_error(errno, ecp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+/*
+ * Operator exit() without arguments
+ */
+static int
+exit_op(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
+    Duro_destroy_interp(interp);
+    exit(0);
+}
+
+/*
+ * Operator exit() with argument
+ */
+static int
+exit_int_op(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
+    int exitcode = RDB_obj_int(argv[0]);
+    Duro_destroy_interp(interp);
+    exit(exitcode);
+}
+
+static int
+system_op(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret = system(RDB_obj_string(argv[0]));
+    if (ret == -1 || ret == 127) {
+        RDB_handle_errcode(errno, ecp, txp);
+        return RDB_ERROR;
+    }
+    RDB_int_to_obj(argv[1], (RDB_int) ret);
+    return RDB_OK;
+}
+
 int
 RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
 {
@@ -739,9 +863,13 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     static RDB_parameter open_paramv[3];
     static RDB_parameter seek_paramv[2];
     static RDB_parameter close_paramv[1];
+    static RDB_parameter chdir_paramv[1];
+    static RDB_parameter exit_int_params[1];
+    static RDB_parameter system_params[2];
 
     static RDB_type *eof_iostream_param_typ;
     static RDB_type *net_hescape_param_typ;
+    static RDB_type *os_getenv_param_typ;
 
     put_string_params[0].typ = &RDB_STRING;
     put_string_params[0].update = RDB_FALSE;
@@ -813,6 +941,17 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
 
     close_paramv[0].typ = &RDB_IOSTREAM_ID;
     close_paramv[0].update = RDB_FALSE;
+
+    chdir_paramv[0].typ = &RDB_STRING;
+    chdir_paramv[0].update = RDB_FALSE;
+
+    exit_int_params[0].typ = &RDB_INTEGER;
+    exit_int_params[0].update = RDB_FALSE;
+
+    system_params[0].typ = &RDB_STRING;
+    system_params[0].update = RDB_FALSE;
+    system_params[1].typ = &RDB_INTEGER;
+    system_params[1].update = RDB_TRUE;
 
     if (RDB_put_upd_op(opmapp, "io.put_line", 1, put_string_params, &op_put_line_string,
             ecp) != RDB_OK)
@@ -906,6 +1045,11 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
+    if (RDB_put_upd_op(opmapp, "os.chdir", 1, chdir_paramv, &op_chdir, ecp)
+            != RDB_OK) {
+        return RDB_ERROR;
+    }
+
     eof_iostream_param_typ = &RDB_STRING;
     if (RDB_put_upd_op(opmapp, "net.form_to_tuple", RDB_VAR_PARAMS, NULL,
             &op_net_form_to_tuple, ecp) != RDB_OK)
@@ -916,6 +1060,20 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
             &RDB_STRING, &op_net_hescape, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
+
+    os_getenv_param_typ = &RDB_STRING;
+    if (RDB_put_global_ro_op("os.getenv", 1, &os_getenv_param_typ, &RDB_STRING,
+            &op_getenv, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+    if (RDB_put_upd_op(opmapp, "os.system", 2, system_params, &system_op,
+            ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_put_upd_op(opmapp, "os.exit", 0, NULL, &exit_op, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_put_upd_op(opmapp, "os.exit", 1, exit_int_params, &exit_int_op,
+            ecp) != RDB_OK)
+        return RDB_ERROR;
 
     Duro_stdin_objp = RDB_alloc(sizeof (RDB_object), ecp);
     if (Duro_stdin_objp == NULL)
