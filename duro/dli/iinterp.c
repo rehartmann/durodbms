@@ -293,8 +293,12 @@ interp_get_op(Duro_interp *interp, const char *opname, int argc,
                 && interp->txnp == NULL) {
             RDB_transaction tx;
             RDB_database *dbp = Duro_get_db(interp, ecp);
-            if (dbp == NULL)
+            if (dbp == NULL) {
+                if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+                    RDB_raise_operator_not_found("no database", ecp);
+                }
                 return NULL;
+            }
             if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
                 return NULL;
             op = RDB_get_update_op_by_args(opname, argc, argpv, NULL, ecp, &tx);

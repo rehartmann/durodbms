@@ -19,9 +19,9 @@ RDB_op_map RDB_builtin_ro_op_map;
 
 RDB_op_map RDB_builtin_upd_op_map;
 
-/** @page builtin-ops Built-in read-only operators
+/**
 
-@section relops Relational and related operators
+@page relops Built-in relational and related operators
 
 <h3 id="op_relation">OPERATOR RELATION</h3>
 
@@ -292,9 +292,7 @@ OPERATOR wrap(r RELATION { * }, src_attrs ARRAY OF string, dst_attr string ...) 
 
 The relational WRAP operator.
 
-<hr>
-
-@section comparison Comparison operators
+@page comparison Built-in comparison operators
 
 <h3 id="op_eq">OPERATOR =</h3>
 
@@ -397,11 +395,9 @@ The greater-than-or-equal operator.
 TRUE if the first argument is greater than or equal to the second.
 If the operands are strings, the strings will be compared using strcoll().
 
-<hr>
+@page logical Built-in logical operators
 
-@section logical Logical operators
-
-<h3 id="op_and">OPERATOR and</h3>
+<h3 id="op_and">OPERATOR AND</h3>
 
 OPERATOR and (boolean, boolean) RETURNS boolean;
 
@@ -453,186 +449,7 @@ The IF-THEN-ELSE operator.
 
 @a V1 if @a B is TRUE, @a V2 otherwise.
 
-<hr>
-
-@section stringops String operators
-
-<h3 id="op_concat">OPERATOR ||</h3>
-
-OPERATOR || (s1 string, s2 string) RETURNS string;
-
-<h4>Description</h4>
-
-The string concatenation operator.
-
-<h4>Return value</h4>
-
-The result of the concatenation of the operands.
-
-<hr>
-
-<h3 id="op_strlen">OPERATOR strlen</h3>
-
-OPERATOR strlen (s string) RETURNS integer;
-
-<h4>Description</h4>
-
-The string length operator.
-
-<h4>Return value</h4>
-
-The length of @a s, in code points.
-
-<hr>
-
-<h3 id="op_strlen_b">OPERATOR strlen_b</h3>
-
-OPERATOR strlen_b (s string) RETURNS integer;
-
-<h4>Description</h4>
-
-The string length operator, returning the number of bytes.
-
-<h4>Return value</h4>
-
-The length of @a s, in bytes.
-
-<hr>
-
-<h3 id="substr">OPERATOR substr</h3>
-
-OPERATOR substr(s string, start integer, length integer) RETURNS
-string;
-
-<h4>Description</h4>
-
-Extracts a substring.
-
-<h4>Return value</h4>
-
-The substring of @a s with length @a length starting at position
-@a start. @a length and @a start are measured
-in code points, according to the current encoding.
-
-<h4>Errors</h4>
-
-<dl>
-<dt>invalid_argument_error
-<dd>@a start is negative, or @a start + @a length
-is greater than strlen(@a s).
-</dl>
-
-<hr>
-
-<h3 id="substr_b">OPERATOR substr_b</h3>
-
-OPERATOR substr_b(s string, start integer, length integer) RETURNS
-string;
-
-OPERATOR substr_b(s string, start integer) RETURNS
-string;
-
-<h4>Description</h4>
-
-Extracts a substring.
-
-<h4>Return value</h4>
-
-The substring of @a s with length @a length starting at position
-@a start. @a length and @a start are measured
-in bytes. If called with 2 arguments, the substring extends to the end of
-@a s.
-
-<h4>Errors</h4>
-
-<dl>
-<dt>invalid_argument_error
-<dd>@a start or @a length are negative, or @a start + @a length
-is greater than strlen(@a s).
-</dl>
-
-<hr>
-
-<h3 id="strfind_b">OPERATOR strfind_b</h3>
-
-OPERATOR strfind_b (haystack string, needle string) RETURNS
-integer;
-
-OPERATOR strfind_b (haystack string, needle string, int pos) RETURNS
-integer;
-
-<h4>Description</h4>
-
-Finds the first occurrence of the string @a needle in the string @a haystack.
-If called with 3 arguments, it finds the first occurrence after @a pos,
-where @a pos is a byte offset.
-
-<h4>Return value</h4>
-
-The position of the substring, in bytes, or -1 if the substring has not been found.
-
-<hr>
-
-<h3 id="op_starts_with">OPERATOR starts_with</h3>
-
-OPERATOR starts_with (s string, prefix string) RETURNS boolean;
-
-<h4>Description</h4>
-
-Tests if string @a s starts with string @a prefix.
-
-<h4>Return value</h4>
-
-TRUE if @a s starts with @a prefix, FALSE otherwise
-
-<hr>
-
-<h3 id="op_like">OPERATOR like</h3>
-
-OPERATOR like (s string, pattern string) RETURNS boolean;
-
-<h4>Description</h4>
-
-Pattern matching operator. A period ('.') matches a single character;
-an asterisk ('*') matches zero or more characters.
-
-<h4>Return value</h4>
-
-TRUE if @a s matches @a pattern, RDB_FALSE otherwise.
-
-<hr>
-
-<h3 id="op_regex_like">OPERATOR regex_like</h3>
-
-OPERATOR regex_like (s string, pattern string) RETURNS boolean;
-
-<h4>Description</h4>
-
-The regular expression matching operator.
-
-<h4>Return value</h4>
-
-TRUE if @a s matches @a pattern, RDB_FALSE otherwise.
-
-<hr>
-
-<h3 id="op_format">OPERATOR format</h3>
-
-OPERATOR format (format string, ...) RETURNS string;
-
-<h4>Description</h4>
-
-Generates a formatted string in the style of sprintf.
-The arguments passed after format must be of type string, integer, or float
-and must match the format argument.
-
-<h4>Return value</h4>
-
-The formatted string.
-
-<hr>
-
-@section typeconv Type conversion operators
+@page typeconv Built-in type conversion operators
 
 <h3 id="op_integer">OPERATOR cast_as_integer</h3>
 
@@ -710,178 +527,7 @@ Converts a value to a binary representation which includes the type.
 
 The operand, converted to binary representation.
 
-<hr>
-
-@section arithmetic Arithmetic operators
-
-<h3 id="op_plus">OPERATOR +</h3>
-
-OPERATOR + (integer, integer) RETURNS integer;
-
-OPERATOR + (float, float) RETURNS float;
-
-<h4>Description</h4>
-
-The addition operator.
-
-<h4>Return value</h4>
-
-The sum of the two operands.
-
-<hr>
-
-<h3 id="op_uminus">OPERATOR - (unary)</h3>
-
-OPERATOR - (integer) RETURNS integer;
-
-OPERATOR - (float) RETURNS float;
-
-<h4>Description</h4>
-
-The unary minus operator.
-
-<h4>Return value</h4>
-
-The operand, sign inverted.
-
-<hr>
-
-<h3 id="op_bminus">OPERATOR - (binary)</h3>
-
-OPERATOR - (integer, integer) RETURNS integer;
-
-OPERATOR - (float, float) RETURNS float;
-
-<h4>Description</h4>
-
-The subtraction operator.
-
-<h4>Return value</h4>
-
-The difference of the two operands.
-
-<hr>
-
-<h3 id="op_times">OPERATOR *</h3>
-
-OPERATOR * (integer, integer) RETURNS integer;;
-
-OPERATOR * (float, float) RETURNS float;
-
-<h4>Description</h4>
-
-The multiplication operator.
-
-<h4>Return value</h4>
-
-The product of the two operands.
-
-<hr>
-
-<h3 id="op_div">OPERATOR /</h3>
-
-OPERATOR / (integer, integer) RETURNS integer;
-
-OPERATOR / (float, float) RETURNS float;
-
-<h4>Description</h4>
-
-The division operator.
-
-<h4>Return value</h4>
-
-The quotient of the operators.
-
-<h4>Errors</h4>
-
-<dl>
-<dt>INVALID_ARGUMENT_ERROR
-<dd>The divisor is zero.
-</dl>
-
-<hr>
-
-<h3 id="op_sqrt">OPERATOR sqrt</h3>
-
-OPERATOR sqrt(x float) RETURNS float;
-
-The square root operator.
-
-<hr>
-
-<h3 id="op_abs">OPERATOR abs</h3>
-
-OPERATOR abs(x integer) RETURNS integer;
-
-OPERATOR abs(x float) RETURNS float;
-
-The abs(absolute value) operator.
-
-<hr>
-
-<h3 id="op_sin">OPERATOR sin</h3>
-
-OPERATOR sin (x float) RETURNS float;
-
-The sine operator.
-
-<hr>
-
-<h3 id="op_cos">OPERATOR cos</h3>
-
-OPERATOR cos(x float) RETURNS float;
-
-The cosine operator.
-
-<hr>
-
-<h3 id="op_atan">OPERATOR atan</h3>
-
-OPERATOR atan(x float) RETURNS float;
-
-The arc tangent operator.
-
-<hr>
-
-<h3 id="op_atan2">OPERATOR atan2</h3>
-
-OPERATOR atan2(y float, x float) RETURNS float;
-
-The atan2 operator.
-
-<hr>
-
-<h3 id="op_power">OPERATOR power</h3>
-
-OPERATOR power(b float, x float) RETURNS float;
-
-The power operator.
-
-<hr>
-
-<h3 id="op_exp">OPERATOR </h3>
-
-OPERATOR exp(x float) RETURNS float;
-
-The exponential function operator.
-
-<hr>
-
-<h3 id="op_ln">OPERATOR </h3>
-
-OPERATOR ln(x float) RETURNS float;
-
-The natural logarithm operator.
-
-<h3 id="op_log">OPERATOR </h3>
-
-OPERATOR log(x float) RETURNS float;
-
-The base 10 logarithm operator.
-
-<hr>
-
-@section tupleop Tuple operators
+@page tupleop Built-in tuple operators
 
 <h3 id="op_tuple">OPERATOR TUPLE</h3>
 
@@ -901,9 +547,7 @@ OPERATOR to_tuple(r RELATION { * }) RETURNS TUPLE { * };
 
 Extracts a single tuple from a relation.
 
-<hr>
-
-@section arrayop Array operators
+@page arrayop Built-in array operators
 
 <h3 id="op_array">OPERATOR array</h3>
 
@@ -912,12 +556,13 @@ OPERATOR array(<em>ANY</em>, ...) RETURNS <em>ARRAY</em>;
 <h4>Description</h4>
 
 The array selector.
+Returns an array containing the arguments passed to <code>array</code>, in order.
 
 <hr>
 
 <h3 id="op_array_length">OPERATOR length</h3>
 
-OPERATOR length (<em>ARRAY</em>) RETURNS integer;
+OPERATOR length (arr <em>ARRAY</em>) RETURNS integer;
 
 <h4>Description</h4>
 
@@ -925,7 +570,7 @@ The array length operator.
 
 <h4>Return value</h4>
 
-The length of the operand.
+The length of the array @a arr.
 
 <hr>
 
@@ -935,7 +580,7 @@ OPERATOR index_of (arr <em>ARRAY</em>, data <em>ANY</em>) RETURNS integer;
 
 <h4>Description</h4>
 
-Returns the index of the first occurrence of @a data in the array ARR.
+Returns the index of the first occurrence of @a data in the array @a arr.
 
 <h4>Return value</h4>
 

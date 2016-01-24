@@ -26,6 +26,354 @@
 #define isfinite _finite
 #endif
 
+/**
+
+@page stringops Built-in string operators
+
+<h3 id="op_concat">OPERATOR ||</h3>
+
+OPERATOR || (s1 string, s2 string) RETURNS string;
+
+<h4>Description</h4>
+
+The string concatenation operator.
+
+<h4>Return value</h4>
+
+The result of the concatenation of the operands.
+
+<hr>
+
+<h3 id="op_strlen">OPERATOR strlen</h3>
+
+OPERATOR strlen (s string) RETURNS integer;
+
+<h4>Description</h4>
+
+The string length operator.
+
+<h4>Return value</h4>
+
+The length of @a s, in code points.
+
+<hr>
+
+<h3 id="op_strlen_b">OPERATOR strlen_b</h3>
+
+OPERATOR strlen_b (s string) RETURNS integer;
+
+<h4>Description</h4>
+
+The string length operator, returning the number of bytes.
+
+<h4>Return value</h4>
+
+The length of @a s, in bytes.
+
+<hr>
+
+<h3 id="substr">OPERATOR substr</h3>
+
+OPERATOR substr(s string, start integer, length integer) RETURNS
+string;
+
+<h4>Description</h4>
+
+Extracts a substring.
+
+<h4>Return value</h4>
+
+The substring of @a s with length @a length starting at position
+@a start. @a length and @a start are measured
+in code points, according to the current encoding.
+
+<h4>Errors</h4>
+
+<dl>
+<dt>invalid_argument_error
+<dd>@a start is negative, or @a start + @a length
+is greater than strlen(@a s).
+</dl>
+
+<hr>
+
+<h3 id="substr_b">OPERATOR substr_b</h3>
+
+OPERATOR substr_b(s string, start integer, length integer) RETURNS
+string;
+
+OPERATOR substr_b(s string, start integer) RETURNS
+string;
+
+<h4>Description</h4>
+
+Extracts a substring.
+
+<h4>Return value</h4>
+
+The substring of @a s with length @a length starting at position
+@a start. @a length and @a start are measured
+in bytes. If called with 2 arguments, the substring extends to the end of
+@a s.
+
+<h4>Errors</h4>
+
+<dl>
+<dt>invalid_argument_error
+<dd>@a start or @a length are negative, or @a start + @a length
+is greater than strlen(@a s).
+</dl>
+
+<hr>
+
+<h3 id="strfind_b">OPERATOR strfind_b</h3>
+
+OPERATOR strfind_b (haystack string, needle string) RETURNS
+integer;
+
+OPERATOR strfind_b (haystack string, needle string, int pos) RETURNS
+integer;
+
+<h4>Description</h4>
+
+Finds the first occurrence of the string @a needle in the string @a haystack.
+If called with 3 arguments, it finds the first occurrence after @a pos,
+where @a pos is a byte offset.
+
+<h4>Return value</h4>
+
+The position of the substring, in bytes, or -1 if the substring has not been found.
+
+<hr>
+
+<h3 id="op_starts_with">OPERATOR starts_with</h3>
+
+OPERATOR starts_with (s string, prefix string) RETURNS boolean;
+
+<h4>Description</h4>
+
+Tests if string @a s starts with string @a prefix.
+
+<h4>Return value</h4>
+
+TRUE if @a s starts with @a prefix, FALSE otherwise
+
+<hr>
+
+<h3 id="op_like">OPERATOR like</h3>
+
+OPERATOR like (s string, pattern string) RETURNS boolean;
+
+<h4>Description</h4>
+
+Pattern matching operator. A period ('.') matches a single character;
+an asterisk ('*') matches zero or more characters.
+
+<h4>Return value</h4>
+
+TRUE if @a s matches @a pattern, RDB_FALSE otherwise.
+
+<hr>
+
+<h3 id="op_regex_like">OPERATOR regex_like</h3>
+
+OPERATOR regex_like (s string, pattern string) RETURNS boolean;
+
+<h4>Description</h4>
+
+The regular expression matching operator.
+
+<h4>Return value</h4>
+
+TRUE if @a s matches @a pattern, RDB_FALSE otherwise.
+
+<hr>
+
+<h3 id="op_format">OPERATOR format</h3>
+
+OPERATOR format (format string, ...) RETURNS string;
+
+<h4>Description</h4>
+
+Generates a formatted string in the style of sprintf.
+The arguments passed after format must be of type string, integer, or float
+and must match the format argument.
+
+<h4>Return value</h4>
+
+The formatted string.
+
+@page arithmetic Built-in arithmetic operators
+
+<h3 id="op_plus">OPERATOR +</h3>
+
+OPERATOR + (integer, integer) RETURNS integer;
+
+OPERATOR + (float, float) RETURNS float;
+
+<h4>Description</h4>
+
+The addition operator.
+
+<h4>Return value</h4>
+
+The sum of the two operands.
+
+<hr>
+
+<h3 id="op_uminus">OPERATOR - (unary)</h3>
+
+OPERATOR - (integer) RETURNS integer;
+
+OPERATOR - (float) RETURNS float;
+
+<h4>Description</h4>
+
+The unary minus operator.
+
+<h4>Return value</h4>
+
+The operand, sign inverted.
+
+<hr>
+
+<h3 id="op_bminus">OPERATOR - (binary)</h3>
+
+OPERATOR - (integer, integer) RETURNS integer;
+
+OPERATOR - (float, float) RETURNS float;
+
+<h4>Description</h4>
+
+The subtraction operator.
+
+<h4>Return value</h4>
+
+The difference of the two operands.
+
+<hr>
+
+<h3 id="op_times">OPERATOR *</h3>
+
+OPERATOR * (integer, integer) RETURNS integer;;
+
+OPERATOR * (float, float) RETURNS float;
+
+<h4>Description</h4>
+
+The multiplication operator.
+
+<h4>Return value</h4>
+
+The product of the two operands.
+
+<hr>
+
+<h3 id="op_div">OPERATOR /</h3>
+
+OPERATOR / (integer, integer) RETURNS integer;
+
+OPERATOR / (float, float) RETURNS float;
+
+<h4>Description</h4>
+
+The division operator.
+
+<h4>Return value</h4>
+
+The quotient of the operators.
+
+<h4>Errors</h4>
+
+<dl>
+<dt>INVALID_ARGUMENT_ERROR
+<dd>The divisor is zero.
+</dl>
+
+<hr>
+
+<h3 id="op_sqrt">OPERATOR sqrt</h3>
+
+OPERATOR sqrt(x float) RETURNS float;
+
+The square root operator.
+
+<hr>
+
+<h3 id="op_abs">OPERATOR abs</h3>
+
+OPERATOR abs(x integer) RETURNS integer;
+
+OPERATOR abs(x float) RETURNS float;
+
+The abs(absolute value) operator.
+
+<hr>
+
+<h3 id="op_sin">OPERATOR sin</h3>
+
+OPERATOR sin (x float) RETURNS float;
+
+The sine operator.
+
+<hr>
+
+<h3 id="op_cos">OPERATOR cos</h3>
+
+OPERATOR cos(x float) RETURNS float;
+
+The cosine operator.
+
+<hr>
+
+<h3 id="op_atan">OPERATOR atan</h3>
+
+OPERATOR atan(x float) RETURNS float;
+
+The arc tangent operator.
+
+<hr>
+
+<h3 id="op_atan2">OPERATOR atan2</h3>
+
+OPERATOR atan2(y float, x float) RETURNS float;
+
+The atan2 operator.
+
+<hr>
+
+<h3 id="op_power">OPERATOR power</h3>
+
+OPERATOR power(b float, x float) RETURNS float;
+
+The power operator.
+
+<hr>
+
+<h3 id="op_exp">OPERATOR exp</h3>
+
+OPERATOR exp(x float) RETURNS float;
+
+The exponential function operator.
+
+<hr>
+
+<h3 id="op_ln">OPERATOR </h3>
+
+OPERATOR ln(x float) RETURNS float;
+
+The natural logarithm operator.
+
+<hr>
+
+<h3 id="op_log">OPERATOR </h3>
+
+OPERATOR log(x float) RETURNS float;
+
+The base 10 logarithm operator.
+
+*/
+
 int
 RDB_eq_bool(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
