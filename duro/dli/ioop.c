@@ -46,7 +46,8 @@ RDB_object *Duro_stderr_objp;
 /** @page io-ops Built-in I/O and system operators
 
 These operators are only available in Duro D/T.
-They are part of the io package.
+
+@section io Package io
 
 TYPE iostream_id POSSREP { id integer };
 
@@ -54,7 +55,7 @@ TYPE iostream_id POSSREP { id integer };
 
 OPERATOR put_line(line string) UPDATES {};
 
-Writes <var>line</var> to standard output, followed by a newline.
+Writes @a line to standard output, followed by a newline.
 
 OPERATOR put(data string) UPDATES {};
 
@@ -70,26 +71,26 @@ OPERATOR put(data <em>RELATION</em>) UPDATES {};
 
 OPERATOR put(data <em>ARRAY</em>) UPDATES {};
 
-Writes <var>data</var> to standard output.
+Writes @a data to standard output.
 
 <hr>
 
 OPERATOR get_line(line string) UPDATES {line};
 
-Reads a line from standard input and stores it in <var>line</var>,
+Reads a line from standard input and stores it in @a line,
 without the trailing newline.
 
 <hr>
 
 OPERATOR read(data binary, count integer) UPDATES {data};
 
-Reads up to count bytes from standard input and stores it in <var>data</var>.
+Reads up to count bytes from standard input and stores it in @a data.
 
 <hr>
 
 OPERATOR put_line(ios io.iostream_id, line string) UPDATES {};
 
-Writes <var>line</var> to the I/O stream <var>ios</var>, followed by a newline.
+Writes @a line to the I/O stream @a ios, followed by a newline.
 
 <hr>
 
@@ -109,38 +110,38 @@ OPERATOR put(ios io.iostream_id, data <em>RELATION</em>) UPDATES {};
 
 OPERATOR put(ios io.iostream_id, data <em>ARRAY</em>) UPDATES {};
 
-Writes <var>data</var> to the I/O stream <var>ios</var>.
+Writes @a data to the I/O stream @a ios.
 
 <hr>
 
 OPERATOR get_line(ios io.iostream_id, line string) UPDATES {line};
 
-Reads a line from I/O stream <var>ios</var> and store it in line, without the trailing newline.
+Reads a line from I/O stream @a ios and stores it in @a line, without the trailing newline.
 
 <hr>
 
 OPERATOR read(ios io.iostream_id, data binary, count integer) UPDATES {data};
 
-Reads up to count bytes from <var>ios</var> and store it in <var>data</var>.
+Reads up to count bytes from @ ios and store it in @a data.
 
 <hr>
 
 OPERATOR open(ios io.iostream_id, path string, mode string) UPDATES {ios};
 
-Opens file <var>path</var> in mode <var>mode</var> and store the resulting I/O stream
-in <var>ios</var>.
+Opens file @a path in mode @a mode and store the resulting I/O stream
+in @a ios.
 
 <hr>
 
 OPERATOR close(ios io.iostream_id) UPDATES {};
 
-Closes the I/O stream <var>ios</var>.
+Closes the I/O stream @a ios.
 
 <hr>
 
 OPERATOR seek(ios io.iostream_id, pos integer) UPDATES {};
 
-Sets the file position indicator for stream <var>ios</var> to <var>pos</var>.
+Sets the file position indicator for stream @a ios to @a pos.
 
 <hr>
 
@@ -154,7 +155,7 @@ from standard input.
 OPERATOR eof(ios io.iostream_id) RETURNS boolean;
 
 Returns TRUE if the end-of-file indicator was set while reading
-from <var>ios</var>.
+from @a ios.
 
 <hr>
 
@@ -165,13 +166,7 @@ The file is automatically deleted when it is closed.
 
 <hr>
 
-The following operators are part of the 'os' package.
-
-OPERATOR chdir(path string) UPDATES {};
-
-Changes the current direcory to \a path.
-
-<hr>
+@section os Package os
 
 OPERATOR exit() UPDATES {};
 
@@ -193,15 +188,21 @@ OPERATOR getenv (name string) RETURNS string;
 
 <h4>Description</h4>
 
-Reads the environment variable <var>name</var>.
+Reads the environment variable @a name.
 
 <h4>Return value</h4>
 
-The value of the environment variable <var>name</var>.
+The value of the environment variable @a name.
 
 <hr>
 
-The following operator is part of the 'net' package.
+OPERATOR chdir(path string) UPDATES {};
+
+Changes the current direcory to \a path.
+
+<hr>
+
+@section net Package net
 
 OPERATOR form_to_tuple(tp TUPLE { * }, form_data string) UPDATES { tp };
 

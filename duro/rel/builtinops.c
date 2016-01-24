@@ -20,7 +20,281 @@ RDB_op_map RDB_builtin_ro_op_map;
 RDB_op_map RDB_builtin_upd_op_map;
 
 /** @page builtin-ops Built-in read-only operators
-@section scalar-ops Built-in scalar operators
+
+@section relops Relational and related operators
+
+<h3 id="op_relation">OPERATOR RELATION</h3>
+
+OPERATOR RELATION(t TUPLE { * }, ...) RETURNS RELATION { * };
+
+<h4>Description</h4>
+
+The relation selector.
+
+<hr>
+
+<h3 id="op_is_empty">OPERATOR is_empty</h3>
+
+OPERATOR is_empty(RELATION { * }) RETURNS boolean;
+
+<h4>Description</h4>
+
+Checks if a table is empty.
+
+<h4>Return value</h4>
+
+TRUE if the relation-valued operand is empty, RDB_FALSE
+otherwise.
+
+<hr>
+
+<h3 id="op_count">OPERATOR count</h3>
+
+OPERATOR count(RELATION { * }) RETURNS integer;
+
+<h4>Description</h4>
+
+Counts the tuples in a table.
+
+<h4>Return value</h4>
+
+The cardinality of the relation-valued operand.
+
+<hr>
+
+<h3 id="op_in">OPERATOR in</h3>
+
+OPERATOR in (t TUPLE { * }, r RELATION { * }) RETURNS boolean;
+
+<h4>Description</h4>
+
+Checks if a table contains a given tuple.
+
+<h4>Return value</h4>
+
+TRUE if @a r contains @a t, RDB_FALSE otherwise.
+
+<hr>
+
+<h3 id="op_subset_of">OPERATOR subset_of</h3>
+
+OPERATOR subset_of(r1 RELATION { * }, r2 RELATION { * }) RETURNS boolean;
+
+<h4>Description</h4>
+
+Checks if a table is a subset of another table.
+
+<h4>Return value</h4>
+
+TRUE if the @a r1 is a subset of @a r2, RDB_FALSE otherwise.
+
+<hr>
+
+<h3 id="op_any">OPERATOR any</h3>
+
+OPERATOR any(r RELATION { * }, attr boolean) RETURNS boolean;
+
+<h4>Description</h4>
+
+The <code>any</code> aggregate operator.
+For the semantics, see RDB_any().
+
+<hr>
+
+<h3 id="op_all">OPERATOR all</h3>
+
+OPERATOR all(r RELATION { * }, attr boolean) RETURNS boolean;
+
+<h4>Description</h4>
+
+The <code>all</code> aggregate operator.
+For the semantics, see RDB_all().
+
+<hr>
+
+<h3 id="op_avg">OPERATOR avg</h3>
+
+OPERATOR avg(r RELATION { * }, attr integer) RETURNS float;
+
+OPERATOR avg(r RELATION { * }, attr float) RETURNS float;
+
+<h4>Description</h4>
+
+The <code>avg</code> aggregate operator.
+For the semantics, see RDB_avg().
+
+<hr>
+
+<h3 id="op_max">OPERATOR max</h3>
+
+OPERATOR max(r RELATION { * }, attr integer) RETURNS integer;
+
+OPERATOR max(r RELATION { * }, attr float) RETURNS float;
+
+<h4>Description</h4>
+
+The <code>max</code> aggregate operator.
+For the semantics, see RDB_max().
+
+<hr>
+
+<h3 id="op_min">OPERATOR min</h3>
+
+OPERATOR min(r RELATION { * }, attr integer) RETURNS integer;
+
+OPERATOR min(r RELATION { * }, attr float) RETURNS float;
+
+<h4>Description</h4>
+
+The <code>min</code> aggregate operator.
+For the semantics, see RDB_min().
+
+<hr>
+
+<h3 id="op_sum">OPERATOR sum</h3>
+
+OPERATOR SUM(r RELATION { * }, attr integer) RETURNS integer;
+
+OPERATOR SUM(r RELATION { * }, attr float) RETURNS float;
+
+<h4>Description</h4>
+
+The SUM aggregate operator.
+For the semantics, see RDB_sum().
+
+<hr>
+
+<h3 id="op_divide">OPERATOR divide</h3>
+
+OPERATOR divide(r1 RELATION { * }, r2 RELATION { * }, r2 RELATION { * }) RETURNS RELATION { * };
+
+<h4>Description</h4>
+
+The relational three-argument (small) DIVIDE operator.
+
+<hr>
+
+<h3 id="op_extend">OPERATOR extend</h3>
+
+OPERATOR extend(r RELATION { * }, attrexp <em>ANY</em>, attrname string, ...) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_group">OPERATOR group</h3>
+
+OPERATOR group(r RELATION { * }, attrname string ...) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_intersect">OPERATOR intersect</h3>
+
+OPERATOR intersect(r1 RELATION { * }, r2 RELATION { * }) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_join">OPERATOR join</h3>
+
+OPERATOR join(r1 RELATION { * }, r2 RELATION { * }) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_minus">OPERATOR minus</h3>
+
+OPERATOR minus(r1 RELATION { * }, r2 RELATION { * }) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_project">OPERATOR project</h3>
+
+OPERATOR project(r1 RELATION { * }, attrname string ...) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_remove">OPERATOR remove</h3>
+
+OPERATOR remove(r RELATION { * }, attrname string ...) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_rename">OPERATOR rename</h3>
+
+OPERATOR rename(r RELATION { * }, scr_attrname string, dst_attrname string ...) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_ungroup">OPERATOR ungroup</h3>
+
+OPERATOR ungroup(r RELATION { * }, attrname string) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_union">OPERATOR union</h3>
+
+OPERATOR union(r1 RELATION { * }, r2 RELATION { * }) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_d_union">OPERATOR d_union</h3>
+
+OPERATOR d_union(r1 RELATION { * }, r2 RELATION { * }) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_update">OPERATOR update</h3>
+
+OPERATOR update(r1 RELATION { * }, dst_attrname string, src_expr <em>ANY</em>, ...) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_unwrap">OPERATOR unwrap</h3>
+
+OPERATOR unwrap(attrname string, ...) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_semijoin">OPERATOR semijoin</h3>
+
+OPERATOR semijoin(r1 RELATION { * }, r2 RELATION { * }) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_semiminus">OPERATOR semiminus</h3>
+
+OPERATOR semiminus(r1 RELATION { * }, r2 RELATION { * }) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_summarize">OPERATOR summarize</h3>
+
+OPERATOR summarize(r1 RELATION { * }, r2 RELATION { * }, expr <em>ANY</em>, attrname string, ...) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_tclose">OPERATOR tclose</h3>
+
+OPERATOR tclose(r RELATION { * }) RETURNS RELATION { * };
+
+The transitive closure operator.
+
+<hr>
+
+<h3 id="op_where">OPERATOR where</h3>
+
+OPERATOR where(r RELATION { * }, b boolean) RETURNS RELATION { * };
+
+The relational WHERE operator.
+
+<hr>
+
+<h3 id="op_wrap">OPERATOR wrap</h3>
+
+OPERATOR wrap(r RELATION { * }, src_attrs ARRAY OF string, dst_attr string ...) RETURNS RELATION { * };
+
+The relational WRAP operator.
+
+<hr>
+
+@section comparison Comparison operators
 
 <h3 id="op_eq">OPERATOR =</h3>
 
@@ -125,6 +399,321 @@ If the operands are strings, the strings will be compared using strcoll().
 
 <hr>
 
+@section logical Logical operators
+
+<h3 id="op_and">OPERATOR and</h3>
+
+OPERATOR and (boolean, boolean) RETURNS boolean;
+
+<h4>Description</h4>
+
+The boolean AND operator.
+
+<hr>
+
+<h3 id="op_or">OPERATOR OR</h3>
+
+OPERATOR or (boolean, boolean) RETURNS boolean;
+
+<h4>Description</h4>
+
+The boolean OR operator.
+
+<hr>
+
+<h3 id="op_xor">OPERATOR xor</h3>
+
+OPERATOR xor (boolean, boolean) RETURNS boolean;
+
+<h4>Description</h4>
+
+The boolean XOR operator.
+
+<hr>
+
+<h3 id="op_not">OPERATOR not</h3>
+
+OPERATOR not (boolean) RETURNS boolean;
+
+<h4>Description</h4>
+
+The boolean NOT operator.
+
+<hr>
+
+<h3 id="op_if">OPERATOR if</h3>
+
+OPERATOR IF (B boolean, V1 <em>ANY</em>, V2 <em>ANY</em>) RETURNS <em>ANY</em>;
+
+<h4>Description</h4>
+
+The IF-THEN-ELSE operator.
+
+<h4>Return value</h4>
+
+@a V1 if @a B is TRUE, @a V2 otherwise.
+
+<hr>
+
+@section stringops String operators
+
+<h3 id="op_concat">OPERATOR ||</h3>
+
+OPERATOR || (s1 string, s2 string) RETURNS string;
+
+<h4>Description</h4>
+
+The string concatenation operator.
+
+<h4>Return value</h4>
+
+The result of the concatenation of the operands.
+
+<hr>
+
+<h3 id="op_strlen">OPERATOR strlen</h3>
+
+OPERATOR strlen (s string) RETURNS integer;
+
+<h4>Description</h4>
+
+The string length operator.
+
+<h4>Return value</h4>
+
+The length of @a s, in code points.
+
+<hr>
+
+<h3 id="op_strlen_b">OPERATOR strlen_b</h3>
+
+OPERATOR strlen_b (s string) RETURNS integer;
+
+<h4>Description</h4>
+
+The string length operator, returning the number of bytes.
+
+<h4>Return value</h4>
+
+The length of @a s, in bytes.
+
+<hr>
+
+<h3 id="substr">OPERATOR substr</h3>
+
+OPERATOR substr(s string, start integer, length integer) RETURNS
+string;
+
+<h4>Description</h4>
+
+Extracts a substring.
+
+<h4>Return value</h4>
+
+The substring of @a s with length @a length starting at position
+@a start. @a length and @a start are measured
+in code points, according to the current encoding.
+
+<h4>Errors</h4>
+
+<dl>
+<dt>invalid_argument_error
+<dd>@a start is negative, or @a start + @a length
+is greater than strlen(@a s).
+</dl>
+
+<hr>
+
+<h3 id="substr_b">OPERATOR substr_b</h3>
+
+OPERATOR substr_b(s string, start integer, length integer) RETURNS
+string;
+
+OPERATOR substr_b(s string, start integer) RETURNS
+string;
+
+<h4>Description</h4>
+
+Extracts a substring.
+
+<h4>Return value</h4>
+
+The substring of @a s with length @a length starting at position
+@a start. @a length and @a start are measured
+in bytes. If called with 2 arguments, the substring extends to the end of
+@a s.
+
+<h4>Errors</h4>
+
+<dl>
+<dt>invalid_argument_error
+<dd>@a start or @a length are negative, or @a start + @a length
+is greater than strlen(@a s).
+</dl>
+
+<hr>
+
+<h3 id="strfind_b">OPERATOR strfind_b</h3>
+
+OPERATOR strfind_b (haystack string, needle string) RETURNS
+integer;
+
+OPERATOR strfind_b (haystack string, needle string, int pos) RETURNS
+integer;
+
+<h4>Description</h4>
+
+Finds the first occurrence of the string @a needle in the string @a haystack.
+If called with 3 arguments, it finds the first occurrence after @a pos,
+where @a pos is a byte offset.
+
+<h4>Return value</h4>
+
+The position of the substring, in bytes, or -1 if the substring has not been found.
+
+<hr>
+
+<h3 id="op_starts_with">OPERATOR starts_with</h3>
+
+OPERATOR starts_with (s string, prefix string) RETURNS boolean;
+
+<h4>Description</h4>
+
+Tests if string @a s starts with string @a prefix.
+
+<h4>Return value</h4>
+
+TRUE if @a s starts with @a prefix, FALSE otherwise
+
+<hr>
+
+<h3 id="op_like">OPERATOR like</h3>
+
+OPERATOR like (s string, pattern string) RETURNS boolean;
+
+<h4>Description</h4>
+
+Pattern matching operator. A period ('.') matches a single character;
+an asterisk ('*') matches zero or more characters.
+
+<h4>Return value</h4>
+
+TRUE if @a s matches @a pattern, RDB_FALSE otherwise.
+
+<hr>
+
+<h3 id="op_regex_like">OPERATOR regex_like</h3>
+
+OPERATOR regex_like (s string, pattern string) RETURNS boolean;
+
+<h4>Description</h4>
+
+The regular expression matching operator.
+
+<h4>Return value</h4>
+
+TRUE if @a s matches @a pattern, RDB_FALSE otherwise.
+
+<hr>
+
+<h3 id="op_format">OPERATOR format</h3>
+
+OPERATOR format (format string, ...) RETURNS string;
+
+<h4>Description</h4>
+
+Generates a formatted string in the style of sprintf.
+The arguments passed after format must be of type string, integer, or float
+and must match the format argument.
+
+<h4>Return value</h4>
+
+The formatted string.
+
+<hr>
+
+@section typeconv Type conversion operators
+
+<h3 id="op_integer">OPERATOR cast_as_integer</h3>
+
+OPERATOR cast_as_integer (float) RETURNS integer;
+
+OPERATOR cast_as_integer (string) RETURNS integer;
+
+<h4>Description</h4>
+
+Converts the operand to <code>integer</code>.
+
+<h4>Return value</h4>
+
+The operand, converted to <code>integer</code>.
+
+<hr>
+
+<h3 id="op_float">OPERATOR cast_as_float</h3>
+
+OPERATOR cast_as_float (integer) RETURNS float;
+
+OPERATOR cast_as_float (string) RETURNS float;
+
+<h4>Description</h4>
+
+Converts the operand to <code>float</code>.
+
+<h4>Return value</h4>
+
+The operand, converted to <code>float</code>.
+
+<hr>
+
+<h3 id="op_string">OPERATOR cast_as_string</h3>
+
+OPERATOR cast_as_string (integer) RETURNS string;
+
+OPERATOR cast_as_string (float) RETURNS string;
+
+OPERATOR cast_as_string (binary) RETURNS string;
+
+<h4>Description</h4>
+
+Converts the operand to a string.
+
+<h4>Return value</h4>
+
+The operand, converted to string.
+
+<hr>
+
+<h3 id="cast_as_binary">OPERATOR cast_as_binary</h3>
+
+OPERATOR cast_as_string (string) RETURNS binary;
+
+<h4>Description</h4>
+
+Converts the operand to a binary, without a terminating nullbyte.
+
+<h4>Return value</h4>
+
+The operand, converted to string.
+
+<hr>
+
+<h3 id="serialize">OPERATOR serialize</h3>
+
+OPERATOR serialize (value <em>ANY</em>) RETURNS binary;
+
+<h4>Description</h4>
+
+Converts a value to a binary representation which includes the type.
+
+<h4>Return value</h4>
+
+The operand, converted to binary representation.
+
+<hr>
+
+@section arithmetic Arithmetic operators
+
 <h3 id="op_plus">OPERATOR +</h3>
 
 OPERATOR + (integer, integer) RETURNS integer;
@@ -212,444 +801,6 @@ The quotient of the operators.
 
 <hr>
 
-<h3 id="op_and">OPERATOR and</h3>
-
-OPERATOR and (boolean, boolean) RETURNS boolean;
-
-<h4>Description</h4>
-
-The boolean AND operator.
-
-<hr>
-
-<h3 id="op_or">OPERATOR OR</h3>
-
-OPERATOR or (boolean, boolean) RETURNS boolean;
-
-<h4>Description</h4>
-
-The boolean OR operator.
-
-<hr>
-
-<h3 id="op_xor">OPERATOR xor</h3>
-
-OPERATOR xor (boolean, boolean) RETURNS boolean;
-
-<h4>Description</h4>
-
-The boolean XOR operator.
-
-<hr>
-
-<h3 id="op_not">OPERATOR not</h3>
-
-OPERATOR not (boolean) RETURNS boolean;
-
-<h4>Description</h4>
-
-The boolean NOT operator.
-
-<hr>
-
-<h3 id="op_concat">OPERATOR ||</h3>
-
-OPERATOR || (string, string) RETURNS string;
-
-<h4>Description</h4>
-
-The string concatenation operator.
-
-<h4>Return value</h4>
-
-The result of the concatenation of the operands.
-
-<hr>
-
-<h3 id="op_strlen">OPERATOR strlen</h3>
-
-OPERATOR strlen (s string) RETURNS integer;
-
-<h4>Description</h4>
-
-The string length operator.
-
-<h4>Return value</h4>
-
-The length of <var>s</var>, in code points.
-
-<hr>
-
-<h3 id="op_strlen_b">OPERATOR strlen_b</h3>
-
-OPERATOR strlen_b (s string) RETURNS integer;
-
-<h4>Description</h4>
-
-The string length operator, returning the number of bytes.
-
-<h4>Return value</h4>
-
-The length of <var>s</var>, in bytes.
-
-<hr>
-
-<h3 id="substr">OPERATOR substr</h3>
-
-OPERATOR substr(s string, start integer, length integer) RETURNS
-string;
-
-<h4>Description</h4>
-
-Extracts a substring.
-
-<h4>Return value</h4>
-
-The substring of <var>s</var> with length <var>length</var> starting at position
-<var>start</var>. <var>length</var> and <var>start</var> are measured
-in code points, according to the current encoding.
-
-<h4>Errors</h4>
-
-<dl>
-<dt>invalid_argument_error
-<dd><var>start</var> is negative, or <var>start</var> + <var>length</var>
-is greater than strlen(<var>s</var>).
-</dl>
-
-<hr>
-
-<h3 id="substr_b">OPERATOR substr_b</h3>
-
-OPERATOR substr_b(s string, start integer, length integer) RETURNS
-string;
-
-OPERATOR substr_b(s string, start integer) RETURNS
-string;
-
-<h4>Description</h4>
-
-Extracts a substring.
-
-<h4>Return value</h4>
-
-The substring of <var>s</var> with length <var>length</var> starting at position
-<var>start</var>. <var>length</var> and <var>start</var> are measured
-in bytes. If called with 2 arguments, the substring extends to the end of
-<var>s</var>.
-
-<h4>Errors</h4>
-
-<dl>
-<dt>invalid_argument_error
-<dd><var>start</var> or <var>length</var> are negative, or <var>start</var> + <var>length</var>
-is greater than strlen(<var>s</var>).
-</dl>
-
-<hr>
-
-<h3 id="strfind_b">OPERATOR strfind_b</h3>
-
-OPERATOR strfind_b (haystack string, needle string) RETURNS
-integer;
-
-OPERATOR strfind_b (haystack string, needle string, int pos) RETURNS
-integer;
-
-<h4>Description</h4>
-
-Finds the first occurrence of the string <var>needle</var> in the string <var>haystack</var>.
-If called with 3 arguments, it finds the first occurrence after <var>pos</var>,
-where <var>pos</var> is a byte offset.
-
-<h4>Return value</h4>
-
-The position of the substring, in bytes, or -1 if the substring has not been found.
-
-<hr>
-
-<h3 id="op_starts_with">OPERATOR starts_with</h3>
-
-OPERATOR starts_with (s string, prefix string) RETURNS boolean;
-
-<h4>Description</h4>
-
-Tests if string <var>s</var> starts with string <var>prefix</var>.
-
-<h4>Return value</h4>
-
-TRUE if <var>s</var> starts with <var>prefix</var>, FALSE otherwise
-
-<hr>
-
-<h3 id="op_like">OPERATOR like</h3>
-
-OPERATOR like (s string, pattern string) RETURNS boolean;
-
-<h4>Description</h4>
-
-Pattern matching operator. A period ('.') matches a single character;
-an asterisk ('*') matches zero or more characters.
-
-<h4>Return value</h4>
-
-TRUE if <var>s</var> matches <var>pattern</var>, RDB_FALSE otherwise.
-
-<hr>
-
-<h3 id="op_regex_like">OPERATOR regex_like</h3>
-
-OPERATOR regex_like (s string, pattern string) RETURNS boolean;
-
-<h4>Description</h4>
-
-The regular expression matching operator.
-
-<h4>Return value</h4>
-
-TRUE if <var>s</var> matches <var>pattern</var>, RDB_FALSE otherwise.
-
-<hr>
-
-<h3 id="op_format">OPERATOR format</h3>
-
-OPERATOR format (format string, ...) RETURNS string;
-
-<h4>Description</h4>
-
-Generates a formatted string in the style of sprintf.
-The arguments passed after format must be of type string, integer, or float
-and must match the format argument.
-
-<h4>Return value</h4>
-
-The formatted string.
-
-<hr>
-
-<h3 id="op_integer">OPERATOR cast_as_integer</h3>
-
-OPERATOR cast_as_integer (float) RETURNS integer;
-
-OPERATOR cast_as_integer (string) RETURNS integer;
-
-<h4>Description</h4>
-
-Converts the operand to <code>integer</code>.
-
-<h4>Return value</h4>
-
-The operand, converted to <code>integer</code>.
-
-<hr>
-
-<h3 id="op_float">OPERATOR cast_as_float</h3>
-
-OPERATOR cast_as_float (integer) RETURNS float;
-
-OPERATOR cast_as_float (string) RETURNS float;
-
-<h4>Description</h4>
-
-Converts the operand to <code>float</code>.
-
-<h4>Return value</h4>
-
-The operand, converted to <code>float</code>.
-
-<hr>
-
-<h3 id="op_string">OPERATOR cast_as_string</h3>
-
-OPERATOR cast_as_string (integer) RETURNS string;
-
-OPERATOR cast_as_string (float) RETURNS string;
-
-OPERATOR cast_as_string (binary) RETURNS string;
-
-<h4>Description</h4>
-
-Converts the operand to a string.
-
-<h4>Return value</h4>
-
-The operand, converted to string.
-
-<hr>
-
-<h3 id="cast_as_binary">OPERATOR cast_as_binary</h3>
-
-OPERATOR cast_as_string (string) RETURNS binary;
-
-<h4>Description</h4>
-
-Converts the operand to a binary, without a terminating nullbyte.
-
-<h4>Return value</h4>
-
-The operand, converted to string.
-
-<hr>
-
-<h3 id="serialize">OPERATOR serialize</h3>
-
-OPERATOR serialize (value <em>ANY</em>) RETURNS binary;
-
-<h4>Description</h4>
-
-Converts a value to a binary representation which includes the type.
-
-<h4>Return value</h4>
-
-The operand, converted to binary representation.
-
-<hr>
-
-<h3 id="op_is_empty">OPERATOR is_empty</h3>
-
-OPERATOR is_empty (RELATION { * }) RETURNS boolean;
-
-<h4>Description</h4>
-
-Checks if a table is empty.
-
-<h4>Return value</h4>
-
-TRUE if the relation-valued operand is empty, RDB_FALSE
-otherwise.
-
-<hr>
-
-<h3 id="op_count">OPERATOR count</h3>
-
-OPERATOR count (RELATION { * }) RETURNS integer;
-
-<h4>Description</h4>
-
-Counts the tuples in a table.
-
-<h4>Return value</h4>
-
-The cardinality of the relation-valued operand.
-
-<hr>
-
-<h3 id="op_in">OPERATOR in</h3>
-
-OPERATOR in (t TUPLE { * }, r RELATION { * }) RETURNS boolean;
-
-<h4>Description</h4>
-
-Checks if a table contains a given tuple.
-
-<h4>Return value</h4>
-
-TRUE if <var>r</var> contains <var>t</var>, RDB_FALSE otherwise.
-
-<hr>
-
-<h3 id="op_subset_of">OPERATOR subset_of</h3>
-
-OPERATOR subset_of (R1 RELATION { * }, R2 RELATION { * }) RETURNS boolean;
-
-<h4>Description</h4>
-
-Checks if a table is a subset of another table.
-
-<h4>Return value</h4>
-
-TRUE if the <var>R1</var> is a subset of <var>R2</var>, RDB_FALSE otherwise.
-
-<hr>
-
-<h3 id="op_any">OPERATOR any</h3>
-
-OPERATOR any(R RELATION { * }, ATTR boolean) RETURNS boolean;
-
-<h4>Description</h4>
-
-The <code>any</code> aggregate operator.
-For the semantics, see RDB_any().
-
-<hr>
-
-<h3 id="op_all">OPERATOR all</h3>
-
-OPERATOR all(R RELATION { * }, ATTR boolean) RETURNS boolean;
-
-<h4>Description</h4>
-
-The <code>all</code> aggregate operator.
-For the semantics, see RDB_all().
-
-<hr>
-
-<h3 id="op_avg">OPERATOR avg</h3>
-
-OPERATOR avg(R RELATION { * }, ATTR INTEGER) RETURNS float;
-
-OPERATOR avg(R RELATION { * }, ATTR float) RETURNS float;
-
-<h4>Description</h4>
-
-The <code>avg</code> aggregate operator.
-For the semantics, see RDB_avg().
-
-<hr>
-
-<h3 id="op_max">OPERATOR max</h3>
-
-OPERATOR max(R RELATION { * }, attr integer) RETURNS integer;
-
-OPERATOR max(R RELATION { * }, attr float) RETURNS float;
-
-<h4>Description</h4>
-
-The <code>max</code> aggregate operator.
-For the semantics, see RDB_max().
-
-<hr>
-
-<h3 id="op_min">OPERATOR min</h3>
-
-OPERATOR min(R RELATION { * }, attr integer) RETURNS INTEGER;
-
-OPERATOR min(R RELATION { * }, attr float) RETURNS float;
-
-<h4>Description</h4>
-
-The <code>min</code> aggregate operator.
-For the semantics, see RDB_min().
-
-<hr>
-
-<h3 id="op_sum">OPERATOR sum</h3>
-
-OPERATOR SUM(R RELATION { * }, attr integer) RETURNS integer;
-
-OPERATOR SUM(R RELATION { * }, attr float) RETURNS float;
-
-<h4>Description</h4>
-
-The SUM aggregate operator.
-For the semantics, see RDB_sum().
-
-<hr>
-
-<h3 id="op_if">OPERATOR if</h3>
-
-OPERATOR IF (B boolean, V1 <em>ANY</em>, V2 <em>ANY</em>) RETURNS <em>ANY</em>;
-
-<h4>Description</h4>
-
-The IF-THEN-ELSE operator.
-
-<h4>Return value</h4>
-
-<var>V1</var> if <var>B</var> is TRUE, <var>V2</var> otherwise.
-
-<hr>
-
 <h3 id="op_sqrt">OPERATOR sqrt</h3>
 
 OPERATOR sqrt(x float) RETURNS float;
@@ -722,15 +873,15 @@ OPERATOR ln(x float) RETURNS float;
 
 The natural logarithm operator.
 
-<hr>
-
 <h3 id="op_log">OPERATOR </h3>
 
 OPERATOR log(x float) RETURNS float;
 
 The base 10 logarithm operator.
 
-@section tup-rel-ops Built-in tuple, relational, and array operators
+<hr>
+
+@section tupleop Tuple operators
 
 <h3 id="op_tuple">OPERATOR TUPLE</h3>
 
@@ -742,15 +893,17 @@ The tuple selector.
 
 <hr>
 
-<h3 id="op_relation">OPERATOR RELATION</h3>
+<h3 id="op_to_tuple">OPERATOR to_tuple</h3>
 
-OPERATOR RELATION(T TUPLE { * }, ...) RETURNS RELATION { * };
+OPERATOR to_tuple(r RELATION { * }) RETURNS TUPLE { * };
 
 <h4>Description</h4>
 
-The relation selector.
+Extracts a single tuple from a relation.
 
 <hr>
+
+@section arrayop Array operators
 
 <h3 id="op_array">OPERATOR array</h3>
 
@@ -778,155 +931,15 @@ The length of the operand.
 
 <h3 id="op_index_of">OPERATOR index_of</h3>
 
-OPERATOR index_of (ARR <em>ARRAY</em>, DATA <em>ANY</em>) RETURNS integer;
+OPERATOR index_of (arr <em>ARRAY</em>, data <em>ANY</em>) RETURNS integer;
 
 <h4>Description</h4>
 
-Returns the index of the first occurrence of DATA in the array ARR.
+Returns the index of the first occurrence of @a data in the array ARR.
 
 <h4>Return value</h4>
 
-The index, or -1 if DATA does not appear in the array.
-
-<hr>
-
-<h3 id="op_to_tuple">OPERATOR to_tuple</h3>
-
-OPERATOR TO_TUPLE(R RELATION { * }) RETURNS TUPLE { * };
-
-<h4>Description</h4>
-
-Extracts a single tuple from a relation.
-
-<hr>
-
-<h3 id="op_divide">OPERATOR divide</h3>
-
-OPERATOR divide(R1 RELATION { * }, R2 RELATION { * }, R2 RELATION { * }) RETURNS RELATION { * };
-
-<h4>Description</h4>
-
-The relational three-argument (small) DIVIDE operator.
-
-<hr>
-
-<h3 id="op_extend">OPERATOR extend</h3>
-
-OPERATOR extend(R RELATION { * }, ATTREXP <em>ANY</em>, attrname string, ...) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_group">OPERATOR group</h3>
-
-OPERATOR group(R RELATION { * }, attrname string ...) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_intersect">OPERATOR intersect</h3>
-
-OPERATOR intersect(R1 RELATION { * }, R2 RELATION { * }) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_join">OPERATOR join</h3>
-
-OPERATOR join(R1 RELATION { * }, R2 RELATION { * }) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_minus">OPERATOR minus</h3>
-
-OPERATOR minus(R1 RELATION { * }, R2 RELATION { * }) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_project">OPERATOR project</h3>
-
-OPERATOR project(R1 RELATION { * }, ATTRNAME string ...) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_remove">OPERATOR remove</h3>
-
-OPERATOR remove(R RELATION { * }, ATTRNAME string ...) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_rename">OPERATOR rename</h3>
-
-OPERATOR rename(R RELATION { * }, SRC_ATTRNAME string, DST_ATTRNAME string ...) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_ungroup">OPERATOR ungroup</h3>
-
-OPERATOR ungroup(R RELATION { * }, ATTRNAME string) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_union">OPERATOR union</h3>
-
-OPERATOR union(R1 RELATION { * }, R2 RELATION { * }) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_d_union">OPERATOR d_union</h3>
-
-OPERATOR d_union(R1 RELATION { * }, R2 RELATION { * }) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_update">OPERATOR update</h3>
-
-OPERATOR update(R1 RELATION { * }, DST_ATTRNAME string, SRC_EXPR <em>ANY</em>, ...) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_unwrap">OPERATOR unwrap</h3>
-
-OPERATOR unwrap(ATTRNAME string, ...) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_semijoin">OPERATOR semijoin</h3>
-
-OPERATOR semijoin(R1 RELATION { * }, R2 RELATION { * }) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_semiminus">OPERATOR semiminus</h3>
-
-OPERATOR semiminus(R1 RELATION { * }, R2 RELATION { * }) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_summarize">OPERATOR summarize</h3>
-
-OPERATOR summarize(R1 RELATION { * }, R2 RELATION { * }, EXPR <em>ANY</em>, ATTRNAME string, ...) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_tclose">OPERATOR tclose</h3>
-
-OPERATOR tclose(R RELATION { * }) RETURNS RELATION { * };
-
-The transitive closure operator.
-
-<hr>
-
-<h3 id="op_where">OPERATOR where</h3>
-
-OPERATOR where(R RELATION { * }, B boolean) RETURNS RELATION { * };
-
-The relational WHERE operator.
-
-<hr>
-
-<h3 id="op_wrap">OPERATOR wrap</h3>
-
-OPERATOR wrap(R RELATION { * }, SRC_ATTRS ARRAY OF string, DST_ATTR string ...) RETURNS RELATION { * };
-
-The relational WRAP operator.
+The index, or -1 if @a data does not appear in the array.
 
 */
 
