@@ -553,7 +553,7 @@ MAP {
 
 PACKAGE {
     RETURN_TOKEN(TOK_PACKAGE);
-} 
+}
 
 \|\| {
     RETURN_TOKEN(TOK_CONCAT);
@@ -858,7 +858,7 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
     RDB_append_string(whitecommp, comment_buf, RDB_parse_ecp);
 }
 
-[=><+\-*/{},().;\[\]:] {
+[=><+\-*/{},().;\[\]:%] {
     yylval = RDB_new_parse_token(yytext[0], whitecommp, RDB_parse_ecp);
     whitecommp = NULL;
     if (yylval == NULL)

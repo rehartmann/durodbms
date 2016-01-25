@@ -947,6 +947,7 @@ binop_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *t
     case '-':
     case '*':
     case '/':
+    case '%':
     case '>':
     case '<':
     case '=':

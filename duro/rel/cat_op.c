@@ -293,11 +293,15 @@ RDB_cat_load_upd_op(const char *name, RDB_exec_context *ecp,
         }
 
         symname = RDB_tuple_get_string(&tpl, "symbol");
-        op->opfn.upd_fp = (RDB_upd_op_func *) lt_dlsym(op->modhdl, symname);
-        if (op->opfn.upd_fp == NULL) {
-            RDB_raise_resource_not_found(symname, ecp);
-            RDB_free_op_data(op, ecp);
-            goto error;
+        if (symname[0] != '\0') {
+            op->opfn.upd_fp = (RDB_upd_op_func *) lt_dlsym(op->modhdl, symname);
+            if (op->opfn.upd_fp == NULL) {
+                RDB_raise_resource_not_found(symname, ecp);
+                RDB_free_op_data(op, ecp);
+                goto error;
+            }
+        } else {
+            op->opfn.upd_fp = NULL;
         }
 
         if (RDB_put_op(&txp->dbp->dbrootp->upd_opmap, op, ecp) != RDB_OK) {

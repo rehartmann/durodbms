@@ -292,10 +292,10 @@ RDB_create_update_op(const char *name, int paramc, RDB_parameter paramv[],
     ret = RDB_tuple_set_string(&tpl, "opname", name, ecp);
     if (ret != RDB_OK)
         goto cleanup;
-    ret = RDB_tuple_set_string(&tpl, "lib", libname, ecp);
+    ret = RDB_tuple_set_string(&tpl, "lib", symname != NULL ? libname : "", ecp);
     if (ret != RDB_OK)
         goto cleanup;
-    ret = RDB_tuple_set_string(&tpl, "symbol", symname, ecp);
+    ret = RDB_tuple_set_string(&tpl, "symbol", symname != NULL ? symname : "", ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -765,6 +765,10 @@ int
 RDB_call_update_op(RDB_operator *op, int argc, RDB_object *argv[],
                 RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    if (op->opfn.upd_fp == NULL) {
+        RDB_raise_operator_not_found(op->name != NULL ? op->name : "", ecp);
+        return RDB_ERROR;
+    }
     return (*op->opfn.upd_fp)(argc, argv, op, ecp, txp);
 }
 

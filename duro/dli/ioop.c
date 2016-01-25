@@ -3,8 +3,6 @@
  *
  * Copyright (C) 2009, 2011-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
- *
- * I/O operators
  */
 
 #include "ioop.h"

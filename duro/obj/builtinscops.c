@@ -292,6 +292,27 @@ The quotient of the operators.
 
 <hr>
 
+<h3 id="op_mod">OPERATOR %</h3>
+
+OPERATOR % (integer, integer) RETURNS integer;
+
+<h4>Description</h4>
+
+The modulo operator.
+
+<h4>Return value</h4>
+
+The remainder after division of the operators.
+
+<h4>Errors</h4>
+
+<dl>
+<dt>INVALID_ARGUMENT_ERROR
+<dd>The divisor is zero.
+</dl>
+
+<hr>
+
 <h3 id="op_sqrt">OPERATOR sqrt</h3>
 
 OPERATOR sqrt(x float) RETURNS float;
@@ -1170,6 +1191,18 @@ divide_float(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
+modulo(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    if (argv[1]->val.int_val == 0) {
+        RDB_raise_invalid_argument("division by zero", ecp);
+        return RDB_ERROR;
+    }
+    RDB_int_to_obj(retvalp, argv[0]->val.int_val % argv[1]->val.int_val);
+    return RDB_OK;
+}
+
+static int
 abs_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
@@ -1621,6 +1654,10 @@ RDB_add_builtin_scalar_ro_ops(RDB_op_map *opmap, RDB_exec_context *ecp)
     paramtv[1] = &RDB_INTEGER;
 
     if (RDB_put_ro_op(opmap, "/", 2, paramtv, &RDB_INTEGER, &divide_int, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    if (RDB_put_ro_op(opmap, "%", 2, paramtv, &RDB_INTEGER, &modulo, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 

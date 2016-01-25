@@ -78,8 +78,9 @@ relsrc = ['rel/arrayx.c', 'rel/database.c', 'rel/uoperator.c',
         'rel/pexpr.c', 'util/www.c']
 
 interpsrc = ['dli/exparse.c', 'dli/exlex.c', 'dli/parse.c', 'dli/parsenode.c',
-        'dli/iinterp.c', 'dli/interp_core.c', 'dli/interp_assign.c', 'dli/varmap.c',
-        'dli/interp_eval.c', 'dli/interp_vardef.c', 'dli/ioop.c']
+        'dli/iinterp.c', 'dli/interp_stmt.c', 'dli/interp_core.c',
+        'dli/interp_assign.c', 'dli/varmap.c', 'dli/interp_eval.c',
+        'dli/interp_vardef.c', 'dli/ioop.c']
 
 durosrc = gensrc + objsrc + recsrc + relsrc + interpsrc
 
@@ -271,7 +272,7 @@ rel_ihdrs = Split('rel/catalog.h rel/cat_stored.h rel/cat_type.h rel/cat_op.h '
         'rel/update.h rel/qr_stored.h rel/qr_join.h rel/qr_tclose.h '
         'rel/pexpr.h')
 dli_hdrs = ['dli/parse.h', 'dli/parsenode.h', 'dli/iinterp.h', 'dli/varmap.h']
-dli_ihdrs = ['dli/exparse.h', 'dli/iinterp.h', 'dli/interp_core.h',
+dli_ihdrs = ['dli/exparse.h', 'dli/iinterp.h', 'dli/interp_stmt.h', 'dli/interp_core.h',
         'dli/interp_assign.h', 'dli/interp_vardef.h',
         'dli/ioop.h', 'dli/fcgi.h']
 durotcl_hdrs = ['tcl/duro.h']

@@ -12,7 +12,7 @@ DuroDBMS 1.2
   
 - Removed RDB_obj_set_const() and RDB_obj_is_const().
 
-- Added read-only operators abs(), pow(), exp(), ln(), and log().
+- Added read-only operators % (modulo), abs(), pow(), exp(), ln(), and log().
 
 - Added operator os.chdir().
 
