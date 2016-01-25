@@ -996,6 +996,7 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     RDB_object opnameobj; /* Only used when the name is modified */
     RDB_object *lwsp;
     RDB_bool is_spec;
+    RDB_bool is_extern;
     RDB_bool subtx = RDB_FALSE;
     RDB_parse_node *stmtp = parentp->val.children.firstp->nextp;
     RDB_parameter *paramv = NULL;
@@ -1060,12 +1061,22 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     lwsp = parentp->val.children.firstp->whitecommp;
     parentp->val.children.firstp->whitecommp = NULL;
 
-    if (ro)
-        is_spec = (RDB_bool) (RDB_parse_nodelist_length(stmtp->nextp->nextp->nextp->nextp->nextp->nextp
-                ->nextp) == 0);
-    else
-        is_spec = (RDB_bool) (RDB_parse_nodelist_length(stmtp->nextp->nextp->nextp->nextp->nextp->nextp
-                ->nextp->nextp->nextp) == 0);
+    if (ro) {
+        /* Check for EXTERN */
+        is_extern = (RDB_bool) (stmtp->nextp->nextp->nextp->nextp->nextp->nextp->val.token == TOK_EXTERN);
+        if (!is_extern) {
+            /* Check for emtpy body */
+            is_spec = (RDB_bool) (RDB_parse_nodelist_length(stmtp->nextp->nextp->nextp->nextp->nextp->nextp
+                    ->nextp) == 0);
+        }
+    } else {
+        is_extern = (RDB_bool) (stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->val.token
+                == TOK_EXTERN);
+        if (!is_extern) {
+            is_spec = (RDB_bool) (RDB_parse_nodelist_length(stmtp->nextp->nextp->nextp->nextp->nextp->nextp
+                    ->nextp->nextp->nextp) == 0);
+        }
+    }
 
     if (is_spec) {
         if (RDB_string_to_obj(&code, "", ecp) != RDB_OK)
@@ -1117,7 +1128,7 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
         }
 
         /* Check for EXTERN ... */
-        if (stmtp->nextp->nextp->nextp->nextp->nextp->nextp->val.token == TOK_EXTERN) {
+        if (is_extern) {
             RDB_expression *langexp, *extnamexp;
             langexp = RDB_parse_node_expr(
                     stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp,
@@ -1196,8 +1207,7 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
         }
 
         /* Check for EXTERN ... */
-        if (stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->val.token
-                == TOK_EXTERN) {
+        if (is_extern) {
             RDB_expression *langexp, *extnamexp;
             langexp = RDB_parse_node_expr(
                     stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp,
