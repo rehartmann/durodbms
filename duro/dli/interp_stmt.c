@@ -985,13 +985,13 @@ update_opdef_extern(const char *opname,
 static int
 exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
 {
-    RDB_bool ro;
+    int ret;
+    int i;
+    RDB_bool is_ro;
     RDB_object code;
     RDB_parse_node *attrnodep;
     RDB_transaction tmp_tx;
     RDB_type *rtyp;
-    int ret;
-    int i;
     const char *opname;
     RDB_object opnameobj; /* Only used when the name is modified */
     RDB_object *lwsp;
@@ -1054,46 +1054,48 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
         attrnodep = attrnodep->nextp->nextp;
     }
 
-    ro = (RDB_bool)
+    is_ro = (RDB_bool)
             (stmtp->nextp->nextp->nextp->nextp->val.token == TOK_RETURNS);
 
     /* Strip off leading whitespace and comments, restore it later */
     lwsp = parentp->val.children.firstp->whitecommp;
     parentp->val.children.firstp->whitecommp = NULL;
 
-    if (ro) {
+    if (is_ro) {
         /* Check for EXTERN */
-        is_extern = (RDB_bool) (stmtp->nextp->nextp->nextp->nextp->nextp->nextp->val.token == TOK_EXTERN);
+        is_extern = (RDB_bool) (stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->val.token == TOK_EXTERN);
         if (!is_extern) {
             /* Check for emtpy body */
             is_spec = (RDB_bool) (RDB_parse_nodelist_length(stmtp->nextp->nextp->nextp->nextp->nextp->nextp
-                    ->nextp) == 0);
+                    ->nextp->nextp) == 0);
         }
     } else {
-        is_extern = (RDB_bool) (stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->val.token
+        is_extern = (RDB_bool) (stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->val.token
                 == TOK_EXTERN);
         if (!is_extern) {
             is_spec = (RDB_bool) (RDB_parse_nodelist_length(stmtp->nextp->nextp->nextp->nextp->nextp->nextp
-                    ->nextp->nextp->nextp) == 0);
+                    ->nextp->nextp->nextp->nextp) == 0);
         }
     }
 
-    if (is_spec) {
-        if (RDB_string_to_obj(&code, "", ecp) != RDB_OK)
-            goto error;
-    } else {
-        /*
-         * 'Un-parse' the defining code
-         */
-        if (Duro_parse_node_to_obj_string(&code, parentp, ecp,
-                interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx) != RDB_OK) {
-            parentp->val.children.firstp->whitecommp = lwsp;
-            goto error;
+    if (!is_extern) {
+        if (is_spec) {
+            if (RDB_string_to_obj(&code, "", ecp) != RDB_OK)
+                goto error;
+        } else {
+            /*
+             * 'Un-parse' the defining code
+             */
+            if (Duro_parse_node_to_obj_string(&code, parentp, ecp,
+                    interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx) != RDB_OK) {
+                parentp->val.children.firstp->whitecommp = lwsp;
+                goto error;
+            }
         }
     }
     parentp->val.children.firstp->whitecommp = lwsp;
 
-    if (ro) {
+    if (is_ro) {
         rtyp = RDB_parse_node_to_type(stmtp->nextp->nextp->nextp->nextp->nextp,
                 &Duro_get_var_type, interp, ecp,
                 interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
@@ -1127,16 +1129,15 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
             }
         }
 
-        /* Check for EXTERN ... */
         if (is_extern) {
             RDB_expression *langexp, *extnamexp;
             langexp = RDB_parse_node_expr(
-                    stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp,
+                    stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp,
                     ecp, interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
             if (langexp == NULL)
                 goto error;
             extnamexp = RDB_parse_node_expr(
-                    stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp,
+                    stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp,
                     ecp, interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
             if (extnamexp == NULL)
                 goto error;
@@ -1210,12 +1211,12 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
         if (is_extern) {
             RDB_expression *langexp, *extnamexp;
             langexp = RDB_parse_node_expr(
-                    stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp,
+                    stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp,
                     ecp, interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
             if (langexp == NULL)
                 goto error;
             extnamexp = RDB_parse_node_expr(
-                    stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp,
+                    stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp,
                     ecp, interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
             if (extnamexp == NULL)
                 goto error;
@@ -1253,7 +1254,7 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
         ret = RDB_OK;
     }
     if ((ret == RDB_OK) && RDB_parse_get_interactive())
-        printf(ro ? "Read-only operator %s created.\n" : "Update operator %s created.\n", opname);
+        printf(is_ro ? "Read-only operator %s created.\n" : "Update operator %s created.\n", opname);
     RDB_destroy_obj(&opnameobj, ecp);
     return ret;
 
@@ -1466,7 +1467,7 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
         }
         opdatap->rootp = codestmtp;
         opdatap->stmtlistp = codestmtp->val.children.firstp->nextp->nextp->nextp->nextp
-                ->nextp->nextp->nextp->nextp->val.children.firstp;
+                ->nextp->nextp->nextp->nextp->nextp->val.children.firstp;
         opdatap->argnamec = argc;
         opdatap->argnamev = argnamev;
 
@@ -1634,7 +1635,7 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
         }
         opdatap->rootp = codestmtp;
         opdatap->stmtlistp = codestmtp->val.children.firstp->nextp->nextp->nextp->nextp
-                    ->nextp->nextp->nextp->nextp->nextp->nextp->val.children.firstp;
+                    ->nextp->nextp->nextp->nextp->nextp->nextp->nextp->val.children.firstp;
         opdatap->argnamec = argc;
         opdatap->argnamev = argnamev;
 
