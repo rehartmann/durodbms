@@ -516,15 +516,22 @@ RDB_expr_resolve_varnames(RDB_expression *, RDB_getobjfn *,
         void *, RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_create_ro_op(const char *name, int, RDB_parameter[], RDB_type *rtyp,
-                 const char *libname, const char *symname,
-                 const char *sourcep,
+RDB_create_ro_op(const char *, int, RDB_parameter[], RDB_type *,
+                 const char *, const char *,
+                 const char *,
                  RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_create_update_op(const char *name, int, RDB_parameter[],
-                  const char *libname, const char *symname,
-                  const char *sourcep,
+RDB_create_ro_op_version(const char *, const char *,
+        int, RDB_parameter[], RDB_type *,
+        const char *, const char *,
+        const char *,
+        RDB_exec_context *, RDB_transaction *);
+
+int
+RDB_create_update_op(const char *, int, RDB_parameter[],
+                  const char *, const char *,
+                  const char *,
                   RDB_exec_context *, RDB_transaction *);
 
 RDB_operator *

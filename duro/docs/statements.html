@@ -106,14 +106,14 @@ commit_stmt = COMMIT ';'.
 
 rollback_stmt = ROLLBACK ';'.
 
-ro_op_def_stmt = OPERATOR id '(' [id type {',' id type }] ')' RETURNS type ';'
+ro_op_def_stmt = OPERATOR id '(' [id type {',' id type }] ')' RETURNS type [VERSION id] ';'
             {statement} END OPERATOR ';'
-        | OPERATOR id '(' [id type {',' id type }] ')' RETURNS type ';'
+        | OPERATOR id '(' [id type {',' id type }] ')' RETURNS type  [VERSION id] ';'
             EXTERN <a href="expressions.html#string">string</a> string END OPERATOR ';'.
 
-update_op_def_stmt = OPERATOR id '(' [id type {',' id type }] ')' UPDATES '{' [id {',' id}] '}' ';'
+update_op_def_stmt = OPERATOR id '(' [id type {',' id type }] ')' UPDATES '{' [id {',' id}] '}'  [VERSION id] ';'
             {statement} END OPERATOR ';'
-        | OPERATOR id '(' [id type {',' id type }] ')' UPDATES '{' [id {',' id}] '}' ';'
+        | OPERATOR id '(' [id type {',' id type }] ')' UPDATES '{' [id {',' id}] '}'  [VERSION id] ';'
             EXTERN string string END OPERATOR ';'.
 
 op_drop_stmt = DROP OPERATOR id ';'.

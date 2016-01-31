@@ -401,6 +401,8 @@ RDB_token_name(int tok)
         return "CONSTRAINT";
     case TOK_OPERATOR:
         return "OPERATOR";
+    case TOK_VERSION:
+        return "VERSION";
     case TOK_RETURNS:
         return "RETURNS";
     case TOK_UPDATES:

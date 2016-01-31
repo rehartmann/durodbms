@@ -883,15 +883,16 @@ error:
 
 /* Define read-only operator, prepend package name */
 static int
-create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type *rtyp,
-                 const char *libname, const char *symname,
-                 const char *sourcep, Duro_interp *interp,
-                 RDB_exec_context *ecp, RDB_transaction *txp)
+create_ro_op(const char *name, const char *version,
+        int paramc, RDB_parameter paramv[], RDB_type *rtyp,
+        const char *libname, const char *symname,
+        const char *sourcep, Duro_interp *interp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object opnameobj;
 
     if (*RDB_obj_string(&interp->pkg_name) == '\0') {
-        return RDB_create_ro_op(name, paramc, paramv, rtyp,
+        return RDB_create_ro_op_version(name, version, paramc, paramv, rtyp,
                 symname != NULL ? libname : NULL,
                 symname != NULL ? symname : NULL,
                 sourcep, ecp, txp);
@@ -913,7 +914,7 @@ error:
 }
 
 static int
-ro_opdef_extern(const char *opname, RDB_type *rtyp,
+ro_opdef_extern(const char *opname, const char *version, RDB_type *rtyp,
         int paramc, RDB_parameter *paramv,
         const char *lang,
         const char *extname, Duro_interp *interp, RDB_exec_context *ecp,
@@ -925,7 +926,7 @@ ro_opdef_extern(const char *opname, RDB_type *rtyp,
         return RDB_ERROR;
     }
 
-    return create_ro_op(opname, paramc, paramv, rtyp,
+    return create_ro_op(opname, version, paramc, paramv, rtyp,
             creop_infop->libname,
             creop_infop->ro_op_symname,
             extname, interp, ecp, txp);
@@ -993,6 +994,7 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     RDB_transaction tmp_tx;
     RDB_type *rtyp;
     const char *opname;
+    const char *version = NULL;
     RDB_object opnameobj; /* Only used when the name is modified */
     RDB_object *lwsp;
     RDB_bool is_spec;
@@ -1096,6 +1098,8 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     parentp->val.children.firstp->whitecommp = lwsp;
 
     if (is_ro) {
+        RDB_parse_node *version_nodep;
+
         rtyp = RDB_parse_node_to_type(stmtp->nextp->nextp->nextp->nextp->nextp,
                 &Duro_get_var_type, interp, ecp,
                 interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
@@ -1129,6 +1133,15 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
             }
         }
 
+        version_nodep = stmtp->nextp->nextp->nextp->nextp->nextp->nextp;
+        if (RDB_parse_nodelist_length(version_nodep) > 0) {
+            RDB_expression *version_exp = RDB_parse_node_expr(
+                    RDB_parse_node_child(version_nodep, 1), ecp, NULL);
+            if (version_exp == NULL)
+                goto error;
+            version = RDB_expr_var_name(version_exp);
+        }
+
         if (is_extern) {
             RDB_expression *langexp, *extnamexp;
             langexp = RDB_parse_node_expr(
@@ -1142,13 +1155,13 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
             if (extnamexp == NULL)
                 goto error;
 
-            ret = ro_opdef_extern(opname, rtyp, paramc, paramv,
+            ret = ro_opdef_extern(opname, version, rtyp, paramc, paramv,
                     RDB_obj_string(RDB_expr_obj(langexp)),
                     RDB_obj_string(RDB_expr_obj(extnamexp)),
                     interp, ecp,
                     interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
         } else {
-            ret = create_ro_op(opname, paramc, paramv, rtyp,
+            ret = create_ro_op(opname, version, paramc, paramv, rtyp,
 #ifdef _WIN32
                     is_spec ? NULL : "duro",
 #else

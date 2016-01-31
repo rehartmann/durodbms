@@ -46,6 +46,60 @@ params_to_typesobj(int argc, RDB_parameter paramv[],
     return RDB_destroy_obj(&typeobj, ecp);
 }
 
+static int
+op_tuple(RDB_object *tplp, const char *name,
+        int paramc , RDB_parameter paramv[], RDB_type *rtyp,
+        const char *libname, const char *symname,
+        const char *sourcep, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_object cretime;
+    RDB_object typesobj;
+    RDB_object rtypobj;
+
+    RDB_init_obj(&cretime);
+    RDB_init_obj(&typesobj);
+    RDB_init_obj(&rtypobj);
+
+    if (RDB_tuple_set_string(tplp, "opname", name, ecp) != RDB_OK)
+        goto error;
+    if (RDB_tuple_set_string(tplp, "lib", symname != NULL ? libname : "", ecp)
+            != RDB_OK)
+        goto error;
+    if (RDB_tuple_set_string(tplp, "symbol", symname != NULL ? symname : "", ecp)
+            != RDB_OK)
+        goto error;
+    if (RDB_tuple_set_string(tplp, "source", sourcep != NULL ? sourcep : "", ecp)
+            != RDB_OK)
+        goto error;
+    if (RDB_call_ro_op_by_name("now_utc", 0, NULL, ecp, txp, &cretime) != RDB_OK)
+        goto error;
+    if (RDB_tuple_set(tplp, "creation_time", &cretime, ecp) != RDB_OK)
+        goto error;
+
+    /* Set ARGTYPES to array of serialized argument types */
+    if (params_to_typesobj(paramc, paramv, ecp, &typesobj) != RDB_OK) {
+        goto error;
+    }
+
+    if (RDB_tuple_set(tplp, "argtypes", &typesobj, ecp) != RDB_OK)
+        goto error;
+    if (RDB_type_to_bin(&rtypobj, rtyp, ecp) != RDB_OK)
+        goto error;
+    if (RDB_tuple_set(tplp, "rtype", &rtypobj, ecp) != RDB_OK)
+        goto error;
+
+    RDB_destroy_obj(&typesobj, ecp);
+    RDB_destroy_obj(&cretime, ecp);
+    RDB_destroy_obj(&rtypobj, ecp);
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&typesobj, ecp);
+    RDB_destroy_obj(&cretime, ecp);
+    RDB_destroy_obj(&rtypobj, ecp);
+    return RDB_ERROR;
+}
+
 /** @defgroup op Operator functions 
  * @{
  */
@@ -114,10 +168,23 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
                  const char *sourcep,
                  RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    return RDB_create_ro_op_version(name, NULL, paramc, paramv, rtyp,
+            libname, symname, sourcep, ecp, txp);
+}
+
+/**
+ * Like @ref RDB_create_ro_op, but creates a read-only operator with a version name.
+ *
+ * @param version the operator version. If it is NULL, the operator is created without a version name.
+ */
+int
+RDB_create_ro_op_version(const char *name, const char *version,
+        int paramc, RDB_parameter paramv[], RDB_type *rtyp,
+        const char *libname, const char *symname,
+        const char *sourcep,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
     RDB_object tpl;
-    RDB_object rtypobj;
-    RDB_object typesobj;
-    RDB_object cretime;
     RDB_type **paramtv;
     int ret;
     int i;
@@ -148,52 +215,20 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
      */
 
     RDB_init_obj(&tpl);
-    RDB_init_obj(&rtypobj);
-    RDB_init_obj(&cretime);
 
-    ret = RDB_tuple_set_string(&tpl, "opname", name, ecp);
-    if (ret != RDB_OK)
-        goto cleanup;
-
-    ret = RDB_tuple_set_string(&tpl, "lib", symname != NULL ? libname : "", ecp);
-    if (ret != RDB_OK)
-        goto cleanup;
-    ret = RDB_tuple_set_string(&tpl, "symbol", symname != NULL ? symname : "", ecp);
+    ret = op_tuple(&tpl, name, paramc, paramv, rtyp, libname, symname,
+            sourcep, ecp, txp);
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_tuple_set_string(&tpl, "source", sourcep != NULL ? sourcep : "", ecp);
-    if (ret != RDB_OK)
-        goto cleanup;
-
-    ret = RDB_call_ro_op_by_name("now_utc", 0, NULL, ecp, txp, &cretime);
-    if (ret != RDB_OK)
-        goto cleanup;
-    ret = RDB_tuple_set(&tpl, "creation_time", &cretime, ecp);
-    if (ret != RDB_OK)
-        goto cleanup;
-
-    /* Set ARGTYPES to array of serialized argument types */
-    RDB_init_obj(&typesobj);
-    ret = params_to_typesobj(paramc, paramv, ecp, &typesobj);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&typesobj, ecp);
-        goto cleanup;
+    if (version != NULL) {
+        ret = RDB_tuple_set_string(&tpl, "version", version, ecp);
+        if (ret != RDB_OK)
+            goto cleanup;
+        ret = RDB_insert(txp->dbp->dbrootp->ro_op_versions_tbp, &tpl, ecp, txp);
+    } else {
+        ret = RDB_insert(txp->dbp->dbrootp->ro_ops_tbp, &tpl, ecp, txp);
     }
-
-    ret = RDB_tuple_set(&tpl, "argtypes", &typesobj, ecp);
-    RDB_destroy_obj(&typesobj, ecp);
-    if (ret != RDB_OK)
-        goto cleanup;
-
-    ret = RDB_type_to_bin(&rtypobj, rtyp, ecp);
-    if (ret != RDB_OK)
-        goto cleanup;
-    ret = RDB_tuple_set(&tpl, "rtype", &rtypobj, ecp);
-    if (ret != RDB_OK)
-        goto cleanup;
-
-    ret = RDB_insert(txp->dbp->dbrootp->ro_ops_tbp, &tpl, ecp, txp);
     if (ret != RDB_OK) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR
                 || RDB_obj_type(RDB_get_err(ecp)) == &RDB_ELEMENT_EXISTS_ERROR) {
@@ -204,8 +239,6 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
 
 cleanup:
     RDB_destroy_obj(&tpl, ecp);
-    RDB_destroy_obj(&rtypobj, ecp);
-    RDB_destroy_obj(&cretime, ecp);
     return ret;
 }
 
@@ -440,7 +473,7 @@ RDB_call_ro_op_by_name_e(const char *name, int argc, RDB_object *argv[],
      */
 
     if (strcmp(name, "relation") == 0)
-    	return RDB_op_relation(argc, argv, NULL, ecp, txp, retvalp);
+        return RDB_op_relation(argc, argv, NULL, ecp, txp, retvalp);
 
     /*
      * Handle nonscalar comparison

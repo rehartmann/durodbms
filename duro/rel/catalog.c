@@ -113,11 +113,11 @@ static RDB_attr possrepcomps_attrv[] = {
     { "compname", &RDB_STRING, NULL, 0 },
     { "comptype", &RDB_BINARY, NULL, 0 }
 };
-static char *possrepcomps_keyattrv1[] = { "typename", "possrepname", "compno" };
-static char *possrepcomps_keyattrv2[] = { "typename", "possrepname", "compname" };
+static char *possrepcomps_key1attrv[] = { "typename", "possrepname", "compno" };
+static char *possrepcomps_key2attrv[] = { "typename", "possrepname", "compname" };
 static RDB_string_vec possrepcomps_keyv[] = {
-    { 3, possrepcomps_keyattrv1 },
-    { 3, possrepcomps_keyattrv2 }
+    { 3, possrepcomps_key1attrv },
+    { 3, possrepcomps_key2attrv }
 };
 
 static RDB_attr ro_ops_attrv[] = {
@@ -132,6 +132,24 @@ static RDB_attr ro_ops_attrv[] = {
 
 static char *ro_ops_keyattrv[] = { "opname", "argtypes" };
 static RDB_string_vec ro_ops_keyv[] = { { 2, ro_ops_keyattrv } };
+
+static RDB_attr ro_op_versions_attrv[] = {
+    { "opname", &RDB_STRING, NULL, 0 },
+    { "version", &RDB_STRING, NULL, 0 },
+    { "argtypes", NULL, NULL, 0 }, /* type is set to array of BINARY later */
+    { "lib", &RDB_STRING, NULL, 0 },
+    { "symbol", &RDB_STRING, NULL, 0 },
+    { "source", &RDB_STRING, NULL, 0 },
+    { "rtype", &RDB_BINARY, NULL, 0 },
+    { "creation_time", &RDB_DATETIME, NULL, 0 },
+};
+
+static char *ro_op_versions_key1attrv[] = { "opname", "argtypes" };
+static char *ro_op_versions_key2attrv[] = { "opname", "version" };
+static RDB_string_vec ro_op_versions_keyv[] = {
+    { 2, ro_op_versions_key1attrv },
+    { 2, ro_op_versions_key2attrv }
+};
 
 static RDB_attr upd_ops_attrv[] = {
     { "opname", &RDB_STRING, NULL, 0 },
@@ -1300,6 +1318,15 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         return ret;
     }
 
+    ro_op_versions_attrv[2].typ = bin_array_typ;
+
+    ret = provide_systable("sys_ro_op_versions", 8, ro_op_versions_attrv,
+            2, ro_op_versions_keyv, create, ecp, txp, dbrootp->envp,
+            &dbrootp->ro_op_versions_tbp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
     upd_ops_attrv[1].typ = bin_array_typ;
     if (upd_ops_attrv[5].typ == NULL) {
         upd_ops_attrv[5].typ = RDB_new_array_type(&RDB_BOOLEAN, ecp);
@@ -1425,6 +1452,10 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         if (ret != RDB_OK)
             return ret;
 
+        ret = open_indexes(dbrootp->ro_op_versions_tbp, dbrootp, ecp, txp);
+        if (ret != RDB_OK)
+            return ret;
+
         ret = open_indexes(dbrootp->upd_ops_tbp, dbrootp, ecp, txp);
         if (ret != RDB_OK)
             return ret;
@@ -1488,6 +1519,9 @@ RDB_cat_create_db(RDB_exec_context *ecp, RDB_transaction *txp)
                 return ret;
             ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->ro_ops_tbp, RDB_tx_db(txp), ecp, txp);
             if (ret != RDB_OK) 
+                return ret;
+            ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->ro_op_versions_tbp, RDB_tx_db(txp), ecp, txp);
+            if (ret != RDB_OK)
                 return ret;
             ret = RDB_cat_dbtables_insert(txp->dbp->dbrootp->upd_ops_tbp, RDB_tx_db(txp), ecp, txp);
             if (ret != RDB_OK) 
@@ -1557,6 +1591,11 @@ RDB_cat_create_db(RDB_exec_context *ecp, RDB_transaction *txp)
     }
 
     ret = RDB_cat_insert(txp->dbp->dbrootp->ro_ops_tbp, ecp, txp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    ret = RDB_cat_insert(txp->dbp->dbrootp->ro_op_versions_tbp, ecp, txp);
     if (ret != RDB_OK) {
         return ret;
     }

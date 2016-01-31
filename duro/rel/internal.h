@@ -84,7 +84,9 @@ typedef struct RDB_dbroot {
     RDB_object *types_tbp;    
     RDB_object *possrepcomps_tbp;
     RDB_object *ro_ops_tbp;
+    RDB_object *ro_op_versions_tbp;
     RDB_object *upd_ops_tbp;
+    RDB_object *upd_op_versions_tbp;
     RDB_object *indexes_tbp;
     RDB_object *constraints_tbp;
     RDB_object *version_info_tbp;

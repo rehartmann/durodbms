@@ -241,6 +241,7 @@ close_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     close_table(dbrootp->types_tbp, dbrootp->envp, ecp);
     close_table(dbrootp->possrepcomps_tbp, dbrootp->envp, ecp);
     close_table(dbrootp->ro_ops_tbp, dbrootp->envp, ecp);
+    close_table(dbrootp->ro_op_versions_tbp, dbrootp->envp, ecp);
     close_table(dbrootp->upd_ops_tbp, dbrootp->envp, ecp);
     close_table(dbrootp->indexes_tbp, dbrootp->envp, ecp);
     close_table(dbrootp->constraints_tbp, dbrootp->envp, ecp);
@@ -373,6 +374,8 @@ assoc_systables(RDB_dbroot *dbrootp, RDB_database *dbp, RDB_exec_context *ecp)
     if (RDB_assoc_table_db(dbrootp->possrepcomps_tbp, dbp, ecp) != RDB_OK)
         return RDB_ERROR;
     if (RDB_assoc_table_db(dbrootp->ro_ops_tbp, dbp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_assoc_table_db(dbrootp->ro_op_versions_tbp, dbp, ecp) != RDB_OK)
         return RDB_ERROR;
     if (RDB_assoc_table_db(dbrootp->upd_ops_tbp, dbp, ecp) != RDB_OK)
         return RDB_ERROR;
