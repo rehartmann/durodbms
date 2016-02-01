@@ -196,12 +196,12 @@ main(int argc, char *argv[])
     RDB_init_exec_context(&ec);
 
     if (RDB_init_builtin(&ec) != RDB_OK) {
-        Duro_print_error(RDB_get_err(&ec));
+        Duro_println_error(RDB_get_err(&ec));
         goto error;
     }
 
     if (Duro_init_interp(&interp, &ec, envp, dbname) != RDB_OK) {
-        Duro_print_error(RDB_get_err(&ec));
+        Duro_println_error(RDB_get_err(&ec));
         goto error;
     }
 
@@ -213,7 +213,7 @@ main(int argc, char *argv[])
                 fprintf(stderr, "error at line %d: ", interp.err_line);
             }
         }
-        Duro_print_error(RDB_get_err(&ec));
+        Duro_println_error(RDB_get_err(&ec));
         Duro_destroy_interp(&interp);
         goto error;
     }

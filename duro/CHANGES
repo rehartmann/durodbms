@@ -9,7 +9,10 @@ DuroDBMS 1.2
 
 - Updating arguments of read-only operators and read-only arguments of
   update operators results in a runtime error.
-  
+
+- Renamed Duro_print_error() as Duro_println_error(). The output of
+  Duro_print_error_f() is no longer followed by a newline.
+
 - Removed RDB_obj_set_const() and RDB_obj_is_const().
 
 - Added read-only operators % (modulo), abs(), pow(), exp(), ln(), and log().

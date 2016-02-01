@@ -2762,6 +2762,19 @@ Duro_exec_stmt_impl_tx(RDB_parse_node *stmtp, Duro_interp *interp,
     if (Duro_exec_stmt(stmtp, interp, ecp, NULL) != RDB_OK) {
         if (implicit_tx) {
             do_rollback(interp, ecp);
+        } else {
+            RDB_object *errobjp = RDB_get_err(ecp);
+            if (RDB_obj_type(errobjp) == &RDB_OPERATOR_NOT_FOUND_ERROR
+                    && interp->txnp == NULL) {
+                RDB_object msgobj;
+                RDB_init_obj(&msgobj);
+                if (RDB_obj_property(errobjp, "msg", &msgobj, NULL, ecp, NULL) == RDB_OK) {
+                    /* Add info about missing tx */
+                    RDB_append_string(&msgobj, ", no running transaction", ecp);
+                    RDB_obj_set_property(errobjp, "msg", &msgobj, NULL, ecp, NULL);
+                }
+                RDB_destroy_obj(&msgobj, ecp);
+            }
         }
         return RDB_ERROR;
     }

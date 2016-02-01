@@ -421,11 +421,12 @@ Duro_dt_tx(Duro_interp *interp)
 }
 
 /**
- * Print an error to stderr.
+ * Print an error to stderr, followed by a newline.
  */
 void
-Duro_print_error(const RDB_object *errobjp) {
+Duro_println_error(const RDB_object *errobjp) {
     Duro_print_error_f(errobjp, stderr);
+    fputs ("\n", stderr);
 }
 
 /**
@@ -441,13 +442,13 @@ Duro_print_error_f(const RDB_object *errobjp, FILE *f)
     RDB_init_exec_context(&ec);
     RDB_init_obj(&msgobj);
 
-    fputs(RDB_type_name(errtyp), f);
+    if (errtyp != NULL) {
+        fputs(RDB_type_name(errtyp), f);
 
-    if (RDB_obj_property(errobjp, "msg", &msgobj, NULL, &ec, NULL) == RDB_OK) {
-        fprintf(f, ": %s", RDB_obj_string(&msgobj));
+        if (RDB_obj_property(errobjp, "msg", &msgobj, NULL, &ec, NULL) == RDB_OK) {
+            fprintf(f, ": %s", RDB_obj_string(&msgobj));
+        }
     }
-
-    fputs ("\n", f);
 
     RDB_destroy_obj(&msgobj, &ec);
     RDB_destroy_exec_context(&ec);
@@ -548,7 +549,7 @@ Duro_dt_execute(FILE *infp, Duro_interp *interp, RDB_exec_context *ecp)
                     RDB_free(interp->err_opname);
                     interp->err_opname = NULL;
                 }
-                Duro_print_error(errobjp);
+                Duro_println_error(errobjp);
                 RDB_parse_flush_buf();
                 interp->err_line = -1;
                 RDB_clear_err(ecp);

@@ -84,7 +84,7 @@ void
 Duro_destroy_interp(Duro_interp *);
 
 void
-Duro_print_error(const RDB_object *);
+Duro_println_error(const RDB_object *);
 
 void
 Duro_print_error_f(const RDB_object *, FILE *);

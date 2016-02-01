@@ -44,7 +44,7 @@ main(void)
             "io.put_line (cast_as_string(count(depts)));"
             "commit;",
             &interp, &ec) != RDB_OK) {
-        Duro_print_error(RDB_get_err(&ec));
+        Duro_println_error(RDB_get_err(&ec));
         abort();
     }
 
