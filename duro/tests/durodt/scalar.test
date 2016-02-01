@@ -1318,4 +1318,19 @@ test limits {arithmetic overflow} -body {
 } -result {ok
 }
 
+test versionroop {read-only operators with version names} -setup $SETUP \
+        -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt -e dbenv -d D << {
+        operator append1(n integer) returns integer version vi;
+            return n * 10 + 1;
+        end operator;
+
+        begin tx;        
+        io.put(append1(2));
+        io.put_line('');
+        commit;  
+    }
+} -result {21
+}
+
 cleanupTests

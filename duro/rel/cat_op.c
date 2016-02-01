@@ -97,12 +97,9 @@ error:
     return NULL;
 } /* tuple_to_operator */
 
-/*
- * Read all read-only operators with specified name from database.
- * Return the number of operators loaded or RDB_ERROR if an error occured.
- */
-RDB_int
-RDB_cat_load_ro_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
+int
+cat_load_ro_op(const char *name, RDB_object *tbp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     RDB_expression *exp, *wexp, *argp;
     const char *symname;
@@ -115,7 +112,7 @@ RDB_cat_load_ro_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp
     RDB_int opcount = 0;
 
     /*
-     * Create virtual table sys_ro_ops WHERE opname=<name>
+     * Create virtual table <optable> WHERE opname=<name>
      */
     exp = RDB_eq(RDB_var_ref("opname", ecp),
             RDB_string_to_expr(name, ecp), ecp);
@@ -130,7 +127,7 @@ RDB_cat_load_ro_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp
         RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
-    argp = RDB_table_ref(txp->dbp->dbrootp->ro_ops_tbp, ecp);
+    argp = RDB_table_ref(tbp, ecp);
     if (argp == NULL) {
         RDB_del_expr(wexp, ecp);
         RDB_del_expr(exp, ecp);
@@ -223,6 +220,24 @@ error:
         RDB_drop_table(vtbp, ecp, txp);
     RDB_destroy_obj(&tpl, ecp);
     return RDB_ERROR;
+}
+
+/*
+ * Read all read-only operators with specified name from database.
+ * Return the number of operators loaded or RDB_ERROR if an error occured.
+ */
+RDB_int
+RDB_cat_load_ro_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_int cnt;
+    RDB_int opcount = cat_load_ro_op(name, txp->dbp->dbrootp->ro_ops_tbp,
+            ecp, txp);
+    if (opcount == RDB_ERROR)
+        return RDB_ERROR;
+    cnt = cat_load_ro_op(name, txp->dbp->dbrootp->ro_op_versions_tbp, ecp, txp);
+    if (cnt == RDB_ERROR)
+        return RDB_ERROR;
+    return opcount + cnt;
 } /* RDB_cat_load_ro_op */
 
 /* Read all read-only operators with specified name from database */
