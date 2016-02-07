@@ -164,6 +164,24 @@ static RDB_attr upd_ops_attrv[] = {
 static char *upd_ops_keyattrv[] = { "opname", "argtypes" };
 static RDB_string_vec upd_ops_keyv[] = { { 2, upd_ops_keyattrv } };
 
+static RDB_attr upd_op_versions_attrv[] = {
+    { "opname", &RDB_STRING, NULL, 0 },
+    { "version", &RDB_STRING, NULL, 0 },
+    { "argtypes", NULL, NULL, 0 }, /* type is set to array of BINARY later */
+    { "lib", &RDB_STRING, NULL, 0 },
+    { "symbol", &RDB_STRING, NULL, 0 },
+    { "source", &RDB_STRING, NULL, 0 },
+    { "updv", NULL, NULL, 0 }, /* type is set to array of BOOLEAN later */
+    { "creation_time", &RDB_DATETIME, NULL, 0 }
+};
+
+static char *upd_op_versions_key1attrv[] = { "opname", "argtypes" };
+static char *upd_op_versions_key2attrv[] = { "opname", "version" };
+static RDB_string_vec upd_op_versions_keyv[] = {
+    { 2, upd_op_versions_key1attrv },
+    { 2, upd_op_versions_key2attrv }
+};
+
 static RDB_attr indexes_attrv[] = {
     { "idxname", &RDB_STRING, NULL, 0 },
     { "tablename", &RDB_IDENTIFIER, NULL, 0 },
@@ -1338,6 +1356,21 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     ret = provide_systable("sys_upd_ops", 7, upd_ops_attrv,
             1, upd_ops_keyv, create, ecp, txp, dbrootp->envp,
             &dbrootp->upd_ops_tbp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    upd_op_versions_attrv[2].typ = bin_array_typ;
+    if (upd_op_versions_attrv[6].typ == NULL) {
+        upd_op_versions_attrv[6].typ = RDB_new_array_type(&RDB_BOOLEAN, ecp);
+        if (upd_op_versions_attrv[6].typ == NULL) {
+            return RDB_ERROR;
+        }
+    }
+
+    ret = provide_systable("sys_upd_op_versions", 8, upd_op_versions_attrv,
+            1, upd_op_versions_keyv, create, ecp, txp, dbrootp->envp,
+            &dbrootp->upd_op_versions_tbp);
     if (ret != RDB_OK) {
         return ret;
     }

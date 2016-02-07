@@ -165,7 +165,7 @@ the component.
 If the type is ordered, a user-defined comparison operator returning an
 <code>integer</code> may be supplied.
 The comparison operator must be a read-only operator whose name consists
-of the type name and RDB_COMPARERE_SUFFIX (<code>_cmp</code>).
+of the type name and RDB_COMPARER_SUFFIX (<code>_cmp</code>).
 It takes two arguments, both of the user-defined type in question.
 
 It must return a value lower than, equal to, or greater than zero

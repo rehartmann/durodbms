@@ -534,6 +534,12 @@ RDB_create_update_op(const char *, int, RDB_parameter[],
                   const char *,
                   RDB_exec_context *, RDB_transaction *);
 
+int
+RDB_create_update_op_version(const char *, const char *, int, RDB_parameter[],
+                  const char *, const char *,
+                  const char *,
+                  RDB_exec_context *, RDB_transaction *);
+
 RDB_operator *
 RDB_get_update_op(const char *, int, RDB_type *[],
                RDB_environment *, RDB_exec_context *, RDB_transaction *);
