@@ -171,7 +171,7 @@ an asterisk ('*') matches zero or more characters.
 
 <h4>Return value</h4>
 
-TRUE if @a s matches @a pattern, RDB_FALSE otherwise.
+TRUE if @a s matches @a pattern, FALSE otherwise.
 
 <hr>
 
@@ -185,7 +185,7 @@ The regular expression matching operator.
 
 <h4>Return value</h4>
 
-TRUE if @a s matches @a pattern, RDB_FALSE otherwise.
+TRUE if @a s matches @a pattern, FALSE otherwise.
 
 <hr>
 
@@ -196,12 +196,12 @@ OPERATOR format (format string, ...) RETURNS string;
 <h4>Description</h4>
 
 Generates a formatted string in the style of sprintf.
-The arguments passed after format must be of type string, integer, or float
-and must match the format argument.
+The arguments passed after @a format must be of type string, integer, or float
+and must match the @a format argument.
 
 <h4>Return value</h4>
 
-The formatted string.
+The formatted output string.
 
 @page arithmetic Built-in arithmetic operators
 

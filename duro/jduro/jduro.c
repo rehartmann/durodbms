@@ -9,6 +9,7 @@
 
 #include "jduro.h"
 #include <gen/strfns.h>
+#include <rel/typeimpl.h>
 #include <string.h>
 
 int
@@ -1636,4 +1637,456 @@ JNICALL Java_net_sf_duro_DSession_setVarI(JNIEnv *env, jobject obj,
 
 cleanup:
     (*env)->ReleaseStringUTFChars(env, name, namestr);
+}
+
+JNIEXPORT void
+JNICALL Java_net_sf_duro_DSession_implementTypeI(JNIEnv *env, jobject obj,
+        jstring name)
+{
+    const char *namestr;
+    JDuro_session *sessionp = JDuro_jobj_session(env, obj);
+    if (sessionp == NULL)
+        return;
+
+    namestr = (*env)->GetStringUTFChars(env, name, 0);
+    if (namestr == NULL)
+        return;
+    if (RDB_implement_type (namestr, NULL, (RDB_int) sizeof(jobject), &sessionp->ec,
+            Duro_dt_tx(&sessionp->interp)) != RDB_OK) {
+        JDuro_throw_exception_from_error(env, sessionp,
+                        "implementing type failed", &sessionp->ec);
+    }
+    (*env)->ReleaseStringUTFChars(env, name, namestr);
+}
+
+static RDB_possrep *
+JDuro_find_possrep(const RDB_type *typ, const char *prname) {
+    int i;
+    int prc;
+    RDB_possrep *possreps = RDB_type_possreps(typ, &prc);
+
+    for (i = 0; i < prc; i++) {
+        if (strcmp(possreps[i].name, prname) == 0)
+            return &possreps[i];
+    }
+    return NULL;
+}
+
+JNIEXPORT void
+JNICALL Java_net_sf_duro_DSession_createSelector(JNIEnv *env, jobject obj,
+        jstring prname, jstring typename, jstring classname)
+{
+    RDB_type *typ;
+    const char *prnamestr;
+    const char *typenamestr = NULL;
+    const char *classnamestr = NULL;
+    RDB_possrep *possrep;
+    int i;
+    RDB_parameter *paramv = NULL;
+    JDuro_session *sessionp = JDuro_jobj_session(env, obj);
+    if (sessionp == NULL)
+        return;
+
+    prnamestr = (*env)->GetStringUTFChars(env, prname, 0);
+    if (prnamestr == NULL)
+        return;
+    typenamestr = (*env)->GetStringUTFChars(env, typename, 0);
+    if (typenamestr == NULL)
+        goto cleanup;
+    classnamestr = (*env)->GetStringUTFChars(env, classname, 0);
+    if (classnamestr == NULL)
+        goto cleanup;
+    typ = RDB_get_type(typenamestr, &sessionp->ec,
+            Duro_dt_tx(&sessionp->interp));
+    if (typ == NULL) {
+        JDuro_throw_exception_from_error(env, sessionp, "type not found", &sessionp->ec);
+        goto cleanup;
+    }
+    possrep = JDuro_find_possrep(typ, prnamestr);
+    if (possrep == NULL) {
+        goto cleanup;
+    }
+
+    paramv = RDB_alloc(sizeof(RDB_parameter) * possrep->compc, &sessionp->ec);
+    if (paramv == NULL) {
+        JDuro_throw_exception_from_error(env, sessionp, "out of memory", &sessionp->ec);
+        goto cleanup;
+    }
+    for (i = 0; i < possrep->compc; i++) {
+        paramv[i].typ = possrep->compv[i].typ;
+    }
+
+    if (RDB_create_ro_op (prnamestr, possrep->compc,
+            paramv,
+            typ,
+            "libjduro",
+            "JDuro_select",
+            classnamestr,
+            &sessionp->ec,
+            Duro_dt_tx(&sessionp->interp)) != RDB_OK) {
+        JDuro_throw_exception_from_error(env, sessionp, "creation of selector failed",
+                &sessionp->ec);
+    }
+
+cleanup:
+    (*env)->ReleaseStringUTFChars(env, prname, prnamestr);
+    if (typenamestr != NULL)
+        (*env)->ReleaseStringUTFChars(env, typename, typenamestr);
+    if (classnamestr != NULL)
+        (*env)->ReleaseStringUTFChars(env, typename, classnamestr);
+    RDB_free(paramv);
+}
+
+int
+JDuro_select(int argc, RDB_object *argv[], RDB_operator *op,
+          RDB_exec_context *ecp, RDB_transaction *txp,
+          RDB_object *retvalp)
+{
+    jclass clazz;
+    jmethodID constructorID;
+    jobject jobj;
+    jobject globjobj;
+    jthrowable jex;
+    RDB_possrep *possrep;
+    int i;
+    JDuro_session *sessionp = RDB_ec_property(ecp, "JDuro_Session");
+    if (sessionp == NULL) {
+        RDB_raise_resource_not_found("session not available in selector", ecp);
+        return RDB_ERROR;
+    }
+
+    clazz = (*sessionp->env)->FindClass(sessionp->env, RDB_operator_source(op));
+    if (clazz == NULL) {
+        RDB_raise_resource_not_found("class not found", ecp);
+        return RDB_ERROR;
+    }
+    constructorID = (*sessionp->env)->GetMethodID(sessionp->env,
+            clazz, "<init>", "()V");
+    if (constructorID == NULL) {
+        RDB_raise_resource_not_found("Default constructor not found", ecp);
+        return RDB_ERROR;
+    }
+    jobj = (*sessionp->env)->NewObject(sessionp->env, clazz, constructorID);
+    jex = (*sessionp->env)->ExceptionOccurred(sessionp->env);
+    if (jex != NULL) {
+        if (!(*sessionp->env)->IsInstanceOf(sessionp->env, jex,
+                sessionp->dExceptionClass)) {
+            RDB_raise_system("exception occurred during Java method call", ecp);
+            return RDB_ERROR;
+        }
+        duro_error_from_exception(sessionp, jex, ecp);
+        return RDB_ERROR;
+    }
+
+    globjobj = (*sessionp->env)->NewGlobalRef(sessionp->env, jobj);
+    if (globjobj == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+    /* !! DeleteGlobalRef still needs to be called */
+
+    if (RDB_irep_to_obj (retvalp, RDB_operator_type(op), &globjobj,
+            sizeof(globjobj), ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    possrep = JDuro_find_possrep(RDB_operator_type(op), RDB_operator_name(op));
+    if (possrep == NULL) {
+        RDB_raise_internal("possrep not found", ecp);
+        return RDB_ERROR;
+    }
+
+    for (i = 0; i < argc; i++) {
+        if (RDB_obj_set_property(retvalp, possrep->compv[i].name, argv[i], NULL,
+                ecp, txp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+    }
+    return RDB_OK;
+}
+
+JNIEXPORT void
+JNICALL Java_net_sf_duro_DSession_createGetter(JNIEnv *env, jobject obj,
+        jstring opname, jstring typename, jstring prname, jint compno,
+        jstring method)
+{
+    const char *opnamestr;
+    const char *prnamestr = NULL;
+    const char *typenamestr = NULL;
+    const char *methodstr = NULL;
+    RDB_possrep *possrep;
+    RDB_parameter param;
+    JDuro_session *sessionp = JDuro_jobj_session(env, obj);
+    if (sessionp == NULL)
+        return;
+
+    opnamestr = (*env)->GetStringUTFChars(env, opname, 0);
+    if (opnamestr == NULL)
+        return;
+    prnamestr = (*env)->GetStringUTFChars(env, prname, 0);
+    if (prnamestr == NULL)
+        goto cleanup;
+    typenamestr = (*env)->GetStringUTFChars(env, typename, 0);
+    if (typenamestr == NULL)
+        goto cleanup;
+    methodstr = (*env)->GetStringUTFChars(env, method, 0);
+    if (methodstr == NULL)
+        goto cleanup;
+    param.typ = RDB_get_type(typenamestr, &sessionp->ec,
+            Duro_dt_tx(&sessionp->interp));
+    if (param.typ == NULL) {
+        JDuro_throw_exception_from_error(env, sessionp, "type not found", &sessionp->ec);
+        goto cleanup;
+    }
+    possrep = JDuro_find_possrep(param.typ, prnamestr);
+    if (possrep == NULL)
+        goto cleanup;
+
+    if (RDB_create_ro_op (opnamestr, 1, &param,
+            possrep->compv[compno].typ,
+            "libjduro", "JDuro_get_property", methodstr, &sessionp->ec,
+            Duro_dt_tx(&sessionp->interp)) != RDB_OK) {
+        JDuro_throw_exception_from_error(env, sessionp, "creation of getter failed",
+                &sessionp->ec);
+    }
+
+cleanup:
+    (*env)->ReleaseStringUTFChars(env, opname, opnamestr);
+    if (prnamestr != NULL)
+        (*env)->ReleaseStringUTFChars(env, prname, prnamestr);
+    if (typenamestr != NULL)
+        (*env)->ReleaseStringUTFChars(env, typename, typenamestr);
+}
+
+int
+JDuro_get_property(int argc, RDB_object *argv[], RDB_operator *op,
+          RDB_exec_context *ecp, RDB_transaction *txp,
+          RDB_object *retvalp)
+{
+    jclass clazz;
+    jobject *jobjp;
+    size_t jobjlen;
+    char *methodname;
+    RDB_object classname;
+    RDB_object sig;
+    RDB_object rtypsig;
+    jmethodID methodID;
+    jobject jresult;
+    jthrowable jex;
+    JDuro_session *sessionp = RDB_ec_property(ecp, "JDuro_Session");
+    if (sessionp == NULL) {
+        RDB_raise_resource_not_found("session not available in Duro getter", ecp);
+        return RDB_ERROR;
+    }
+
+    RDB_init_obj(&classname);
+    RDB_init_obj(&sig);
+    RDB_init_obj(&rtypsig);
+
+    methodname = strchr(RDB_operator_source(op), '.');
+    if (methodname == NULL) {
+        RDB_raise_internal("JDuro_get_property(): invalid method", ecp);
+        goto error;
+    }
+
+    if (RDB_string_n_to_obj(&classname, RDB_operator_source(op),
+            methodname - RDB_operator_source(op), ecp) != RDB_OK) {
+        goto error;
+    }
+    ++methodname;
+
+    clazz = (*sessionp->env)->FindClass(sessionp->env, RDB_obj_string(&classname));
+    if (clazz == NULL) {
+        RDB_raise_resource_not_found(RDB_obj_string(&classname), ecp);
+        goto error;
+    }
+
+    if (RDB_string_to_obj(&sig, "()", ecp) != RDB_OK)
+        goto error;
+    if (type_to_sig(&rtypsig, RDB_operator_type(op), RDB_FALSE, ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&sig, RDB_obj_string(&rtypsig), ecp) != RDB_OK)
+        goto error;
+
+    methodID = (*sessionp->env)->GetMethodID(sessionp->env, clazz, methodname,
+            RDB_obj_string(&sig));
+    if (methodID == NULL) {
+        RDB_raise_resource_not_found(methodname, ecp);
+        goto error;
+    }
+
+    jobjp = RDB_obj_irep(argv[0], &jobjlen);
+    if (jobjlen != sizeof(jobject)) {
+        RDB_raise_internal("JDuro_get_property(): invalid internal representation",
+                ecp);
+        goto error;
+    }
+
+    jresult = (*sessionp->env)->CallObjectMethod(sessionp->env, *jobjp, methodID);
+    jex = (*sessionp->env)->ExceptionOccurred(sessionp->env);
+    if (jex != NULL) {
+        RDB_raise_system("Invocation of getter method failed", ecp);
+        goto error;
+    }
+    if (JDuro_jobj_to_duro_obj(sessionp->env, jresult, retvalp, sessionp, ecp)
+            != RDB_OK) {
+        goto error;
+    }
+
+    RDB_destroy_obj(&classname, ecp);
+    RDB_destroy_obj(&sig, ecp);
+    RDB_destroy_obj(&rtypsig, ecp);
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&classname, ecp);
+    RDB_destroy_obj(&sig, ecp);
+    RDB_destroy_obj(&rtypsig, ecp);
+    return RDB_ERROR;
+}
+
+JNIEXPORT void
+JNICALL Java_net_sf_duro_DSession_createSetter(JNIEnv *env, jobject obj,
+        jstring opname, jstring typename, jstring prname, jint compno,
+        jstring method)
+{
+    const char *opnamestr;
+    const char *prnamestr = NULL;
+    const char *typenamestr = NULL;
+    const char *methodstr = NULL;
+    RDB_possrep *possrep;
+    RDB_parameter params[2];
+    JDuro_session *sessionp = JDuro_jobj_session(env, obj);
+    if (sessionp == NULL)
+        return;
+
+    opnamestr = (*env)->GetStringUTFChars(env, opname, 0);
+    if (opnamestr == NULL)
+        return;
+    prnamestr = (*env)->GetStringUTFChars(env, prname, 0);
+    if (prnamestr == NULL)
+        goto cleanup;
+    typenamestr = (*env)->GetStringUTFChars(env, typename, 0);
+    if (typenamestr == NULL)
+        goto cleanup;
+    methodstr = (*env)->GetStringUTFChars(env, method, 0);
+    if (methodstr == NULL)
+        goto cleanup;
+    params[0].typ = RDB_get_type(typenamestr, &sessionp->ec,
+            Duro_dt_tx(&sessionp->interp));
+    if (params[0].typ == NULL) {
+        JDuro_throw_exception_from_error(env, sessionp, "type not found", &sessionp->ec);
+        goto cleanup;
+    }
+    params[0].update = RDB_TRUE;
+    possrep = JDuro_find_possrep(params[0].typ, prnamestr);
+    if (possrep == NULL)
+        goto cleanup;
+    params[1].typ = possrep->compv[compno].typ;
+    params[1].update = RDB_FALSE;
+
+    if (RDB_create_update_op (opnamestr, 2, params, "libjduro",
+            "JDuro_set_property", methodstr, &sessionp->ec,
+            Duro_dt_tx(&sessionp->interp)) != RDB_OK) {
+        JDuro_throw_exception_from_error(env, sessionp, "creation of getter failed",
+                &sessionp->ec);
+    }
+
+cleanup:
+    (*env)->ReleaseStringUTFChars(env, opname, opnamestr);
+    if (prnamestr != NULL)
+        (*env)->ReleaseStringUTFChars(env, prname, prnamestr);
+    if (typenamestr != NULL)
+        (*env)->ReleaseStringUTFChars(env, typename, typenamestr);
+}
+
+int
+JDuro_set_property(int argc, RDB_object *argv[], RDB_operator *op,
+          RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    jclass clazz;
+    jobject *jobjp;
+    jobject jsrc;
+    jthrowable jex;
+    size_t jobjlen;
+    char *methodname;
+    RDB_object classname;
+    RDB_object sig;
+    RDB_object rtypsig;
+    jmethodID methodID;
+    JDuro_session *sessionp = RDB_ec_property(ecp, "JDuro_Session");
+    if (sessionp == NULL) {
+        RDB_raise_resource_not_found("session not available in Duro getter", ecp);
+        return RDB_ERROR;
+    }
+
+    RDB_init_obj(&classname);
+    RDB_init_obj(&sig);
+    RDB_init_obj(&rtypsig);
+
+    methodname = strchr(RDB_operator_source(op), '.');
+    if (methodname == NULL) {
+        RDB_raise_internal("JDuro_get_property(): invalid method", ecp);
+        goto error;
+    }
+
+    if (RDB_string_n_to_obj(&classname, RDB_operator_source(op),
+            methodname - RDB_operator_source(op), ecp) != RDB_OK) {
+        goto error;
+    }
+    ++methodname;
+
+    clazz = (*sessionp->env)->FindClass(sessionp->env, RDB_obj_string(&classname));
+    if (clazz == NULL) {
+        RDB_raise_resource_not_found(RDB_obj_string(&classname), ecp);
+        goto error;
+    }
+
+    if (RDB_string_to_obj(&sig, "(", ecp) != RDB_OK)
+        goto error;
+    if (type_to_sig(&rtypsig, RDB_obj_type(argv[1]), RDB_FALSE, ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&sig, RDB_obj_string(&rtypsig), ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&sig, ")V", ecp) != RDB_OK)
+        goto error;
+
+    methodID = (*sessionp->env)->GetMethodID(sessionp->env, clazz, methodname,
+            RDB_obj_string(&sig));
+    if (methodID == NULL) {
+        RDB_raise_resource_not_found(methodname, ecp);
+        goto error;
+    }
+
+    jobjp = RDB_obj_irep(argv[0], &jobjlen);
+    if (jobjlen != sizeof(jobject)) {
+        RDB_raise_internal("JDuro_get_property(): invalid internal representation",
+                ecp);
+        goto error;
+    }
+
+    jsrc = JDuro_duro_obj_to_jobj(sessionp->env, argv[1], RDB_FALSE, sessionp);
+    jex = (*sessionp->env)->ExceptionOccurred(sessionp->env);
+    if (jex != NULL) {
+        RDB_raise_invalid_argument("Cannot convert setter argument to Java", ecp);
+        goto error;
+    }
+
+    (*sessionp->env)->CallVoidMethod(sessionp->env, *jobjp, methodID, jsrc);
+    jex = (*sessionp->env)->ExceptionOccurred(sessionp->env);
+    if (jex != NULL) {
+        RDB_raise_system("Invocation of setter method failed", ecp);
+        goto error;
+    }
+
+    RDB_destroy_obj(&classname, ecp);
+    RDB_destroy_obj(&sig, ecp);
+    RDB_destroy_obj(&rtypsig, ecp);
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&classname, ecp);
+    RDB_destroy_obj(&sig, ecp);
+    RDB_destroy_obj(&rtypsig, ecp);
+    return RDB_ERROR;
 }

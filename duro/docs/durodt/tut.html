@@ -861,6 +861,19 @@ for lt in lines order(line asc);
 end for;
 </pre>
 
+<h3>Formatted output</h3>
+
+<p>The built-in read-only operator <code>format</code> provides a way of performing formatted output.
+
+<p>Example:
+
+<pre>
+no db> var n init 2;
+no db> io.put_line(format('The value of n is %d', n));
+The value of n is 2
+no db>
+</pre>
+
 <h2 id="user-ops">User-defined operators</h2>
 
 <p>Defining a read-only operator:

@@ -521,11 +521,11 @@ RDB_obj_irep(RDB_object *valp, size_t *lenp)
 }
 
 /**
- * Initialize the value pointed to by valp with the internal
- * representation given by <var>datap<var> and <var>len<var>.
+ * Initializes the value pointed to by valp with the internal
+ * representation given by @a datap and @a len.
  *
- * @arg len The length of the internal represenation in bytes.
- * @arg datap   A pointer to the internal representation.
+ * @a len The length of the internal represenation in bytes.
+ * @a datap   A pointer to the internal representation.
  * If datap is NULL, len bytes are allocated but the internal representation
  * is undefined.
  *

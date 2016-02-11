@@ -94,6 +94,8 @@ static int datetime_check_second(int sec, RDB_exec_context *ecp)
 
 /** @page datetime-ops Built-in datetime type and operators
 
+<h3>TYPE datetime</h3>
+
 <pre>
 TYPE datetime
 POSSREP {

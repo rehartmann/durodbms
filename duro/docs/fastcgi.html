@@ -1,12 +1,12 @@
 <html>
 <head>
-<title>DuroDBMS: FastCGI support</title>
+<title>Duro D/T with FastCGI</title>
 <link rel="stylesheet" href="style.css">
 <body>
 
 <p><a href="index.html">Documentation home</a>
 
-<h2>FastCGI support</h2>
+<h2>Duro D/T with FastCGI</h2>
 
 <p>DuroDBMS contains fcgi_durodt, a FastCGI-enabled version of the Duro D/T interpreter.
 fcgi_durodt uses the FastCGI Developer's Kit,
@@ -42,7 +42,7 @@ A value of FALSE indicates that an error occured and the program should exit.
 <p>A tiny example program:
 
 <pre>
-#!/usr/local/durodbms.1.1/bin/fcgi_durodt
+#!/usr/local/durodbms.1.2/bin/fcgi_durodt
 
 var request_accepted boolean;
 var counter init 0;
@@ -74,7 +74,7 @@ The programm accesses the database <var>D</var>
 stored in the database environment <var>/var/db/dbenv</var>.
 
 <pre>
-#!/usr/local/durodbms.1.1/bin/fcgi_durodt
+#!/usr/local/durodbms.1.2/bin/fcgi_durodt
 
 connect('/var/db/dbenv');
 current_db := 'D';

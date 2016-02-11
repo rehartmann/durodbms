@@ -15,11 +15,11 @@ public class ScalarType extends Type {
 
     private static Map<String, ScalarType> typeMap = new HashMap<String, ScalarType>();
 
-    public static ScalarType BOOLEAN = new ScalarType("boolean", null);
-    public static ScalarType INTEGER = new ScalarType("integer", null);
-    public static ScalarType STRING = new ScalarType("string", null);
-    public static ScalarType FLOAT = new ScalarType("float", null);
-    public static ScalarType BINARY = new ScalarType("binary", null);
+    public static final ScalarType BOOLEAN = new ScalarType("boolean", null);
+    public static final ScalarType INTEGER = new ScalarType("integer", null);
+    public static final ScalarType STRING = new ScalarType("string", null);
+    public static final ScalarType FLOAT = new ScalarType("float", null);
+    public static final ScalarType BINARY = new ScalarType("binary", null);
 
     private final String name;
     private final Possrep[] possreps;

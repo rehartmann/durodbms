@@ -14,8 +14,7 @@ public class DSession {
     private long interp = 0L; // Contains the pointer to the Duro_interp
                               // structure
 
-    private DSession() {
-    }
+    private DSession() { } // Constructor is private
 
     native private void initInterp();
 
@@ -28,6 +27,16 @@ public class DSession {
             throws ClassNotFoundException, NoSuchMethodException;
 
     native private void setVarI(String name, Object v);
+    
+    native private void implementTypeI(String typename);
+
+    native private void createSelector(String prname, String typename, String classname);
+
+    native private void createGetter(String opname, String typename, String possrepName,
+            int compno, String method);
+    
+    native private void createSetter(String opname, String typename, String possrepName,
+            int compno, String method);
 
     /**
      * Creates a DSession.
@@ -195,5 +204,26 @@ public class DSession {
         synchronized (DSession.class) {
             setVarI(name, v);
         }
+    }
+
+    public void implementType(ScalarType type, Class<?> implementorClass) {
+        Possrep[] possreps = type.getPossreps();
+        for (int i = 0; i < possreps.length; i++) {
+            createSelector(possreps[i].getName(), type.getName(),
+                    implementorClass.getName().replace('.',  '/'));
+            for (int j = 0; j < possreps[i].getComponents().length; j++) {
+                String comp = possreps[i].getComponent(j).getName();
+                createGetter(type.getName() + "_get_" + comp, type.getName(),
+                        possreps[i].getName(), j,
+                        implementorClass.getName().replace('.',  '/') + ".get"
+                                + comp.substring(0, 1).toUpperCase() + comp.substring(1));
+                createSetter(type.getName() + "_set_" + comp, type.getName(),
+                        possreps[i].getName(), j,
+                        implementorClass.getName().replace('.',  '/') + ".set"
+                                + comp.substring(0, 1).toUpperCase() + comp.substring(1));
+            }
+        }
+
+        implementTypeI(type.getName());
     }
 }

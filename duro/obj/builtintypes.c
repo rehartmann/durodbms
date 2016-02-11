@@ -15,7 +15,7 @@
 
 #include <string.h>
 
-/** @page builtin-types Built-in basic and error types
+/** @page builtin-types Built-in basic data types
 @section basic-types Basic data types
 
 <table border="1" summary="Built-in basic data types">
@@ -27,7 +27,7 @@
 <tr><td>binary<td>RDB_BINARY<td>RDB_byte *
 </table>
 
-@section error-types Error types
+@page error-types Built-in error types
 
 DuroDBMS errors are scalar types.
 They are shown below in Tutorial D notation.

@@ -287,6 +287,7 @@ static jobject
 possrep_to_jobj(JNIEnv *env, const RDB_possrep *possrep, jobject session)
 {
     int i;
+    jstring prname;
     jstring compname;
     jobject comptype;
     jobject comp;
@@ -308,8 +309,12 @@ possrep_to_jobj(JNIEnv *env, const RDB_possrep *possrep, jobject session)
         return NULL;
 
     prConstructorID = (*env)->GetMethodID(env, prClass, "<init>",
-            "([Lnet/sf/duro/NameTypePair;)V");
+            "(Ljava/lang/String;[Lnet/sf/duro/NameTypePair;)V");
     if (prConstructorID == NULL)
+        return NULL;
+
+    prname = (*env)->NewStringUTF(env, possrep->name);
+    if (prname == NULL)
         return NULL;
 
     /* Create array which is to be passed to the constructor */
@@ -334,7 +339,7 @@ possrep_to_jobj(JNIEnv *env, const RDB_possrep *possrep, jobject session)
     }
 
     /* Call constructor */
-    return (*env)->NewObject(env, prClass, prConstructorID, compArray);
+    return (*env)->NewObject(env, prClass, prConstructorID, prname, compArray);
 }
 
 static jobjectArray
