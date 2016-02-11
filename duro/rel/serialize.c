@@ -508,6 +508,7 @@ RDB_deserialize_type(const RDB_object *valp, int *posp, RDB_exec_context *ecp,
         typ->name = NULL;
         typ->kind = RDB_TP_TUPLE;
         typ->ireplen = RDB_VARIABLE_LEN;
+        typ->cleanup_fp = NULL;
 
         typ->def.tuple.attrv = RDB_alloc(sizeof(RDB_attr) * attrc, ecp);
         if (typ->def.tuple.attrv == NULL) {
@@ -549,6 +550,7 @@ RDB_deserialize_type(const RDB_object *valp, int *posp, RDB_exec_context *ecp,
         typ->name = NULL;
         typ->kind = kind;
         typ->ireplen = RDB_VARIABLE_LEN;
+        typ->cleanup_fp = NULL;
 
         typ->def.basetyp = RDB_deserialize_type(valp, posp, ecp, txp);
         if (typ->def.basetyp == NULL) {

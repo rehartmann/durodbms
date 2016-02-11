@@ -138,8 +138,6 @@ RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
     tbp->val.tb.default_map = NULL;
     tbp->val.tb.stp = NULL;
 
-    tbp->cleanup_fp = &cleanup_tb;
-
     if (name != NULL) {
         tbp->val.tb.name = RDB_dup_str(name);
         if (tbp->val.tb.name == NULL) {
@@ -179,6 +177,7 @@ RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
 
     tbp->val.tb.exp = exp;
 
+    reltyp->cleanup_fp = &cleanup_tb;
     tbp->typ = reltyp;
 
     if (RDB_set_defvals(tbp, default_attrc, default_attrv, ecp) != RDB_OK)

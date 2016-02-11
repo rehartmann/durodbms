@@ -106,7 +106,6 @@ RDB_init_obj(RDB_object *valp)
     valp->kind = RDB_OB_INITIAL;
     valp->typ = NULL;
     valp->flags = 0;
-    valp->cleanup_fp = NULL;
 }
 
 /**
@@ -125,8 +124,8 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
     /*
      * Do additional cleanup
      */
-    if (objp->cleanup_fp != NULL) {
-        if (objp->cleanup_fp(objp, ecp) != RDB_OK)
+    if (objp->typ != NULL && objp->typ->cleanup_fp != NULL) {
+        if (objp->typ->cleanup_fp(objp, ecp) != RDB_OK)
             return RDB_ERROR;
     }
 

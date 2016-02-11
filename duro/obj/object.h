@@ -120,8 +120,6 @@ struct RDB_object {
 
      /* Used internally for conversion into the internal representation */
      RDB_type *store_typ;
-
-     RDB_obj_cleanup_func *cleanup_fp;
 };
 
 /* Internal */

@@ -114,6 +114,7 @@ typedef struct RDB_type {
             struct RDB_type **subtypev;
         } scalar;
     } def;
+    RDB_obj_cleanup_func *cleanup_fp;
     RDB_bool locked;
 } RDB_type;
 

@@ -158,7 +158,6 @@ RDB_bool_to_expr(RDB_bool v, RDB_exec_context *ecp)
     }
         
     exp->kind = RDB_EX_OBJ;
-    exp->def.obj.cleanup_fp = NULL;
     exp->def.obj.typ = &RDB_BOOLEAN;
     exp->def.obj.kind = RDB_OB_BOOL;
     exp->def.obj.val.bool_val = v;
@@ -183,7 +182,6 @@ RDB_int_to_expr(RDB_int v, RDB_exec_context *ecp)
     }
         
     exp->kind = RDB_EX_OBJ;
-    exp->def.obj.cleanup_fp = NULL;
     exp->def.obj.typ = &RDB_INTEGER;
     exp->def.obj.kind = RDB_OB_INT;
     exp->def.obj.val.int_val = v;
@@ -208,7 +206,6 @@ RDB_float_to_expr(RDB_float v, RDB_exec_context *ecp)
     }
         
     exp->kind = RDB_EX_OBJ;
-    exp->def.obj.cleanup_fp = NULL;
     exp->def.obj.typ = &RDB_FLOAT;
     exp->def.obj.kind = RDB_OB_FLOAT;
     exp->def.obj.val.float_val = v;
@@ -233,7 +230,6 @@ RDB_string_to_expr(const char *v, RDB_exec_context *ecp)
     }
         
     exp->kind = RDB_EX_OBJ;
-    exp->def.obj.cleanup_fp = NULL;
     exp->def.obj.typ = &RDB_STRING;
     exp->def.obj.kind = RDB_OB_BIN;
     exp->def.obj.val.bin.datap = RDB_dup_str(v);

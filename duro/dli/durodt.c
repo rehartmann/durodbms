@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2025 Rene Hartmann.
+ * Copyright (C) 2012-2015 Rene Hartmann.
  * See the file COPYING for redistribution information.
  *
  * Main program of Duro D/T, an interpreter for Duro's variant of Tutorial D.
@@ -37,7 +37,7 @@ static Duro_interp interp;
 static void
 usage_error(void)
 {
-    puts("usage: durodt [-e envpath] [-d database] [file]");
+    puts("usage: durodt [-e envpath] [-d database] [inputfile]");
     exit(1);
 }
 

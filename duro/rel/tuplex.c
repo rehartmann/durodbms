@@ -557,6 +557,7 @@ RDB_tuple_type(const RDB_object *tplp, RDB_exec_context *ecp)
 
     typ->kind = RDB_TP_TUPLE;
     typ->name = NULL;
+    typ->cleanup_fp = NULL;
     typ->ireplen = RDB_VARIABLE_LEN;
     typ->def.tuple.attrc = RDB_tuple_size(tplp);
     if (typ->def.tuple.attrc > 0) {
