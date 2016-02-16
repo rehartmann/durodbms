@@ -105,7 +105,6 @@ RDB_init_obj(RDB_object *valp)
 {
     valp->kind = RDB_OB_INITIAL;
     valp->typ = NULL;
-    valp->flags = 0;
 }
 
 /**
@@ -168,34 +167,9 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
         break;
     }
     case RDB_OB_TABLE:
-        if (objp->val.tb.keyv != NULL) {
-            RDB_free_keys(objp->val.tb.keyc, objp->val.tb.keyv);
-        }
-
         /* It could be a scalar type with a relation actual rep */
         if (objp->typ != NULL && !RDB_type_is_scalar(objp->typ))
             RDB_del_nonscalar_type(objp->typ, ecp);
-
-        RDB_free(objp->val.tb.name);
-
-        if (objp->val.tb.exp != NULL) {
-            if (RDB_del_expr(objp->val.tb.exp, ecp) != RDB_OK)
-                return RDB_ERROR;
-        }
-        if (objp->val.tb.default_map != NULL) {
-            RDB_hashmap_iter hiter;
-            void *valp;
-
-            RDB_init_hashmap_iter(&hiter, objp->val.tb.default_map);
-            while (RDB_hashmap_next(&hiter, &valp) != NULL) {
-                RDB_attr_default *entryp = valp;
-                RDB_del_expr(entryp->exp, ecp);
-                RDB_free(entryp);
-            }
-            RDB_destroy_hashmap_iter(map);
-            RDB_destroy_hashmap(objp->val.tb.default_map);
-            RDB_free(objp->val.tb.default_map);
-        }
 
         break;
     }

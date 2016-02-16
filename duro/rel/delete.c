@@ -40,7 +40,7 @@ delete_by_uindex(RDB_object *tbp, RDB_object *objpv[], RDB_tbindex *indexp,
 
     RDB_cmp_ecp = ecp;
     if (indexp->idxp == NULL) {
-        ret = RDB_delete_rec(tbp->val.tb.stp->recmapp, fv,
+        ret = RDB_delete_rec(tbp->val.tbp->stp->recmapp, fv,
                 RDB_table_is_persistent(tbp) ? txp->txid : NULL);
     } else {
         ret = RDB_index_delete_rec(indexp->idxp, fv,
@@ -78,7 +78,7 @@ RDB_delete_real(RDB_object *tbp, RDB_expression *condp,
     RDB_bool b;
     RDB_type *tpltyp = tbp->typ->def.basetyp;
 
-    if (tbp->val.tb.stp == NULL) {
+    if (tbp->val.tbp->stp == NULL) {
         /*
          * The stored table may have been created by another process,
          * so try to open it
@@ -87,13 +87,13 @@ RDB_delete_real(RDB_object *tbp, RDB_expression *condp,
             return RDB_ERROR;
         }
 
-        if (tbp->val.tb.stp == NULL) {
+        if (tbp->val.tbp->stp == NULL) {
             /* Physical table representation still not there, so table is empty */
             return 0;
         }
     }
 
-    ret = RDB_recmap_cursor(&curp, tbp->val.tb.stp->recmapp, RDB_TRUE,
+    ret = RDB_recmap_cursor(&curp, tbp->val.tbp->stp->recmapp, RDB_TRUE,
             RDB_table_is_persistent(tbp) ? txp->txid : NULL);
     if (ret != RDB_OK) {
         RDB_handle_errcode(ret, ecp, txp);
@@ -112,7 +112,7 @@ RDB_delete_real(RDB_object *tbp, RDB_expression *condp,
                 RDB_object val;
 
                 ret = RDB_cursor_get(curp,
-                        *RDB_field_no(tbp->val.tb.stp, tpltyp->def.tuple.attrv[i].name),
+                        *RDB_field_no(tbp->val.tbp->stp, tpltyp->def.tuple.attrv[i].name),
                         &datap, &len);
                 if (ret != RDB_OK) {
                    RDB_destroy_obj(&tpl, ecp);
@@ -419,12 +419,12 @@ RDB_delete_real_tuple(RDB_object *tbp, RDB_object *tplp, int flags, RDB_exec_con
     RDB_bool contains;
     RDB_object **objpv;
 
-    if (tbp->val.tb.stp == NULL) {
+    if (tbp->val.tbp->stp == NULL) {
         if (RDB_provide_stored_table(tbp, RDB_FALSE, ecp, txp) != RDB_OK) {
             return RDB_ERROR;
         }
 
-        if (tbp->val.tb.stp == NULL) {
+        if (tbp->val.tbp->stp == NULL) {
             /* No stored table, so table is empty */
             if ((RDB_INCLUDED & flags) != 0) {
                 RDB_raise_not_found("tuple not found", ecp);
@@ -447,13 +447,13 @@ RDB_delete_real_tuple(RDB_object *tbp, RDB_object *tplp, int flags, RDB_exec_con
 
     /* Get primary index */
     for (i = 0;
-            i < tbp->val.tb.stp->indexc && tbp->val.tb.stp->indexv[i].idxp != NULL;
+            i < tbp->val.tbp->stp->indexc && tbp->val.tbp->stp->indexv[i].idxp != NULL;
             i++);
-    if (i == tbp->val.tb.stp->indexc) {
+    if (i == tbp->val.tbp->stp->indexc) {
         RDB_raise_internal("primary index not found", ecp);
         return (RDB_int) RDB_ERROR;
     }
-    indexp = &tbp->val.tb.stp->indexv[i];
+    indexp = &tbp->val.tbp->stp->indexv[i];
 
     /* Get attribute values of the primary index */
     objpv = RDB_alloc(sizeof (RDB_object *) * indexp->attrc, ecp);

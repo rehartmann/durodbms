@@ -371,6 +371,12 @@ RDB_cardinality(RDB_object *tbp, RDB_exec_context *, RDB_transaction *);
 RDB_object *
 RDB_expr_to_vtable(RDB_expression *, RDB_exec_context *, RDB_transaction *);
 
+RDB_expression *
+RDB_vtable_expr(const RDB_object *);
+
+RDB_bool
+RDB_expr_refers(const RDB_expression *, const RDB_object *);
+
 RDB_attr *
 RDB_table_attrs(const RDB_object *, int *);
 

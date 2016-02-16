@@ -1006,7 +1006,7 @@ RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
                 return RDB_ERROR;
 
             ret = RDB_init_table_i(dstvalp, NULL, RDB_FALSE,
-                    reltyp, 1, srcvalp->val.tb.keyv, 0, NULL, RDB_FALSE,
+                    reltyp, 1, srcvalp->val.tbp->keyv, 0, NULL, RDB_FALSE,
                     NULL, ecp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
@@ -1022,7 +1022,7 @@ RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
                 return RDB_ERROR;
         }
         rc = RDB_move_tuples(dstvalp, (RDB_object *) srcvalp, RDB_DISTINCT, ecp,
-                RDB_table_is_persistent(srcvalp) || srcvalp->val.tb.exp != NULL
+                RDB_table_is_persistent(srcvalp) || srcvalp->val.tbp->exp != NULL
                 || RDB_table_is_persistent(dstvalp) ? txp : NULL);
         if (rc == RDB_ERROR)
             return RDB_ERROR;

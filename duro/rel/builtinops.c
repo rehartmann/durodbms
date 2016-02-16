@@ -610,8 +610,8 @@ op_vtable(int argc, RDB_object *argv[], RDB_operator *op,
         if (argv[i]->kind == RDB_OB_TABLE) {
             if (RDB_table_is_persistent(argv[i])) {
                 argexp = RDB_table_ref(argv[i], ecp);
-            } else if (argv[i]->val.tb.exp != NULL) {
-                argexp = RDB_dup_expr(argv[i]->val.tb.exp, ecp);
+            } else if (argv[i]->val.tbp->exp != NULL) {
+                argexp = RDB_dup_expr(argv[i]->val.tbp->exp, ecp);
             } else {
                 argexp = RDB_obj_to_expr(argv[i], ecp);
             }

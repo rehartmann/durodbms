@@ -421,11 +421,11 @@ replace_targets_real_ins(RDB_object *tbp, const RDB_ma_insert *insp,
         return NULL;
     }
     /* Temporarily attach default values */
-    if (tbp->val.tb.default_map != NULL) {
-        RDB_expr_obj(argp)->val.tb.default_map = tbp->val.tb.default_map;
+    if (tbp->val.tbp->default_map != NULL) {
+        RDB_expr_obj(argp)->val.tbp->default_map = tbp->val.tbp->default_map;
     }
     ret = RDB_insert(RDB_expr_obj(argp), insp->objp, ecp, NULL);
-    RDB_expr_obj(argp)->val.tb.default_map = NULL;
+    RDB_expr_obj(argp)->val.tbp->default_map = NULL;
     if (ret != RDB_OK) {
         RDB_del_expr(exp, ecp);
         return NULL;
@@ -552,7 +552,7 @@ replace_targets_real_vdel(RDB_object *tbp, const RDB_ma_vdelete *vdelp,
     }
 
     ret = RDB_insert(RDB_expr_obj(argp), vdelp->objp, ecp, NULL);
-    RDB_expr_obj(argp)->val.tb.default_map = NULL;
+    RDB_expr_obj(argp)->val.tbp->default_map = NULL;
     if (ret != RDB_OK) {
         RDB_del_expr(exp, ecp);
         return NULL;
@@ -689,12 +689,12 @@ replace_targets(RDB_expression *exp,
     case RDB_EX_OBJ:
         return RDB_obj_to_expr(&exp->def.obj, ecp);
     case RDB_EX_TBP:
-        if (exp->def.tbref.tbp->val.tb.exp == NULL) {
+        if (exp->def.tbref.tbp->val.tbp->exp == NULL) {
             return replace_targets_real(exp->def.tbref.tbp,
                     insc, insv, updc, updv, delc, delv, vdelc, vdelv,
                     copyc, copyv, ecp, txp);
         }
-        return replace_targets(exp->def.tbref.tbp->val.tb.exp, insc, insv,
+        return replace_targets(exp->def.tbref.tbp->val.tbp->exp, insc, insv,
                 updc, updv, delc, delv, vdelc, vdelv, copyc, copyv, ecp, txp);
     case RDB_EX_VAR:
         /*

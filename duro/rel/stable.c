@@ -200,7 +200,7 @@ RDB_create_tbindex(RDB_object *tbp, RDB_tbindex *indexp, RDB_environment *envp,
 
     /* Get index numbers */
     for (i = 0; i < indexp->attrc; i++) {
-        RDB_int *np = RDB_field_no(tbp->val.tb.stp, indexp->attrv[i].attrname);
+        RDB_int *np = RDB_field_no(tbp->val.tbp->stp, indexp->attrv[i].attrname);
         if (np == NULL) {
             RDB_raise_name(indexp->attrv[i].attrname, ecp);
             return RDB_ERROR;
@@ -215,7 +215,7 @@ RDB_create_tbindex(RDB_object *tbp, RDB_tbindex *indexp, RDB_environment *envp,
         flags |= RDB_ORDERED;
 
     /* Create record-layer index */
-    ret = RDB_create_index(tbp->val.tb.stp->recmapp,
+    ret = RDB_create_index(tbp->val.tbp->stp->recmapp,
                   RDB_table_is_persistent(tbp) ? indexp->name : NULL,
                   RDB_table_is_persistent(tbp) ? RDB_DATAFILE : NULL,
                   envp, indexp->attrc, fieldv, cmpv, flags,
@@ -242,56 +242,56 @@ keys_to_indexes(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     int oindexc;
     int ret;
 
-    oindexc = tbp->val.tb.stp->indexc;
+    oindexc = tbp->val.tbp->stp->indexc;
     if (oindexc == 0)
-        tbp->val.tb.stp->indexv = NULL;
+        tbp->val.tbp->stp->indexv = NULL;
 
-    tbp->val.tb.stp->indexc += tbp->val.tb.keyc;
-    tbp->val.tb.stp->indexv = RDB_realloc(tbp->val.tb.stp->indexv,
-            sizeof (RDB_tbindex) * tbp->val.tb.stp->indexc, ecp);
-    if (tbp->val.tb.stp->indexv == NULL) {
+    tbp->val.tbp->stp->indexc += tbp->val.tbp->keyc;
+    tbp->val.tbp->stp->indexv = RDB_realloc(tbp->val.tbp->stp->indexv,
+            sizeof (RDB_tbindex) * tbp->val.tbp->stp->indexc, ecp);
+    if (tbp->val.tbp->stp->indexv == NULL) {
         return RDB_ERROR;
     }
 
-    for (i = 0; i < tbp->val.tb.keyc; i++) {
+    for (i = 0; i < tbp->val.tbp->keyc; i++) {
         const char *tbname;
 
-        tbp->val.tb.stp->indexv[oindexc + i].unique = RDB_TRUE;
-        tbp->val.tb.stp->indexv[oindexc + i].ordered = RDB_FALSE;
-        tbp->val.tb.stp->indexv[oindexc + i].attrc = tbp->val.tb.keyv[i].strc;
-        tbp->val.tb.stp->indexv[oindexc + i].attrv = RDB_alloc(sizeof(RDB_seq_item)
-                * tbp->val.tb.keyv[i].strc, ecp);
-        if (tbp->val.tb.stp->indexv[oindexc + i].attrv == NULL) {
+        tbp->val.tbp->stp->indexv[oindexc + i].unique = RDB_TRUE;
+        tbp->val.tbp->stp->indexv[oindexc + i].ordered = RDB_FALSE;
+        tbp->val.tbp->stp->indexv[oindexc + i].attrc = tbp->val.tbp->keyv[i].strc;
+        tbp->val.tbp->stp->indexv[oindexc + i].attrv = RDB_alloc(sizeof(RDB_seq_item)
+                * tbp->val.tbp->keyv[i].strc, ecp);
+        if (tbp->val.tbp->stp->indexv[oindexc + i].attrv == NULL) {
             return RDB_ERROR;
         }
-        for (j = 0; j < tbp->val.tb.keyv[i].strc; j++) {
-            tbp->val.tb.stp->indexv[oindexc + i].attrv[j].attrname =
-                    RDB_dup_str(tbp->val.tb.keyv[i].strv[j]);
-            if (tbp->val.tb.stp->indexv[oindexc + i].attrv[j].attrname == NULL) {
+        for (j = 0; j < tbp->val.tbp->keyv[i].strc; j++) {
+            tbp->val.tbp->stp->indexv[oindexc + i].attrv[j].attrname =
+                    RDB_dup_str(tbp->val.tbp->keyv[i].strv[j]);
+            if (tbp->val.tbp->stp->indexv[oindexc + i].attrv[j].attrname == NULL) {
                 RDB_raise_no_memory(ecp);
                 return RDB_ERROR;
             }
         }
 
         tbname = RDB_table_name(tbp);
-        tbp->val.tb.stp->indexv[oindexc + i].name = RDB_alloc((tbname != NULL ? strlen(tbname) : 0) + 4, ecp);
-        if (tbp->val.tb.stp->indexv[oindexc + i].name == NULL) {
+        tbp->val.tbp->stp->indexv[oindexc + i].name = RDB_alloc((tbname != NULL ? strlen(tbname) : 0) + 4, ecp);
+        if (tbp->val.tbp->stp->indexv[oindexc + i].name == NULL) {
             return RDB_ERROR;
         }
         /* build index name */
-        sprintf(tbp->val.tb.stp->indexv[oindexc + i].name, "%s$%d",
+        sprintf(tbp->val.tbp->stp->indexv[oindexc + i].name, "%s$%d",
                 tbname != NULL ? tbname : "", i);
 
         if (RDB_table_is_persistent(tbp) && RDB_table_is_user(tbp)) {
-            ret = RDB_cat_insert_index(tbp->val.tb.stp->indexv[oindexc + i].name,
-                    tbp->val.tb.stp->indexv[oindexc + i].attrc,
-                    tbp->val.tb.stp->indexv[oindexc + i].attrv,
+            ret = RDB_cat_insert_index(tbp->val.tbp->stp->indexv[oindexc + i].name,
+                    tbp->val.tbp->stp->indexv[oindexc + i].attrc,
+                    tbp->val.tbp->stp->indexv[oindexc + i].attrv,
                     RDB_TRUE, RDB_FALSE, RDB_table_name(tbp), ecp, txp);
             if (ret != RDB_OK)
                 return ret;
         }
 
-        tbp->val.tb.stp->indexv[oindexc + i].idxp = NULL;
+        tbp->val.tbp->stp->indexv[oindexc + i].idxp = NULL;
     }
     return RDB_OK;
 }
@@ -313,12 +313,12 @@ create_indexes(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp,
      * Create secondary indexes
      */
 
-    for (i = 0; i < tbp->val.tb.stp->indexc; i++) {
+    for (i = 0; i < tbp->val.tbp->stp->indexc; i++) {
         /* Create a BDB secondary index if it's not the primary index */
         if ((!RDB_table_is_persistent(tbp) && i > 0)
                 || (RDB_table_is_persistent(tbp)
-                    && !index_is_primary(tbp->val.tb.stp->indexv[i].name))) {
-            if (RDB_create_tbindex(tbp, &tbp->val.tb.stp->indexv[i], envp,
+                    && !index_is_primary(tbp->val.tbp->stp->indexv[i].name))) {
+            if (RDB_create_tbindex(tbp, &tbp->val.tbp->stp->indexv[i], envp,
                     ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         }
@@ -368,8 +368,8 @@ key_fnos(RDB_object *tbp, int **flenvp, const RDB_bool ascv[],
     RDB_tbindex *pindexp;
     int attrc = tbp->typ->def.basetyp->def.tuple.attrc;
     RDB_attr *heading = tbp->typ->def.basetyp->def.tuple.attrv;
-    int piattrc = tbp->val.tb.keyv[0].strc;
-    char **piattrv = tbp->val.tb.keyv[0].strv;
+    int piattrc = tbp->val.tbp->keyv[0].strc;
+    char **piattrv = tbp->val.tbp->keyv[0].strv;
 
     *flenvp = RDB_alloc(sizeof(int) * attrc, ecp);
     if (*flenvp == NULL) {
@@ -382,15 +382,15 @@ key_fnos(RDB_object *tbp, int **flenvp, const RDB_bool ascv[],
      */
     if (RDB_table_is_persistent(tbp)) {
         pindexp = NULL;
-        for (i = 0; i < tbp->val.tb.stp->indexc; i++) {
-            if (index_is_primary(tbp->val.tb.stp->indexv[i].name)) {
-                pindexp = &tbp->val.tb.stp->indexv[i];
+        for (i = 0; i < tbp->val.tbp->stp->indexc; i++) {
+            if (index_is_primary(tbp->val.tbp->stp->indexv[i].name)) {
+                pindexp = &tbp->val.tbp->stp->indexv[i];
                 break;
             }
         }
     } else {
         /* Transient tables don't have secondary indexes */
-        pindexp = &tbp->val.tb.stp->indexv[0];
+        pindexp = &tbp->val.tbp->stp->indexv[0];
     }
 
     di = piattrc;
@@ -431,7 +431,7 @@ key_fnos(RDB_object *tbp, int **flenvp, const RDB_bool ascv[],
         }
 
         /* Put the field number into the attrmap */
-        ret = RDB_put_field_no(tbp->val.tb.stp,
+        ret = RDB_put_field_no(tbp->val.tbp->stp,
                 tbp->typ->def.basetyp->def.tuple.attrv[i].name, fno, ecp);
         if (ret != RDB_OK) {
             RDB_free(*flenvp);
@@ -478,7 +478,7 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
     char *rmname = NULL;
     RDB_compare_field *cmpv = NULL;
     int attrc = tbp->typ->def.basetyp->def.tuple.attrc;
-    int piattrc = tbp->val.tb.keyv[0].strc;
+    int piattrc = tbp->val.tbp->keyv[0].strc;
 
     /* Do not use a transaction if the table is transient */
     if (!RDB_table_is_persistent(tbp))
@@ -489,15 +489,15 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
         return RDB_ERROR;
     }
 
-    tbp->val.tb.stp = RDB_alloc(sizeof(RDB_stored_table), ecp);
-    if (tbp->val.tb.stp == NULL) {
+    tbp->val.tbp->stp = RDB_alloc(sizeof(RDB_stored_table), ecp);
+    if (tbp->val.tbp->stp == NULL) {
         return RDB_ERROR;
     }
 
-    tbp->val.tb.stp->recmapp = NULL;
-    RDB_init_hashtable(&tbp->val.tb.stp->attrmap, RDB_DFL_MAP_CAPACITY, &hash_str,
+    tbp->val.tbp->stp->recmapp = NULL;
+    RDB_init_hashtable(&tbp->val.tbp->stp->attrmap, RDB_DFL_MAP_CAPACITY, &hash_str,
             &str_equals);
-    tbp->val.tb.stp->est_cardinality = 0;
+    tbp->val.tbp->stp->est_cardinality = 0;
 
     /* Allocate comparison vector, if needed */
     if (ascv != NULL) {
@@ -509,13 +509,13 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
 
     if (RDB_table_is_persistent(tbp) && RDB_table_is_user(tbp)) {
         /* Get indexes from catalog */
-        tbp->val.tb.stp->indexc = RDB_cat_get_indexes(RDB_table_name(tbp), txp->dbp->dbrootp,
-                ecp, txp, &tbp->val.tb.stp->indexv);
-        if (tbp->val.tb.stp->indexc < 0) {
+        tbp->val.tbp->stp->indexc = RDB_cat_get_indexes(RDB_table_name(tbp), txp->dbp->dbrootp,
+                ecp, txp, &tbp->val.tbp->stp->indexv);
+        if (tbp->val.tbp->stp->indexc < 0) {
             goto error;
         }
     } else {
-        tbp->val.tb.stp->indexc = 0;
+        tbp->val.tbp->stp->indexc = 0;
     }
 
     ret = keys_to_indexes(tbp, ecp, txp);
@@ -572,15 +572,15 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
             RDB_table_is_persistent(tbp) ? RDB_DATAFILE : NULL,
             envp, attrc, flenv, piattrc, cmpv, flags,
             txp != NULL ? txp->txid : NULL,
-            &tbp->val.tb.stp->recmapp);
+            &tbp->val.tbp->stp->recmapp);
     if (ret != RDB_OK) {
-        tbp->val.tb.stp->recmapp = NULL;
+        tbp->val.tbp->stp->recmapp = NULL;
         RDB_handle_errcode(ret, ecp, txp);
         goto error;
     }
 
     /* Create non-primary indexes */
-    if (tbp->val.tb.stp->indexc > 1) {
+    if (tbp->val.tbp->stp->indexc > 1) {
         ret = create_indexes(tbp, envp, ecp, txp);
         if (ret != RDB_OK)
             goto error;
@@ -599,26 +599,26 @@ error:
     RDB_free(cmpv);
     RDB_free(rmname);
 
-    RDB_init_hashtable_iter(&hiter, &tbp->val.tb.stp->attrmap);
+    RDB_init_hashtable_iter(&hiter, &tbp->val.tbp->stp->attrmap);
     while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
         RDB_free(entryp->key);
         RDB_free(entryp);
     }
     RDB_destroy_hashtable_iter(&hiter);
 
-    RDB_destroy_hashtable(&tbp->val.tb.stp->attrmap);
+    RDB_destroy_hashtable(&tbp->val.tbp->stp->attrmap);
 
-    if (tbp->val.tb.stp->recmapp != NULL && txp == NULL) {
+    if (tbp->val.tbp->stp->recmapp != NULL && txp == NULL) {
         /*
          * Delete recmap if there is no transaction, otherwise this must happen
          * through the rollback
          * (If the transaction has been created under the control of a transaction,
          * the transaction must have been committed before the DB handle can be destroyed)
          */
-        RDB_delete_recmap(tbp->val.tb.stp->recmapp, NULL);
+        RDB_delete_recmap(tbp->val.tbp->stp->recmapp, NULL);
     }
-    RDB_free(tbp->val.tb.stp);
-    tbp->val.tb.stp = NULL;
+    RDB_free(tbp->val.tbp->stp);
+    tbp->val.tbp->stp = NULL;
 
     return RDB_ERROR;
 }
@@ -691,7 +691,7 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
     RDB_attrmap_entry *entryp;
     RDB_compare_field *cmpv = NULL;
     int attrc = tbp->typ->def.basetyp->def.tuple.attrc;
-    int piattrc = tbp->val.tb.keyv[0].strc;
+    int piattrc = tbp->val.tbp->keyv[0].strc;
 
     if (!RDB_table_is_persistent(tbp))
        txp = NULL;
@@ -701,23 +701,23 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
         return RDB_ERROR;
     }
 
-    tbp->val.tb.stp = RDB_alloc(sizeof(RDB_stored_table), ecp);
-    if (tbp->val.tb.stp == NULL) {
+    tbp->val.tbp->stp = RDB_alloc(sizeof(RDB_stored_table), ecp);
+    if (tbp->val.tbp->stp == NULL) {
         return RDB_ERROR;
     }
 
     if (RDB_table_is_persistent(tbp) && RDB_table_is_user(tbp)) {
         /* Get indexes from catalog */
-        tbp->val.tb.stp->indexc = RDB_cat_get_indexes(RDB_table_name(tbp), txp->dbp->dbrootp,
-                ecp, txp, &tbp->val.tb.stp->indexv);
-        if (tbp->val.tb.stp->indexc < 0) {
+        tbp->val.tbp->stp->indexc = RDB_cat_get_indexes(RDB_table_name(tbp), txp->dbp->dbrootp,
+                ecp, txp, &tbp->val.tbp->stp->indexv);
+        if (tbp->val.tbp->stp->indexc < 0) {
             goto error;
         }
     } else {
-        tbp->val.tb.stp->indexc = 0;
+        tbp->val.tbp->stp->indexc = 0;
     }
 
-    RDB_init_hashtable(&tbp->val.tb.stp->attrmap, RDB_DFL_MAP_CAPACITY, &hash_str,
+    RDB_init_hashtable(&tbp->val.tbp->stp->attrmap, RDB_DFL_MAP_CAPACITY, &hash_str,
             &str_equals);
 
     ret = key_fnos(tbp, &flenv, NULL, NULL, ecp);
@@ -726,7 +726,7 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
 
     ret = RDB_open_recmap(rmname, RDB_DATAFILE, envp,
             attrc, flenv, piattrc, txp != NULL ? txp->txid : NULL,
-            &tbp->val.tb.stp->recmapp);
+            &tbp->val.tbp->stp->recmapp);
     if (ret != RDB_OK) {
         if (ret == ENOENT) {
             RDB_raise_not_found("table not found", ecp);
@@ -739,30 +739,30 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
     /*
      * Get estimated number of records
      */
-    ret = RDB_recmap_est_size(tbp->val.tb.stp->recmapp,
+    ret = RDB_recmap_est_size(tbp->val.tbp->stp->recmapp,
             txp != NULL ? txp->txid : NULL,
-            &tbp->val.tb.stp->est_cardinality);
+            &tbp->val.tbp->stp->est_cardinality);
     if (ret != 0) {
         RDB_handle_errcode(ret, ecp, txp);
         goto error;
     }
-    if (tbp->val.tb.stp->est_cardinality == 0) {
+    if (tbp->val.tbp->stp->est_cardinality == 0) {
         /*
          * Assume that the size has never been calculated
          * and set it to a default
          */
-        tbp->val.tb.stp->est_cardinality = 100;
+        tbp->val.tbp->stp->est_cardinality = 100;
     }
 
     /* Open secondary indexes */
-    for (i = 0; i < tbp->val.tb.stp->indexc; i++) {
-        char *p = strchr(tbp->val.tb.stp->indexv[i].name, '$');
+    for (i = 0; i < tbp->val.tbp->stp->indexc; i++) {
+        char *p = strchr(tbp->val.tbp->stp->indexv[i].name, '$');
         if (p == NULL || strcmp (p, "$0") != 0) {
-            ret = RDB_open_tbindex(tbp, &tbp->val.tb.stp->indexv[i], envp, ecp, txp);
+            ret = RDB_open_tbindex(tbp, &tbp->val.tbp->stp->indexv[i], envp, ecp, txp);
             if (ret != RDB_OK)
                 goto error;
         } else {
-            tbp->val.tb.stp->indexv[i].idxp = NULL;
+            tbp->val.tbp->stp->indexv[i].idxp = NULL;
         }
     }
 
@@ -775,16 +775,16 @@ error:
     RDB_free(flenv);
     RDB_free(cmpv);
 
-    RDB_init_hashtable_iter(&hiter, &tbp->val.tb.stp->attrmap);
+    RDB_init_hashtable_iter(&hiter, &tbp->val.tbp->stp->attrmap);
     while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
         RDB_free(entryp->key);
         RDB_free(entryp);
     }
     RDB_destroy_hashtable_iter(&hiter);
 
-    RDB_destroy_hashtable(&tbp->val.tb.stp->attrmap);
-    RDB_free(tbp->val.tb.stp);
-    tbp->val.tb.stp = NULL;
+    RDB_destroy_hashtable(&tbp->val.tbp->stp->attrmap);
+    RDB_free(tbp->val.tbp->stp);
+    tbp->val.tbp->stp = NULL;
 
     return RDB_ERROR;
 }
@@ -813,11 +813,11 @@ RDB_open_tbindex(RDB_object *tbp, RDB_tbindex *indexp,
 
     /* get index numbers */
     for (i = 0; i < indexp->attrc; i++) {
-        fieldv[i] = *RDB_field_no(tbp->val.tb.stp, indexp->attrv[i].attrname);
+        fieldv[i] = *RDB_field_no(tbp->val.tbp->stp, indexp->attrv[i].attrname);
     }
 
     /* open index */
-    ret = RDB_open_index(tbp->val.tb.stp->recmapp,
+    ret = RDB_open_index(tbp->val.tbp->stp->recmapp,
                   RDB_table_is_persistent(tbp) ? indexp->name : NULL,
                   RDB_table_is_persistent(tbp) ? RDB_DATAFILE : NULL,
                   envp, indexp->attrc, fieldv, cmpv, indexp->unique ? RDB_UNIQUE : 0,

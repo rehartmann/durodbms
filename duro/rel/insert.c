@@ -43,7 +43,7 @@ RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
         }
     }
 
-    if (tbp->val.tb.stp == NULL) {
+    if (tbp->val.tbp->stp == NULL) {
         /* Create physical table */
         if (RDB_provide_stored_table(tbp, RDB_TRUE, ecp, txp) != RDB_OK) {
             return RDB_ERROR;
@@ -59,13 +59,13 @@ RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
     }
     for (i = 0; i < attrcount; i++) {
         RDB_int nextval;
-        int *fnop = RDB_field_no(tbp->val.tb.stp, tuptyp->def.tuple.attrv[i].name);
+        int *fnop = RDB_field_no(tbp->val.tbp->stp, tuptyp->def.tuple.attrv[i].name);
         RDB_attr_default *dflp = NULL;
         RDB_object *valp = RDB_tuple_get(tplp, tuptyp->def.tuple.attrv[i].name);
         RDB_type *attrtyp = tuptyp->def.tuple.attrv[i].typ;
 
-        if (tbp->val.tb.default_map != NULL) {
-            dflp = RDB_hashmap_get(tbp->val.tb.default_map,
+        if (tbp->val.tbp->default_map != NULL) {
+            dflp = RDB_hashmap_get(tbp->val.tbp->default_map,
                     tuptyp->def.tuple.attrv[i].name);
         }
 
@@ -154,11 +154,11 @@ RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
     }
 
     RDB_cmp_ecp = ecp;
-    ret = RDB_insert_rec(tbp->val.tb.stp->recmapp, fvp,
+    ret = RDB_insert_rec(tbp->val.tbp->stp->recmapp, fvp,
             RDB_table_is_persistent(tbp) ? txp->txid : NULL);
     if (ret == DB_KEYEXIST) {
         /* check if the tuple is an element of the table */
-        if (RDB_contains_rec(tbp->val.tb.stp->recmapp, fvp,
+        if (RDB_contains_rec(tbp->val.tbp->stp->recmapp, fvp,
                 RDB_table_is_persistent(tbp) ? txp->txid : NULL) == RDB_OK) {
             RDB_raise_element_exists("tuple is already in table", ecp);
         } else {
@@ -170,7 +170,7 @@ RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
         ret = RDB_ERROR;
     }
     if (ret == RDB_OK) {
-        tbp->val.tb.stp->est_cardinality++;
+        tbp->val.tbp->stp->est_cardinality++;
     }
 
 cleanup:

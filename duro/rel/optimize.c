@@ -693,13 +693,13 @@ table_est_cardinality(const RDB_expression *exp)
 {
     switch(exp->kind) {
     case RDB_EX_TBP:
-        return exp->def.tbref.tbp->val.tb.stp != NULL ?
-                exp->def.tbref.tbp->val.tb.stp->est_cardinality : 0;
+        return exp->def.tbref.tbp->val.tbp->stp != NULL ?
+                exp->def.tbref.tbp->val.tbp->stp->est_cardinality : 0;
     case RDB_EX_OBJ:
         if (exp->def.obj.kind != RDB_OB_TABLE)
             return 1;
-        return exp->def.obj.val.tb.stp != NULL ?
-                exp->def.obj.val.tb.stp->est_cardinality : 0;
+        return exp->def.obj.val.tbp->stp != NULL ?
+                exp->def.obj.val.tbp->stp->est_cardinality : 0;
     case RDB_EX_VAR:
         return 1;
     case RDB_EX_RO_OP:
@@ -962,7 +962,7 @@ dup_expr_deep(const RDB_expression *exp, RDB_exec_context *ecp,
         newexp = RDB_obj_to_expr(&exp->def.obj, ecp);
         break;
     case RDB_EX_TBP:
-        if (RDB_TB_CHECK & exp->def.tbref.tbp->flags) {
+        if (RDB_TB_CHECK & exp->def.tbref.tbp->val.tbp->flags) {
             if (RDB_check_table(exp->def.tbref.tbp, ecp, txp) != RDB_OK)
                 return NULL;
         }
@@ -1470,7 +1470,7 @@ mutate_matching_index(RDB_expression *texp, RDB_expression **tbpv, int cap,
                 : texp->def.op.args.firstp->nextp->def.tbref.tbp;
 
         /* Use unique indexes which cover the attributes of the first argument */
-        RDB_stored_table *stbp = tbp->val.tb.stp;
+        RDB_stored_table *stbp = tbp->val.tbp->stp;
         if (stbp == NULL)
             return RDB_OK;
 
@@ -1602,7 +1602,7 @@ index_joins(RDB_expression *otexp, RDB_expression *itexp,
     if (!RDB_table_is_stored(tbp))
         return 0;
 
-    if (tbp->kind == RDB_OB_TABLE && tbp->val.tb.stp == NULL) {
+    if (tbp->kind == RDB_OB_TABLE && tbp->val.tbp->stp == NULL) {
         if (RDB_provide_stored_table(tbp, RDB_TRUE, ecp, txp) != RDB_OK)
             return RDB_ERROR;
     }
@@ -1612,14 +1612,14 @@ index_joins(RDB_expression *otexp, RDB_expression *itexp,
      */
 
     tbc = 0;
-    for (i = 0; i < tbp->val.tb.stp->indexc && tbc < cap; i++) {
+    for (i = 0; i < tbp->val.tbp->stp->indexc && tbc < cap; i++) {
         RDB_bool useindex;
 
         if (RDB_expr_is_op(itexp, "rename")) {
-            useindex = table_covers_index_rename(ottyp, &tbp->val.tb.stp->indexv[i],
+            useindex = table_covers_index_rename(ottyp, &tbp->val.tbp->stp->indexv[i],
                     itexp);
         } else {
-            useindex = table_covers_index(ottyp, &tbp->val.tb.stp->indexv[i]);
+            useindex = table_covers_index(ottyp, &tbp->val.tbp->stp->indexv[i]);
         }
 
         if (useindex) {
@@ -1644,10 +1644,10 @@ index_joins(RDB_expression *otexp, RDB_expression *itexp,
             RDB_add_arg(ntexp, arg2p);
 
             if (itexp->kind == RDB_EX_TBP) {
-                itexp->def.tbref.indexp = &tbp->val.tb.stp->indexv[i];
+                itexp->def.tbref.indexp = &tbp->val.tbp->stp->indexv[i];
             } else {
                 itexp->def.op.args.firstp->def.tbref.indexp
-                        = &tbp->val.tb.stp->indexv[i];
+                        = &tbp->val.tbp->stp->indexv[i];
             }
 
             tbpv[tbc++] = ntexp;
@@ -1699,16 +1699,16 @@ mutate_tbref(RDB_expression *texp, RDB_expression **tbpv, int cap,
         RDB_exec_context *ecp)
 {
     if (texp->def.tbref.tbp->kind == RDB_OB_TABLE
-            && texp->def.tbref.tbp->val.tb.stp != NULL
-            && texp->def.tbref.tbp->val.tb.stp->indexc > 0) {
+            && texp->def.tbref.tbp->val.tbp->stp != NULL
+            && texp->def.tbref.tbp->val.tbp->stp->indexc > 0) {
         int i;
-        int tbc = texp->def.tbref.tbp->val.tb.stp->indexc;
+        int tbc = texp->def.tbref.tbp->val.tbp->stp->indexc;
         if (tbc > cap)
             tbc = cap;
 
         /* For each index, generate an expression that uses the index */
         for (i = 0; i < tbc; i++) {
-            RDB_tbindex *indexp = &texp->def.tbref.tbp->val.tb.stp->indexv[i];
+            RDB_tbindex *indexp = &texp->def.tbref.tbp->val.tbp->stp->indexv[i];
             RDB_expression *tiexp = RDB_table_ref(texp->def.tbref.tbp, ecp);
             if (tiexp == NULL)
                 return RDB_ERROR;
@@ -1823,28 +1823,28 @@ RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
         return NULL;
     }
 
-    if (RDB_TB_CHECK & tbp->flags) {
+    if (RDB_TB_CHECK & tbp->val.tbp->flags) {
         if (RDB_check_table(tbp, ecp, txp) != RDB_OK)
             return NULL;
     }
 
-    if (tbp->val.tb.exp == NULL) {
+    if (tbp->val.tbp->exp == NULL) {
         /* It's a real table - no optimization possible */
-        if (seqitc > 0 && tbp->val.tb.stp != NULL) {
+        if (seqitc > 0 && tbp->val.tbp->stp != NULL) {
             /*
              * Check if an index can be used for sorting
              */
 
-            for (i = 0; i < tbp->val.tb.stp->indexc
-                    && !RDB_index_sorts(&tbp->val.tb.stp->indexv[i],
+            for (i = 0; i < tbp->val.tbp->stp->indexc
+                    && !RDB_index_sorts(&tbp->val.tbp->stp->indexv[i],
                             seqitc, seqitv);
                     i++);
             /* If yes, create reference */
-            if (i < tbp->val.tb.stp->indexc) {
+            if (i < tbp->val.tbp->stp->indexc) {
                 nexp = RDB_table_ref(tbp, ecp);
                 if (nexp == NULL)
                     return NULL;
-                nexp->def.tbref.indexp = &tbp->val.tb.stp->indexv[i];
+                nexp->def.tbref.indexp = &tbp->val.tbp->stp->indexv[i];
                 return nexp;
             }
         }
@@ -1852,9 +1852,9 @@ RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
     }
 
     /* Set expression types so it is known which names cannot refer to tables */
-    if (RDB_expr_type(tbp->val.tb.exp, NULL, NULL, NULL, ecp, txp) == NULL)
+    if (RDB_expr_type(tbp->val.tbp->exp, NULL, NULL, NULL, ecp, txp) == NULL)
         return NULL;
-    return RDB_optimize_expr(tbp->val.tb.exp, seqitc, seqitv, NULL,
+    return RDB_optimize_expr(tbp->val.tbp->exp, seqitc, seqitv, NULL,
             ecp, txp);
 }
 

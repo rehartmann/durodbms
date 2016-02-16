@@ -303,14 +303,14 @@ serialize_table(RDB_object *valp, int *posp, RDB_object *tbp,
     if (RDB_serialize_str(valp, posp, "", ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (tbp->val.tb.exp == NULL) {
+    if (tbp->val.tbp->exp == NULL) {
         if (RDB_serialize_byte(valp, posp, (RDB_byte) 1, ecp) != RDB_OK)
             return RDB_ERROR;
         return serialize_trobj(valp, posp, tbp, ecp);
     }
     if (RDB_serialize_byte(valp, posp, (RDB_byte) 0, ecp) != RDB_OK)
         return RDB_ERROR;
-    return RDB_serialize_expr(valp, posp, tbp->val.tb.exp, ecp);
+    return RDB_serialize_expr(valp, posp, tbp->val.tbp->exp, ecp);
 }
 
 int
@@ -328,7 +328,7 @@ RDB_vtable_to_binobj(RDB_object *valp, RDB_object *tbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     pos = 0;
-    ret = RDB_serialize_expr(valp, &pos, tbp->val.tb.exp, ecp);
+    ret = RDB_serialize_expr(valp, &pos, tbp->val.tbp->exp, ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 

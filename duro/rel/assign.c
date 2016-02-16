@@ -513,14 +513,14 @@ static int
 resolve_insert(RDB_object *tbp, const RDB_object *srcp, int flags, insert_node **insnpp,
                RDB_exec_context *ecp, RDB_transaction *txp)
 {
-  	if (tbp->val.tb.exp == NULL) {
+  	if (tbp->val.tbp->exp == NULL) {
         *insnpp = new_insert_node(tbp, srcp, flags, ecp);
         if (*insnpp == NULL)
             return RDB_ERROR;
         return RDB_OK;
     }
 
-    return resolve_insert_expr(tbp->val.tb.exp, srcp, flags, insnpp, ecp, txp);
+    return resolve_insert_expr(tbp->val.tbp->exp, srcp, flags, insnpp, ecp, txp);
 }
 
 static int
@@ -594,7 +594,7 @@ resolve_update(RDB_object *tbp, RDB_expression *condp,
         int updc, RDB_attr_update *updv, update_node **updnpp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_expression *exp = tbp->val.tb.exp;
+    RDB_expression *exp = tbp->val.tbp->exp;
 
    	if (exp == NULL) {
         *updnpp = new_update_node(tbp, condp, updc, updv, ecp);
@@ -746,14 +746,14 @@ static int
 resolve_delete(RDB_object *tbp, RDB_expression *condp, delete_node **delnpp,
                RDB_exec_context *ecp, RDB_transaction *txp)
 {
-	if (tbp->val.tb.exp == NULL) {
+	if (tbp->val.tbp->exp == NULL) {
         *delnpp = new_delete_node(tbp, condp, ecp);
         if (*delnpp == NULL)
             return RDB_ERROR;
         return RDB_OK;
 	}
 
-    return resolve_delete_expr(tbp->val.tb.exp, condp, delnpp, ecp, txp);
+    return resolve_delete_expr(tbp->val.tbp->exp, condp, delnpp, ecp, txp);
 }
 
 static int
@@ -764,14 +764,14 @@ static int
 resolve_vdelete(RDB_object *tbp, const RDB_object *srcp, vdelete_node **vdelnpp,
                RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    if (tbp->val.tb.exp == NULL) {
+    if (tbp->val.tbp->exp == NULL) {
         *vdelnpp = new_vdelete_node(tbp, srcp, ecp);
         if (*vdelnpp == NULL)
             return RDB_ERROR;
         return RDB_OK;
     }
 
-    return resolve_vdelete_expr(tbp->val.tb.exp, srcp, vdelnpp, ecp, txp);
+    return resolve_vdelete_expr(tbp->val.tbp->exp, srcp, vdelnpp, ecp, txp);
 }
 
 static int
@@ -942,12 +942,12 @@ static int
 resolve_copy(RDB_object *dstp, const RDB_object *srcp, copy_node **copynpp,
                RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    if (dstp->val.tb.exp == NULL) {
+    if (dstp->val.tbp->exp == NULL) {
         *copynpp = new_copy_node(dstp, srcp, ecp);
         return *copynpp == NULL ? RDB_ERROR : RDB_OK;
     }
 
-    return resolve_copy_expr(dstp->val.tb.exp, srcp, copynpp, ecp, txp);
+    return resolve_copy_expr(dstp->val.tbp->exp, srcp, copynpp, ecp, txp);
 }
 
 /* Check if the source relation type matches the destination table */
@@ -982,8 +982,8 @@ source_table_type_matches(const RDB_object *dsttbp, const RDB_type *srctyp) {
                 return RDB_FALSE;
         } else {
             /* Attribute must appear in default attributes */
-            if (dsttbp->val.tb.default_map == NULL
-                    || RDB_hashmap_get(dsttbp->val.tb.default_map,
+            if (dsttbp->val.tbp->default_map == NULL
+                    || RDB_hashmap_get(dsttbp->val.tbp->default_map,
                             dsttptyp->def.tuple.attrv[i].name) == NULL) {
                 return RDB_FALSE;
             }
@@ -1289,13 +1289,13 @@ resolve_inserts(int insc, const RDB_ma_insert *insv, RDB_ma_insert **ninsvp,
     insert_node *insnp;
 
     for (i = 0; i < insc; i++) {
-        if (RDB_TB_CHECK & insv[i].tbp->flags) {
+        if (RDB_TB_CHECK & insv[i].tbp->val.tbp->flags) {
             if (RDB_check_table(insv[i].tbp, ecp, txp) != RDB_OK) {
                 goto error;
             }
         }
 
-        if (insv[i].tbp->val.tb.exp != NULL) {
+        if (insv[i].tbp->val.tbp->exp != NULL) {
             if (resolve_insert(insv[i].tbp, insv[i].objp, insv[i].flags, &insnp,
                     ecp, txp) != RDB_OK)
                 goto error;
@@ -1328,7 +1328,7 @@ resolve_inserts(int insc, const RDB_ma_insert *insv, RDB_ma_insert **ninsvp,
 
     j = 0;
     for (i = 0; i < insc; i++) {
-        if (insv[i].tbp->val.tb.exp == NULL) {
+        if (insv[i].tbp->val.tbp->exp == NULL) {
             (*ninsvp)[j].tbp = insv[i].tbp;
             (*ninsvp)[j++].objp = insv[i].objp;
         }
@@ -1373,14 +1373,14 @@ resolve_updates(int updc, const RDB_ma_update *updv, RDB_ma_update **nupdvp,
     update_node *updnp;
 
     for (i = 0; i < updc; i++) {
-        if (RDB_TB_CHECK & updv[i].tbp->flags) {
+        if (RDB_TB_CHECK & updv[i].tbp->val.tbp->flags) {
             if (RDB_check_table(updv[i].tbp, ecp, txp) != RDB_OK) {
                 ret = RDB_ERROR;
                 goto error;
             }
         }
 
-        if (updv[i].tbp->val.tb.exp != NULL) {
+        if (updv[i].tbp->val.tbp->exp != NULL) {
             /* Convert virtual table updates to real table updates */
             ret = resolve_update(updv[i].tbp, updv[i].condp,
                     updv[i].updc, updv[i].updv, &updnp, ecp, txp);
@@ -1414,7 +1414,7 @@ resolve_updates(int updc, const RDB_ma_update *updv, RDB_ma_update **nupdvp,
 
     j = 0;
     for (i = 0; i < updc; i++) {
-        if (updv[i].tbp->val.tb.exp == NULL) {
+        if (updv[i].tbp->val.tbp->exp == NULL) {
             (*nupdvp)[j].tbp = updv[i].tbp;
             (*nupdvp)[j].condp = updv[i].condp;
             (*nupdvp)[j].updc = updv[i].updc;
@@ -1464,13 +1464,13 @@ resolve_deletes(int delc, const RDB_ma_delete *delv, RDB_ma_delete **ndelvp,
     delete_node *delnp;
 
     for (i = 0; i < delc; i++) {
-        if (RDB_TB_CHECK & delv[i].tbp->flags) {
+        if (RDB_TB_CHECK & delv[i].tbp->val.tbp->flags) {
             if (RDB_check_table(delv[i].tbp, ecp, txp) != RDB_OK) {
                 goto error;
             }
         }
 
-        if (delv[i].tbp->val.tb.exp != NULL) {
+        if (delv[i].tbp->val.tbp->exp != NULL) {
             /* Convert virtual table deletes to real table deletes */
             ret = resolve_delete(delv[i].tbp, delv[i].condp, &delnp, ecp, txp);
             if (ret != RDB_OK)
@@ -1504,7 +1504,7 @@ resolve_deletes(int delc, const RDB_ma_delete *delv, RDB_ma_delete **ndelvp,
 
     j = 0;
     for (i = 0; i < delc; i++) {
-        if (delv[i].tbp->val.tb.exp == NULL) {
+        if (delv[i].tbp->val.tbp->exp == NULL) {
             (*ndelvp)[j].tbp = delv[i].tbp;
             (*ndelvp)[j++].condp = delv[i].condp;
         }
@@ -1551,13 +1551,13 @@ resolve_vdeletes(int delc, const RDB_ma_vdelete *delv, RDB_ma_vdelete **ndelvp,
     vdelete_node *delnp;
 
     for (i = 0; i < delc; i++) {
-        if (RDB_TB_CHECK & delv[i].tbp->flags) {
+        if (RDB_TB_CHECK & delv[i].tbp->val.tbp->flags) {
             if (RDB_check_table(delv[i].tbp, ecp, txp) != RDB_OK) {
                 goto error;
             }
         }
 
-        if (delv[i].tbp->val.tb.exp != NULL) {
+        if (delv[i].tbp->val.tbp->exp != NULL) {
             /* Convert virtual table deletes to real table deletes */
             ret = resolve_vdelete(delv[i].tbp, delv[i].objp, &delnp, ecp, txp);
             if (ret != RDB_OK)
@@ -1592,7 +1592,7 @@ resolve_vdeletes(int delc, const RDB_ma_vdelete *delv, RDB_ma_vdelete **ndelvp,
 
     j = 0;
     for (i = 0; i < delc; i++) {
-        if (delv[i].tbp->val.tb.exp == NULL) {
+        if (delv[i].tbp->val.tbp->exp == NULL) {
             (*ndelvp)[j].tbp = delv[i].tbp;
             (*ndelvp)[j++].objp = delv[i].objp;
         }
@@ -1637,13 +1637,13 @@ resolve_copies(int copyc, const RDB_ma_copy *copyv, RDB_ma_copy **ncopyvp,
 
     for (i = 0; i < copyc; i++) {
         if (copyv[i].dstp->kind == RDB_OB_TABLE) {
-            if (RDB_TB_CHECK & copyv[i].dstp->flags) {
+            if (RDB_TB_CHECK & copyv[i].dstp->val.tbp->flags) {
                 if (RDB_check_table(copyv[i].dstp, ecp, txp) != RDB_OK) {
                     goto error;
                 }
             }
 
-            if (copyv[i].dstp->val.tb.exp != NULL) {
+            if (copyv[i].dstp->val.tbp->exp != NULL) {
                 if (resolve_copy(copyv[i].dstp, copyv[i].srcp, &copynp, ecp, txp)
                         != RDB_OK)
                     goto error;
@@ -1679,7 +1679,7 @@ resolve_copies(int copyc, const RDB_ma_copy *copyv, RDB_ma_copy **ncopyvp,
 
     j = 0;
     for (i = 0; i < copyc; i++) {
-        if (copyv[i].dstp->val.tb.exp == NULL) {
+        if (copyv[i].dstp->val.tbp->exp == NULL) {
             (*ncopyvp)[j].dstp = copyv[i].dstp;
             (*ncopyvp)[j++].srcp = copyv[i].srcp;
         }
@@ -2299,13 +2299,13 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     if (need_tx) {
         if ((ninsc + nupdc + ndelc + nvdelc + ncopyc > 1)
                 || (ninsc == 1
-                    && ((ninsv[0].tbp->val.tb.stp != NULL
-                        && ninsv[0].tbp->val.tb.stp->indexc > 1)
+                    && ((ninsv[0].tbp->val.tbp->stp != NULL
+                        && ninsv[0].tbp->val.tbp->stp->indexc > 1)
                         || ninsv[0].objp->kind == RDB_OB_TABLE))
                 || (ncopyc == 1
                         && ncopyv[0].dstp->kind == RDB_OB_TABLE
-                        && ((ncopyv[0].dstp->val.tb.stp != NULL
-                            && ncopyv[0].dstp->val.tb.stp->indexc > 1)
+                        && ((ncopyv[0].dstp->val.tbp->stp != NULL
+                            && ncopyv[0].dstp->val.tbp->stp->indexc > 1)
                             || ncopyv[0].srcp->kind == RDB_OB_TABLE))) {
             if (RDB_begin_tx(ecp, &subtx, RDB_tx_db(txp), txp) != RDB_OK) {
                 rcount = RDB_ERROR;
@@ -2321,7 +2321,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
 
     rcount = 0;
     for (i = 0; i < ninsc; i++) {
-        if (RDB_TB_CHECK & ninsv[i].tbp->flags) {
+        if (RDB_TB_CHECK & ninsv[i].tbp->val.tbp->flags) {
             if (RDB_check_table(ninsv[i].tbp, ecp, txp) != RDB_OK) {
                 rcount = RDB_ERROR;
                 goto cleanup;
@@ -2336,14 +2336,14 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         rcount += cnt;
     }
     for (i = 0; i < nupdc; i++) {
-        if (RDB_TB_CHECK & nupdv[i].tbp->flags) {
+        if (RDB_TB_CHECK & nupdv[i].tbp->val.tbp->flags) {
             if (RDB_check_table(nupdv[i].tbp, ecp, txp) != RDB_OK) {
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
         }
 
-        if (nupdv[i].tbp->val.tb.exp == NULL) {
+        if (nupdv[i].tbp->val.tbp->exp == NULL) {
             cnt = do_update(&nupdv[i], getfn, getarg, ecp, atxp);
             if (cnt == RDB_ERROR) {
                 rcount = RDB_ERROR;
@@ -2353,14 +2353,14 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         }
     }
     for (i = 0; i < ndelc; i++) {
-        if (RDB_TB_CHECK & ndelv[i].tbp->flags) {
+        if (RDB_TB_CHECK & ndelv[i].tbp->val.tbp->flags) {
             if (RDB_check_table(ndelv[i].tbp, ecp, txp) != RDB_OK) {
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
         }
 
-        if (ndelv[i].tbp->val.tb.exp == NULL) {
+        if (ndelv[i].tbp->val.tbp->exp == NULL) {
             cnt = do_delete(&ndelv[i], getfn, getarg, ecp, atxp);
             if (cnt == RDB_ERROR) {
                 rcount = RDB_ERROR;
@@ -2370,14 +2370,14 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         }
     }
     for (i = 0; i < nvdelc; i++) {
-        if (RDB_TB_CHECK & nvdelv[i].tbp->flags) {
+        if (RDB_TB_CHECK & nvdelv[i].tbp->val.tbp->flags) {
             if (RDB_check_table(nvdelv[i].tbp, ecp, txp) != RDB_OK) {
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
         }
 
-        if (nvdelv[i].tbp->val.tb.exp == NULL) {
+        if (nvdelv[i].tbp->val.tbp->exp == NULL) {
             cnt = do_vdelete(&nvdelv[i], ecp, atxp);
             if (cnt == (RDB_int) RDB_ERROR) {
                 rcount = RDB_ERROR;
@@ -2390,7 +2390,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         RDB_object *dstp = ncopyv[i].dstp;
 
         if (dstp->kind == RDB_OB_TABLE
-                && (RDB_TB_CHECK & dstp->flags)) {
+                && (RDB_TB_CHECK & dstp->val.tbp->flags)) {
             if (RDB_check_table(dstp, ecp, txp) != RDB_OK) {
                 rcount = RDB_ERROR;
                 goto cleanup;

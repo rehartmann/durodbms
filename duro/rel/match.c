@@ -225,7 +225,7 @@ RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
     case RDB_EX_OBJ:
         return RDB_table_matching_tuple(&exp->def.obj, tplp, ecp, txp, resultp);
     case RDB_EX_TBP:
-        if (exp->def.tbref.tbp->val.tb.stp != NULL
+        if (exp->def.tbref.tbp->val.tbp->stp != NULL
                 && exp->def.tbref.indexp != NULL) {
             if (exp->def.tbref.indexp->unique) {
                 /* Use unique index */
@@ -235,11 +235,11 @@ RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
             return stored_matching_nuindex(exp->def.tbref.tbp, tplp,
                     exp->def.tbref.indexp, ecp, txp, resultp);
         }
-        if (exp->def.tbref.tbp->val.tb.exp != NULL) {
-            RDB_expr_matching_tuple(exp->def.tbref.tbp->val.tb.exp, tplp,
+        if (exp->def.tbref.tbp->val.tbp->exp != NULL) {
+            RDB_expr_matching_tuple(exp->def.tbref.tbp->val.tbp->exp, tplp,
                     ecp, txp, resultp);
         }
-        if (exp->def.tbref.tbp->val.tb.stp == NULL) {
+        if (exp->def.tbref.tbp->val.tbp->stp == NULL) {
             /*
              * The stored table may have been created by another process,
              * so try to open it
@@ -249,7 +249,7 @@ RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
                 return RDB_ERROR;
             }
 
-            if (exp->def.tbref.tbp->val.tb.stp == NULL) {
+            if (exp->def.tbref.tbp->val.tbp->stp == NULL) {
                 /* Physical table representation has not been created, so table is empty */
                 *resultp = RDB_FALSE;
                 return RDB_OK;
@@ -261,7 +261,7 @@ RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
                 && exp->def.op.args.firstp != NULL) {
             RDB_expression *chexp = exp->def.op.args.firstp;
             if (chexp->kind == RDB_EX_TBP
-                    && chexp->def.tbref.tbp->val.tb.stp != NULL
+                    && chexp->def.tbref.tbp->val.tbp->stp != NULL
                     && chexp->def.tbref.indexp != NULL) {
                 if (chexp->def.tbref.indexp->unique) {
                     return stored_matching_uindex(chexp->def.tbref.tbp,
@@ -354,16 +354,16 @@ int
 RDB_table_matching_tuple(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resultp)
 {
-	if (tbp->val.tb.exp == NULL) {
+	if (tbp->val.tbp->exp == NULL) {
 	    int i;
 
-	    if (tbp->val.tb.stp == NULL) {
+	    if (tbp->val.tbp->stp == NULL) {
             if (RDB_provide_stored_table(tbp,
                     RDB_FALSE, ecp, txp) != RDB_OK) {
                 return RDB_ERROR;
             }
 
-            if (tbp->val.tb.stp == NULL) {
+            if (tbp->val.tbp->stp == NULL) {
                 /* Physical table representation has not been created, so table is empty */
                 *resultp = RDB_FALSE;
                 return RDB_OK;
@@ -374,19 +374,19 @@ RDB_table_matching_tuple(RDB_object *tbp, const RDB_object *tplp, RDB_exec_conte
 	     * Search for a unique index that covers the tuple
 	     */
 	    for (i = 0;
-	            i < tbp->val.tb.stp->indexc
-	                    && !(tbp->val.tb.stp->indexv[i].unique
-	                        && index_covers_tuple(&tbp->val.tb.stp->indexv[i], tplp));
+	            i < tbp->val.tbp->stp->indexc
+	                    && !(tbp->val.tbp->stp->indexv[i].unique
+	                        && index_covers_tuple(&tbp->val.tbp->stp->indexv[i], tplp));
 	            i++);
-	    if (i >= tbp->val.tb.stp->indexc) {
+	    if (i >= tbp->val.tbp->stp->indexc) {
 	        /* Not found - scan *tbp for a matching tuple */
 	        return stored_matching(tbp, tplp, ecp, txp, resultp);
 	    }
-		return stored_matching_uindex(tbp, tplp, &tbp->val.tb.stp->indexv[i],
+		return stored_matching_uindex(tbp, tplp, &tbp->val.tbp->stp->indexv[i],
 		        ecp, txp, resultp);
 	}
 	/* Virtual table */
-	return RDB_expr_matching_tuple(tbp->val.tb.exp, tplp, ecp, txp, resultp);
+	return RDB_expr_matching_tuple(tbp->val.tbp->exp, tplp, ecp, txp, resultp);
 }
 
 /*@}*/

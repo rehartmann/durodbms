@@ -135,10 +135,10 @@ close_table(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp)
 
     RDB_close_sequences(tbp);
 
-    if (tbp->val.tb.stp != NULL) {
-        if (RDB_close_stored_table(tbp->val.tb.stp, ecp) != RDB_OK)
+    if (tbp->val.tbp->stp != NULL) {
+        if (RDB_close_stored_table(tbp->val.tbp->stp, ecp) != RDB_OK)
             return RDB_ERROR;
-        tbp->val.tb.stp = NULL;
+        tbp->val.tbp->stp = NULL;
     }
 
     /*
@@ -146,9 +146,9 @@ close_table(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp)
      */
     dbrootp = (RDB_dbroot *) RDB_env_xdata(envp);
     for (dbp = dbrootp->first_dbp; dbp != NULL; dbp = dbp->nextdbp) {
-        RDB_object *foundtbp = RDB_hashmap_get(&dbp->tbmap, tbp->val.tb.name);
+        RDB_object *foundtbp = RDB_hashmap_get(&dbp->tbmap, tbp->val.tbp->name);
         if (foundtbp != NULL) {
-            RDB_hashmap_put(&dbp->tbmap, tbp->val.tb.name, NULL);
+            RDB_hashmap_put(&dbp->tbmap, tbp->val.tbp->name, NULL);
         }
     }
 
@@ -1043,16 +1043,16 @@ create_table(const char *name, RDB_type *reltyp,
     RDB_object *tbp = RDB_hashmap_get(&txp->dbp->tbmap, name);
     if (tbp != NULL && tbp != &null_tb) {
         /* Table found - check if it exists in the catalog */
-        if ((RDB_TB_CHECK & tbp->flags) && (RDB_check_table(tbp, ecp, txp) != RDB_OK)) {
+        if ((RDB_TB_CHECK & tbp->val.tbp->flags) && (RDB_check_table(tbp, ecp, txp) != RDB_OK)) {
             /* Table no longer valid - recycle its RDB_object structure */
-            char *name = tbp->val.tb.name;
-            tbp->val.tb.name = NULL;
+            char *name = tbp->val.tbp->name;
+            tbp->val.tbp->name = NULL;
             if (RDB_init_table_i(tbp, NULL, RDB_TRUE, reltyp,
                     keyc, keyv, default_attrc, default_attrv,
                     RDB_TRUE, NULL, ecp) != RDB_OK) {
                 return NULL;
             }
-            tbp->val.tb.name = name;
+            tbp->val.tbp->name = name;
         } else {
             RDB_raise_element_exists("table already exists", ecp);
             return NULL;
@@ -1463,10 +1463,10 @@ delete_sequences(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     int ret;
     const char *attrname;
 
-    if (tbp->val.tb.default_map == NULL)
+    if (tbp->val.tbp->default_map == NULL)
         return RDB_OK;
 
-    RDB_init_hashmap_iter(&hiter, tbp->val.tb.default_map);
+    RDB_init_hashmap_iter(&hiter, tbp->val.tbp->default_map);
     while ((attrname = RDB_hashmap_next(&hiter, &valp)) != NULL) {
         RDB_attr_default *dflp = valp;
         if (RDB_expr_is_serial(dflp->exp)) {
@@ -1550,7 +1550,7 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
          * If the table is in CHECK state read it again from the catalog
          * because otherwise the recmap won't get deleted
          */
-        if (RDB_TB_CHECK & tbp->flags) {
+        if (RDB_TB_CHECK & tbp->val.tbp->flags) {
             if (RDB_check_table(tbp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         }
@@ -1584,17 +1584,17 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
          * Remove table from all RDB_databases in list
          */
         for (dbp = dbrootp->first_dbp; dbp != NULL; dbp = dbp->nextdbp) {
-            RDB_object *foundtbp = RDB_hashmap_get(&dbp->tbmap, tbp->val.tb.name);
+            RDB_object *foundtbp = RDB_hashmap_get(&dbp->tbmap, tbp->val.tbp->name);
             if (foundtbp != NULL) {
-                RDB_hashmap_put(&dbp->tbmap, tbp->val.tb.name, NULL);
+                RDB_hashmap_put(&dbp->tbmap, tbp->val.tbp->name, NULL);
             }
         }
 
         /*
          * Remove table from public tables
          */
-        if (RDB_hashmap_get(&dbrootp->ptbmap, tbp->val.tb.name) != NULL) {
-            if (RDB_hashmap_put(&dbrootp->ptbmap, tbp->val.tb.name, NULL) != RDB_OK)
+        if (RDB_hashmap_get(&dbrootp->ptbmap, tbp->val.tbp->name) != NULL) {
+            if (RDB_hashmap_put(&dbrootp->ptbmap, tbp->val.tbp->name, NULL) != RDB_OK)
                 return RDB_ERROR;
         }
 
@@ -1604,11 +1604,11 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         /*
          * Delete recmap, if any
          */
-        if (tbp->val.tb.stp != NULL) {
-            ret = RDB_delete_stored_table(tbp->val.tb.stp, ecp, txp);
+        if (tbp->val.tbp->stp != NULL) {
+            ret = RDB_delete_stored_table(tbp->val.tbp->stp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
-            tbp->val.tb.stp = NULL;
+            tbp->val.tbp->stp = NULL;
         }
 
         /*
@@ -1692,27 +1692,27 @@ RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
 
         for (dbp = txp->dbp->dbrootp->first_dbp; dbp != NULL;
                 dbp = dbp->nextdbp) {
-            foundtbp = RDB_hashmap_get(&dbp->tbmap, tbp->val.tb.name);
+            foundtbp = RDB_hashmap_get(&dbp->tbmap, tbp->val.tbp->name);
             if (foundtbp != NULL) {
-                RDB_hashmap_put(&dbp->tbmap, tbp->val.tb.name, NULL);
+                RDB_hashmap_put(&dbp->tbmap, tbp->val.tbp->name, NULL);
                 RDB_hashmap_put(&dbp->tbmap, name, tbp);
             }
         }
         foundtbp = RDB_hashmap_get(&txp->dbp->dbrootp->ptbmap,
-                tbp->val.tb.name);
+                tbp->val.tbp->name);
         if (foundtbp != NULL) {
-            RDB_hashmap_put(&txp->dbp->dbrootp->ptbmap, tbp->val.tb.name, NULL);
+            RDB_hashmap_put(&txp->dbp->dbrootp->ptbmap, tbp->val.tbp->name, NULL);
             RDB_hashmap_put(&txp->dbp->dbrootp->ptbmap, name, tbp);
         }
 
         /* Rename sequences */
-        if (tbp->val.tb.default_map != NULL) {
+        if (tbp->val.tbp->default_map != NULL) {
             RDB_attr_default *entryp;
             RDB_hashmap_iter hiter;
             void *valp;
             const char *attrnamp;
 
-            RDB_init_hashmap_iter(&hiter, tbp->val.tb.default_map);
+            RDB_init_hashmap_iter(&hiter, tbp->val.tbp->default_map);
             while ((attrnamp = RDB_hashmap_next(&hiter, &valp)) != NULL) {
                 entryp = valp;
                 if (entryp != NULL && RDB_expr_is_serial(entryp->exp)) {
@@ -1726,7 +1726,7 @@ RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
                         entryp->seqp = NULL;
                     }
 
-                    if (RDB_seq_container_name(tbp->val.tb.name, attrnamp,
+                    if (RDB_seq_container_name(tbp->val.tbp->name, attrnamp,
                             &oldname, ecp) != RDB_OK) {
                         RDB_destroy_obj(&oldname, ecp);
                         RDB_destroy_obj(&newname, ecp);
@@ -1752,10 +1752,10 @@ RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         }
     }
 
-    if (tbp->val.tb.name != NULL)
-        RDB_free(tbp->val.tb.name);
-    tbp->val.tb.name = RDB_dup_str(name);
-    if (tbp->val.tb.name == NULL) {
+    if (tbp->val.tbp->name != NULL)
+        RDB_free(tbp->val.tbp->name);
+    tbp->val.tbp->name = RDB_dup_str(name);
+    if (tbp->val.tbp->name == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
@@ -1802,7 +1802,7 @@ int
 RDB_add_table(RDB_object *tbp, RDB_database *dbp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    if (tbp->val.tb.name == NULL) {
+    if (tbp->val.tbp->name == NULL) {
         RDB_raise_invalid_argument("missing table name", ecp);
         return RDB_ERROR;
     }
@@ -1832,7 +1832,7 @@ RDB_add_table(RDB_object *tbp, RDB_database *dbp, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
-    tbp->flags |= RDB_TB_PERSISTENT;
+    tbp->val.tbp->flags |= RDB_TB_PERSISTENT;
 
     return RDB_OK;
 }
@@ -1916,7 +1916,7 @@ RDB_set_user_tables_check(RDB_database *dbp, RDB_exec_context *ecp)
     while (RDB_hashmap_next(&it, &datap) != NULL) {
         if (datap != NULL) {
             tbp = datap;
-            tbp->flags |= RDB_TB_CHECK;
+            tbp->val.tbp->flags |= RDB_TB_CHECK;
         }
     }
     RDB_destroy_hashmap_iter(&it);
@@ -1926,20 +1926,20 @@ RDB_set_user_tables_check(RDB_database *dbp, RDB_exec_context *ecp)
         if (datap != NULL && datap != &null_tb) {
             tbp = datap;
             if (RDB_table_is_user(tbp)) {
-                if (tbp->val.tb.stp != NULL) {
-                    RDB_close_stored_table(tbp->val.tb.stp, ecp);
-                    tbp->val.tb.stp = NULL;
+                if (tbp->val.tbp->stp != NULL) {
+                    RDB_close_stored_table(tbp->val.tbp->stp, ecp);
+                    tbp->val.tbp->stp = NULL;
                 }
-                tbp->flags |= RDB_TB_CHECK;
+                tbp->val.tbp->flags |= RDB_TB_CHECK;
             }
 
             /* Close all sequences */
-            if (tbp->val.tb.default_map != NULL) {
+            if (tbp->val.tbp->default_map != NULL) {
                 RDB_hashmap_iter hiter;
                 void *valp;
                 RDB_attr_default *entryp;
 
-                RDB_init_hashmap_iter(&hiter, tbp->val.tb.default_map);
+                RDB_init_hashmap_iter(&hiter, tbp->val.tbp->default_map);
                 while (RDB_hashmap_next(&hiter, &valp) != NULL) {
                     entryp = valp;
                     if (entryp->seqp != NULL) {

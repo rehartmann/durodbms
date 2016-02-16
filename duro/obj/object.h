@@ -73,7 +73,7 @@ struct RDB_object {
     RDB_type *typ;
 
     /*
-     * An implemented type (with an internal represenation) if typ is a
+     * An implemented type (with an internal represenation) if *typ is a
      * dummy type.
      * Currently it is the MST because all supertypes are dummy types.
      */
@@ -89,23 +89,7 @@ struct RDB_object {
             void *datap;
             size_t len;
         } bin;
-        struct {
-            char *name;
-
-            /*
-             * Candidate keys. NULL if table is virtual and the keys have not been
-             * inferred.
-             */
-            int keyc;
-            RDB_string_vec *keyv;
-
-            /* NULL if it's a real table */
-            RDB_expression *exp;
-
-            RDB_hashmap *default_map; /* Default values */
-
-            struct RDB_stored_table *stp;
-        } tb;
+        struct RDB_table *tbp;
         RDB_hashtable tpl_tab;
         struct {
             RDB_int length; /* length of array */
@@ -115,8 +99,6 @@ struct RDB_object {
             struct RDB_object *elemv;
         } arr;
      } val;
-
-     unsigned int flags;
 
      /* Used internally for conversion into the internal representation */
      RDB_type *store_typ;

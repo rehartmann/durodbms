@@ -242,8 +242,8 @@ RDB_map_public_table(const char *name, RDB_expression *exp,
         exp = RDB_dup_expr(exp, ecp);
         if (exp == NULL)
             return RDB_ERROR;
-        RDB_del_expr(tbp->val.tb.exp, ecp);
-        tbp->val.tb.exp = exp;
+        RDB_del_expr(tbp->val.tbp->exp, ecp);
+        tbp->val.tbp->exp = exp;
     }
 
     /* Write the mapping to the catalog */

@@ -162,8 +162,8 @@ evaluate_count(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         return RDB_ERROR;
 
     if (exp->kind == RDB_EX_TBP
-            && exp->def.tbref.tbp->val.tb.stp != NULL)
-        exp->def.tbref.tbp->val.tb.stp->est_cardinality = count;
+            && exp->def.tbref.tbp->val.tbp->stp != NULL)
+        exp->def.tbref.tbp->val.tbp->stp->est_cardinality = count;
 
     RDB_int_to_obj(resultp, count);
     return RDB_OK;

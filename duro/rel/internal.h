@@ -93,6 +93,26 @@ typedef struct RDB_dbroot {
     RDB_object *subtype_tbp;
 } RDB_dbroot;
 
+typedef struct RDB_table {
+    char *name;
+
+    /*
+     * Candidate keys. NULL if table is virtual and the keys have not been
+     * inferred.
+     */
+    int keyc;
+    RDB_string_vec *keyv;
+
+    /* NULL if it's a real table */
+    RDB_expression *exp;
+
+    RDB_hashmap *default_map; /* Default values */
+
+    struct RDB_stored_table *stp;
+
+    unsigned int flags;
+} RDB_table;
+
 typedef struct RDB_tbindex {
     char *name;
     int attrc;
@@ -135,6 +155,15 @@ RDB_begin_tx_env(RDB_exec_context *, RDB_transaction *, RDB_environment *,
 int
 RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resultp);
+
+RDB_bool
+RDB_expr_depends_table(const RDB_expression *, const RDB_object *);
+
+RDB_bool
+RDB_expr_depends_expr(const RDB_expression *, const RDB_expression *);
+
+RDB_bool
+RDB_table_refers(const RDB_object *, const RDB_object *);
 
 RDB_object *
 RDB_new_rtable(const char *, RDB_bool,
@@ -290,7 +319,7 @@ RDB_obj_not_equals(int argc, RDB_object *argv[], RDB_operator *,
 int
 RDB_obj_to_field(RDB_field *, RDB_object *, RDB_exec_context *);
 
-#define RDB_pkey_len(tbp) ((tbp)->val.tb.keyv[0].strc)
+#define RDB_pkey_len(tbobjp) ((tbobjp)->val.tbp->keyv[0].strc)
 
 RDB_type *
 RDB_expr_type_tpltyp(RDB_expression *, const RDB_type *,

@@ -62,9 +62,6 @@ RDB_table_ref(RDB_object *tbp, RDB_exec_context *);
 RDB_expression *
 RDB_var_ref(const char *varname, RDB_exec_context *);
 
-RDB_bool
-RDB_expr_refers(const RDB_expression *, const RDB_object *);
-
 const char *
 RDB_expr_op_name(const RDB_expression *);
 
@@ -97,12 +94,6 @@ RDB_expr_obj(RDB_expression *);
 
 void
 RDB_set_expr_type(RDB_expression *, RDB_type *);
-
-RDB_expression *
-RDB_vtable_expr(const RDB_object *);
-
-RDB_bool
-RDB_table_refers(const RDB_object *, const RDB_object *);
 
 RDB_bool
 RDB_expr_is_table_ref(const RDB_expression *);

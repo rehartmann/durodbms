@@ -10,6 +10,7 @@
 #include "stable.h"
 #include "qresult.h"
 #include "typeimpl.h"
+#include "internal.h"
 
 /*
  * Initializes an RDB_qresult from a stored table.
@@ -24,7 +25,7 @@ RDB_init_stored_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_expression *exp,
     qrp->exp = exp;
     qrp->nested = RDB_FALSE;
     qrp->val.stored.tbp = tbp;
-    if (tbp->val.tb.stp == NULL) {
+    if (tbp->val.tbp->stp == NULL) {
         /*
          * The stored table may have been created by another process,
          * so try to open it
@@ -34,7 +35,7 @@ RDB_init_stored_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_expression *exp,
             return RDB_ERROR;
         }
 
-        if (tbp->val.tb.stp == NULL) {
+        if (tbp->val.tbp->stp == NULL) {
             /*
              * Table has no physical representation which means it is empty
              */
@@ -44,7 +45,7 @@ RDB_init_stored_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_expression *exp,
         }
     }
 
-    ret = RDB_recmap_cursor(&qrp->val.stored.curp, tbp->val.tb.stp->recmapp,
+    ret = RDB_recmap_cursor(&qrp->val.stored.curp, tbp->val.tbp->stp->recmapp,
                     RDB_FALSE, RDB_table_is_persistent(tbp) ? txp->txid : NULL);
     if (ret != RDB_OK) {
         RDB_handle_errcode(ret, ecp, txp);
@@ -118,7 +119,7 @@ RDB_get_by_cursor(RDB_object *tbp, RDB_cursor *curp, RDB_type *tpltyp,
     for (i = 0; i < tpltyp->def.tuple.attrc; i++) {
         attrp = &tpltyp->def.tuple.attrv[i];
 
-        fno = *RDB_field_no(tbp->val.tb.stp, attrp->name);
+        fno = *RDB_field_no(tbp->val.tbp->stp, attrp->name);
         ret = RDB_cursor_get(curp, fno, &datap, &len);
         if (ret != RDB_OK) {
             RDB_handle_errcode(ret, ecp, txp);

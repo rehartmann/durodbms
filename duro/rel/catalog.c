@@ -363,7 +363,7 @@ insert_defvals(RDB_object *tbp, RDB_dbroot *dbrootp,
 
     for (i = 0; i < tuptyp->def.tuple.attrc; i++) {
         char *attrname = tuptyp->def.tuple.attrv[i].name;
-        RDB_attr_default *defaultp = RDB_hashmap_get(tbp->val.tb.default_map,
+        RDB_attr_default *defaultp = RDB_hashmap_get(tbp->val.tbp->default_map,
                 attrname);
         if (defaultp != NULL) {
             RDB_object binval;
@@ -510,7 +510,7 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         }
     }
 
-    if (tbp->val.tb.default_map != NULL) {
+    if (tbp->val.tbp->default_map != NULL) {
         if (insert_defvals(tbp, dbrootp, ecp, txp) != RDB_OK)
             goto error;
     }
@@ -518,8 +518,8 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     /*
      * Insert keys into sys_keys
      */
-    for (i = 0; i < tbp->val.tb.keyc; i++) {
-        if (insert_key(&tbp->val.tb.keyv[i], i, RDB_table_name(tbp), dbrootp,
+    for (i = 0; i < tbp->val.tbp->keyc; i++) {
+        if (insert_key(&tbp->val.tbp->keyv[i], i, RDB_table_name(tbp), dbrootp,
                 ecp, txp) != RDB_OK)
             goto error;
     }
@@ -668,7 +668,7 @@ RDB_cat_insert(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     /*
      * Create table in the catalog.
      */
-    if (tbp->val.tb.exp == NULL) {
+    if (tbp->val.tbp->exp == NULL) {
         ret = insert_rtable(tbp, txp->dbp->dbrootp, ecp, txp);
         /* If the table already exists in the catalog, proceed */
         if (ret != RDB_OK) {
@@ -686,12 +686,12 @@ RDB_cat_insert(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             if (!RDB_table_is_user(tbp)) {
                 int i;
 
-                for (i = 0; i < tbp->val.tb.stp->indexc; i++) {
-                    ret = RDB_cat_insert_index(tbp->val.tb.stp->indexv[i].name,
-                            tbp->val.tb.stp->indexv[i].attrc,
-                            tbp->val.tb.stp->indexv[i].attrv,
-                            tbp->val.tb.stp->indexv[i].unique,
-                            tbp->val.tb.stp->indexv[i].ordered,
+                for (i = 0; i < tbp->val.tbp->stp->indexc; i++) {
+                    ret = RDB_cat_insert_index(tbp->val.tbp->stp->indexv[i].name,
+                            tbp->val.tbp->stp->indexv[i].attrc,
+                            tbp->val.tbp->stp->indexv[i].attrv,
+                            tbp->val.tbp->stp->indexv[i].unique,
+                            tbp->val.tbp->stp->indexv[i].ordered,
                             RDB_table_name(tbp), ecp, txp);
                     if (ret != RDB_OK)
                         return ret;
@@ -1024,7 +1024,7 @@ cleanup:
 int
 RDB_cat_delete(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    if (tbp->val.tb.exp == NULL)
+    if (tbp->val.tbp->exp == NULL)
         return delete_rtable(tbp, ecp, txp);
 
     /* Can be a virtual or public table - delete from both catalog tables */
@@ -1143,8 +1143,8 @@ open_indexes(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     if (indexc < 0)
         return indexc;
 
-    tbp->val.tb.stp->indexc = indexc;
-    tbp->val.tb.stp->indexv = indexv;
+    tbp->val.tbp->stp->indexc = indexc;
+    tbp->val.tbp->stp->indexv = indexv;
 
     /* Open secondary indexes */
     for (i = 0; i < indexc; i++) {
@@ -1435,7 +1435,7 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
             return RDB_ERROR;
     }
 
-    if (!create && (dbrootp->rtables_tbp->val.tb.stp->indexc == -1)) {
+    if (!create && (dbrootp->rtables_tbp->val.tbp->stp->indexc == -1)) {
         /*
          * Read indexes from the catalog 
          */
@@ -2240,7 +2240,7 @@ RDB_cat_get_rtable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
     if (add_table(tbp, ecp, txp) != RDB_OK)
         goto error;
 
-    tbp->val.tb.default_map = defvalmap;
+    tbp->val.tbp->default_map = defvalmap;
 
     RDB_destroy_obj(&arr, ecp);
 
@@ -2270,19 +2270,19 @@ error:
     RDB_destroy_obj(&recmapnameobj, ecp);
 
     if (defvalmap != NULL) {
-        if (tbp->val.tb.default_map != NULL) {
+        if (tbp->val.tbp->default_map != NULL) {
             RDB_hashmap_iter hiter;
             void *valp;
 
-            RDB_init_hashmap_iter(&hiter, tbp->val.tb.default_map);
+            RDB_init_hashmap_iter(&hiter, tbp->val.tbp->default_map);
             while (RDB_hashmap_next(&hiter, &valp) != NULL) {
                 RDB_free(valp);
             }
             RDB_destroy_hashmap_iter(&hiter);
-            RDB_destroy_hashmap(tbp->val.tb.default_map);
+            RDB_destroy_hashmap(tbp->val.tbp->default_map);
         }
-        RDB_free(tbp->val.tb.default_map);
-        tbp->val.tb.default_map = NULL;
+        RDB_free(tbp->val.tbp->default_map);
+        tbp->val.tbp->default_map = NULL;
     }
 
     return RDB_ERROR;
@@ -2350,8 +2350,8 @@ RDB_cat_get_vtable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
 
     if (RDB_binobj_to_vtable(tbp, valp, ecp, txp) != RDB_OK)
         goto error;
-    tbp->val.tb.name = RDB_dup_str(name);
-    if (tbp->val.tb.name == NULL) {
+    tbp->val.tbp->name = RDB_dup_str(name);
+    if (tbp->val.tbp->name == NULL) {
         RDB_raise_no_memory(ecp);
         goto error;
     }
@@ -2360,11 +2360,11 @@ RDB_cat_get_vtable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
     if (RDB_destroy_obj(&arr, ecp) != RDB_OK)
         goto error;
 
-    tbp->flags = RDB_TB_PERSISTENT;
+    tbp->val.tbp->flags = RDB_TB_PERSISTENT;
     if (usr) {
-        tbp->flags |= RDB_TB_USER;
+        tbp->val.tbp->flags |= RDB_TB_USER;
     } else {
-        tbp->flags &= ~RDB_TB_USER;
+        tbp->val.tbp->flags &= ~RDB_TB_USER;
     }
 
     if (add_table(tbp, ecp, txp) != RDB_OK)
@@ -2462,8 +2462,8 @@ RDB_cat_get_ptable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
 
     if (RDB_binobj_to_vtable(tbp, valp, ecp, txp) != RDB_OK)
         goto error;
-    tbp->val.tb.name = RDB_dup_str(name);
-    if (tbp->val.tb.name == NULL) {
+    tbp->val.tbp->name = RDB_dup_str(name);
+    if (tbp->val.tbp->name == NULL) {
         RDB_raise_no_memory(ecp);
         goto error;
     }
@@ -2473,11 +2473,11 @@ RDB_cat_get_ptable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         goto error;
 
-    tbp->flags = RDB_TB_PERSISTENT;
+    tbp->val.tbp->flags = RDB_TB_PERSISTENT;
     if (usr) {
-        tbp->flags |= RDB_TB_USER;
+        tbp->val.tbp->flags |= RDB_TB_USER;
     } else {
-        tbp->flags &= ~RDB_TB_USER;
+        tbp->val.tbp->flags &= ~RDB_TB_USER;
     }
 
     if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
@@ -2630,7 +2630,7 @@ RDB_cat_rename_table(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         goto error;
     }
 
-    if (tbp->val.tb.exp == NULL) {
+    if (tbp->val.tbp->exp == NULL) {
         /* Real table */
         updv[0].condp = idcondp;
         updv[0].tbp = txp->dbp->dbrootp->rtables_tbp;

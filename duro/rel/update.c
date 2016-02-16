@@ -98,14 +98,14 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
 
     RDB_init_obj(&tmptb);
     ret = RDB_init_table_from_type(&tmptb, NULL, tmptbtyp,
-            1, tbp->val.tb.keyv, 0, NULL, ecp);
+            1, tbp->val.tbp->keyv, 0, NULL, ecp);
     if (ret != RDB_OK) {
         RDB_del_nonscalar_type(tmptbtyp, ecp);
         rcount = (RDB_int) RDB_ERROR;
         goto cleanup;
     }
 
-    if (RDB_recmap_cursor(&curp, tbp->val.tb.stp->recmapp, RDB_TRUE,
+    if (RDB_recmap_cursor(&curp, tbp->val.tbp->stp->recmapp, RDB_TRUE,
             RDB_table_is_persistent(tbp) ? tx.txid : NULL) != RDB_OK) {
         rcount = (RDB_int) RDB_ERROR;
         goto cleanup;
@@ -118,7 +118,7 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
             RDB_object *attrobjp;
 
             ret = RDB_cursor_get(curp,
-                    *RDB_field_no(tbp->val.tb.stp, tpltyp->def.tuple.attrv[i].name),
+                    *RDB_field_no(tbp->val.tbp->stp, tpltyp->def.tuple.attrv[i].name),
                     &datap, &len);
             if (ret != RDB_OK) {
                 RDB_handle_errcode(ret, ecp,
@@ -220,7 +220,7 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
             RDB_object val;
 
             ret = RDB_cursor_get(curp,
-                    *RDB_field_no(tbp->val.tb.stp, tpltyp->def.tuple.attrv[i].name),
+                    *RDB_field_no(tbp->val.tbp->stp, tpltyp->def.tuple.attrv[i].name),
                     &datap, &len);
             if (ret != RDB_OK) {
                 RDB_handle_errcode(ret, ecp,
@@ -365,7 +365,7 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
      * Iterator over the records and update them if the select expression
      * evaluates to true.
      */
-    ret = RDB_recmap_cursor(&curp, tbp->val.tb.stp->recmapp, RDB_TRUE,
+    ret = RDB_recmap_cursor(&curp, tbp->val.tbp->stp->recmapp, RDB_TRUE,
             RDB_table_is_persistent(tbp) ? tx.txid : NULL);
     if (ret != RDB_OK) {
         RDB_handle_errcode(ret, ecp, RDB_table_is_persistent(tbp) ? &tx: NULL);
@@ -381,7 +381,7 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
             RDB_object val;
 
             ret = RDB_cursor_get(curp,
-                    *RDB_field_no(tbp->val.tb.stp, tpltyp->def.tuple.attrv[i].name),
+                    *RDB_field_no(tbp->val.tbp->stp, tpltyp->def.tuple.attrv[i].name),
                     &datap, &len);
             if (ret != RDB_OK) {
                 RDB_handle_errcode(ret, ecp, RDB_table_is_persistent(tbp) ? &tx: NULL);
@@ -428,7 +428,7 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
             }
             for (i = 0; i < updc; i++) {
                 /* Get field number from map */
-                fieldv[i].no = *RDB_field_no(tbp->val.tb.stp, updv[i].name);
+                fieldv[i].no = *RDB_field_no(tbp->val.tbp->stp, updv[i].name);
 
                 /* Set type - needed for tuple and array attributes */
                 valv[i].store_typ = RDB_type_attr_type(RDB_obj_type(tbp),
@@ -514,7 +514,7 @@ update_where_pindex(RDB_expression *texp, RDB_expression *condp,
     }
     objc = refexp->def.tbref.indexp->attrc;
 
-    if (refexp->def.tbref.tbp->val.tb.stp == NULL) {
+    if (refexp->def.tbref.tbp->val.tbp->stp == NULL) {
         /*
          * The stored table may have been created by another process,
          * so try to open it
@@ -524,7 +524,7 @@ update_where_pindex(RDB_expression *texp, RDB_expression *condp,
             return RDB_ERROR;
         }
 
-        if (refexp->def.tbref.tbp->val.tb.stp == NULL) {
+        if (refexp->def.tbref.tbp->val.tbp->stp == NULL) {
             return 0;
         }
     }
@@ -595,7 +595,7 @@ update_where_pindex(RDB_expression *texp, RDB_expression *condp,
 
     for (i = 0; i < updc; i++) {
         fieldv[i].no = *RDB_field_no(
-                 refexp->def.tbref.tbp->val.tb.stp, updv[i].name);
+                 refexp->def.tbref.tbp->val.tbp->stp, updv[i].name);
          
         /* Set type - needed for tuple and array attributes */
         valv[i].store_typ = RDB_type_attr_type(
@@ -607,7 +607,7 @@ update_where_pindex(RDB_expression *texp, RDB_expression *condp,
     }
         
     RDB_cmp_ecp = ecp;
-    ret = RDB_update_rec(refexp->def.tbref.tbp->val.tb.stp->recmapp,
+    ret = RDB_update_rec(refexp->def.tbref.tbp->val.tbp->stp->recmapp,
             fvv, updc, fieldv,
             RDB_table_is_persistent(refexp->def.tbref.tbp) ?
                     txp->txid : NULL);
@@ -778,7 +778,7 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
 
             for (i = 0; i < updc; i++) {
                 fieldv[i].no = *RDB_field_no(
-                        refexp->def.tbref.tbp->val.tb.stp, updv[i].name);
+                        refexp->def.tbref.tbp->val.tbp->stp, updv[i].name);
                  
                 /* Set type - needed for tuple and array attributes */
                 valv[i].store_typ = RDB_type_attr_type(
@@ -918,7 +918,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
         goto cleanup;
     }
     ret = RDB_init_table_from_type(&tmptb, NULL, tmptbtyp, 1,
-            refexp->def.tbref.tbp->val.tb.keyv, 0, NULL, ecp);
+            refexp->def.tbref.tbp->val.tbp->keyv, 0, NULL, ecp);
     if (ret != RDB_OK) {
         RDB_del_nonscalar_type(tmptbtyp, ecp);
         rcount = RDB_ERROR;
@@ -1226,13 +1226,13 @@ RDB_update_real(RDB_object *tbp, RDB_expression *condp,
         RDB_getobjfn *getfn, void *getarg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    if (tbp->val.tb.stp == NULL) {
+    if (tbp->val.tbp->stp == NULL) {
         if (RDB_provide_stored_table(tbp,
                 RDB_FALSE, ecp, txp) != RDB_OK) {
             return RDB_ERROR;
         }
 
-        if (tbp->val.tb.stp == NULL)
+        if (tbp->val.tbp->stp == NULL)
             return RDB_OK;
     }
 
@@ -1259,13 +1259,13 @@ RDB_update_where_index(RDB_expression *texp, RDB_expression *condp,
         refexp = texp->def.op.args.firstp->def.op.args.firstp;
     }
     
-    if (refexp->def.tbref.tbp->val.tb.stp == NULL) {
+    if (refexp->def.tbref.tbp->val.tbp->stp == NULL) {
         if (RDB_provide_stored_table(refexp->def.tbref.tbp,
                 RDB_FALSE, ecp, txp) != RDB_OK) {
             return RDB_ERROR;
         }
 
-        if (refexp->def.tbref.tbp->val.tb.stp == NULL) {
+        if (refexp->def.tbref.tbp->val.tbp->stp == NULL) {
             return 0;
         }
     }

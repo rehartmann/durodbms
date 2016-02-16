@@ -6,6 +6,7 @@
  */
 
 #include "rdb.h"
+#include "internal.h"
 #include <obj/objinternal.h>
 
 #include <string.h>
@@ -68,8 +69,8 @@ RDB_expr_resolve_varnames(RDB_expression *exp, RDB_getobjfn *getfnp,
         if (getfnp != (RDB_getobjfn *) NULL) {
             objp = (*getfnp)(exp->def.varname, getdata);
             if (objp != NULL) {
-                if (objp->kind == RDB_OB_TABLE && objp->val.tb.exp != NULL) {
-                    return RDB_expr_resolve_varnames(objp->val.tb.exp,
+                if (objp->kind == RDB_OB_TABLE && objp->val.tbp->exp != NULL) {
+                    return RDB_expr_resolve_varnames(objp->val.tbp->exp,
                             getfnp, getdata, ecp, txp);
                 }
                 if (objp->kind == RDB_OB_TABLE)
@@ -146,6 +147,35 @@ RDB_expr_equals(const RDB_expression *ex1p, const RDB_expression *ex2p,
     return RDB_OK;
 }
 
+/**
+ * Returns RDB_TRUE if *exp refers to *tbp, RDB_FALSE otherwise.
+ */
+RDB_bool
+RDB_expr_refers(const RDB_expression *exp, const RDB_object *tbp)
+{
+    switch (exp->kind) {
+    case RDB_EX_OBJ:
+        return RDB_FALSE;
+    case RDB_EX_TBP:
+        return RDB_table_refers(exp->def.tbref.tbp, tbp);
+    case RDB_EX_VAR:
+        return RDB_FALSE;
+    case RDB_EX_RO_OP:
+    {
+        RDB_expression *argp = exp->def.op.args.firstp;
+        while (argp != NULL) {
+            if (RDB_expr_refers(argp, tbp))
+                return RDB_TRUE;
+            argp = argp->nextp;
+        }
+
+        return RDB_FALSE;
+    }
+    }
+    /* Should never be reached */
+    abort();
+}
+
 /*@}*/
 
 RDB_expression *
@@ -173,4 +203,71 @@ RDB_attr_eq_strval(const char *attrname, const char *str, RDB_exec_context *ecp)
     /* Set transformed flag to avoid infinite recursion */
     exp->transformed = RDB_TRUE;
     return exp;
+}
+
+/**
+ * If *tbp is a virtual table, return the defining expression,
+ * otherwise NULL.
+ */
+RDB_expression *
+RDB_vtable_expr(const RDB_object *tbp) {
+    if (tbp->kind != RDB_OB_TABLE)
+        return NULL;
+    return tbp->val.tbp->exp;
+}
+
+/*
+ * Check if there is some table which both exp and tbp depend on
+ */
+RDB_bool
+RDB_expr_depends_table(const RDB_expression *exp, const RDB_object *tbp)
+{
+    if (tbp->val.tbp->exp == NULL)
+        return RDB_expr_refers(exp, tbp);
+    return RDB_expr_depends_expr(tbp->val.tbp->exp, exp);
+}
+
+/*
+ * Returns TRUE if *ex1p depends on *ex2p, FALSE otherwise.
+ */
+RDB_bool
+RDB_expr_depends_expr(const RDB_expression *ex1p, const RDB_expression *ex2p)
+{
+    switch (ex1p->kind) {
+    case RDB_EX_OBJ:
+        return RDB_FALSE;
+    case RDB_EX_TBP:
+        return RDB_expr_depends_table(ex2p, ex1p->def.tbref.tbp);
+    case RDB_EX_VAR:
+        return RDB_FALSE;
+    case RDB_EX_RO_OP:
+    {
+        RDB_expression *argp = ex1p->def.op.args.firstp;
+        while (argp != NULL) {
+            if (RDB_expr_depends_expr(argp, ex2p))
+                return RDB_TRUE;
+            argp = argp->nextp;
+        }
+        return RDB_FALSE;
+    }
+    }
+    /* Should never be reached */
+    abort();
+}
+
+/*
+ * Returns TRUE if *srctbp depends on *dsttbp, FALSE otherwise.
+ */
+RDB_bool
+RDB_table_refers(const RDB_object *srctbp, const RDB_object *dsttbp)
+{
+    RDB_expression *exp;
+
+    if (srctbp == dsttbp)
+        return RDB_TRUE;
+
+    exp = RDB_vtable_expr(srctbp);
+    if (exp == NULL)
+        return RDB_FALSE;
+    return RDB_expr_refers(exp, dsttbp);
 }

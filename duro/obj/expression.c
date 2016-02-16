@@ -674,17 +674,6 @@ RDB_expr_op_is_noarg(const RDB_expression *exp)
 }
 
 /**
- * If *tbp is a virtual table, return the defining expression,
- * otherwise NULL.
- */
-RDB_expression *
-RDB_vtable_expr(const RDB_object *tbp) {
-    if (tbp->kind != RDB_OB_TABLE)
-        return NULL;
-    return tbp->val.tb.exp;
-}
-
-/**
  * Return RDB_TRUE if *<var>op</var> is a table reference,
  * otherwise RDB_FALSE
  */
@@ -854,57 +843,6 @@ RDB_destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
 }
 
 RDB_bool
-RDB_expr_depends_expr(const RDB_expression *ex1p, const RDB_expression *ex2p)
-{
-    switch (ex1p->kind) {
-    case RDB_EX_OBJ:
-        return RDB_FALSE;
-    case RDB_EX_TBP:
-        return RDB_expr_depends_table(ex2p, ex1p->def.tbref.tbp);
-    case RDB_EX_VAR:
-        return RDB_FALSE;
-    case RDB_EX_RO_OP:
-    {
-        RDB_expression *argp = ex1p->def.op.args.firstp;
-        while (argp != NULL) {
-            if (RDB_expr_depends_expr(argp, ex2p))
-                return RDB_TRUE;
-            argp = argp->nextp;
-        }
-        return RDB_FALSE;
-    }
-    }
-    /* Should never be reached */
-    abort();
-}
-
-RDB_bool
-RDB_expr_refers(const RDB_expression *exp, const RDB_object *tbp)
-{
-    switch (exp->kind) {
-    case RDB_EX_OBJ:
-        return RDB_FALSE;
-    case RDB_EX_TBP:
-        return RDB_table_refers(exp->def.tbref.tbp, tbp);
-    case RDB_EX_VAR:
-        return RDB_FALSE;
-    case RDB_EX_RO_OP:
-    {
-        RDB_expression *argp = exp->def.op.args.firstp;
-        while (argp != NULL) {
-            if (RDB_expr_refers(argp, tbp))
-                return RDB_TRUE;
-            argp = argp->nextp;
-        }
-
-        return RDB_FALSE;
-    }
-    }
-    /* Should never be reached */
-    abort();
-}
-
-RDB_bool
 RDB_expr_refers_var(const RDB_expression *exp, const char *attrname)
 {
     switch (exp->kind) {
@@ -926,17 +864,6 @@ RDB_expr_refers_var(const RDB_expression *exp, const char *attrname)
     }
     /* Should never be reached */
     abort();
-}
-
-/*
- * Check if there is some table which both exp and tbp depend on
- */
-RDB_bool
-RDB_expr_depends_table(const RDB_expression *exp, const RDB_object *tbp)
-{
-    if (tbp->val.tb.exp == NULL)
-        return RDB_expr_refers(exp, tbp);
-    return RDB_expr_depends_expr(tbp->val.tb.exp, exp);
 }
 
 RDB_expression *
@@ -1083,23 +1010,6 @@ RDB_attr_node(RDB_expression *exp, const char *attrname, char *opname)
     if (expr_var(exp, attrname, opname))
         return exp;
     return NULL;
-}
-
-/**
- * Return TRUE if *srctbp depends on *dsttbp, FALSE otherwise.
- */
-RDB_bool
-RDB_table_refers(const RDB_object *srctbp, const RDB_object *dsttbp)
-{
-    RDB_expression *exp;
-
-    if (srctbp == dsttbp)
-        return RDB_TRUE;
-
-    exp = RDB_vtable_expr(srctbp);
-    if (exp == NULL)
-        return RDB_FALSE;
-    return RDB_expr_refers(exp, dsttbp);
 }
 
 /**
