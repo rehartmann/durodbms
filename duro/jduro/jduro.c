@@ -1,10 +1,8 @@
 /*
- * jduro.c
- *
  * Functions implementing JDuro's native methods.
  *
- *  Created on: 23.02.2014
- *      Author: Rene Hartmann
+ * Copyright (C) 2014, 2016 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #include "jduro.h"
@@ -1866,12 +1864,12 @@ JDuro_get_property(int argc, RDB_object *argv[], RDB_operator *op,
     jclass clazz;
     jobject *jobjp;
     size_t jobjlen;
-    char *methodname;
+    char *method;
+    char *signature;
+    RDB_type *rtyp;
     RDB_object classname;
-    RDB_object sig;
-    RDB_object rtypsig;
+    RDB_object methodname;
     jmethodID methodID;
-    jobject jresult;
     jthrowable jex;
     JDuro_session *sessionp = RDB_ec_property(ecp, "JDuro_Session");
     if (sessionp == NULL) {
@@ -1880,20 +1878,25 @@ JDuro_get_property(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     RDB_init_obj(&classname);
-    RDB_init_obj(&sig);
-    RDB_init_obj(&rtypsig);
+    RDB_init_obj(&methodname);
 
-    methodname = strchr(RDB_operator_source(op), '.');
-    if (methodname == NULL) {
+    method = strchr(RDB_operator_source(op), '.');
+    if (method == NULL) {
         RDB_raise_internal("JDuro_get_property(): invalid method", ecp);
         goto error;
     }
+    signature = strchr(method, '(');
 
     if (RDB_string_n_to_obj(&classname, RDB_operator_source(op),
-            methodname - RDB_operator_source(op), ecp) != RDB_OK) {
+            method - RDB_operator_source(op), ecp) != RDB_OK) {
         goto error;
     }
-    ++methodname;
+    ++method;
+
+    if (RDB_string_n_to_obj(&methodname, method,
+            signature - method, ecp) != RDB_OK) {
+        goto error;
+    }
 
     clazz = (*sessionp->env)->FindClass(sessionp->env, RDB_obj_string(&classname));
     if (clazz == NULL) {
@@ -1901,17 +1904,10 @@ JDuro_get_property(int argc, RDB_object *argv[], RDB_operator *op,
         goto error;
     }
 
-    if (RDB_string_to_obj(&sig, "()", ecp) != RDB_OK)
-        goto error;
-    if (type_to_sig(&rtypsig, RDB_operator_type(op), RDB_FALSE, ecp) != RDB_OK)
-        goto error;
-    if (RDB_append_string(&sig, RDB_obj_string(&rtypsig), ecp) != RDB_OK)
-        goto error;
-
-    methodID = (*sessionp->env)->GetMethodID(sessionp->env, clazz, methodname,
-            RDB_obj_string(&sig));
+    methodID = (*sessionp->env)->GetMethodID(sessionp->env, clazz, RDB_obj_string(&methodname),
+            signature);
     if (methodID == NULL) {
-        RDB_raise_resource_not_found(methodname, ecp);
+        RDB_raise_resource_not_found(RDB_obj_string(&methodname), ecp);
         goto error;
     }
 
@@ -1922,26 +1918,50 @@ JDuro_get_property(int argc, RDB_object *argv[], RDB_operator *op,
         goto error;
     }
 
-    jresult = (*sessionp->env)->CallObjectMethod(sessionp->env, *jobjp, methodID);
-    jex = (*sessionp->env)->ExceptionOccurred(sessionp->env);
-    if (jex != NULL) {
-        RDB_raise_system("Invocation of getter method failed", ecp);
-        goto error;
+    rtyp = RDB_operator_type(op);
+    if (rtyp == &RDB_INTEGER) {
+        jint jintresult = (*sessionp->env)->CallIntMethod(sessionp->env, *jobjp, methodID);
+        jex = (*sessionp->env)->ExceptionOccurred(sessionp->env);
+        if (jex != NULL) {
+            RDB_raise_system("Invocation of getter method failed", ecp);
+            goto error;
+        }
+        RDB_int_to_obj(retvalp, (RDB_int) jintresult);
+    } else if (rtyp == &RDB_FLOAT) {
+        jdouble jdoubleresult = (*sessionp->env)->CallDoubleMethod(sessionp->env, *jobjp, methodID);
+        jex = (*sessionp->env)->ExceptionOccurred(sessionp->env);
+        if (jex != NULL) {
+            RDB_raise_system("Invocation of getter method failed", ecp);
+            goto error;
+        }
+        RDB_float_to_obj(retvalp, (RDB_float) jdoubleresult);
+    } else if (rtyp == &RDB_BOOLEAN) {
+        jboolean jboolresult = (*sessionp->env)->CallBooleanMethod(sessionp->env, *jobjp, methodID);
+        jex = (*sessionp->env)->ExceptionOccurred(sessionp->env);
+        if (jex != NULL) {
+            RDB_raise_system("Invocation of getter method failed", ecp);
+            goto error;
+        }
+        RDB_bool_to_obj(retvalp, (RDB_bool) jboolresult);
+    } else {
+        jobject jobjresult = (*sessionp->env)->CallObjectMethod(sessionp->env, *jobjp, methodID);
+        jex = (*sessionp->env)->ExceptionOccurred(sessionp->env);
+        if (jex != NULL) {
+            RDB_raise_system("Invocation of getter method failed", ecp);
+            goto error;
+        }
+        if (JDuro_jobj_to_duro_obj(sessionp->env, jobjresult, retvalp, sessionp, ecp)
+                != RDB_OK) {
+            goto error;
+        }
     }
-    if (JDuro_jobj_to_duro_obj(sessionp->env, jresult, retvalp, sessionp, ecp)
-            != RDB_OK) {
-        goto error;
-    }
-
     RDB_destroy_obj(&classname, ecp);
-    RDB_destroy_obj(&sig, ecp);
-    RDB_destroy_obj(&rtypsig, ecp);
+    RDB_destroy_obj(&methodname, ecp);
     return RDB_OK;
 
 error:
     RDB_destroy_obj(&classname, ecp);
-    RDB_destroy_obj(&sig, ecp);
-    RDB_destroy_obj(&rtypsig, ecp);
+    RDB_destroy_obj(&methodname, ecp);
     return RDB_ERROR;
 }
 
@@ -2006,13 +2026,13 @@ JDuro_set_property(int argc, RDB_object *argv[], RDB_operator *op,
 {
     jclass clazz;
     jobject *jobjp;
-    jobject jsrc;
+    RDB_type *argtyp;
     jthrowable jex;
     size_t jobjlen;
-    char *methodname;
+    char *method;
+    char *signature;
     RDB_object classname;
-    RDB_object sig;
-    RDB_object rtypsig;
+    RDB_object methodname;
     jmethodID methodID;
     JDuro_session *sessionp = RDB_ec_property(ecp, "JDuro_Session");
     if (sessionp == NULL) {
@@ -2021,20 +2041,25 @@ JDuro_set_property(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     RDB_init_obj(&classname);
-    RDB_init_obj(&sig);
-    RDB_init_obj(&rtypsig);
+    RDB_init_obj(&methodname);
 
-    methodname = strchr(RDB_operator_source(op), '.');
-    if (methodname == NULL) {
+    method = strchr(RDB_operator_source(op), '.');
+    if (method == NULL) {
         RDB_raise_internal("JDuro_get_property(): invalid method", ecp);
         goto error;
     }
+    signature = strchr(method, '(');
 
     if (RDB_string_n_to_obj(&classname, RDB_operator_source(op),
-            methodname - RDB_operator_source(op), ecp) != RDB_OK) {
+            method - RDB_operator_source(op), ecp) != RDB_OK) {
         goto error;
     }
-    ++methodname;
+    ++method;
+
+    if (RDB_string_n_to_obj(&methodname, method,
+            signature - method, ecp) != RDB_OK) {
+        goto error;
+    }
 
     clazz = (*sessionp->env)->FindClass(sessionp->env, RDB_obj_string(&classname));
     if (clazz == NULL) {
@@ -2042,19 +2067,10 @@ JDuro_set_property(int argc, RDB_object *argv[], RDB_operator *op,
         goto error;
     }
 
-    if (RDB_string_to_obj(&sig, "(", ecp) != RDB_OK)
-        goto error;
-    if (type_to_sig(&rtypsig, RDB_obj_type(argv[1]), RDB_FALSE, ecp) != RDB_OK)
-        goto error;
-    if (RDB_append_string(&sig, RDB_obj_string(&rtypsig), ecp) != RDB_OK)
-        goto error;
-    if (RDB_append_string(&sig, ")V", ecp) != RDB_OK)
-        goto error;
-
-    methodID = (*sessionp->env)->GetMethodID(sessionp->env, clazz, methodname,
-            RDB_obj_string(&sig));
+    methodID = (*sessionp->env)->GetMethodID(sessionp->env, clazz,
+            RDB_obj_string(&methodname), signature);
     if (methodID == NULL) {
-        RDB_raise_resource_not_found(methodname, ecp);
+        RDB_raise_resource_not_found(RDB_obj_string(&methodname), ecp);
         goto error;
     }
 
@@ -2065,14 +2081,26 @@ JDuro_set_property(int argc, RDB_object *argv[], RDB_operator *op,
         goto error;
     }
 
-    jsrc = JDuro_duro_obj_to_jobj(sessionp->env, argv[1], RDB_FALSE, sessionp);
-    jex = (*sessionp->env)->ExceptionOccurred(sessionp->env);
-    if (jex != NULL) {
-        RDB_raise_invalid_argument("Cannot convert setter argument to Java", ecp);
-        goto error;
+    argtyp = RDB_obj_type(argv[1]);
+    if (argtyp == &RDB_INTEGER) {
+        (*sessionp->env)->CallVoidMethod(sessionp->env, *jobjp, methodID,
+                (jint) RDB_obj_int(argv[1]));
+    } else if (argtyp == &RDB_FLOAT) {
+        (*sessionp->env)->CallVoidMethod(sessionp->env, *jobjp, methodID,
+                (jdouble) RDB_obj_float(argv[1]));
+    } else if (argtyp == &RDB_BOOLEAN) {
+        (*sessionp->env)->CallVoidMethod(sessionp->env, *jobjp, methodID,
+                (jboolean) RDB_obj_bool(argv[1]));
+    } else {
+        jobject jarg = JDuro_duro_obj_to_jobj(sessionp->env, argv[1],
+                RDB_FALSE, sessionp);
+        jex = (*sessionp->env)->ExceptionOccurred(sessionp->env);
+        if (jex != NULL) {
+            RDB_raise_system("Invalid setter argument", ecp);
+            goto error;
+        }
+        (*sessionp->env)->CallVoidMethod(sessionp->env, *jobjp, methodID, jarg);
     }
-
-    (*sessionp->env)->CallVoidMethod(sessionp->env, *jobjp, methodID, jsrc);
     jex = (*sessionp->env)->ExceptionOccurred(sessionp->env);
     if (jex != NULL) {
         RDB_raise_system("Invocation of setter method failed", ecp);
@@ -2080,13 +2108,11 @@ JDuro_set_property(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     RDB_destroy_obj(&classname, ecp);
-    RDB_destroy_obj(&sig, ecp);
-    RDB_destroy_obj(&rtypsig, ecp);
+    RDB_destroy_obj(&methodname, ecp);
     return RDB_OK;
 
 error:
     RDB_destroy_obj(&classname, ecp);
-    RDB_destroy_obj(&sig, ecp);
-    RDB_destroy_obj(&rtypsig, ecp);
+    RDB_destroy_obj(&methodname, ecp);
     return RDB_ERROR;
 }

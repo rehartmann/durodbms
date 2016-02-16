@@ -1,5 +1,7 @@
 package net.sf.duro;
 
+import java.lang.reflect.Method;
+
 /**
  * The central class used by Java applications to access DuroDBMS.
  *
@@ -206,24 +208,91 @@ public class DSession {
         }
     }
 
+    private static Class<?> getJavaType(Type type) {
+        String typename = type.getName();
+        if (typename.equals("integer"))
+            return int.class;
+        if (typename.equals("string"))
+            return String.class;
+        if (typename.equals("float"))
+            return double.class;
+        if (typename.equals("boolean"))
+            return boolean.class;
+        return null;
+    }
+
+    private String typeSignature(Class<?> rtype) {
+        if (rtype == int.class) {
+            return "I";
+        }
+        if (rtype == String.class) {
+            return 'L' + String.class.getName().replace('.',  '/') + ';'; 
+        }
+        if (rtype == double.class) {
+            return "D";
+        }
+        if (rtype == boolean.class) {
+            return "Z";
+        }
+        return null;
+    }
+
     public void implementType(ScalarType type, Class<?> implementorClass) {
-        Possrep[] possreps = type.getPossreps();
-        for (int i = 0; i < possreps.length; i++) {
-            createSelector(possreps[i].getName(), type.getName(),
-                    implementorClass.getName().replace('.',  '/'));
-            for (int j = 0; j < possreps[i].getComponents().length; j++) {
-                String comp = possreps[i].getComponent(j).getName();
-                createGetter(type.getName() + "_get_" + comp, type.getName(),
-                        possreps[i].getName(), j,
-                        implementorClass.getName().replace('.',  '/') + ".get"
-                                + comp.substring(0, 1).toUpperCase() + comp.substring(1));
-                createSetter(type.getName() + "_set_" + comp, type.getName(),
-                        possreps[i].getName(), j,
-                        implementorClass.getName().replace('.',  '/') + ".set"
-                                + comp.substring(0, 1).toUpperCase() + comp.substring(1));
-            }
+        // Check if a default constructor exists
+        try {
+            implementorClass.getDeclaredConstructor();
+        } catch(NoSuchMethodException e) {
+            throw new IllegalArgumentException("class" + implementorClass.getName()
+                    +" must have a default constructor", e);
         }
 
-        implementTypeI(type.getName());
+        Possrep[] possreps = type.getPossreps();
+        synchronized (DSession.class) {
+            for (int i = 0; i < possreps.length; i++) {
+                createSelector(possreps[i].getName(), type.getName(),
+                        implementorClass.getName().replace('.',  '/'));
+                for (int j = 0; j < possreps[i].getComponents().length; j++) {
+                    Method method;
+                    String comp = possreps[i].getComponent(j).getName();
+                    Class<?> jtype = getJavaType(possreps[i].getComponent(j).getType());
+                    
+                    String methodName = "get"
+                            + comp.substring(0, 1).toUpperCase() + comp.substring(1);
+                    try {
+                        method = implementorClass.getMethod(methodName);
+                    } catch (NoSuchMethodException e) {
+                        throw new IllegalArgumentException("Getter method for property "
+                                + comp + " not found", e);
+                    }
+                    if (jtype == null) {
+                        throw new IllegalArgumentException("unsupported component type "
+                                + possreps[i].getComponent(j).getType().getName());
+                    }
+                    if (method.getReturnType() != jtype) {
+                        throw new IllegalArgumentException("getter return type does not match type of component "
+                                + possreps[i].getComponent(j).getType().getName());
+                    }                    
+                    createGetter(type.getName() + "_get_" + comp, type.getName(),
+                            possreps[i].getName(), j,
+                            implementorClass.getName().replace('.',  '/') + "." + method.getName()
+                                    + "()" + typeSignature(jtype));
+
+                    methodName = "set" + comp.substring(0, 1).toUpperCase() + comp.substring(1);
+                    try {
+                        method = implementorClass.getMethod(methodName, jtype);
+                    } catch (NoSuchMethodException e) {
+                        throw new IllegalArgumentException("Getter method for property "
+                                + comp + " not found", e);
+                    }
+                    
+                    createSetter(type.getName() + "_set_" + comp, type.getName(),
+                            possreps[i].getName(), j,
+                            implementorClass.getName().replace('.',  '/') + "." + methodName
+                                    + '(' + typeSignature(jtype) + ")V");
+                }
+            }
+
+            implementTypeI(type.getName());
+        }
     }
 }

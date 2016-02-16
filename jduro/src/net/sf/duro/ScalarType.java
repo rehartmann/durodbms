@@ -15,10 +15,19 @@ public class ScalarType extends Type {
 
     private static Map<String, ScalarType> typeMap = new HashMap<String, ScalarType>();
 
+    /** Represents the DuroDBMS type <code>boolean</code>. */
     public static final ScalarType BOOLEAN = new ScalarType("boolean", null);
+
+    /** Represents the DuroDBMS type <code>integer</code>. */
     public static final ScalarType INTEGER = new ScalarType("integer", null);
+
+    /** Represents the DuroDBMS type <code>string</code>. */
     public static final ScalarType STRING = new ScalarType("string", null);
+    
+    /** Represents the DuroDBMS type <code>float</code>. */
     public static final ScalarType FLOAT = new ScalarType("float", null);
+
+    /** Represents the DuroDBMS type <code>binary</code>. */    
     public static final ScalarType BINARY = new ScalarType("binary", null);
 
     private final String name;
@@ -49,14 +58,27 @@ public class ScalarType extends Type {
         return true;
     }
 
+    /**
+     * Returns the possible representations of this type.
+     *  
+     * @return an array which contains the possible representations.
+     */
     public Possrep[] getPossreps() {
         return possreps;
     }
 
+    /**
+     * Returns an instance of ScalarType which represents the DuroDBMS type
+     * <code>typename</code>.
+     * 
+     * @param typename the name of the DuroDBMS type
+     * @param session   the DuroDBMS session
+     * @return the ScalarType instance representing the type
+     */
     public static ScalarType fromString(String typename, DSession session) {
         ScalarType type = typeMap.get(typename);
         if (type == null) {
-            Possrep[] possreps = typePossreps(typename, (DSession) session);
+            Possrep[] possreps = typePossreps(typename, session);
             if (possreps == null)
                 return null;
 

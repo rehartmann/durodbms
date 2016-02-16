@@ -16,27 +16,35 @@ public class TestTypeImpl {
 
     private DSession session;
 
-    public static class Point {
-        private int x;
+    public static class Implementor {
+        private int n;
+        private double x;
+        private boolean b;
+        private String s;
 
-        private int y;
-
-        public Point() { };
-
-        public Integer getX() {
+        public int getN() {
+            return n;
+        }
+        public void setN(int n) {
+            this.n = n;
+        }
+        public double getX() {
             return x;
         }
-
-        public void setX(Integer x) {
+        public void setX(double x) {
             this.x = x;
         }
-
-        public Integer getY() {
-            return y;
+        public boolean getB() {
+            return b;
         }
-
-        public void setY(Integer y) {
-            this.y = y;
+        public void setB(boolean b) {
+            this.b = b;
+        }
+        public String getS() {
+            return s;
+        }
+        public void setS(String s) {
+            this.s = s;
         }
     }
     
@@ -50,7 +58,7 @@ public class TestTypeImpl {
     @After
     public void tearDown() throws Exception {
         try {
-            session.execute("DROP TYPE point;");
+            session.execute("DROP TYPE test;");
         } catch (Exception e) {
             // swallow
         }
@@ -69,10 +77,11 @@ public class TestTypeImpl {
         session.execute("begin tx;");
 
         try {
-            session.execute("type point possrep { x int, y int } init point(0,0);");
+            session.execute("TYPE test POSSREP { n int, x float, b boolean, s string } "
+                    + " INIT test(0, 0.0, FALSE, '');");
 
-            ScalarType pointType = ScalarType.fromString("point", session);
-            session.implementType(pointType, Point.class);
+            ScalarType testType = ScalarType.fromString("test", session);
+            session.implementType(testType, Implementor.class);
 
             session.execute("commit;");
         } catch (DException e) {
@@ -80,24 +89,39 @@ public class TestTypeImpl {
             System.err.println("" + e);
             session.execute("rollback;");
             throw e;
-        }            
+        }
 
         session.execute("begin tx;");
         try {
-            session.execute("var p init point(1, 2);");
-            assertEquals(Integer.valueOf(1), (Integer) session.evaluate("p.x"));
-            assertEquals(Integer.valueOf(2), (Integer) session.evaluate("p.y"));
-            session.execute("p.x := 5;");
-            assertEquals(Integer.valueOf(5), (Integer) session.evaluate("p.x"));
-            session.execute("p.y := 66;");
-            assertEquals(Integer.valueOf(66), (Integer) session.evaluate("p.y"));
-            assertEquals(Integer.valueOf(5), (Integer) session.evaluate("p.x"));
+            session.execute("var p0 test;");
+            assertEquals(Integer.valueOf(0), (Integer) session.evaluate("p0.n"));
+            assertEquals(Double.valueOf(0.0), (Double) session.evaluate("p0.x"));
+            assertEquals(Boolean.valueOf(false), (Boolean) session.evaluate("p0.b"));
+            assertEquals("", (String) session.evaluate("p0.s"));
+
+            session.execute("var p init test(1, 2.0, true, 'yo');");
+            assertEquals(Integer.valueOf(1), (Integer) session.evaluate("p.n"));
+            assertEquals(Double.valueOf(2.0), (Double) session.evaluate("p.x"));
+            assertEquals(Boolean.valueOf(true), (Boolean) session.evaluate("p.b"));
+            assertEquals("yo", (String) session.evaluate("p.s"));
+
+            session.execute("p.n := 5;");
+            assertEquals(Integer.valueOf(5), (Integer) session.evaluate("p.n"));
+            assertEquals(Double.valueOf(2.0), (Double) session.evaluate("p.x"));
+
+            session.execute("p.x := 66.0;");
+            session.execute("p.b := false;");
+            session.execute("p.s := 'durodbms';");
+            assertEquals(Double.valueOf(66.0), (Double) session.evaluate("p.x"));
+            assertEquals(Boolean.valueOf(false), (Boolean) session.evaluate("p.b"));
+            assertEquals("durodbms", (String) session.evaluate("p.s"));
+
             session.execute("commit;");
         } catch (DException e) {
             // Print DException when there is still a session available
             System.err.println("" + e);
             session.execute("rollback;");
             throw e;
-        }        
+        }
     }
 }
