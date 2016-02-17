@@ -221,6 +221,7 @@ public class DSession {
             }
             dest.getClass().getMethod(setterName, parameterType).invoke(dest, prop);
         }
+        src.dispose();
     }
 
     /**

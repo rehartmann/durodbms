@@ -17,7 +17,7 @@ public class DefaultPossrepObject implements PossrepObject {
 
     private static native Object getProperty(String name, DSession s, long ref);
 
-    private static native Object dispose(DSession dInstance);
+    private static native Object dispose(DSession dInstance, long ref);
 
     private static native boolean equals(long ref1, long ref2,
             DSession dInstance);
@@ -103,7 +103,7 @@ public class DefaultPossrepObject implements PossrepObject {
     public void dispose() {
         synchronized (DSession.class) {
             if (session != null) {
-                dispose(session);
+                dispose(session, ref);
                 session = null;
             }
         }
