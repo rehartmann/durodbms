@@ -210,7 +210,7 @@ RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
 
     tbp->val.tbp->exp = exp;
 
-    reltyp->cleanup_fp = &cleanup_tb;
+    RDB_set_cleanup(reltyp, &cleanup_tb);
     tbp->typ = reltyp;
 
     if (RDB_set_defvals(tbp, default_attrc, default_attrv, ecp) != RDB_OK)

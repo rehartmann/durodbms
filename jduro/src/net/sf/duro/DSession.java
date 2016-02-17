@@ -1,5 +1,6 @@
 package net.sf.duro;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 /**
@@ -29,16 +30,6 @@ public class DSession {
             throws ClassNotFoundException, NoSuchMethodException;
 
     native private void setVarI(String name, Object v);
-    
-    native private void implementTypeI(String typename);
-
-    native private void createSelector(String prname, String typename, String classname);
-
-    native private void createGetter(String opname, String typename, String possrepName,
-            int compno, String method);
-    
-    native private void createSetter(String opname, String typename, String possrepName,
-            int compno, String method);
 
     /**
      * Creates a DSession.
@@ -191,6 +182,48 @@ public class DSession {
     }
 
     /**
+     * Evaluates the expression <code>expr</code> and stores the
+     * value in <code>dest</code>.
+     * The type of <code>expr</code> must have possreps and <code>dest</code>
+     * must have a setter for each property.
+     * 
+     * @param expr      the expression to evaluate
+     * @param dest      the destination object
+     * @throws DException
+     * @throws SecurityException 
+     * @throws NoSuchMethodException 
+     * @throws InvocationTargetException 
+     * @throws IllegalArgumentException 
+     * @throws IllegalAccessException
+     */
+    public void evaluate(String expr, Object dest) throws NoSuchMethodException, SecurityException, IllegalAccessException, InvocationTargetException {
+        PossrepObject src;
+        try {
+            src = (PossrepObject) evaluate(expr);
+        } catch (ClassCastException ex) {
+            throw new IllegalArgumentException("Expression type does not have possreps");
+        }
+        Possrep pr = src.getType().getPossreps()[0];
+        for (int i = 0; i < pr.getComponents().length; i++) {
+            String propname = pr.getComponent(i).getName();
+            Object prop = src.getProperty(propname);
+            String setterName = "set" + propname.substring(0, 1).toUpperCase()
+                    + propname.substring(1);
+            Class<?> parameterType;
+            if (prop instanceof Integer) {
+                parameterType = int.class;
+            } else if (prop instanceof Double) {
+                parameterType = double.class;
+            } else if (prop instanceof Boolean) {
+                parameterType = boolean.class;
+            } else {
+                parameterType = prop.getClass();
+            }
+            dest.getClass().getMethod(setterName, parameterType).invoke(dest, prop);
+        }
+    }
+
+    /**
      * Assigns a value to a variable.
      * 
      * @param name
@@ -205,94 +238,6 @@ public class DSession {
     public void setVar(String name, Object v) {
         synchronized (DSession.class) {
             setVarI(name, v);
-        }
-    }
-
-    private static Class<?> getJavaType(Type type) {
-        String typename = type.getName();
-        if (typename.equals("integer"))
-            return int.class;
-        if (typename.equals("string"))
-            return String.class;
-        if (typename.equals("float"))
-            return double.class;
-        if (typename.equals("boolean"))
-            return boolean.class;
-        return null;
-    }
-
-    private String typeSignature(Class<?> rtype) {
-        if (rtype == int.class) {
-            return "I";
-        }
-        if (rtype == String.class) {
-            return 'L' + String.class.getName().replace('.',  '/') + ';'; 
-        }
-        if (rtype == double.class) {
-            return "D";
-        }
-        if (rtype == boolean.class) {
-            return "Z";
-        }
-        return null;
-    }
-
-    public void implementType(ScalarType type, Class<?> implementorClass) {
-        // Check if a default constructor exists
-        try {
-            implementorClass.getDeclaredConstructor();
-        } catch(NoSuchMethodException e) {
-            throw new IllegalArgumentException("class" + implementorClass.getName()
-                    +" must have a default constructor", e);
-        }
-
-        Possrep[] possreps = type.getPossreps();
-        synchronized (DSession.class) {
-            for (int i = 0; i < possreps.length; i++) {
-                createSelector(possreps[i].getName(), type.getName(),
-                        implementorClass.getName().replace('.',  '/'));
-                for (int j = 0; j < possreps[i].getComponents().length; j++) {
-                    Method method;
-                    String comp = possreps[i].getComponent(j).getName();
-                    Class<?> jtype = getJavaType(possreps[i].getComponent(j).getType());
-                    
-                    String methodName = "get"
-                            + comp.substring(0, 1).toUpperCase() + comp.substring(1);
-                    try {
-                        method = implementorClass.getMethod(methodName);
-                    } catch (NoSuchMethodException e) {
-                        throw new IllegalArgumentException("Getter method for property "
-                                + comp + " not found", e);
-                    }
-                    if (jtype == null) {
-                        throw new IllegalArgumentException("unsupported component type "
-                                + possreps[i].getComponent(j).getType().getName());
-                    }
-                    if (method.getReturnType() != jtype) {
-                        throw new IllegalArgumentException("getter return type does not match type of component "
-                                + possreps[i].getComponent(j).getType().getName());
-                    }                    
-                    createGetter(type.getName() + "_get_" + comp, type.getName(),
-                            possreps[i].getName(), j,
-                            implementorClass.getName().replace('.',  '/') + "." + method.getName()
-                                    + "()" + typeSignature(jtype));
-
-                    methodName = "set" + comp.substring(0, 1).toUpperCase() + comp.substring(1);
-                    try {
-                        method = implementorClass.getMethod(methodName, jtype);
-                    } catch (NoSuchMethodException e) {
-                        throw new IllegalArgumentException("Getter method for property "
-                                + comp + " not found", e);
-                    }
-                    
-                    createSetter(type.getName() + "_set_" + comp, type.getName(),
-                            possreps[i].getName(), j,
-                            implementorClass.getName().replace('.',  '/') + "." + methodName
-                                    + '(' + typeSignature(jtype) + ")V");
-                }
-            }
-
-            implementTypeI(type.getName());
         }
     }
 }

@@ -7,7 +7,5 @@ import org.junit.runners.Suite.SuiteClasses;
 @RunWith(Suite.class)
 @SuiteClasses({ TestEvaluate.class, TestSetVar.class, TestExecute.class,
         TestDB.class, TestUserDefType.class, TestUserDefOp.class,
-        TestTypeImpl.class })
-public class AllTests {
-
-}
+        TestUserClass.class })
+public class AllTests { }

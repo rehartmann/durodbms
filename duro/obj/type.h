@@ -284,4 +284,7 @@ RDB_rename_relation_type(const RDB_type *, int, const RDB_renaming[],
 void
 RDB_lock_type(RDB_type *);
 
+void
+RDB_set_cleanup(RDB_type *, RDB_obj_cleanup_func *);
+
 #endif /* TYPE_H_ */

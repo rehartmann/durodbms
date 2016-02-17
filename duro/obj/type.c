@@ -697,6 +697,15 @@ RDB_lock_type(RDB_type *typ)
     typ->locked = RDB_TRUE;
 }
 
+/**
+ * Sets a function which is invoked when an RDB_object
+ * with this type is destroyed
+ */
+void
+RDB_set_cleanup(RDB_type *typ, RDB_obj_cleanup_func *cleanup_fp) {
+    typ->cleanup_fp = cleanup_fp;
+}
+
 /*@}*/
 
 RDB_type *

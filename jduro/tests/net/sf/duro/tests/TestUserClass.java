@@ -6,17 +6,16 @@ import java.io.File;
 
 import net.sf.duro.DException;
 import net.sf.duro.DSession;
-import net.sf.duro.ScalarType;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class TestTypeImpl {
+public class TestUserClass {
 
     private DSession session;
 
-    public static class Implementor {
+    public static class Data {
         private int n;
         private double x;
         private boolean b;
@@ -71,17 +70,16 @@ public class TestTypeImpl {
     }
 
     @Test
-    public void testImplementType() {
+    public void testEvaluateToClass() throws Exception {
         session.execute("connect('dbenv');"
                 + "current_db := 'D';");
         session.execute("begin tx;");
 
         try {
             session.execute("TYPE test POSSREP { n int, x float, b boolean, s string } "
-                    + " INIT test(0, 0.0, FALSE, '');");
-
-            ScalarType testType = ScalarType.fromString("test", session);
-            session.implementType(testType, Implementor.class);
+                    + " INIT test(0, 0.0, FALSE, '');"
+                    + "IMPLEMENT TYPE test;"
+                    + "END IMPLEMENT;");
 
             session.execute("commit;");
         } catch (DException e) {
@@ -94,27 +92,32 @@ public class TestTypeImpl {
         session.execute("begin tx;");
         try {
             session.execute("var p0 test;");
-            assertEquals(Integer.valueOf(0), (Integer) session.evaluate("p0.n"));
-            assertEquals(Double.valueOf(0.0), (Double) session.evaluate("p0.x"));
-            assertEquals(Boolean.valueOf(false), (Boolean) session.evaluate("p0.b"));
-            assertEquals("", (String) session.evaluate("p0.s"));
+            Data dest = new Data();
+            session.evaluate("p0", dest);
+            assertEquals(0, dest.getN());
+            assertEquals(0.0, dest.getX(), 0.0);
+            assertEquals(false, dest.getB());
+            assertEquals("", dest.getS());
 
             session.execute("var p init test(1, 2.0, true, 'yo');");
-            assertEquals(Integer.valueOf(1), (Integer) session.evaluate("p.n"));
-            assertEquals(Double.valueOf(2.0), (Double) session.evaluate("p.x"));
-            assertEquals(Boolean.valueOf(true), (Boolean) session.evaluate("p.b"));
-            assertEquals("yo", (String) session.evaluate("p.s"));
+            session.evaluate("p", dest);
+            assertEquals(1, dest.getN());
+            assertEquals(2.0, dest.getX(), 0.0);
+            assertEquals(true, dest.getB());
+            assertEquals("yo", dest.getS());
 
             session.execute("p.n := 5;");
-            assertEquals(Integer.valueOf(5), (Integer) session.evaluate("p.n"));
-            assertEquals(Double.valueOf(2.0), (Double) session.evaluate("p.x"));
+            session.evaluate("p", dest);
+            assertEquals(5, dest.getN());
+            assertEquals("yo", dest.getS());
 
             session.execute("p.x := 66.0;");
             session.execute("p.b := false;");
             session.execute("p.s := 'durodbms';");
-            assertEquals(Double.valueOf(66.0), (Double) session.evaluate("p.x"));
-            assertEquals(Boolean.valueOf(false), (Boolean) session.evaluate("p.b"));
-            assertEquals("durodbms", (String) session.evaluate("p.s"));
+            session.evaluate("p", dest);
+            assertEquals(66.0, dest.getX(), 0.0);
+            assertEquals(false, dest.getB());
+            assertEquals("durodbms", dest.getS());
 
             session.execute("commit;");
         } catch (DException e) {
