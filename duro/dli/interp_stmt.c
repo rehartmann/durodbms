@@ -901,8 +901,9 @@ create_ro_op(const char *name, const char *version,
     if (Duro_package_q_id(&opnameobj, name, interp, ecp) != RDB_OK)
         goto error;
 
-    if (RDB_create_ro_op(RDB_obj_string(&opnameobj), paramc, paramv, rtyp,
-            symname[0] != '\0' ? libname : NULL, symname[0] != '\0' ? symname : NULL,
+    if (RDB_create_ro_op_version(RDB_obj_string(&opnameobj), version, paramc, paramv,
+            rtyp, symname[0] != '\0' ? libname : NULL,
+            symname[0] != '\0' ? symname : NULL,
             sourcep, ecp, txp) != RDB_OK)
         goto error;
     RDB_destroy_obj(&opnameobj, ecp);
@@ -934,7 +935,7 @@ ro_opdef_extern(const char *opname, const char *version, RDB_type *rtyp,
 
 /* Define  operator, prepend package name */
 static int
-create_update_op(const char *name, int paramc, RDB_parameter paramv[],
+create_update_op(const char *name, const char *version, int paramc, RDB_parameter paramv[],
                  const char *libname, const char *symname,
                  const char *sourcep, Duro_interp *interp,
                  RDB_exec_context *ecp, RDB_transaction *txp)
@@ -942,7 +943,7 @@ create_update_op(const char *name, int paramc, RDB_parameter paramv[],
     RDB_object opnameobj;
 
     if (*RDB_obj_string(&interp->pkg_name) == '\0') {
-        return RDB_create_update_op(name, paramc, paramv,
+        return RDB_create_update_op_version(name, version, paramc, paramv,
                 libname, symname, sourcep, ecp, txp);
     }
     RDB_init_obj(&opnameobj);
@@ -953,8 +954,8 @@ create_update_op(const char *name, int paramc, RDB_parameter paramv[],
     if (RDB_append_string(&opnameobj, name, ecp) != RDB_OK)
         goto error;
 
-    if (RDB_create_update_op(RDB_obj_string(&opnameobj), paramc, paramv,
-            libname, symname, sourcep, ecp, txp) != RDB_OK)
+    if (RDB_create_update_op_version(RDB_obj_string(&opnameobj), version,
+            paramc, paramv, libname, symname, sourcep, ecp, txp) != RDB_OK)
         goto error;
     RDB_destroy_obj(&opnameobj, ecp);
     return RDB_OK;
@@ -977,7 +978,7 @@ update_opdef_extern(const char *opname,
         return RDB_ERROR;
     }
 
-    return create_update_op(opname, paramc, paramv,
+    return create_update_op(opname, NULL, paramc, paramv,
             creop_infop->libname,
             creop_infop->update_op_symname,
             extname, interp, ecp, txp);
@@ -991,6 +992,7 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     RDB_bool is_ro;
     RDB_object code;
     RDB_parse_node *attrnodep;
+    RDB_parse_node *version_nodep;
     RDB_transaction tmp_tx;
     RDB_type *rtyp;
     const char *opname;
@@ -1098,8 +1100,6 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
     parentp->val.children.firstp->whitecommp = lwsp;
 
     if (is_ro) {
-        RDB_parse_node *version_nodep;
-
         rtyp = RDB_parse_node_to_type(stmtp->nextp->nextp->nextp->nextp->nextp,
                 &Duro_get_var_type, interp, ecp,
                 interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
@@ -1220,6 +1220,15 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
                 attrnodep = attrnodep->nextp;
         }
 
+        version_nodep = stmtp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp;
+        if (RDB_parse_nodelist_length(version_nodep) > 0) {
+            RDB_expression *version_exp = RDB_parse_node_expr(
+                    RDB_parse_node_child(version_nodep, 1), ecp, NULL);
+            if (version_exp == NULL)
+                goto error;
+            version = RDB_expr_var_name(version_exp);
+        }
+
         /* Check for EXTERN ... */
         if (is_extern) {
             RDB_expression *langexp, *extnamexp;
@@ -1240,8 +1249,7 @@ exec_opdef(RDB_parse_node *parentp, Duro_interp *interp, RDB_exec_context *ecp)
                     interp, ecp,
                     interp->txnp != NULL ? &interp->txnp->tx : &tmp_tx);
         } else {
-            ret = create_update_op(opname,
-                    paramc, paramv,
+            ret = create_update_op(opname, version, paramc, paramv,
 #ifdef _WIN32
                     is_spec ? NULL : "duro",
 #else

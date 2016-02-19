@@ -1333,4 +1333,21 @@ test versionroop {read-only operators with version names} -setup $SETUP \
 } -result {21
 }
 
+test versionupdop {update operators with version names} -setup $SETUP \
+        -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt -e dbenv -d D << {
+        operator append1(n integer) updates { n } version va;
+            n := n * 10 + 1;
+        end operator;
+
+        begin tx;
+        var n init 3;
+        append1(n);
+        io.put(n);
+        io.put_line('');
+        commit;  
+    }
+} -result {31
+}
+
 cleanupTests

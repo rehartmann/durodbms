@@ -240,9 +240,8 @@ RDB_cat_load_ro_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp
     return opcount + cnt;
 } /* RDB_cat_load_ro_op */
 
-/* Read all read-only operators with specified name from database */
-RDB_int
-RDB_cat_load_upd_op(const char *name, RDB_exec_context *ecp,
+int
+cat_load_upd_op(const char *name, RDB_object *tbp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_expression *exp, *wexp, *argp;
@@ -272,7 +271,7 @@ RDB_cat_load_upd_op(const char *name, RDB_exec_context *ecp,
         RDB_del_expr(exp, ecp);
         return RDB_ERROR;
     }
-    argp = RDB_table_ref(txp->dbp->dbrootp->upd_ops_tbp, ecp);
+    argp = RDB_table_ref(tbp, ecp);
     if (argp == NULL) {
         RDB_del_expr(wexp, ecp);
         RDB_del_expr(exp, ecp);
@@ -358,3 +357,18 @@ error:
     return RDB_ERROR;
 }
 
+/* Read all read-only operators with specified name from database */
+RDB_int
+RDB_cat_load_upd_op(const char *name, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_int cnt;
+    RDB_int opcount = cat_load_upd_op(name, txp->dbp->dbrootp->upd_ops_tbp,
+            ecp, txp);
+    if (opcount == RDB_ERROR)
+        return RDB_ERROR;
+    cnt = cat_load_upd_op(name, txp->dbp->dbrootp->upd_op_versions_tbp, ecp, txp);
+    if (cnt == RDB_ERROR)
+        return RDB_ERROR;
+    return opcount + cnt;
+}
