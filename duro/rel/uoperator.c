@@ -792,6 +792,38 @@ RDB_call_update_op(RDB_operator *op, int argc, RDB_object *argv[],
     return (*op->opfn.upd_fp)(argc, argv, op, ecp, txp);
 }
 
+static RDB_object *
+tb_where_opname(RDB_object *tbp, const char *opname, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_expression *argp;
+    RDB_expression *exp;
+    RDB_object *vtbp;
+
+    exp = RDB_ro_op("where", ecp);
+    if (exp == NULL)
+        return NULL;
+    argp = RDB_table_ref(tbp, ecp);
+    if (argp == NULL) {
+        RDB_del_expr(exp, ecp);
+        return NULL;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_attr_eq_strval("opname", opname, ecp);
+    if (argp == NULL) {
+        RDB_del_expr(exp, ecp);
+        return NULL;
+    }
+    RDB_add_arg(exp, argp);
+
+    vtbp = RDB_expr_to_vtable(exp, ecp, txp);
+    if (vtbp == NULL) {
+        RDB_del_expr(exp, ecp);
+        return NULL;
+    }
+    return vtbp;
+}
+
 /**
  * RDB_drop_op deletes the operator with the name <var>name</var>.
  * This affects all overloaded versions.
@@ -813,10 +845,11 @@ in which case the transaction may be implicitly rolled back.
 int
 RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_expression *exp, *argp;
     RDB_object *vtbp;
+    RDB_expression *exp;
     int ret;
     RDB_bool isempty;
+    RDB_int cnt1, cnt2;
 
     if (!RDB_tx_is_running(txp)) {
         RDB_raise_no_running_tx(ecp);
@@ -826,27 +859,10 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     /*
      * Check if it's a read-only operator
      */
-    exp = RDB_ro_op("where", ecp);
-    if (exp == NULL)
+    vtbp = tb_where_opname(txp->dbp->dbrootp->ro_ops_tbp, name, ecp, txp);
+    if (vtbp == NULL)
         return RDB_ERROR;
-    argp = RDB_table_ref(txp->dbp->dbrootp->ro_ops_tbp, ecp);
-    if (argp == NULL) {
-        RDB_del_expr(exp, ecp);
-        return RDB_ERROR;
-    }
-    RDB_add_arg(exp, argp);
-    argp = RDB_attr_eq_strval("opname", name, ecp);
-    if (argp == NULL) {
-        RDB_del_expr(exp, ecp);
-        return RDB_ERROR;
-    }
-    RDB_add_arg(exp, argp);
-    
-    vtbp = RDB_expr_to_vtable(exp, ecp, txp);
-    if (vtbp == NULL) {
-        RDB_del_expr(exp, ecp);
-        return RDB_ERROR;
-    }
+
     ret = RDB_table_is_empty(vtbp, ecp, txp, &isempty);
     if (ret != RDB_OK) {
         RDB_drop_table(vtbp, ecp, txp);
@@ -855,6 +871,21 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     ret = RDB_drop_table(vtbp, ecp, txp);
     if (ret != RDB_OK) {
         return ret;
+    }
+    if (isempty) {
+        vtbp = tb_where_opname(txp->dbp->dbrootp->ro_op_versions_tbp, name, ecp, txp);
+        if (vtbp == NULL)
+            return RDB_ERROR;
+
+        ret = RDB_table_is_empty(vtbp, ecp, txp, &isempty);
+        if (ret != RDB_OK) {
+            RDB_drop_table(vtbp, ecp, txp);
+            return ret;
+        }
+        ret = RDB_drop_table(vtbp, ecp, txp);
+        if (ret != RDB_OK) {
+            return ret;
+        }
     }
 
     if (isempty) {
@@ -870,15 +901,21 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
-        ret = RDB_delete(txp->dbp->dbrootp->upd_ops_tbp, exp, ecp, txp);
+        cnt1 = RDB_delete(txp->dbp->dbrootp->upd_ops_tbp, exp, ecp, txp);
+        if (cnt1 == (RDB_int) RDB_ERROR) {
+            RDB_del_expr(exp, ecp);
+            return RDB_ERROR;
+        }
+        cnt2 = RDB_delete(txp->dbp->dbrootp->upd_op_versions_tbp, exp, ecp, txp);
         RDB_del_expr(exp, ecp);
-        if (ret == 0) {
+        if (cnt2 == (RDB_int) RDB_ERROR) {
+            return RDB_ERROR;
+        }
+
+        if (cnt1 + cnt2 == 0) {
             RDB_raise_operator_not_found(name, ecp);
             return RDB_ERROR;
         }
-        if (ret == RDB_ERROR) {
-            return RDB_ERROR;
-        }        
     } else {
         /* It's a read-only operator */
 
@@ -891,14 +928,23 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         if (exp == NULL) {
             return RDB_ERROR;
         }
-        ret = RDB_delete(txp->dbp->dbrootp->ro_ops_tbp, exp, ecp, txp);
+        cnt1 = RDB_delete(txp->dbp->dbrootp->ro_ops_tbp, exp, ecp, txp);
+        if (cnt1 == (RDB_int) RDB_ERROR) {
+            RDB_del_expr(exp, ecp);
+            return RDB_ERROR;
+        }
+        cnt2 = RDB_delete(txp->dbp->dbrootp->ro_op_versions_tbp, exp, ecp, txp);
         RDB_del_expr(exp, ecp);
-        if (ret == RDB_ERROR) {
+        if (cnt2 == (RDB_int) RDB_ERROR) {
             RDB_handle_errcode(ret, ecp, txp);
             return RDB_ERROR;
         }
-    }
 
+        if (cnt1 + cnt2 == 0) {
+            RDB_raise_operator_not_found(name, ecp);
+            return RDB_ERROR;
+        }
+    }
     return RDB_OK;
 }
 

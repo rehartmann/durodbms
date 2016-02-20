@@ -1328,7 +1328,18 @@ test versionroop {read-only operators with version names} -setup $SETUP \
         begin tx;        
         io.put(append1(2));
         io.put_line('');
-        commit;  
+        commit;
+        
+        begin tx;
+        drop operator append1;
+        
+        try
+            io.put(append1(2));
+            io.put_line("operator call succeeded after drop operator");
+        catch err operator_not_found_error;
+            ;
+        end try;
+        commit;
     }
 } -result {21
 }
@@ -1346,6 +1357,17 @@ test versionupdop {update operators with version names} -setup $SETUP \
         io.put(n);
         io.put_line('');
         commit;  
+
+        begin tx;
+        drop operator append1;
+
+        try
+            io.put(append1(n));
+            io.put_line("operator call succeeded after drop operator");
+        catch err operator_not_found_error;
+            ;
+        end try;
+        commit;
     }
 } -result {31
 }
