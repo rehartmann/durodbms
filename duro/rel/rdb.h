@@ -571,7 +571,11 @@ RDB_call_update_op(RDB_operator *, int argc, RDB_object *[],
                 RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_drop_op(const char *name, RDB_exec_context *, RDB_transaction *);
+RDB_drop_op(const char *, RDB_exec_context *, RDB_transaction *);
+
+int
+RDB_drop_op_version(const char *, const char *,
+        RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_put_global_ro_op(const char *, int, RDB_type **, RDB_type *,

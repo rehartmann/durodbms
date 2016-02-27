@@ -1321,20 +1321,36 @@ test limits {arithmetic overflow} -body {
 test versionroop {read-only operators with version names} -setup $SETUP \
         -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt -e dbenv -d D << {
-        operator append1(n integer) returns integer version vi;
-            return n * 10 + 1;
+        operator append1(n integer) returns string version i;
+            return cast_as_string(n) || '1';
+        end operator;
+
+        operator append1(s string) returns string version s;
+            return s || '1';
         end operator;
 
         begin tx;        
-        io.put(append1(2));
-        io.put_line('');
+        io.put_line(append1(2));
+        io.put_line(append1('x'));
         commit;
-        
+
+        begin tx;
+        drop operator append1 version i;
+        try
+            io.put_line(append1(2));
+            io.put_line('invocation of append1 version i succeeded');
+        catch e type_mismatch_error;
+            ;
+        end try;
+
+        io.put_line(append1('x'));
+        commit;
+
         begin tx;
         drop operator append1;
         
         try
-            io.put(append1(2));
+            io.put(append1('y'));
             io.put_line("operator call succeeded after drop operator");
         catch err operator_not_found_error;
             ;
@@ -1342,34 +1358,54 @@ test versionroop {read-only operators with version names} -setup $SETUP \
         commit;
     }
 } -result {21
+x1
+x1
 }
 
 test versionupdop {update operators with version names} -setup $SETUP \
         -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt -e dbenv -d D << {
-        operator append1(n integer) updates { n } version va;
-            n := n * 10 + 1;
+        operator append1(s1 string, s2 string) updates { s1 } version s;
+            s1 := s1 || s2;
+        end operator;
+
+        operator append1(s string, n int) updates { s } version i;
+            s := s || cast_as_string(n);
         end operator;
 
         begin tx;
-        var n init 3;
-        append1(n);
-        io.put(n);
-        io.put_line('');
+        var s init 'x';
+        append1(s, 'y');
+        append1(s, 1);
+        io.put_line(s);
         commit;  
+
+        s := '';
+        begin tx;
+        drop operator append1 version s;
+        try
+            append1(s, 'x');
+        catch e type_mismatch_error;
+            ;
+        end try;
+        append1(s, 1);
+        io.put_line(s);
+
+        commit;
 
         begin tx;
         drop operator append1;
 
         try
-            io.put(append1(n));
+            append1(s, 5);
             io.put_line("operator call succeeded after drop operator");
         catch err operator_not_found_error;
             ;
         end try;
         commit;
     }
-} -result {31
+} -result {xy1
+1
 }
 
 cleanupTests

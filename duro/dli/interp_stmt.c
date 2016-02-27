@@ -1301,6 +1301,7 @@ exec_opdrop(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *
     RDB_object nameobj;
     const char *opname;
     RDB_transaction tmp_tx;
+    const char *version = NULL;
 
     /*
      * DROP OPERATOR is not allowed in user-defined operators,
@@ -1321,6 +1322,10 @@ exec_opdrop(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *
         opname = RDB_obj_string(&nameobj);
     } else {
         opname = RDB_expr_var_name(nodep->exp);
+    }
+
+    if (nodep->nextp->val.token == TOK_VERSION) {
+        version = RDB_expr_var_name(nodep->nextp->nextp->exp);
     }
 
     /*
@@ -1344,7 +1349,7 @@ exec_opdrop(const RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *
         }
     }
 
-    if (RDB_drop_op(opname, ecp,
+    if (RDB_drop_op_version(opname, version, ecp,
             interp->txnp == NULL ? &tmp_tx : &interp->txnp->tx) != RDB_OK) {
         if (interp->txnp == NULL)
             RDB_rollback(ecp, &tmp_tx);

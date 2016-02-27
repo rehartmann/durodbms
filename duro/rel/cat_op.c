@@ -1,7 +1,7 @@
 /*
  * Catalog functions for user-defined operators.
  *
- * Copyright (C) 2012-2015 Rene Hartmann.
+ * Copyright (C) 2012-2016 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -47,7 +47,7 @@ tuple_to_operator(const char *name, const RDB_object *tplp,
                 goto error;
         }
     }
-    op = RDB_new_op_data(name, argc, argtv, NULL, ecp);
+    op = RDB_new_op_data(name, NULL, argc, argtv, NULL, ecp);
     if (op == NULL)
         goto error;
 
@@ -371,4 +371,67 @@ RDB_cat_load_upd_op(const char *name, RDB_exec_context *ecp,
     if (cnt == RDB_ERROR)
         return RDB_ERROR;
     return opcount + cnt;
+}
+
+RDB_int
+RDB_cat_del_ops(const char *opname,
+        RDB_object *ops_tbp, RDB_object *versions_tbp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_int cnt1, cnt2;
+    RDB_expression *wherep;
+
+    /* Delete all versions from the database */
+    wherep = RDB_attr_eq_strval("opname", opname, ecp);
+    if (wherep == NULL) {
+        RDB_raise_no_memory(ecp);
+        return (RDB_int) RDB_ERROR;
+    }
+    cnt1 = RDB_delete(ops_tbp, wherep, ecp, txp);
+    if (cnt1 == (RDB_int) RDB_ERROR) {
+        RDB_del_expr(wherep, ecp);
+        return (RDB_int) RDB_ERROR;
+    }
+    cnt2 = RDB_delete(versions_tbp, wherep, ecp, txp);
+    RDB_del_expr(wherep, ecp);
+    if (cnt2 == (RDB_int) RDB_ERROR) {
+        return (RDB_int) RDB_ERROR;
+    }
+    return cnt1 + cnt2;
+}
+
+RDB_int
+RDB_cat_del_op_version(const char *opname, const char *version,
+        RDB_object *ops_tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_int cnt;
+    RDB_expression *nexp, *vexp, *wherep;
+
+    /* Delete all versions from the database */
+    nexp = RDB_attr_eq_strval("opname", opname, ecp);
+    if (nexp == NULL) {
+        RDB_raise_no_memory(ecp);
+        return (RDB_int) RDB_ERROR;
+    }
+    vexp = RDB_attr_eq_strval("version", version, ecp);
+    if (vexp == NULL) {
+        RDB_del_expr(nexp, ecp);
+        RDB_raise_no_memory(ecp);
+        return (RDB_int) RDB_ERROR;
+    }
+    wherep = RDB_ro_op("and", ecp);
+    if (wherep == NULL) {
+        RDB_del_expr(nexp, ecp);
+        RDB_del_expr(vexp, ecp);
+        return (RDB_int) RDB_ERROR;
+    }
+    RDB_add_arg(wherep, nexp);
+    RDB_add_arg(wherep, vexp);
+
+    cnt = RDB_delete(ops_tbp, wherep, ecp, txp);
+    RDB_del_expr(wherep, ecp);
+    if (cnt == (RDB_int) RDB_ERROR) {
+        return (RDB_int) RDB_ERROR;
+    }
+    return cnt;
 }

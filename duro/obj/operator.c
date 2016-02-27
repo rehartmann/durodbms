@@ -114,8 +114,8 @@ RDB_set_op_cleanup_fn(RDB_operator *op,  RDB_op_cleanup_func *fp)
 /*@}*/
 
 RDB_operator *
-RDB_new_op_data(const char *name, int paramc, RDB_type *paramtv[], RDB_type *rtyp,
-        RDB_exec_context *ecp)
+RDB_new_op_data(const char *name, const char *version, int paramc,
+        RDB_type *paramtv[], RDB_type *rtyp, RDB_exec_context *ecp)
 {
     int i;
     RDB_operator *op = RDB_alloc(sizeof (RDB_operator), ecp);
@@ -129,6 +129,16 @@ RDB_new_op_data(const char *name, int paramc, RDB_type *paramtv[], RDB_type *rty
     if (op->name == NULL) {
         RDB_raise_no_memory(ecp);
         goto error;
+    }
+
+    if (version != NULL) {
+        op->version = RDB_dup_str(version);
+        if (op->version == NULL) {
+            RDB_raise_no_memory(ecp);
+            goto error;
+        }
+    } else {
+        op->version = NULL;
     }
 
     op->paramc = paramc;
@@ -197,6 +207,7 @@ RDB_free_op_data(RDB_operator *op, RDB_exec_context *ecp)
     }
     RDB_free(op->paramv);
     RDB_free(op->name);
+    RDB_free(op->version);
     if (op->cleanup_fp != NULL)
         (*op->cleanup_fp) (op);
     ret = RDB_destroy_obj(&op->source, ecp);

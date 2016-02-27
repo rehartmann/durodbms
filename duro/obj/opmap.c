@@ -258,7 +258,7 @@ RDB_new_upd_op(const char *name, int paramc, RDB_parameter paramv[],
         RDB_upd_op_func *opfp, RDB_exec_context *ecp)
 {
     int i;
-    RDB_operator *op = RDB_new_op_data(name, 0, NULL, NULL, ecp);
+    RDB_operator *op = RDB_new_op_data(name, NULL, 0, NULL, NULL, ecp);
     if (op == NULL)
         return NULL;
 
@@ -304,7 +304,7 @@ RDB_put_ro_op(RDB_op_map *opmap, const char *name, int argc, RDB_type **argtv,
         RDB_type *rtyp, RDB_ro_op_func *fp, RDB_exec_context *ecp)
 {
     int ret;
-    RDB_operator *datap = RDB_new_op_data(name, argc, argtv, rtyp, ecp);
+    RDB_operator *datap = RDB_new_op_data(name, NULL, argc, argtv, rtyp, ecp);
     if (datap == NULL)
         return RDB_ERROR;
     datap->opfn.ro_fp = fp;

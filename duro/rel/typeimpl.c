@@ -553,7 +553,7 @@ add_ro_op(const char *name, int paramc, RDB_type *paramtv[],
         RDB_type *rtyp, RDB_ro_op_func *opfp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    RDB_operator *op = RDB_new_op_data(name, paramc, paramtv, rtyp, ecp);
+    RDB_operator *op = RDB_new_op_data(name, NULL, paramc, paramtv, rtyp, ecp);
     if (op == NULL)
         return RDB_ERROR;
 

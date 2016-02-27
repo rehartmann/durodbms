@@ -67,6 +67,7 @@ struct RDB_expression {
 struct RDB_op_data {
     char *name;
     RDB_type *rtyp;
+    char *version;
     RDB_object source;
     lt_dlhandle modhdl;
     int paramc;

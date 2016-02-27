@@ -104,8 +104,8 @@ void
 RDB_set_op_cleanup_fn(RDB_operator *,  RDB_op_cleanup_func*);
 
 RDB_operator *
-RDB_new_op_data(const char *, int, RDB_type *[], RDB_type *,
-        RDB_exec_context *);
+RDB_new_op_data(const char *, const char *, int, RDB_type *[],
+        RDB_type *, RDB_exec_context *);
 
 int
 RDB_free_op_data(RDB_operator *, RDB_exec_context *);

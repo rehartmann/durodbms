@@ -792,38 +792,6 @@ RDB_call_update_op(RDB_operator *op, int argc, RDB_object *argv[],
     return (*op->opfn.upd_fp)(argc, argv, op, ecp, txp);
 }
 
-static RDB_object *
-tb_where_opname(RDB_object *tbp, const char *opname, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-    RDB_expression *argp;
-    RDB_expression *exp;
-    RDB_object *vtbp;
-
-    exp = RDB_ro_op("where", ecp);
-    if (exp == NULL)
-        return NULL;
-    argp = RDB_table_ref(tbp, ecp);
-    if (argp == NULL) {
-        RDB_del_expr(exp, ecp);
-        return NULL;
-    }
-    RDB_add_arg(exp, argp);
-    argp = RDB_attr_eq_strval("opname", opname, ecp);
-    if (argp == NULL) {
-        RDB_del_expr(exp, ecp);
-        return NULL;
-    }
-    RDB_add_arg(exp, argp);
-
-    vtbp = RDB_expr_to_vtable(exp, ecp, txp);
-    if (vtbp == NULL) {
-        RDB_del_expr(exp, ecp);
-        return NULL;
-    }
-    return vtbp;
-}
-
 /**
  * RDB_drop_op deletes the operator with the name <var>name</var>.
  * This affects all overloaded versions.
@@ -843,105 +811,81 @@ The call may also fail for a @ref system-errors "system error",
 in which case the transaction may be implicitly rolled back.
  */
 int
-RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
+RDB_drop_op(const char *opname, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_object *vtbp;
-    RDB_expression *exp;
-    int ret;
-    RDB_bool isempty;
-    RDB_int cnt1, cnt2;
+    RDB_int cnt;
 
     if (!RDB_tx_is_running(txp)) {
         RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
-    /*
-     * Check if it's a read-only operator
-     */
-    vtbp = tb_where_opname(txp->dbp->dbrootp->ro_ops_tbp, name, ecp, txp);
-    if (vtbp == NULL)
+    /* Delete read-only operator(s) */
+    cnt = RDB_cat_del_ops(opname,
+            txp->dbp->dbrootp->ro_ops_tbp,
+            txp->dbp->dbrootp->ro_op_versions_tbp, ecp, txp);
+    if (cnt == (RDB_int) RDB_ERROR)
         return RDB_ERROR;
+    if (cnt > 0) {
+        /* Delete all versions from operator map */
+        if (RDB_del_ops(&txp->dbp->dbrootp->ro_opmap, opname, ecp) != RDB_OK)
+            return RDB_ERROR;
+    } else {
+        /* None found, try to delete update operator(s) */
 
-    ret = RDB_table_is_empty(vtbp, ecp, txp, &isempty);
-    if (ret != RDB_OK) {
-        RDB_drop_table(vtbp, ecp, txp);
-        return ret;
-    }
-    ret = RDB_drop_table(vtbp, ecp, txp);
-    if (ret != RDB_OK) {
-        return ret;
-    }
-    if (isempty) {
-        vtbp = tb_where_opname(txp->dbp->dbrootp->ro_op_versions_tbp, name, ecp, txp);
-        if (vtbp == NULL)
+        if (RDB_del_ops(&txp->dbp->dbrootp->upd_opmap, opname, ecp) != RDB_OK)
             return RDB_ERROR;
 
-        ret = RDB_table_is_empty(vtbp, ecp, txp, &isempty);
-        if (ret != RDB_OK) {
-            RDB_drop_table(vtbp, ecp, txp);
-            return ret;
-        }
-        ret = RDB_drop_table(vtbp, ecp, txp);
-        if (ret != RDB_OK) {
-            return ret;
+        cnt = RDB_cat_del_ops(opname, txp->dbp->dbrootp->upd_ops_tbp,
+                txp->dbp->dbrootp->upd_op_versions_tbp, ecp, txp);
+        if (cnt == 0) {
+            RDB_raise_operator_not_found(opname, ecp);
+            return RDB_ERROR;
         }
     }
+    return RDB_OK;
+}
 
-    if (isempty) {
-        /* It's an update operator */
+int
+RDB_drop_op_version(const char *opname, const char *version,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_int cnt;
 
-        /* Delete all versions of update operator from operator map */
-        if (RDB_del_ops(&txp->dbp->dbrootp->upd_opmap, name, ecp) != RDB_OK)
-            return RDB_ERROR;
+    if (version == NULL) {
+        return RDB_drop_op(opname, ecp, txp);
+    }
 
-        /* Delete all versions of update operator from the database */
-        exp = RDB_attr_eq_strval("opname", name, ecp);
-        if (exp == NULL) {
-            RDB_raise_no_memory(ecp);
-            return RDB_ERROR;
-        }
-        cnt1 = RDB_delete(txp->dbp->dbrootp->upd_ops_tbp, exp, ecp, txp);
-        if (cnt1 == (RDB_int) RDB_ERROR) {
-            RDB_del_expr(exp, ecp);
-            return RDB_ERROR;
-        }
-        cnt2 = RDB_delete(txp->dbp->dbrootp->upd_op_versions_tbp, exp, ecp, txp);
-        RDB_del_expr(exp, ecp);
-        if (cnt2 == (RDB_int) RDB_ERROR) {
-            return RDB_ERROR;
-        }
+    if (!RDB_tx_is_running(txp)) {
+        RDB_raise_no_running_tx(ecp);
+        return RDB_ERROR;
+    }
 
-        if (cnt1 + cnt2 == 0) {
-            RDB_raise_operator_not_found(name, ecp);
+    /* Delete read-only operator version */
+    cnt = RDB_cat_del_op_version(opname, version,
+            txp->dbp->dbrootp->ro_op_versions_tbp, ecp, txp);
+    if (cnt == (RDB_int) RDB_ERROR)
+        return RDB_ERROR;
+    if (cnt > 0) {
+        /* Delete all versions from operator map,
+         * other versions are read again if needed
+         */
+        if (RDB_del_ops(&txp->dbp->dbrootp->ro_opmap, opname,
+                ecp) != RDB_OK) {
             return RDB_ERROR;
         }
     } else {
-        /* It's a read-only operator */
+        /* None found, try to delete update operator(s) */
 
-        /* Delete all versions of readonly operator from operator map */
-        if (RDB_del_ops(&txp->dbp->dbrootp->ro_opmap, name, ecp) != RDB_OK)
-            return RDB_ERROR;
-
-        /* Delete all versions of update operator from the database */
-        exp = RDB_attr_eq_strval("opname", name, ecp);
-        if (exp == NULL) {
-            return RDB_ERROR;
-        }
-        cnt1 = RDB_delete(txp->dbp->dbrootp->ro_ops_tbp, exp, ecp, txp);
-        if (cnt1 == (RDB_int) RDB_ERROR) {
-            RDB_del_expr(exp, ecp);
-            return RDB_ERROR;
-        }
-        cnt2 = RDB_delete(txp->dbp->dbrootp->ro_op_versions_tbp, exp, ecp, txp);
-        RDB_del_expr(exp, ecp);
-        if (cnt2 == (RDB_int) RDB_ERROR) {
-            RDB_handle_errcode(ret, ecp, txp);
+        if (RDB_del_ops(&txp->dbp->dbrootp->upd_opmap, opname,
+                ecp) != RDB_OK) {
             return RDB_ERROR;
         }
 
-        if (cnt1 + cnt2 == 0) {
-            RDB_raise_operator_not_found(name, ecp);
+        cnt = RDB_cat_del_op_version(opname, version,
+                txp->dbp->dbrootp->upd_op_versions_tbp, ecp, txp);
+        if (cnt == 0) {
+            RDB_raise_operator_not_found(opname, ecp);
             return RDB_ERROR;
         }
     }
@@ -1108,7 +1052,7 @@ provide_eq_neq(const char *name, RDB_type *argtyp, RDB_dbroot *dbrootp,
     argtv[0] = argtv[1] = argtyp;
 
     if (strcmp(name, "=") == 0) {
-        op = RDB_new_op_data(name, 2, argtv, &RDB_BOOLEAN, ecp);
+        op = RDB_new_op_data(name, NULL, 2, argtv, &RDB_BOOLEAN, ecp);
         if (op == NULL) {
             return NULL;
         }
@@ -1117,7 +1061,7 @@ provide_eq_neq(const char *name, RDB_type *argtyp, RDB_dbroot *dbrootp,
             return NULL;
         return op;
     }
-    op = RDB_new_op_data(name, 2, argtv, &RDB_BOOLEAN, ecp);
+    op = RDB_new_op_data(name, NULL, 2, argtv, &RDB_BOOLEAN, ecp);
     if (op == NULL) {
         return NULL;
     }
@@ -1131,7 +1075,7 @@ static RDB_operator *
 provide_is_op(const char *name, RDB_dbroot *dbrootp,
         RDB_exec_context *ecp)
 {
-    RDB_operator *op = RDB_new_op_data(name, -1, NULL, &RDB_BOOLEAN, ecp);
+    RDB_operator *op = RDB_new_op_data(name, NULL, -1, NULL, &RDB_BOOLEAN, ecp);
     if (op == NULL) {
         return NULL;
     }
@@ -1145,7 +1089,7 @@ static RDB_operator *
 provide_treat_as_op(const char *name, RDB_dbroot *dbrootp, RDB_type *ttyp,
         RDB_exec_context *ecp)
 {
-    RDB_operator *op = RDB_new_op_data(name, -1, NULL, ttyp, ecp);
+    RDB_operator *op = RDB_new_op_data(name, NULL, -1, NULL, ttyp, ecp);
     if (op == NULL) {
         return NULL;
     }
@@ -1479,7 +1423,7 @@ RDB_add_selector(RDB_type *typ, RDB_exec_context *ecp)
      * Create RDB_operator and put it into read-only operator map
      */
 
-    datap = RDB_new_op_data(typ->name, argc, argtv, typ, ecp);
+    datap = RDB_new_op_data(typ->name, NULL, argc, argtv, typ, ecp);
     if (argtv != NULL)
         RDB_free(argtv);
     if (datap == NULL)
