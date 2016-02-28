@@ -63,9 +63,9 @@ OPERATOR put(data float) UPDATES {};
 
 OPERATOR put(data boolean) UPDATES {};
 
-OPERATOR put(data <em>TUPLE</em>) UPDATES {};
+OPERATOR put(data TUPLE { * }) UPDATES {};
 
-OPERATOR put(data <em>RELATION</em>) UPDATES {};
+OPERATOR put(data RELATION { * }) UPDATES {};
 
 OPERATOR put(data <em>ARRAY</em>) UPDATES {};
 
@@ -102,9 +102,9 @@ OPERATOR put(ios io.iostream_id, data float) UPDATES {};
 
 OPERATOR put(ios io.iostream_id, data boolean) UPDATES {};
 
-OPERATOR put(ios io.iostream_id, data <em>TUPLE</em>) UPDATES {};
+OPERATOR put(ios io.iostream_id, data TUPLE { * }) UPDATES {};
 
-OPERATOR put(ios io.iostream_id, data <em>RELATION</em>) UPDATES {};
+OPERATOR put(ios io.iostream_id, data RELATION { * }) UPDATES {};
 
 OPERATOR put(ios io.iostream_id, data <em>ARRAY</em>) UPDATES {};
 
@@ -120,13 +120,13 @@ Reads a line from I/O stream @a ios and stores it in @a line, without the traili
 
 OPERATOR read(ios io.iostream_id, data binary, count integer) UPDATES {data};
 
-Reads up to count bytes from @ ios and store it in @a data.
+Reads up to count bytes from @ ios and stores it in @a data.
 
 <hr>
 
 OPERATOR open(ios io.iostream_id, path string, mode string) UPDATES {ios};
 
-Opens file @a path in mode @a mode and store the resulting I/O stream
+Opens file @a path in mode @a mode and stores the resulting I/O stream
 in @a ios.
 
 <hr>
@@ -134,6 +134,13 @@ in @a ios.
 OPERATOR close(ios io.iostream_id) UPDATES {};
 
 Closes the I/O stream @a ios.
+
+<hr>
+
+OPERATOR popen(ios io.iostream_id, command string, mode string) UPDATES {ios};
+
+Spawns a process by running the command @a command and stores the resulting I/O stream
+in @a ios.
 
 <hr>
 
@@ -697,6 +704,25 @@ op_open(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
+op_popen(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int fno;
+
+    FILE *fp = popen(RDB_obj_string(argv[1]), RDB_obj_string(argv[2]));
+    if (fp == NULL) {
+        RDB_handle_errcode(errno, ecp, txp);
+        return RDB_ERROR;
+    }
+
+    fno = fileno(fp);
+
+    iostreams[fno] = fp;
+
+    return init_iostream(argv[0], fno, ecp);
+}
+
+static int
 op_tmpfile(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, struct RDB_transaction *txp,
         RDB_object *resultp)
@@ -1016,6 +1042,10 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
         return RDB_ERROR;
 
     if (RDB_put_upd_op(opmapp, "io.open", 3, open_paramv, &op_open, ecp)
+            != RDB_OK)
+        return RDB_ERROR;
+
+    if (RDB_put_upd_op(opmapp, "io.popen", 3, open_paramv, &op_popen, ecp)
             != RDB_OK)
         return RDB_ERROR;
 

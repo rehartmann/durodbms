@@ -19,7 +19,7 @@ DuroDBMS 1.2
 
 - Added read-only operators % (modulus), abs(), pow(), exp(), ln(), and log().
 
-- Added operator os.chdir().
+- Added operators os.chdir() and io.popen().
 
 - Moved exit() operators to package 'os'. 
 
