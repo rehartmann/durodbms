@@ -703,6 +703,10 @@ op_open(int argc, RDB_object *argv[], RDB_operator *op,
     return init_iostream(argv[0], fno, ecp);
 }
 
+#ifdef _WIN32
+#define popen _popen
+#endif
+
 static int
 op_popen(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
