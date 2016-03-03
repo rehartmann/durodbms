@@ -103,6 +103,7 @@ eliminate_not(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
         hexp = RDB_ro_op("not", ecp);
         if (hexp == NULL)
             return RDB_ERROR;
+        hexp->nextp = NULL;
         RDB_add_arg(hexp, exp->def.op.args.firstp->def.op.args.firstp->nextp);
         ret = alter_op(exp, "or", ecp);
         if (ret != RDB_OK)
