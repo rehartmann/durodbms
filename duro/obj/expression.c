@@ -811,14 +811,17 @@ RDB_destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
 {
     switch (exp->kind) {
     case RDB_EX_OBJ:
+    {
         /* The expression takes responsibility for non-scalar types */
-        if (exp->def.obj.typ != NULL
-                && !RDB_type_is_scalar(exp->def.obj.typ)
-                && exp->def.obj.kind != RDB_OB_TABLE)
-            RDB_del_nonscalar_type(exp->def.obj.typ, ecp);
+        RDB_type *typ = exp->def.obj.typ;
+        RDB_bool deltype = typ != NULL && !RDB_type_is_scalar(typ)
+                && exp->def.obj.kind != RDB_OB_TABLE;
         if (RDB_destroy_obj(&exp->def.obj, ecp) != RDB_OK)
             return RDB_ERROR;
+        if (deltype)
+            RDB_del_nonscalar_type(exp->def.obj.typ, ecp);
         break;
+    }
     case RDB_EX_TBP:
         break;
     case RDB_EX_RO_OP:

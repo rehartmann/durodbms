@@ -604,20 +604,16 @@ error:
 
 /*
  * Check if *tpl1p and *tpl2p match.
- * Only *tpl1p must carry type information.
  */
 int
 RDB_tuple_matches(const RDB_object *tpl1p, const RDB_object *tpl2p,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp)
 {
-    int ret;
     RDB_hashtable_iter hiter;
     tuple_entry *entryp;
     RDB_bool b;
 
-    /*
-     * If one of the tuples is the empty tuple, the tuple matches
-     */
+    /* If one of the tuples is the empty tuple, the tuples match */
     if (tpl1p->kind == RDB_OB_INITIAL || tpl2p->kind == RDB_OB_INITIAL) {
         *resp = RDB_TRUE;
         return RDB_OK;
@@ -627,31 +623,9 @@ RDB_tuple_matches(const RDB_object *tpl1p, const RDB_object *tpl2p,
     while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
         RDB_object *attrp = RDB_tuple_get(tpl2p, entryp->key);
         if (attrp != NULL) {
-            if (RDB_obj_type(&entryp->obj) == NULL) {
-                if (RDB_obj_type(tpl1p) == NULL) {
-                    RDB_raise_invalid_argument("cannot obtain tuple attribute type", ecp);
-                    return RDB_ERROR;
-                }
-                if (set_tuple_attr_type(&entryp->obj, RDB_obj_type(tpl1p),
-                        entryp->key, ecp) != RDB_OK) {
-                    return RDB_ERROR;
-                }
-            }
-            if (RDB_obj_type(attrp) == NULL) {
-                if (RDB_obj_type(tpl1p) == NULL) {
-                    RDB_raise_invalid_argument("cannot obtain tuple attribute type", ecp);
-                    return RDB_ERROR;
-                }
-                if (set_tuple_attr_type(attrp, RDB_obj_type(tpl1p),
-                        entryp->key, ecp) != RDB_OK) {
-                    return RDB_ERROR;
-                }
-            }
-
-            ret = RDB_obj_equals(&entryp->obj, attrp, ecp, txp, &b);
-            if (ret != RDB_OK) {
+            if (RDB_obj_equals(&entryp->obj, attrp, ecp, txp, &b) != RDB_OK) {
                 RDB_destroy_hashtable_iter(&it);
-                return ret;
+                return RDB_ERROR;
             }
             if (!b) {
                 RDB_destroy_hashtable_iter(&it);

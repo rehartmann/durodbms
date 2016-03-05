@@ -132,15 +132,19 @@ stored_matching_uindex(RDB_object *tbp, const RDB_object *tplp, RDB_tbindex *ind
     int i;
     int ret;
     RDB_object tpl;
-    RDB_object **objpv;
-
-    objpv = RDB_alloc(sizeof(RDB_object *) * indexp->attrc, ecp);
+    RDB_object **objpv = RDB_alloc(sizeof(RDB_object *) * indexp->attrc, ecp);
     if (objpv == NULL) {
         return RDB_ERROR;
     }
+
     for (i = 0; i < indexp->attrc; i++) {
         objpv[i] = RDB_tuple_get(tplp, indexp->attrv[i].attrname);
-        objpv[i]->store_typ = objpv[i]->typ;
+
+        /* store_typ must be taken from the table type because if *objp is
+         * an array or tuple objp->typ can be NULL
+         */
+        objpv[i]->store_typ = RDB_type_attr_type(tbp->typ->def.basetyp,
+                indexp->attrv[i].attrname);
     }
     RDB_init_obj(&tpl);
     ret = RDB_get_by_uindex(tbp, objpv, indexp, tbp->typ->def.basetyp, ecp,

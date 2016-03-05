@@ -1493,6 +1493,7 @@ RDB_seek_index_qresult(RDB_qresult *qrp, struct RDB_tbindex *indexp,
 
     for (i = 0; i < indexp->attrc; i++) {
         RDB_object *attrobjp = RDB_tuple_get(tplp, indexp->attrv[i].attrname);
+        /* !! attrobjp->typ == NULL */
         attrobjp->store_typ = attrobjp->typ;
         ret = RDB_obj_to_field(&fv[i], attrobjp, ecp);
         if (ret != RDB_OK)

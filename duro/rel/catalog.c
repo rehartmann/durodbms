@@ -1217,6 +1217,73 @@ error:
     return NULL;
 }
 
+RDB_expression *
+op_versions_constraint(RDB_object *ops_tbp, RDB_object *op_versions_tbp,
+        RDB_exec_context *ecp)
+{
+    RDB_expression *exp, *arg1p, *arg2p;
+
+    /* Create expression
+     * is_empty(sys_ro_ops {opname, argtypes}
+     *          intersect sys_ro_op_versions {opname, argtypes})
+     */
+    exp = RDB_ro_op("project", ecp);
+    if (exp == NULL)
+        return NULL;
+
+    arg1p = RDB_table_ref(ops_tbp, ecp);
+    if (arg1p == NULL)
+        return NULL;
+    RDB_add_arg(exp, arg1p);
+
+    arg1p = RDB_string_to_expr("opname", ecp);
+    if (arg1p == NULL)
+        return NULL;
+    RDB_add_arg(exp, arg1p);
+
+    arg1p = RDB_string_to_expr("argtypes", ecp);
+    if (arg1p == NULL)
+        return NULL;
+    RDB_add_arg(exp, arg1p);
+
+    arg2p = RDB_ro_op("project", ecp);
+    if (arg2p == NULL)
+        return NULL;
+
+    arg1p = RDB_table_ref(op_versions_tbp, ecp);
+    if (arg1p == NULL) {
+        return NULL;
+    }
+    RDB_add_arg(arg2p, arg1p);
+
+    arg1p = RDB_string_to_expr("opname", ecp);
+    if (arg1p == NULL) {
+        return NULL;
+    }
+    RDB_add_arg(arg2p, arg1p);
+    arg1p = RDB_string_to_expr("argtypes", ecp);
+    if (arg1p == NULL) {
+        return NULL;
+    }
+    RDB_add_arg(arg2p, arg1p);
+
+    arg1p = exp;
+    exp = RDB_ro_op("intersect", ecp);
+    if (exp == NULL) {
+        return NULL;
+    }
+    RDB_add_arg(exp, arg1p);
+    RDB_add_arg(exp, arg2p);
+
+    arg1p = exp;
+    exp = RDB_ro_op("is_empty", ecp);
+    if (exp == NULL)
+        return NULL;
+    RDB_add_arg(exp, arg1p);
+
+    return exp;
+}
+
 /*
  * Create or open system tables.
  * If the tables are created, associate them with the database pointed to by
@@ -1432,6 +1499,22 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         if (exp == NULL)
             return RDB_ERROR;
         if (RDB_create_constraint("SYS_INDEXES_RTABLE", exp, ecp, txp) != RDB_OK)
+            return RDB_ERROR;
+
+        exp = op_versions_constraint(dbrootp->ro_ops_tbp,
+                dbrootp->ro_op_versions_tbp, ecp);
+        if (exp == NULL)
+            return RDB_ERROR;
+
+        if (RDB_create_constraint("SYS_RO_OP_VERSIONS", exp, ecp, txp) != RDB_OK)
+            return RDB_ERROR;
+
+        exp = op_versions_constraint(dbrootp->upd_ops_tbp,
+                dbrootp->upd_op_versions_tbp, ecp);
+        if (exp == NULL)
+            return RDB_ERROR;
+
+        if (RDB_create_constraint("SYS_UPD_OP_VERSIONS", exp, ecp, txp) != RDB_OK)
             return RDB_ERROR;
     }
 

@@ -48,13 +48,14 @@ Duro_destroy_varmap(Duro_varmap *varmap)
     while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
         if (entryp->varp != NULL && DURO_VAR_FREE & entryp->flags) {
             RDB_type *typ = RDB_obj_type(entryp->varp);
-
-            /* Array and tuple types must be destroyed */
-            if (!RDB_type_is_scalar(typ) && !RDB_type_is_relation(typ)) {
-                RDB_del_nonscalar_type(typ, &ec);
-            }
+            RDB_bool mustdel = !RDB_type_is_scalar(typ) && !RDB_type_is_relation(typ);
 
             RDB_free_obj(entryp->varp, &ec);
+
+            /* Array and tuple types must be destroyed */
+            if (mustdel) {
+                RDB_del_nonscalar_type(typ, &ec);
+            }
         }
         free(entryp->name);
         RDB_free(entryp);
