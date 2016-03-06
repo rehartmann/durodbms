@@ -46,6 +46,22 @@ test insert_delete {creating table, insert, delete} \
         rollback;
 
         begin tx;
+        try
+            insert r tup { i array(3), d 1.0, c 'X' };
+            io.put_line('array instead of integer attribute succeeded');
+        catch e type_mismatch_error;
+            ;
+        end try;
+
+        try
+            insert r tup { i tup { i 3 }, d 1.0, c 'X' };
+            io.put_line('tuple instead of integer attribute succeeded');
+        catch e type_mismatch_error;
+            ;
+        end try;
+        commit;
+
+        begin tx;
         insert r tup {i 3, d 1.0, c 'Z'};
 
         try
@@ -1081,9 +1097,26 @@ test summarize {SUMMARIZE} -setup $SETUP -cleanup $CLEANUP -body {
 		end for;
 
         commit;
+        
+        -- Test table with array attribute
+        begin tx;
+        
+        var at real rel {a array int, b int} key {a, b};
+        insert at tup {a array(1), b 1};
+
+        var tp tup {a array int, c int};
+        tp := tuple from summarize at per at {a} : {c := count(b)};
+
+        io.put(length(tp.a));
+        io.put(' ');
+        io.put(tp.c);
+        io.put_line('');
+        
+        commit;
     }
 } -result {1 FALSE FALSE TRUE TRUE
 3 TRUE TRUE TRUE TRUE
+1 1
 }
 
 test relrel {table with relation attribute} -setup $SETUP -body {

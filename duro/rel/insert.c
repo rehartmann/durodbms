@@ -128,20 +128,12 @@ RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
         }
 
         /* Typecheck */
-        if (valp->typ == NULL) {
-            if (valp->kind != RDB_OB_TUPLE && valp->kind != RDB_OB_ARRAY) {
-                RDB_raise_invalid_argument("missing type information", ecp);
-                ret = RDB_ERROR;
-                goto cleanup;
-            }
-        } else {
-            if (!RDB_is_subtype(valp->typ, attrtyp)) {
-                RDB_raise_type_mismatch(
-                        "tuple attribute type does not match table attribute type",
-                        ecp);
-                ret = RDB_ERROR;
-                goto cleanup;
-            }
+        if (!RDB_obj_matches_type(valp, attrtyp)) {
+            RDB_raise_type_mismatch(
+                    "tuple attribute type does not match table attribute type",
+                    ecp);
+            ret = RDB_ERROR;
+            goto cleanup;
         }
 
         /* Set type information for storage */

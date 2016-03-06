@@ -445,8 +445,7 @@ RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
 
         while ((elemp = RDB_array_get((RDB_object *) objp, (RDB_int) i++,
                 &ec)) != NULL) {
-            elemp->typ = impltyp->def.basetyp;
-            bp = obj_to_len_irep(bp, elemp, elemp->typ, &ec);
+            bp = obj_to_len_irep(bp, elemp, impltyp->def.basetyp, &ec);
         }
         if (RDB_obj_type(RDB_get_err(&ec)) != &RDB_NOT_FOUND_ERROR) {
             return;

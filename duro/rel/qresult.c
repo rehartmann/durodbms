@@ -138,7 +138,9 @@ do_summarize(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg,
             for (i = 0; i < keyfc; i++) {
                 RDB_object *attrobjp = RDB_tuple_get(&tpl,
                                 qrp->matp->val.tbp->keyv[0].strv[i]);
-                attrobjp->store_typ = attrobjp->typ;
+                attrobjp->store_typ = RDB_type_attr_type(
+                        qrp->matp->typ->def.basetyp,
+                        qrp->matp->val.tbp->keyv[0].strv[i]);
                 ret = RDB_obj_to_field(&keyfv[i], attrobjp, ecp);
                 if (ret != RDB_OK)
                     goto cleanup;
