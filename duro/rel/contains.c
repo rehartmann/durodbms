@@ -63,12 +63,19 @@ RDB_table_contains(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ec
      */
     for (i = 0; i < tbp->typ->def.basetyp->def.tuple.attrc; i++) {
         char *attrname = tbp->typ->def.basetyp->def.tuple.attrv[i].name;
+        RDB_object *attrvalp = RDB_tuple_get(tplp, attrname);
 
-        if (strchr(attrname, '$') == NULL
-                && RDB_tuple_get(tplp, attrname) == NULL) {
-            RDB_raise_invalid_argument("incomplete tuple", ecp);
+        if (strchr(attrname, '$') == NULL && attrvalp == NULL) {
+            RDB_raise_type_mismatch("tuple does not match table type", ecp);
             return RDB_ERROR;
         }
+
+        if (!RDB_obj_matches_type(attrvalp,
+                RDB_type_attr_type(RDB_base_type(RDB_obj_type(tbp)), attrname))) {
+            RDB_raise_type_mismatch("tuple does not match table type", ecp);
+            return RDB_ERROR;
+        }
+
     }
 
     return RDB_table_matching_tuple(tbp, tplp, ecp, txp, resultp);

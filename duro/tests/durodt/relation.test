@@ -247,6 +247,48 @@ key violation caught
 Uno
 }
 
+test in {IN operator} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+        var r real relation {i int, d float, c string}
+               init rel { tup { i 1, d 0.61, c 'xx' } } key { i };
+        
+        io.put(tup { i 1, d 0.61, c 'xx' } IN r);
+        io.put_line('');
+        
+        commit;
+
+        begin transaction;
+
+        io.put(tup { i 1, d 0.0, c 'xx' } IN r);
+        io.put_line('');
+        
+        io.put(tup { i 1, d 0.0, c 'xx' } IN r);
+        io.put_line('');
+
+        try
+            io.put(tup { j 1, d 0.61, c 'xx' } IN r);
+            io.put_line('IN with different attribute name succeeded');
+        catch e type_mismatch_error;
+            ;
+        end try;
+
+        try
+            io.put(tup { i array(1), d 0.61, c 'xx' } IN r);
+            io.put_line('IN with array succeeded');
+        catch e type_mismatch_error;
+            ;
+        end try;
+
+    }
+} -result {TRUE
+FALSE
+FALSE
+}
+
 test for_in_drop {DROP in FOR .. IN} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
