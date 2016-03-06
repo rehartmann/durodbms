@@ -532,7 +532,9 @@ do_group(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
             for (i = 0; i < keyfc; i++) {
                 RDB_object *attrobjp = RDB_tuple_get(&tpl,
                         qrp->matp->val.tbp->keyv[0].strv[i]);
-                attrobjp->store_typ = attrobjp->typ;                
+                attrobjp->store_typ = RDB_type_attr_type(
+                        qrp->matp->typ->def.basetyp,
+                        qrp->matp->val.tbp->keyv[0].strv[i]);
                 ret = RDB_obj_to_field(&keyfv[i], attrobjp, ecp);
                 if (ret != RDB_OK)
                     goto cleanup;
@@ -1495,8 +1497,8 @@ RDB_seek_index_qresult(RDB_qresult *qrp, struct RDB_tbindex *indexp,
 
     for (i = 0; i < indexp->attrc; i++) {
         RDB_object *attrobjp = RDB_tuple_get(tplp, indexp->attrv[i].attrname);
-        /* !! attrobjp->typ == NULL */
-        attrobjp->store_typ = attrobjp->typ;
+        attrobjp->store_typ = RDB_type_attr_type(qrp->val.stored.tbp->typ->def.basetyp,
+                indexp->attrv[i].attrname);
         ret = RDB_obj_to_field(&fv[i], attrobjp, ecp);
         if (ret != RDB_OK)
             goto cleanup;

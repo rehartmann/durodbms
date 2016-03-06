@@ -56,12 +56,6 @@ next_join_rename_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_tbindex *indexp,
             ->def.tbref.tbp;
     RDB_bool match = RDB_FALSE;
 
-    RDB_expression *tstexp = qrp->exp;
-
-    puts((char *)tstexp);
-
-    tstexp = NULL;
-
     objpv = RDB_alloc(sizeof(RDB_object *) * indexp->attrc, ecp);
     if (objpv == NULL) {
         RDB_raise_no_memory(ecp);
@@ -83,7 +77,8 @@ next_join_rename_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_tbindex *indexp,
         for (i = 0; i < indexp->attrc; i++) {
             objpv[i] = RDB_tuple_get(tplp, RDB_rename_attr(indexp->attrv[i].attrname,
                     qrp->val.children.qr2p->exp));
-            objpv[i]->store_typ = objpv[i]->typ;
+            objpv[i]->store_typ = RDB_type_attr_type(tbp->typ->def.basetyp,
+                    indexp->attrv[i].attrname);
         }
         ret = RDB_get_by_uindex(tbp, objpv, indexp,
                 tbp->typ->def.basetyp,
@@ -238,7 +233,9 @@ next_join_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 
         for (i = 0; i < indexp->attrc; i++) {
             objpv[i] = RDB_tuple_get(tplp, indexp->attrv[i].attrname);
-            objpv[i]->store_typ = objpv[i]->typ;
+            objpv[i]->store_typ = RDB_type_attr_type(
+                    qrp->exp->def.op.args.firstp->nextp->def.tbref.tbp->typ->def.basetyp,
+                    indexp->attrv[i].attrname);
         }
         ret = RDB_get_by_uindex(qrp->exp->def.op.args.firstp->nextp->def.tbref.tbp,
                 objpv, indexp,

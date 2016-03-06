@@ -128,6 +128,15 @@ test insert_delete {creating table, insert, delete} \
             ;
         end try;
 
+        -- Array instead of integer
+        try
+            delete r2 tup{no 1, id array('1'), str 'xxx'};
+            io.put_line('delete of tuple with array instead of string succeeded');
+        catch e type_mismatch_error;
+            ;
+        end try;
+            
+
         -- Table without KEY (implicit all-key)
         var r3 real rel {n int, s string};
         insert r3 tup {n 1, s 'a'};

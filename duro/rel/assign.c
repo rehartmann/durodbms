@@ -1711,9 +1711,9 @@ copy_needs_tx(const RDB_object *dstp, const RDB_object *srcp)
 }
 
 static int
-check_assign_types(int insc, const RDB_ma_insert insv[],
-        int updc, const RDB_ma_update updv[],
+check_assign_types(int updc, const RDB_ma_update updv[],
         int delc, const RDB_ma_delete delv[],
+        int vdelc, const RDB_ma_vdelete vdelv[],
         int copyc, const RDB_ma_copy copyv[],
         RDB_getobjfn *getfnp, void *getarg,
         RDB_exec_context *ecp, RDB_transaction *txp)
@@ -1743,6 +1743,8 @@ check_assign_types(int insc, const RDB_ma_insert insv[],
             }
         }
     }
+
+    /* Inserts are not checked here because of the default attributes */
 
     /*
      * Check types of updated attributes
@@ -1786,6 +1788,28 @@ check_assign_types(int insc, const RDB_ma_insert insv[],
             }
         }
     }
+
+    /* Check deletes */
+    for (i = 0; i < vdelc; i++) {
+        if (vdelv[i].objp->kind == RDB_OB_TUPLE) {
+            if (!RDB_obj_matches_type(vdelv[i].objp,
+                    RDB_base_type(RDB_obj_type(vdelv[i].tbp)))) {
+                RDB_raise_type_mismatch(
+                        "tuple does not match table type",
+                        ecp);
+                return RDB_ERROR;
+            }
+        } else {
+            if (!RDB_obj_matches_type(vdelv[i].objp,
+                    RDB_obj_type(vdelv[i].tbp))) {
+                RDB_raise_type_mismatch(
+                        "relation value does not match table type",
+                        ecp);
+                return RDB_ERROR;
+            }
+        }
+    }
+
     return RDB_OK;
 }
 
@@ -2185,8 +2209,8 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     vdelete_node *genvdelp = NULL;
     copy_node *gencopyp = NULL;
 
-    if (check_assign_types(insc, insv, updc, updv, delc, delv,
-            copyc, copyv, getfn, getarg, ecp, txp) != RDB_OK) {
+    if (check_assign_types(updc, updv, delc, delv,
+            vdelc, vdelv, copyc, copyv, getfn, getarg, ecp, txp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -2723,8 +2747,8 @@ RDB_apply_constraints(int insc, const RDB_ma_insert insv[],
     delete_node *gendelp = NULL;
     vdelete_node *genvdelp = NULL;
 
-    if (check_assign_types(insc, insv, updc, updv, delc, delv,
-            copyc, copyv, getfn, getarg, ecp, txp) != RDB_OK) {
+    if (check_assign_types(updc, updv, delc, delv,
+            vdelc, vdelv, copyc, copyv, getfn, getarg, ecp, txp) != RDB_OK) {
         return RDB_ERROR;
     }
 

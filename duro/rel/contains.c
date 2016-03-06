@@ -52,7 +52,6 @@ RDB_table_contains(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ec
         RDB_transaction *txp, RDB_bool *resultp)
 {
     int i;
-    RDB_type *typ;
 
     if (txp != NULL && !RDB_tx_is_running(txp)) {
         RDB_raise_no_running_tx(ecp);
@@ -68,16 +67,6 @@ RDB_table_contains(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ec
         if (strchr(attrname, '$') == NULL
                 && RDB_tuple_get(tplp, attrname) == NULL) {
             RDB_raise_invalid_argument("incomplete tuple", ecp);
-            return RDB_ERROR;
-        }
-    }
-
-    typ = RDB_obj_type(tplp);
-    if (typ == NULL) {
-        RDB_obj_set_typeinfo((RDB_object *) tplp, RDB_base_type(RDB_obj_type(tbp)));
-    } else {
-        if (!RDB_type_equals(typ, RDB_base_type(RDB_obj_type(tbp)))) {
-            RDB_raise_type_mismatch("table type does not match tuple type", ecp);
             return RDB_ERROR;
         }
     }
