@@ -246,17 +246,17 @@ add_io(Duro_interp *interp, RDB_exec_context *ecp) {
         return RDB_ERROR;
     }
 
-    if (Duro_varmap_put(&interp->root_varmap, "io.stdin", Duro_stdin_objp,
-            DURO_VAR_CONST | DURO_VAR_FREE, ecp) != RDB_OK) {
+    if (Duro_varmap_put(&interp->root_varmap, "io.stdin", &Duro_stdin_obj,
+            DURO_VAR_CONST, ecp) != RDB_OK) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    if (Duro_varmap_put(&interp->root_varmap, "io.stdout", Duro_stdout_objp,
-            DURO_VAR_CONST | DURO_VAR_FREE, ecp) != RDB_OK) {
+    if (Duro_varmap_put(&interp->root_varmap, "io.stdout", &Duro_stdout_obj,
+            DURO_VAR_CONST, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (Duro_varmap_put(&interp->root_varmap, "io.stderr", Duro_stderr_objp,
-            DURO_VAR_CONST | DURO_VAR_FREE, ecp) != RDB_OK) {
+    if (Duro_varmap_put(&interp->root_varmap, "io.stderr", &Duro_stderr_obj,
+            DURO_VAR_CONST, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
     return RDB_OK;
