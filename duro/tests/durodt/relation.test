@@ -546,9 +546,23 @@ test join_rename_index {JOIN with index}  -setup $SETUP -cleanup $CLEANUP -match
 
         explain orders join customers rename { id as cust_id } order();
         
+        var tp tup {id int, name string};
+        for tp in (orders join customers rename { id as cust_id }) { id, name } order (id asc);
+           io.put(tp.id);
+           io.put(' ');
+           io.put(tp.name);
+           io.put_line('');
+        end for;
+        
         commit;
     }
-} -result {*INDEX customers$0*}
+} -result {*INDEX customers$0*
+101 Jack
+102 Jack
+103 Jill
+104 Jill
+105 Karl
+}
 
 test join_rename_nuindex {JOIN with rename and non-unique index}  -setup $SETUP \
         -cleanup $CLEANUP -match glob -body {
