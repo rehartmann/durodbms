@@ -69,8 +69,11 @@ connect_op(int argc, RDB_object *argv[], RDB_operator *op,
     int ret;
     Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
 
-    if (txp != NULL && RDB_tx_is_running(txp))
-        Duro_rollback_all(interp, ecp);
+    if (interp->txnp != NULL) {
+        ret = Duro_rollback_all(interp, ecp);
+        if (ret == RDB_OK && RDB_parse_get_interactive())
+            printf("Transaction rolled back.\n");
+    }
 
     /* If a connection exists, close it */
     if (interp->envp != NULL) {
@@ -106,6 +109,12 @@ connect_recover_op(int argc, RDB_object *argv[], RDB_operator *op,
     int ret;
     Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
 
+    if (interp->txnp != NULL) {
+        ret = Duro_rollback_all(interp, ecp);
+        if (ret == RDB_OK && RDB_parse_get_interactive())
+            printf("Transaction rolled back.\n");
+    }
+
     if (interp->envp != NULL) {
         RDB_close_env(interp->envp);
     }
@@ -140,13 +149,9 @@ disconnect_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     /* If a transaction is active, abort it */
     if (interp->txnp != NULL) {
-        ret = RDB_rollback(ecp, &interp->txnp->tx);
-        RDB_free(interp->txnp);
-        interp->txnp = NULL;
-        if (ret != RDB_OK)
-            return ret;
+        ret = Duro_rollback_all(interp, ecp);
 
-        if (RDB_parse_get_interactive())
+        if (ret == RDB_OK && RDB_parse_get_interactive())
             printf("Transaction rolled back.\n");
     }
 
@@ -391,9 +396,9 @@ Duro_destroy_interp(Duro_interp *interp)
     }
 
     if (interp->txnp != NULL) {
-        RDB_rollback(&ec, &interp->txnp->tx);
+        int ret = Duro_rollback_all(interp, &ec);
 
-        if (RDB_parse_get_interactive())
+        if (ret == RDB_OK && RDB_parse_get_interactive())
             printf("Transaction rolled back.\n");
     }
     RDB_destroy_op_map(&interp->sys_upd_op_map);

@@ -1039,6 +1039,7 @@ create_table(const char *name, RDB_type *reltyp,
                 RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_transaction tx;
+    RDB_obj_cleanup_func *cleanup_fp;
 
     RDB_object *tbp = RDB_hashmap_get(&txp->dbp->tbmap, name);
     if (tbp != NULL && tbp != &null_tb) {
@@ -1071,26 +1072,29 @@ create_table(const char *name, RDB_type *reltyp,
 
     /* Insert table into catalog */
     if (RDB_cat_insert(tbp, ecp, &tx) != RDB_OK) {
-        /* Don't destroy type */
-        tbp->typ = NULL;
         RDB_rollback(ecp, &tx);
-        RDB_free_obj(tbp, ecp);
-        return NULL;
+        goto error;
     }
 
     if (RDB_assoc_table_db(tbp, txp->dbp, ecp) != RDB_OK) {
         RDB_rollback(ecp, &tx);
-        RDB_free_obj(tbp, ecp);
-        return NULL;
+        goto error;
     }
 
     if (RDB_commit(ecp, &tx) != RDB_OK) {
-         RDB_hashmap_put(&txp->dbp->tbmap, name, NULL);
-        RDB_free_obj(tbp, ecp);
-        return NULL;
+        RDB_hashmap_put(&txp->dbp->tbmap, name, NULL);
+        goto error;
     }
-   
+
     return tbp;
+
+error:
+    /* Don't destroy type */
+    cleanup_fp = tbp->typ->cleanup_fp;
+    tbp->typ = NULL;
+    (*cleanup_fp)(tbp, ecp);
+    RDB_free_obj(tbp, ecp);
+    return NULL;
 }
 
 /** @defgroup table Table functions 

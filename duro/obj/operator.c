@@ -150,6 +150,7 @@ RDB_new_op_data(const char *name, const char *version, int paramc,
 
         for (i = 0; i < paramc; i++) {
             op->paramv[i].typ = NULL;
+            op->paramv[i].update = RDB_FALSE;
         }
         for (i = 0; i < paramc; i++) {
             if (paramtv[i] == NULL) {

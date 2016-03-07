@@ -1795,9 +1795,12 @@ exec_catch(const RDB_parse_node *catchp, const RDB_type *errtyp,
     /*
      * Create and initialize local variable
      */
-    if (Duro_put_var(RDB_expr_var_name(catchp->exp), objp, interp, ecp) != RDB_OK) {
+    if (Duro_varmap_put(&interp->current_varmapp->map,
+            RDB_expr_var_name(catchp->exp), objp, DURO_VAR_FREE,
+            ecp) != RDB_OK) {
         goto error;
     }
+
     if (RDB_copy_obj(objp, RDB_get_err(ecp), ecp) != RDB_OK) {
         goto error;
     }

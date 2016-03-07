@@ -189,8 +189,9 @@ RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
         if (keyv == NULL) {
             /* Create key for all-key table */
             if (RDB_all_key(attrc, reltyp->def.basetyp->def.tuple.attrv,
-                    ecp, &allkey) != RDB_OK)
+                    ecp, &allkey) != RDB_OK) {
                 return RDB_ERROR;
+            }
 
             keyc = 1;
             keyv = &allkey;

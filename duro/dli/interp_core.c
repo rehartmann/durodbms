@@ -276,17 +276,6 @@ Duro_exec_rename(const RDB_parse_node *nodep, Duro_interp *interp,
     return RDB_OK;
 }
 
-int
-Duro_put_var(const char *name, RDB_object *objp, Duro_interp *interp,
-        RDB_exec_context *ecp)
-{
-    if (Duro_varmap_put(&interp->current_varmapp->map, name, objp, RDB_FALSE,
-            ecp) != RDB_OK) {
-        return RDB_ERROR;
-    }
-    return RDB_OK;
-}
-
 /* Find a variable which depends on a type */
 static const char *
 var_of_type(Duro_varmap *mapp, RDB_type *typ)

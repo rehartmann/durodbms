@@ -54,9 +54,6 @@ Duro_lookup_transient_var(Duro_interp *, const char *);
 Duro_var_entry *
 Duro_lookup_transient_var_e(Duro_interp *, const char *);
 
-int
-Duro_put_var(const char *, RDB_object *, Duro_interp *, RDB_exec_context *);
-
 RDB_type *
 Duro_get_var_type(const char *, void *);
 
