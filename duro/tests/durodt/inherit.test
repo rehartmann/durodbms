@@ -465,4 +465,19 @@ TRUE
 FALSE
 }
 
+test noprops {Type without properties} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+        begin tx;
+
+        type empty possrep { } init empty();
+        
+        implement type empty;
+        end implement;
+        
+        var e empty;
+    }
+}
+
 cleanupTests

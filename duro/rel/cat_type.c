@@ -327,6 +327,24 @@ RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
             goto error;
     }
 
+    /* If no possrep was read but there was a init expression, the type has
+     * a single possrep with no components
+     */
+    if (typ->def.scalar.repc == 0 && typ->def.scalar.initexp != NULL) {
+        typ->def.scalar.repv = RDB_alloc(sizeof (RDB_possrep), ecp);
+        if (typ->def.scalar.repv == NULL) {
+            goto error;
+        }
+        typ->def.scalar.repv[0].compc = 0;
+        typ->def.scalar.repv[0].compv = NULL;
+        typ->def.scalar.repv[0].name = RDB_dup_str(name);
+        if (typ->def.scalar.repv[0].name == NULL) {
+            RDB_raise_no_memory(ecp);
+            goto error;
+        }
+        typ->def.scalar.repc = 1;
+    }
+
     *typp = typ;
 
     ret = RDB_drop_table(tmptb1p, ecp, txp);
