@@ -910,6 +910,29 @@ Operator incr dropped.
 D>
 </pre>
 
+<p>Overloading operators is permitted. Note that if more than one operator is created with the same name,
+it is not considered a different operator but a different version of the same operator.
+
+<p>DROP OPERATOR will delete all versions of the read-only operator with the name given,
+if at least one version with that name exists.
+Otherwise, all versions of the update operator with the that name are deleted.
+
+<p>An operator can be created with a version name. Example:
+
+<pre>
+D> operator incr(i integer) returns integer version i;
+D> return i + 1;
+D> end operator;
+Read-only operator incr created.
+</pre>
+
+<p>An operator version can be dropped as follows:
+
+<pre>
+D> drop operator incr version i;
+Operator incr dropped.
+</pre>
+
 <h2 id="datetime">Date and time</h2>
 
 <p>DuroDBMS provides a type datetime which is defined as follows:
@@ -1082,8 +1105,9 @@ D>
 
 <h2 id="subtyping">Subtyping</h2>
 
-<p>With version 1.2, Duro D/T supports subtyping, however,
-suptyping support is limited in that only dummy types can be supertypes.
+<p>Since version 1.2, Duro D/T supports subtyping, however,
+suptyping support is limited in that only dummy types
+(types without possible representations) can be supertypes.
 
 <p>The following example code creates a parent type and two subtypes:
 
@@ -1147,8 +1171,24 @@ D> io.put(area(s2)); io.put_line('');
 <h3>Subtyping with update operators</h3>
 
 <p>Example:
-
-
+<pre>
+D> operator scale(s shape, r float) updates { s };
+D> end operator;
+Update operator scale created.
+D> operator scale(c circle, r float) updates { c };
+D> c.radius := cast_as_integer(cast_as_float(c.radius) * r);
+D> end operator;
+Update operator scale created.
+D> operator scale(rec rectangle, r float) updates { rec };
+D> rec.width := cast_as_integer(cast_as_float(rec.width) * r);
+D> rec.height := cast_as_integer(cast_as_float(rec.height) * r);
+D> end operator;
+Update operator scale created.
+D> var s3 shape init circle(100);
+D> scale(s3, 1.5);
+D> io.put(treat_as_circle(s3).radius); io.put_line('');
+150
+</pre>
 
 <h2 id="exception">Exception handling</h2>
 
