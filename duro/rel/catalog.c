@@ -1045,6 +1045,7 @@ RDB_cat_delete(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 static int
 provide_systable(const char *name, int attrc, RDB_attr heading[],
            int keyc, RDB_string_vec keyv[], RDB_bool create,
+           RDB_bool create_if_not_exists,
            RDB_exec_context *ecp, RDB_transaction *txp, RDB_environment *envp,
            RDB_object **tbpp)
 {
@@ -1067,6 +1068,12 @@ provide_systable(const char *name, int attrc, RDB_attr heading[],
                 NULL, ecp, txp);
     } else {
         ret = RDB_open_stored_table(*tbpp, txp->envp, name, ecp, txp);
+        if (ret == RDB_ERROR
+                && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR
+                && create_if_not_exists) {
+            ret = RDB_create_stored_table(*tbpp, txp->envp,
+                    NULL, ecp, txp);
+        }
     }
     if (ret != RDB_OK) {
         RDB_free_obj(*tbpp, ecp);
@@ -1224,8 +1231,8 @@ op_versions_constraint(RDB_object *ops_tbp, RDB_object *op_versions_tbp,
     RDB_expression *exp, *arg1p, *arg2p;
 
     /* Create expression
-     * is_empty(sys_ro_ops {opname, argtypes}
-     *          intersect sys_ro_op_versions {opname, argtypes})
+     * is_empty(*ops_tbp {opname, argtypes}
+     *          intersect *op_versions_tbp {opname, argtypes})
      */
     exp = RDB_ro_op("project", ecp);
     if (exp == NULL)
@@ -1303,7 +1310,7 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
 
     for(;;) {
         ret = provide_systable("sys_tableattrs", 4, table_attr_attrv,
-                1, table_attr_keyv, create, ecp, txp, dbrootp->envp,
+                1, table_attr_keyv, create, RDB_FALSE, ecp, txp, dbrootp->envp,
                 &dbrootp->table_attr_tbp);
         if (!create && ret != RDB_OK
                 && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
@@ -1320,41 +1327,42 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
 
     ret = provide_systable("sys_tableattr_defvals",
             3, table_attr_defvals_attrv, 1, table_attr_defvals_keyv,
-            create, ecp, txp, dbrootp->envp, &dbrootp->table_attr_defvals_tbp);
+            create, RDB_FALSE, ecp, txp, dbrootp->envp,
+            &dbrootp->table_attr_defvals_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
 
     ret = provide_systable("sys_rtables", 2, rtables_attrv,
-            1, rtables_keyv, create, ecp,
+            1, rtables_keyv, create, RDB_FALSE, ecp,
             txp, dbrootp->envp, &dbrootp->rtables_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
 
     ret = provide_systable("sys_vtables", 3, vtables_attrv,
-            1, vtables_keyv, create, ecp, txp, dbrootp->envp,
+            1, vtables_keyv, create, RDB_FALSE, ecp, txp, dbrootp->envp,
             &dbrootp->vtables_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
 
     ret = provide_systable("sys_ptables", 3, ptables_attrv,
-            1, ptables_keyv, create, ecp, txp, dbrootp->envp,
+            1, ptables_keyv, create, RDB_FALSE, ecp, txp, dbrootp->envp,
             &dbrootp->ptables_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
 
     ret = provide_systable("sys_table_recmap", 2, table_recmap_attrv,
-            2, table_recmap_keyv, create, ecp,
+            2, table_recmap_keyv, create, RDB_FALSE, ecp,
             txp, dbrootp->envp, &dbrootp->table_recmap_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
 
     ret = provide_systable("sys_dbtables", 2, dbtables_attrv, 1, dbtables_keyv,
-            create, ecp, txp, dbrootp->envp, &dbrootp->dbtables_tbp);
+            create, RDB_FALSE, ecp, txp, dbrootp->envp, &dbrootp->dbtables_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -1370,19 +1378,19 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     }
 
     ret = provide_systable("sys_keys", 3, keys_attrv, 1, keys_keyv,
-            create, ecp, txp, dbrootp->envp, &dbrootp->keys_tbp);
+            create, RDB_FALSE, ecp, txp, dbrootp->envp, &dbrootp->keys_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
 
     ret = provide_systable("sys_types", 7, types_attrv, 1, types_keyv,
-            create, ecp, txp, dbrootp->envp, &dbrootp->types_tbp);
+            create, RDB_FALSE, ecp, txp, dbrootp->envp, &dbrootp->types_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
 
     ret = provide_systable("sys_possrepcomps", 5, possrepcomps_attrv,
-            2, possrepcomps_keyv, create, ecp, txp, dbrootp->envp,
+            2, possrepcomps_keyv, create, RDB_FALSE, ecp, txp, dbrootp->envp,
             &dbrootp->possrepcomps_tbp);
     if (ret != RDB_OK) {
         return ret;
@@ -1397,7 +1405,7 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     ro_ops_attrv[1].typ = bin_array_typ;
 
     ret = provide_systable("sys_ro_ops", 7, ro_ops_attrv,
-            1, ro_ops_keyv, create, ecp, txp, dbrootp->envp,
+            1, ro_ops_keyv, create, RDB_FALSE, ecp, txp, dbrootp->envp,
             &dbrootp->ro_ops_tbp);
     if (ret != RDB_OK) {
         return ret;
@@ -1405,8 +1413,9 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
 
     ro_op_versions_attrv[2].typ = bin_array_typ;
 
+    /* New with version 1.2, so create if it does not exists */
     ret = provide_systable("sys_ro_op_versions", 8, ro_op_versions_attrv,
-            2, ro_op_versions_keyv, create, ecp, txp, dbrootp->envp,
+            2, ro_op_versions_keyv, create, RDB_TRUE, ecp, txp, dbrootp->envp,
             &dbrootp->ro_op_versions_tbp);
     if (ret != RDB_OK) {
         return ret;
@@ -1421,7 +1430,7 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     }
 
     ret = provide_systable("sys_upd_ops", 7, upd_ops_attrv,
-            1, upd_ops_keyv, create, ecp, txp, dbrootp->envp,
+            1, upd_ops_keyv, create, RDB_FALSE, ecp, txp, dbrootp->envp,
             &dbrootp->upd_ops_tbp);
     if (ret != RDB_OK) {
         return ret;
@@ -1436,14 +1445,14 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     }
 
     ret = provide_systable("sys_upd_op_versions", 8, upd_op_versions_attrv,
-            1, upd_op_versions_keyv, create, ecp, txp, dbrootp->envp,
+            1, upd_op_versions_keyv, create, RDB_TRUE, ecp, txp, dbrootp->envp,
             &dbrootp->upd_op_versions_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
 
     ret = provide_systable("sys_version_info", 3, version_info_attrv,
-            1, version_info_keyv, create, ecp, txp, dbrootp->envp,
+            1, version_info_keyv, create, RDB_FALSE, ecp, txp, dbrootp->envp,
             &dbrootp->version_info_tbp);
     if (ret != RDB_OK) {
         return ret;
@@ -1462,7 +1471,7 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     }
 
     ret = provide_systable("sys_constraints", 2, constraints_attrv,
-            1, constraints_keyv, create, ecp, txp, dbrootp->envp,
+            1, constraints_keyv, create, RDB_FALSE, ecp, txp, dbrootp->envp,
             &dbrootp->constraints_tbp);
     if (ret != RDB_OK) {
         return ret;
@@ -1480,14 +1489,14 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     }
 
     ret = provide_systable("sys_indexes", 5, indexes_attrv,
-            1, indexes_keyv, create, ecp, txp, dbrootp->envp,
+            1, indexes_keyv, create, RDB_FALSE, ecp, txp, dbrootp->envp,
             &dbrootp->indexes_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
 
     ret = provide_systable("sys_subtype", 2, subtype_attrv,
-            1, subtype_keyv, create, ecp, txp, txp->dbp->dbrootp->envp,
+            1, subtype_keyv, create, RDB_TRUE, ecp, txp, txp->dbp->dbrootp->envp,
             &dbrootp->subtype_tbp);
     if (ret != RDB_OK) {
         return ret;
@@ -1506,7 +1515,7 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         if (exp == NULL)
             return RDB_ERROR;
 
-        if (RDB_create_constraint("SYS_RO_OP_VERSIONS", exp, ecp, txp) != RDB_OK)
+        if (RDB_create_constraint("sys_ro_op_versions", exp, ecp, txp) != RDB_OK)
             return RDB_ERROR;
 
         exp = op_versions_constraint(dbrootp->upd_ops_tbp,
@@ -1514,7 +1523,7 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         if (exp == NULL)
             return RDB_ERROR;
 
-        if (RDB_create_constraint("SYS_UPD_OP_VERSIONS", exp, ecp, txp) != RDB_OK)
+        if (RDB_create_constraint("sys_upd_op_versions", exp, ecp, txp) != RDB_OK)
             return RDB_ERROR;
     }
 
