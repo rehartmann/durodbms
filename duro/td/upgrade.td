@@ -16,6 +16,7 @@ if dbversion.major_version > dest_major_version
         or dbversion.major_version = dest_major_version
             and dbversion.minor_version > dest_minor_version then
     io.put_line('db version is greater destination version, exiting');
+    exit();
 end if;
 
 if dbversion.major_version = dest_major_version
