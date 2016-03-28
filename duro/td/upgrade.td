@@ -8,7 +8,7 @@ begin tx;
 var dbversion init tuple from sys_version_info;
 commit;
 
-io.put_line('db_version is ' || cast_as_string(dbversion.major_version)
+io.put_line('catalog version is ' || cast_as_string(dbversion.major_version)
         || '.' || cast_as_string(dbversion.minor_version)
         || '.' || cast_as_string(dbversion.micro_version));
 
@@ -77,6 +77,16 @@ constraint sys_ro_op_versions
 constraint sys_upd_op_versions
     is_empty(sys_upd_ops {opname, argtypes}
              intersect sys_upd_op_versions {opname, argtypes});
+
+-- Add new catalog tables to all databases
+var dbs array tup { dbname string };
+load dbs from sys_dbtables { dbname } order();
+var i int;
+for i := 0 to length(dbs) - 1;
+    insert sys_dbtables tup { tablename identifier('sys_ro_op_versions'), dbname dbs[i].dbname };  
+    insert sys_dbtables tup { tablename identifier('sys_upd_op_versions'), dbname dbs[i].dbname };  
+    insert sys_dbtables tup { tablename identifier('sys_subtype'), dbname dbs[i].dbname };  
+end for;
 
 update sys_version_info {
     major_version := dest_major_version,

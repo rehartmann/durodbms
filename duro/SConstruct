@@ -305,6 +305,7 @@ env.Install(installdir + '/docs/durodt', 'docs/durodt/tut.html')
 env.Command(installdir + '/docs/api/html', [], Copy("$TARGET", 'docs/api/html'))
 env.Command(installdir + '/docs/javadoc', [], Copy("$TARGET", 'docs/javadoc'))
 env.Install(installdir + '/bin', durodt)
+env.Install(installdir + '/td', 'td/upgrade.td')
 
 # Install fcgi_durodt only if it has been built
 if os.path.exists(str(fcgi_durodt[0])):
@@ -391,6 +392,7 @@ if env.has_key('TAR'):
     env.Tar('src.tar', tcltools)
     env.Tar('src.tar', ['dli/exparse.y', 'dli/exlex.l'])
     env.Tar('src.tar', 'tcl/util.tcl')
+    env.Tar('src.tar', 'td')
     env.Tar('src.tar', 'jduro/jduro.h')
     env.Tar('src.tar', 'jduro/jduro.c')
     env.Tar('src.tar', 'jduro/probj.c')

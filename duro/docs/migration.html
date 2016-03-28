@@ -13,17 +13,28 @@ tables or the data format changes. If this version number differs between two
 releases, the two releases are incompatible and accessing a database written
 by one release from the other release results in a version_mismatch_error.
 
+<p>The catalog version changed with DuroDBMS 1.2 as three new catalog tables were added.
+To upgrade older database environments there is a Duro D/T script upgrade.td in the subdirectory duro/td.
+
+<p>The upgrade script must be run from the <em>old</em> DuroDBMS version as follows:
+
+<pre>
+durodt -e &lt;dbenv&gt; -d &lt;database&gt; &lt;durodbms path&gt;/duro/td/upgrade.td
+</pre>
+
+<p>where &lt;dbenv&gt; is the database environment directory and &lt;database&gt; is the name of a database.
+
+<p>The script can be used to upgrade database environments which have been creating using
+DuroDBMS versions 0.26, 1.0, or 1.1. (But notice the difference between 1.0 and 1.1 explained below)
+
 <p>DuroDBMS 1.1 is compatible with DuroDBMS 1.0 with one exception: Expressions containing
 invocations of the_ operators are stored in a different format. Virtual tables and constraints
 containing such operator invocations must be dropped under the old version and recreated
 under the new version.
 
 <p>DuroDBMS 1.0 is compatible with DuroDBMS 0.26. Previous versions are not compatible;
-data created using these versions must be migrated.
-
-<p>Currently DuroDBMS contains no tool that migrates data to a newer version.
-So the only safe way to migrate data from an old version to a incompatible new one
-is to create a new database environment and re-create the database(s), 
+data created using these versions can only be migrated safely by
+creating a new database environment and re-create the database(s), 
 user-defined types and operators, tables and database constraints.
 
 <p>Durodump can be used to extract the real tables and their data
