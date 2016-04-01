@@ -1783,6 +1783,9 @@ exec_catch(const RDB_parse_node *catchp, const RDB_type *errtyp,
     int ret;
     RDB_object *objp;
 
+    free(interp->err_opname);
+    interp->err_opname = NULL;
+
     if (Duro_add_varmap(interp, ecp) != RDB_OK)
         return RDB_ERROR;
 

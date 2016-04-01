@@ -82,8 +82,10 @@ Duro_exec_vardef(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *e
             if (typ != NULL) {
                 RDB_type *objtyp = RDB_obj_type(objp);
                 if (!RDB_is_subtype(objtyp, typ)) {
-                    if (!RDB_type_is_scalar(typ))
+                    if (!RDB_type_is_scalar(typ)) {
                         RDB_del_nonscalar_type(typ, ecp);
+                        typ = NULL;
+                    }
                     RDB_raise_type_mismatch("", ecp);
                     goto error;
                 }
@@ -127,6 +129,9 @@ Duro_exec_vardef(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *e
 error:
     RDB_destroy_obj(objp, ecp);
     RDB_free(objp);
+    if (typ != NULL && !RDB_type_is_scalar(typ)) {
+        RDB_del_nonscalar_type(typ, ecp);
+    }
     return RDB_ERROR;
 }
 

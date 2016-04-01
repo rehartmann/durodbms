@@ -931,7 +931,8 @@ RDB_set_init_value(RDB_object *objp, RDB_type *typ, RDB_environment *envp,
         objp->typ = typ;
 
         if (typ->ireplen == RDB_NOT_IMPLEMENTED) {
-            RDB_raise_invalid_argument("type is not implemented", ecp);
+            RDB_raise_invalid_argument("no init value available for unimplemented type",
+                    ecp);
             return RDB_ERROR;
         }
 
@@ -1081,6 +1082,9 @@ RDB_new_nonscalar_obj_type(RDB_object *objp, RDB_exec_context *ecp)
     RDB_type *typ;
     RDB_type *elemtyp;
     RDB_object *elemp;
+
+    if (objp->typ != NULL && RDB_type_is_scalar(objp->typ))
+        return objp->typ;
 
     switch (objp->kind) {
     case RDB_OB_TUPLE:

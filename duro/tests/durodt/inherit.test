@@ -244,6 +244,63 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
         io.put_line('');       
 
         commit;
+        
+        io.put_line('');
+        
+        -- Tuples
+        
+        var tb tup { s shape } init tup { s circle(0) };
+
+        var ts tup { s rectangle };
+
+        tb := ts;
+        io.put(treat_as_rectangle(tb.s).width);
+        io.put_line('');
+        
+        try
+            ts := tup { s circle(0) };
+            io.put_line('assignment to non-subtype succeeded');
+        catch e type_mismatch_error;
+            ;
+        end try;
+
+        io.put_line('');
+        
+        -- Real relation
+
+        begin tx;
+
+        var rb real rel { s shape };
+
+        insert rb tup { s circle(1) };
+        io.put(treat_as_circle((tuple from rb).s).radius);
+        io.put_line('');
+        
+
+        rb := rel { tup { s rectangle(2, 3) } };
+
+
+
+        io.put(treat_as_rectangle((tuple from rb).s).width);
+        io.put_line('');
+
+        var rs real rel { s rectangle };
+        
+        try
+            insert rs tup { s circle(1) };
+            io.put_line('inserting non-subtype tuple succeded');
+        catch e type_mismatch_error;
+            ;
+        end try;
+
+        try
+            rs := rel { tup { s circle(1) } };
+            io.put_line('inserting non-subtype tuple succeded');
+        catch e type_mismatch_error;
+            ;
+        end try;
+
+        commit;
     }
 } -result {TRUE
 TRUE
@@ -268,6 +325,11 @@ TRUE
 3
 1 2
 1 2
+
+0
+
+1
+2
 }
 
 test returntype {Return type conflict} -setup $SETUP -cleanup $CLEANUP -body {

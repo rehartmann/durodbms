@@ -656,13 +656,34 @@ RDB_is_subtype(const RDB_type *typ1, const RDB_type *typ2)
 
     if (RDB_type_equals(typ1, typ2))
         return RDB_TRUE;
-    if (!RDB_type_is_scalar(typ1) || !RDB_type_is_scalar(typ2))
+
+    if (typ1->kind != typ2->kind)
         return RDB_FALSE;
-    for (i = 0; i < typ1->def.scalar.supertypec; i++) {
-        if (RDB_is_subtype(typ1->def.scalar.supertypev[i], typ2))
-            return RDB_TRUE;
+
+    switch(typ1->kind) {
+    case RDB_TP_SCALAR:
+        for (i = 0; i < typ1->def.scalar.supertypec; i++) {
+            if (RDB_is_subtype(typ1->def.scalar.supertypev[i], typ2))
+                return RDB_TRUE;
+        }
+        return RDB_FALSE;
+    case RDB_TP_TUPLE:
+        if (typ1->def.tuple.attrc != typ2->def.tuple.attrc)
+            return RDB_FALSE;
+
+        for (i = 0; i < typ1->def.tuple.attrc; i++) {
+            RDB_attr *attrp = RDB_tuple_type_attr(typ2, typ1->def.tuple.attrv[i].name);
+            if (attrp == NULL)
+                return RDB_FALSE;
+            if (!RDB_is_subtype(typ1->def.tuple.attrv[i].typ, attrp->typ))
+                return RDB_FALSE;
+        }
+        return RDB_TRUE;
+    case RDB_TP_RELATION:
+    case RDB_TP_ARRAY:
+        return RDB_is_subtype(typ1->def.basetyp, typ2->def.basetyp);
     }
-    return RDB_FALSE;
+    abort();
 }
 
 /**
