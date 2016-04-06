@@ -23,7 +23,10 @@ DuroDBMS 1.2
 
 - Moved exit() operators to package 'os'. 
 
-- Provided script for database environment upgrade.
+- Possrep components are enclosed in parens instead of braces.
+  (The old syntax is still supported)
+
+- Added script for database environment upgrade.
 
 DuroDBMS 1.1
 

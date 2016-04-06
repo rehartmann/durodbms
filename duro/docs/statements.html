@@ -124,7 +124,8 @@ type_def_stmt = TYPE id [IS id {',' id}] [ORDERED] possrep {possrep}
             [CONSTRAINT expression] INIT expression ';'
         | TYPE id [IS id {',' id}] UNION [ORDERED] ';'.
 
-possrep = POSSREP [id] '{' [id type {',' id type}] '}'.
+possrep = POSSREP [id] '(' [id type {',' id type}] ')'
+        | POSSREP [id] '{' [id type {',' id type}] '}'.
 
 type_drop_stmt = DROP TYPE id ';'.
 

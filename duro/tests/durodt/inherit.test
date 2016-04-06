@@ -35,11 +35,11 @@ test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
         type shape union;
 
         type circle is shape
-        possrep { radius int }
+        possrep ( radius int )
         init circle(0);
 
         type rectangle is shape
-        possrep { width int, height int }
+        possrep ( width int, height int )
         init rectangle(0, 0);
 
         implement type circle;
@@ -341,7 +341,7 @@ test returntype {Return type conflict} -setup $SETUP -cleanup $CLEANUP -body {
         type shape union;
 
         type circle is shape
-        possrep { radius int }
+        possrep ( radius int )
         init circle(0);
 
         implement type circle;
@@ -382,12 +382,12 @@ test subtypes_rel_array_rep {Subtypes with relation and array representations} \
 
         type rel_or_array union;
 
-        type reltype is rel_or_array possrep { r rel { s string } } init reltype(rel { tup { s '' } });
+        type reltype is rel_or_array possrep ( r rel { s string } ) init reltype(rel { tup { s '' } });
 
         implement type reltype;
         end implement;
 
-        type arrtype is rel_or_array possrep { a array string } init arrtype(array string());
+        type arrtype is rel_or_array possrep ( a array string ) init arrtype(array string());
 
         implement type arrtype;
         end implement;
@@ -429,7 +429,7 @@ test droptypes {Drop types} -setup $SETUP -cleanup $CLEANUP -body {
         current_db := 'D';
         begin tx;
         
-        type t2 is t1 possrep { n int } init t2(0);
+        type t2 is t1 possrep ( n int ) init t2(0);
         
         try
             drop type t1;
@@ -464,14 +464,14 @@ test multiple {Multiple inheritance} -setup $SETUP -cleanup $CLEANUP -body {
         type road_vehicle union;
 
         type car is engine_driven, road_vehicle
-            possrep { model string, performance int }
+            possrep ( model string, performance int )
             init car('', 0);
 
         implement type car;
         end implement;
 
         type bicycle is road_vehicle
-            possrep { model string }
+            possrep ( model string )
             init bicycle('');
 
         implement type bicycle;
@@ -533,7 +533,7 @@ test noprops {Type without properties} -setup $SETUP -cleanup $CLEANUP -body {
         current_db := 'D';
         begin tx;
 
-        type empty possrep { } init empty();
+        type empty possrep ( ) init empty();
         
         implement type empty;
         end implement;

@@ -58,9 +58,9 @@ test package {Packages} \
                 end operator;
             end package;
 
-            type t1 possrep { comp int } init(m.t1(0));
+            type t1 possrep ( comp int ) init(m.t1(0));
 
-            type t2 possrep pr { comp1 int, comp2 string, comp3 float }
+            type t2 possrep pr ( comp1 int, comp2 string, comp3 float )
                     init(m.pr(0, '-', 0.0));
 
             var p public relation { n int, s string } key { n };
@@ -242,7 +242,7 @@ test package {Packages} \
 
         package m;
 
-            type t1 possrep pr { comp1 string, comp2 int } init(m.pr('', 0));
+            type t1 possrep pr ( comp1 string, comp2 int ) init(m.pr('', 0));
         
         end package;
 
@@ -315,7 +315,7 @@ test pkgdrop {Drop package} \
                a := 1;
             end operator;
 
-            type t possrep { p int } init p.t(0);
+            type t possrep ( p int ) init p.t(0);
 
             var p public relation { n int };
         end package;

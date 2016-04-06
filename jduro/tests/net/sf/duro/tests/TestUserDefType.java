@@ -46,7 +46,7 @@ public class TestUserDefType {
     @Test
     public void testScalarProp() {
         session.execute("begin tx;");
-        session.execute("type len possrep { l int } constraint l >= 0 init len(0);");
+        session.execute("type len possrep (l int) constraint l >= 0 init len(0);");
         session.execute("implement type len; end implement;");
         session.execute("var l len;" + "l := len(5);");
         PossrepObject l = (PossrepObject) session.evaluate("l");
@@ -72,7 +72,7 @@ public class TestUserDefType {
     @Test
     public void testNonscalarProp() {
         session.execute("begin tx;");
-        session.execute("type t possrep { a array int, b tup { attr int }, c rel { attr int } }"
+        session.execute("type t possrep (a array int, b tup { attr int }, c rel { attr int })"
                 + " init t (array int(), tup { attr 0 }, rel { tup { attr 0 } });");
         session.execute("implement type t; end implement;");
 

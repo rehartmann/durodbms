@@ -1608,7 +1608,7 @@ test utypetable {table with attribute of user-defined type} -setup $SETUP -clean
         begin transaction;
 
         type utype
-            possrep { s string }
+            possrep ( s string )
             init utype('');
 
         implement type utype;

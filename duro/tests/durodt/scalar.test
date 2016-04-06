@@ -139,15 +139,15 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
         current_db := 'D';
         begin tx;
         type t
-            possrep { a integer, b integer }
+            possrep ( a integer, b integer )
             init t(0, 0);
 
         -- Test invalid possrep
         try
-            type invt possrep {
+            type invt possrep (
                 t1 tup { a int },
                 t2 tup { * }
-            } init ut(0);
+            ) init ut(0);
             io.put_line(io.stderr, 'invalid possrep was accepted');
         catch err syntax_error;
             ;
@@ -274,13 +274,13 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
         drop type t;
 
         try
-            type string5 possrep {value string} constraint strlen(val) <= 5
+            type string5 possrep (value string) constraint strlen(val) <= 5
                     init string5('');
 		catch ex name_error;
 		    io.put_line('caught name_error');
 		end try;        
 
-        type string5 possrep {value string} constraint strlen(value) <= 5
+        type string5 possrep (value string) constraint strlen(value) <= 5
                 init string5('');
 
         -- Test table declaration w/ incomplete type
@@ -327,14 +327,51 @@ error #2 caused by incomplete type caught
 type constraint violation caught
 }
 
+test deftype_oldsyntax {user-defined types with old possrep syntax} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+        begin tx;
+        type t1
+            possrep { a integer, b integer }
+            init t1(0, 0);
+
+        implement type t1;
+        end implement;
+
+        type t2
+            possrep p { a integer, b integer }
+            init p(0, 0);
+
+        implement type t2;
+        end implement;
+
+        var t1 t1;
+        t1 := t1(1, 1);
+        io.put(t1.a);
+        io.put(' ');
+        io.put(t1.b);
+        io.put_line('');
+
+        var t2 t2;
+        t2 := p(1, 1);
+        io.put(t2.a);
+        io.put(' ');
+        io.put(t2.b);
+        io.put_line('');
+    }
+} -result {1 1
+1 1
+}
+
 test deftypemr {user-defined type with multiple possreps} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
         begin tx;
 		type fixed2
-		    possrep fixed2r { r rational }
-		    possrep fixed2i { i integer }
+		    possrep fixed2r ( r rational )
+		    possrep fixed2i ( i integer )
 		    init fixed2i(0);
 
 		implement type fixed2 as integer;
@@ -431,8 +468,8 @@ test deftypemri {user-defined type with multiple possreps and incomplete impleme
         current_db := 'D';
         begin tx;
 		type fixed2
-		    possrep fixed2r { r rational }
-		    possrep fixed2i { i integer }
+		    possrep fixed2r ( r rational )
+		    possrep fixed2i ( i integer )
 		    init fixed2i(0);
 
         try
@@ -481,8 +518,8 @@ test deftypemarr {user-defined type with multiple possreps and array component} 
 
         begin tx;
 		type text
-		    possrep lines { lines array string }
-		    possrep text { text string }
+		    possrep lines ( lines array string )
+		    possrep text ( text string )
 		init lines(array string());
 		
 		implement type text as array string;
@@ -573,7 +610,7 @@ test deftypearr {system implemented user-defined type with array component} -set
 
         begin tx;
 		type text2
-		    possrep lines { lines array string }
+		    possrep lines ( lines array string )
 		init lines(array string());
 
 		implement type text2;
@@ -616,7 +653,7 @@ test deftypearr2 {system implemented user-defined type with array and scalar com
 
         begin tx;
 		type text2
-		    possrep lines { lines array string, n int }
+		    possrep lines ( lines array string, n int )
 		init lines(array string(), 0);
 
 		implement type text2;
@@ -659,7 +696,7 @@ test deftypecmp {user-defined type with comparison operator} -setup $SETUP -clea
         var cmp_invoked init false;
         begin tx;
 
-		type physical_length ordered possrep meters { m float } init meters(0.0);
+		type physical_length ordered possrep meters ( m float ) init meters(0.0);
 
 		operator physical_length_cmp(l1 physical_length, l2 physical_length) returns int;
 		    cmp_invoked := true;
@@ -711,8 +748,8 @@ test deftypecmp {user-defined type with comparison operator} -setup $SETUP -clea
 		begin tx;
 		
 		type pname ordered
-		    possrep full_name { full_name string }
-		    possrep given_family { given_name string, family_name string }
+		    possrep full_name ( full_name string )
+		    possrep given_family ( given_name string, family_name string )
 		init given_family('','');
 		
 		try
@@ -950,7 +987,7 @@ test defupdop {user-defined update operators} -setup $SETUP -cleanup $CLEANUP -b
         begin transaction;
 
         operator op(s string, i integer) updates {s};
-            type length_t possrep { m FLOAT } constraint (m >= 0.0)
+            type length_t possrep ( m FLOAT ) constraint (m >= 0.0)
                     init length_t(0.0);
 
             operator op1(s string) returns string;
