@@ -121,6 +121,7 @@ RDB_get_op(const RDB_op_map *opmap, const char *name, int argc,
 
             for (i = 0; (i < argc)
                     && (opep->op->paramv[i].typ == NULL
+                        || argtv[i] == NULL
                         || RDB_type_matches(argtv[i], opep->op->paramv[i].typ));
                  i++);
             if (i == argc) {
