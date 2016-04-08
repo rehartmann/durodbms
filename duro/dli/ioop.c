@@ -9,7 +9,6 @@
 #include <rel/rdb.h>
 #include <rel/tostr.h>
 #include <rel/typeimpl.h>
-#include "iinterp.h"
 
 #include <errno.h>
 #include <string.h>
@@ -22,6 +21,8 @@
 #else
 #include <stdio.h>
 #endif
+
+#include "iinterp.h"
 
 #ifdef _WIN32
 #define STDIN_FILENO 0
