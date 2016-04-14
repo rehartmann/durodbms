@@ -29,7 +29,7 @@ The Tcl interface can be found in the 'lib' subdirectory.
 The easiest way to make it available to application
 scripts is to add this subdirectory to TCLLIBPATH, e.g.:
 
-    set TCLLIBPATH=C:/durodbms.1.1/lib
+    set TCLLIBPATH=C:/durodbms.1.2/lib
 
 DuroDBMS is still under development. Report bugs to
 rhartmann@users.sourceforge.net or use a Sourceforge tracker
@@ -38,7 +38,7 @@ at <http://sourceforge.net/tracker/?group_id=80719>.
 -----
 
 This file is part of DuroDBMS, a relational database management system.
-Copyright (C) 2003-2009, 2011-2015 Rene Hartmann.
+Copyright (C) 2003-2009, 2011-2016 Rene Hartmann.
 
 DuroDBMS is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
