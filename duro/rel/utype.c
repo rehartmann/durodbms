@@ -1,7 +1,7 @@
 /*
  * Functions for user-defined types.
  *
- * Copyright (C) 2012-2015 Rene Hartmann.
+ * Copyright (C) 2012-2016 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -161,8 +161,8 @@ The individual possible representations are
 described by the elements of <var>repv</var>.
 
 If <var>constraintp</var> is not NULL, it specifies the type constraint.
-When the constraint is evaluated, the value to check is made available
-as an attribute with the same name as the type.
+When the constraint is evaluated, the value of components are available
+under the name of the respective component.
 
 <var>initexp</var> specifies the initializer.
 The expression must be of the type being defined.
@@ -251,7 +251,7 @@ Defines a type like {@link RDB_define_type}, but allows to specify
 supertypes using the arguments <var>supertypec</var> and <var>supertypev</var>.
 */
 int
-RDB_define_subtype(const char *name, int suptypec, RDB_type *suptypev[],
+RDB_define_subtype(const char *name, int supertypec, RDB_type *supertypev[],
                 int repc, const RDB_possrep repv[],
                 RDB_expression *constraintp, RDB_expression *initexp,
                 int flags, RDB_exec_context *ecp, RDB_transaction *txp)
@@ -294,12 +294,12 @@ RDB_define_subtype(const char *name, int suptypec, RDB_type *suptypev[],
     }
 
     /* Check supertypes */
-    for (i = 0; i < suptypec; i++) {
-        if (!RDB_type_is_scalar(suptypev[i])) {
+    for (i = 0; i < supertypec; i++) {
+        if (!RDB_type_is_scalar(supertypev[i])) {
             RDB_raise_invalid_argument("supertype must be scalar", ecp);
             return RDB_ERROR;
         }
-        if (suptypev[i]->def.scalar.repc > 0) {
+        if (supertypev[i]->def.scalar.repc > 0) {
             RDB_raise_not_supported("supertype must be a dummy type", ecp);
             return RDB_ERROR;
         }
@@ -415,19 +415,19 @@ RDB_define_subtype(const char *name, int suptypec, RDB_type *suptypev[],
         }
     }
 
-    for (i = 0; i < suptypec; i++ ) {
-        if (RDB_cat_insert_subtype(name, RDB_type_name(suptypev[i]), ecp, txp)
+    for (i = 0; i < supertypec; i++ ) {
+        if (RDB_cat_insert_subtype(name, RDB_type_name(supertypev[i]), ecp, txp)
                 != RDB_OK) {
             goto error;
         }
     }
 
-    if (suptypec > 0) {
+    if (supertypec > 0) {
         RDB_type *typ = RDB_get_type(name, ecp, txp);
         if (typ == NULL)
             goto error;
-        for (i = 0; i < suptypec; i++) {
-            if (add_subtype(suptypev[i], typ, ecp) != RDB_OK)
+        for (i = 0; i < supertypec; i++) {
+            if (add_subtype(supertypev[i], typ, ecp) != RDB_OK)
                 goto error;
         }
     }
