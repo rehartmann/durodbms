@@ -94,6 +94,9 @@ public class Tuple implements Serializable {
     }
 
     public boolean equals(Object o) {
+        if (o == null)
+            return false;
+
         Tuple t;
         try {
             t = (Tuple) o;
