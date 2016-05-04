@@ -15,7 +15,7 @@ public class TestUserClass {
 
     private DSession session;
 
-    public static class Data {
+    public static class DataImpl {
         private int n;
         private double x;
         private boolean b;
@@ -46,7 +46,18 @@ public class TestUserClass {
             this.s = s;
         }
     }
-    
+
+    static interface Data {
+        int getN();
+        void setN(int n);
+        double getX();
+        void setX(double x);
+        boolean getB();
+        void setB(boolean b);
+        String getS();
+        void setS(String s);
+    };
+
     @Before
     public void setUp() throws Exception {
         session = DSession.createSession();
@@ -92,7 +103,7 @@ public class TestUserClass {
         session.execute("begin tx;");
         try {
             session.execute("var p0 test;");
-            Data dest = new Data();
+            DataImpl dest = new DataImpl();
             session.evaluate("p0", dest);
             assertEquals(0, dest.getN());
             assertEquals(0.0, dest.getX(), 0.0);
@@ -118,6 +129,16 @@ public class TestUserClass {
             assertEquals(66.0, dest.getX(), 0.0);
             assertEquals(false, dest.getB());
             assertEquals("durodbms", dest.getS());
+
+            dest = session.evaluate("p", DataImpl.class);
+            assertEquals(66.0, dest.getX(), 0.0);
+            assertEquals(false, dest.getB());
+            assertEquals("durodbms", dest.getS());
+
+            Data desti = session.evaluate("p", Data.class);
+            assertEquals(66.0, desti.getX(), 0.0);
+            assertEquals(false, desti.getB());
+            assertEquals("durodbms", desti.getS());
 
             session.execute("commit;");
         } catch (DException e) {

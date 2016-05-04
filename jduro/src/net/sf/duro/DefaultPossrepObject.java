@@ -65,6 +65,9 @@ public class DefaultPossrepObject implements PossrepObject {
      * function RDB_obj_equals().
      */
     public boolean equals(Object obj) {
+        if (obj == null)
+            return false;
+        
         DefaultPossrepObject probj;
         try {
             probj = (DefaultPossrepObject) obj;

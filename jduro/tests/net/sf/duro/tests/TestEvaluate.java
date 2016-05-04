@@ -2,11 +2,11 @@ package net.sf.duro.tests;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 import java.util.HashSet;
 import java.util.Set;
 
-import net.sf.duro.DException;
 import net.sf.duro.DSession;
 import net.sf.duro.Tuple;
 
@@ -64,7 +64,11 @@ public class TestEvaluate {
         Tuple t = new Tuple();
         t.setAttribute("s", "Yo");
 
-        assertEquals(t, session.evaluate("tuple { s 'Yo'}"));
+        assertEquals(t, session.evaluate("tuple { s 'Yo' }"));
+        
+        assertFalse(t.equals(session.evaluate("tuple { s 'Yoo' }")));
+        
+        assertFalse(t.equals(session.evaluate("tuple { t 'Yo' }")));
     }
 
     @Test

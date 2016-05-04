@@ -1,7 +1,9 @@
 package net.sf.duro;
 
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 
 /**
  * The central class used by Java applications to access DuroDBMS.
@@ -163,6 +165,7 @@ public class DSession {
      * 
      * @param expr
      *            The expression to evaluate
+     * @return an object representing the result value.
      * @throws DException
      *             If a Duro error occurs.
      * @throws IllegalStateException
@@ -196,7 +199,9 @@ public class DSession {
      * @throws IllegalArgumentException 
      * @throws IllegalAccessException
      */
-    public void evaluate(String expr, Object dest) throws NoSuchMethodException, SecurityException, IllegalAccessException, InvocationTargetException {
+    public void evaluate(String expr, Object dest)
+            throws NoSuchMethodException, SecurityException,
+            IllegalAccessException, InvocationTargetException {
         PossrepObject src;
         try {
             src = (PossrepObject) evaluate(expr);
@@ -224,6 +229,36 @@ public class DSession {
         src.dispose();
     }
 
+    /**
+     * Evaluates expr, stores the result in an instance of class <code>destClass</code>
+     * and returns that instance.
+     * If <code>destClass</code> is an interface, a dynamic proxy is created.
+     * Otherwise, the default constructor of <code>destClass</code> is called.
+     * @param expr the expression to evaluate
+     * @param destClass the class or interface the returned object is an instance of. 
+     * @return an object of class <code>destClass</code> representing the result value.
+     * @throws NoSuchMethodException
+     * @throws SecurityException
+     * @throws IllegalAccessException
+     * @throws InvocationTargetException
+     * @throws InstantiationException
+     */
+    public <T> T evaluate(String expr, Class<T> destClass)
+            throws NoSuchMethodException, SecurityException,
+            IllegalAccessException, InvocationTargetException, InstantiationException {
+        Object result;
+        if (destClass.isInterface()) {
+            PossrepObject po = (PossrepObject) evaluate(expr);
+            result = Proxy.newProxyInstance(destClass.getClassLoader(),
+                    new Class<?>[] { destClass },
+                    new PossrepInvocationHandler(po));
+        } else {
+            result = destClass.newInstance();
+            evaluate(expr, result);
+        }
+        return (T) result;
+    }
+    
     /**
      * Assigns a value to a variable.
      * 
