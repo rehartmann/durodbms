@@ -55,7 +55,7 @@ assign = <a href="expressions.html#var_expression">var_expression</a> ':=' <a hr
         | DELETE qualified_id [WHERE expression]
         | DELETE qualified_id expression
         | I_DELETE qualified_id expression
-        | UPDATE var_expression [WHERE expression] '{' <a href="expressions.html#id">id</a> := expression {id := expression} '}'.
+        | UPDATE var_expression [WHERE expression] '{' <a href="expressions.html#id">id</a> ':=' expression {',' id ':=' expression} '}'.
 
 call_stmt = [CALL] [expression '.'] id '(' [expression {',' expression}] ')' ';'.
 
@@ -87,7 +87,7 @@ order_item = id ASC | id DESC.
 if_stmt = IF expression THEN statement {statement}
           [ELSE statement {statement}] END IF ';'.
 
-case_stmt = CASE [;] {WHEN expression THEN statement {statement}}
+case_stmt = CASE [';'] {WHEN expression THEN statement {statement}}
           [ELSE statement {statement}] END CASE ';'.
 
 for_stmt = [id ':'] (FOR|DO) id ':=' expression TO expression ';'
