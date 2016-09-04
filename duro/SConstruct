@@ -15,7 +15,7 @@ release = '1.2'
 
 env = Environment(ENV = os.environ, tools = ['default', 'textfile'])
 
-java_home = os.getenv('JAVA_HOME', '/usr/lib/jvm/java-7-openjdk-i386')
+java_home = os.getenv('JAVA_HOME', '/usr/lib/jvm/java-8-openjdk-i386')
 
 oshlibsuffix = env['SHLIBSUFFIX']
 
