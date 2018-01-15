@@ -202,6 +202,12 @@ respond(void *cls, struct MHD_Connection *connection,
 
     response = MHD_create_response_from_buffer(strlen(json.val.bin.datap),
             json.val.bin.datap, MHD_RESPMEM_MUST_FREE);
+    ret = MHD_add_response_header (response, "Content-Type", "application/json");
+    if (ret == MHD_NO) {
+        MHD_destroy_response(response);
+        RDB_destroy_obj(&json, &ec);
+        return MHD_NO;
+    }
     ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
 
