@@ -1,7 +1,7 @@
 /*
  * Functions implementing JDuro's native methods.
  *
- * Copyright (C) 2014, 2016 Rene Hartmann.
+ * Copyright (C) 2014, 2016, 2018 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -423,7 +423,7 @@ static Duro_uop_info op_info = {
 };
 
 JNIEXPORT void
-JNICALL Java_net_sf_duro_DSession_initInterp(JNIEnv *env, jobject obj)
+JNICALL Java_net_sf_duro_LocalSession_initInterp(JNIEnv *env, jobject obj)
 {
     jclass clazz;
     jfieldID interpFieldID;
@@ -704,7 +704,7 @@ JDuro_jobj_session(JNIEnv *env, jobject obj)
 }
 
 JNIEXPORT void
-JNICALL Java_net_sf_duro_DSession_destroyInterp(JNIEnv *env, jobject obj)
+JNICALL Java_net_sf_duro_LocalSession_destroyInterp(JNIEnv *env, jobject obj)
 {
     JDuro_session *sessionp;
     jclass clazz = (*env)->GetObjectClass(env, obj);
@@ -722,7 +722,7 @@ JNICALL Java_net_sf_duro_DSession_destroyInterp(JNIEnv *env, jobject obj)
 }
 
 JNIEXPORT void
-JNICALL Java_net_sf_duro_DSession_executeI(JNIEnv *env, jobject jobj,
+JNICALL Java_net_sf_duro_LocalSession_executeI(JNIEnv *env, jobject jobj,
         jstring statements)
 {
     int ret;
@@ -992,7 +992,7 @@ JDuro_duro_obj_to_jobj(JNIEnv *env, const RDB_object *objp, RDB_bool updatable,
     if (clazz == NULL)
         goto error;
     constructorID = (*env)->GetMethodID(env, clazz, "<init>",
-            "(JLnet/sf/duro/DSession;)V");
+            "(JLnet/sf/duro/LocalSession;)V");
     if (constructorID == NULL) {
         goto error;
     }
@@ -1012,7 +1012,7 @@ error:
 }
 
 JNIEXPORT jobject
-JNICALL Java_net_sf_duro_DSession_evaluateI__Ljava_lang_String_2(JNIEnv *env,
+JNICALL Java_net_sf_duro_LocalSession_evaluateI__Ljava_lang_String_2(JNIEnv *env,
         jobject obj, jstring expression)
 {
     RDB_object result;
@@ -1611,7 +1611,7 @@ JDuro_jobj_to_duro_obj(JNIEnv *env, jobject obj, RDB_object *dstp,
 }
 
 JNIEXPORT void
-JNICALL Java_net_sf_duro_DSession_setVarI(JNIEnv *env, jobject obj,
+JNICALL Java_net_sf_duro_LocalSession_setVarI(JNIEnv *env, jobject obj,
         jstring name, jobject value)
 {
     const char *namestr;

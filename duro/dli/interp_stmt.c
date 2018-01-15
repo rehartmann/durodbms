@@ -438,8 +438,8 @@ error:
     return RDB_ERROR;
 }
 
-static int
-do_begin_tx(Duro_interp *interp, RDB_exec_context *ecp)
+int
+Duro_begin_tx(Duro_interp *interp, RDB_exec_context *ecp)
 {
     RDB_database *dbp = Duro_get_db(interp, ecp);
     if (dbp == NULL)
@@ -482,7 +482,7 @@ exec_begin_tx(Duro_interp *interp, RDB_exec_context *ecp)
 {
     int subtx = (interp->txnp != NULL);
 
-    if (do_begin_tx(interp, ecp) != RDB_OK)
+    if (Duro_begin_tx(interp, ecp) != RDB_OK)
         return RDB_ERROR;
 
     if (RDB_parse_get_interactive())
@@ -492,8 +492,8 @@ exec_begin_tx(Duro_interp *interp, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
-static int
-do_commit(Duro_interp *interp, RDB_exec_context *ecp)
+int
+Duro_commit(Duro_interp *interp, RDB_exec_context *ecp)
 {
     tx_node *ptxnp;
 
@@ -520,7 +520,7 @@ do_commit(Duro_interp *interp, RDB_exec_context *ecp)
 static int
 exec_commit(Duro_interp *interp, RDB_exec_context *ecp)
 {
-    if (do_commit(interp, ecp) != RDB_OK)
+    if (Duro_commit(interp, ecp) != RDB_OK)
         return RDB_ERROR;
 
     if (RDB_parse_get_interactive())
@@ -529,8 +529,8 @@ exec_commit(Duro_interp *interp, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
-static int
-do_rollback(Duro_interp *interp, RDB_exec_context *ecp)
+int
+Duro_rollback(Duro_interp *interp, RDB_exec_context *ecp)
 {
     tx_node *ptxnp;
 
@@ -557,7 +557,7 @@ do_rollback(Duro_interp *interp, RDB_exec_context *ecp)
 static int
 exec_rollback(Duro_interp *interp, RDB_exec_context *ecp)
 {
-    if (do_rollback(interp, ecp) != RDB_OK)
+    if (Duro_rollback(interp, ecp) != RDB_OK)
         return RDB_ERROR;
 
     if (RDB_parse_get_interactive())
@@ -2774,13 +2774,13 @@ Duro_exec_stmt_impl_tx(RDB_parse_node *stmtp, Duro_interp *interp,
     }
 
     if (implicit_tx) {
-        if (do_begin_tx(interp, ecp) != RDB_OK) {
+        if (Duro_begin_tx(interp, ecp) != RDB_OK) {
             return RDB_ERROR;
         }
     }
     if (Duro_exec_stmt(stmtp, interp, ecp, NULL) != RDB_OK) {
         if (implicit_tx) {
-            do_rollback(interp, ecp);
+            Duro_rollback(interp, ecp);
         } else {
             RDB_object *errobjp = RDB_get_err(ecp);
             if (RDB_obj_type(errobjp) == &RDB_OPERATOR_NOT_FOUND_ERROR
@@ -2799,7 +2799,7 @@ Duro_exec_stmt_impl_tx(RDB_parse_node *stmtp, Duro_interp *interp,
     }
 
     if (implicit_tx) {
-        return do_commit(interp, ecp);
+        return Duro_commit(interp, ecp);
     }
     return RDB_OK;
 }

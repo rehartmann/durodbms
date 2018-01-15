@@ -87,6 +87,8 @@ public class Tuple implements Serializable {
             if (val instanceof String) {
                 buf.append('\'');
             }
+            if (it.hasNext())
+                buf.append(',');
             buf.append(' ');
         }
         buf.append('}');

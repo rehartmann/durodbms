@@ -11,9 +11,9 @@ import os
 
 bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.6.1')
 
-release = '1.2'
+release = 'pre1.3'
 
-env = Environment(ENV = os.environ, tools = ['default', 'textfile'])
+env = Environment(ENV = os.environ, tools = ['default', 'textfile'], JAVACLASSPATH = '../jduro/lib/javax.json.jar')
 
 java_home = os.getenv('JAVA_HOME', '/usr/lib/jvm/java-8-openjdk-i386')
 
@@ -60,7 +60,8 @@ gensrc = ['gen/hashmap.c', 'gen/hashmapit.c',
 objsrc = ['obj/object.c', 'obj/excontext.c', 'obj/type.c',
           'obj/builtintypes.c', 'obj/io.c','obj/expression.c', 'obj/key.c',
           'obj/tuple.c', 'obj/array.c', 'obj/operator.c',
-          'obj/builtinscops.c', 'obj/datetimeops.c', 'obj/objmatch.c']
+          'obj/builtinscops.c', 'obj/datetimeops.c', 'obj/objmatch.c',
+          'obj/json.c' ]
 
 recsrc = ['rec/cursor.c', 'rec/env.c', 'rec/index.c', 'rec/recmap.c', 'rec/sequence.c']
 
@@ -90,8 +91,7 @@ if env['PLATFORM'] == 'win32':
     libjduro = env.SharedLibrary('jduro', ['jduro/jduro.c', 'jduro/probj.c'],
             CPPPATH = env['CPPPATH'] + [java_home + '/include']
                 + [java_home + '/include/win32'],
-            LIBS = env['LIBS'] + ['duro.lib'],
-            )
+            LIBS = env['LIBS'] + ['duro.lib'])
 else:
     libduro = env.SharedLibrary('duro', durosrc,
             LIBS = durolibs)
@@ -148,10 +148,16 @@ else:
             LIBS = env['LIBS'] + ['readline', libduro, 'fcgi'])
 
 #
+# REST server
+#
+
+durod = env.Program('srv/durod.c', LIBS = env['LIBS'] + [libduro, 'microhttpd'])
+
+#
 # Java interface
 #
 
-env.Java('../jduro/bin', '../jduro/src')
+env.Java('../jduro/bin', '../jduro/src' )
 
 env.Jar('jduro.jar', '../jduro/bin', JARCHDIR='$SOURCE') 
 

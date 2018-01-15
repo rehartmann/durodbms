@@ -1,5 +1,7 @@
 Summary of Changes to DuroDBMS
 
+- Added a REST server and Java client support for accessing a database using HTTP/REST.
+
 DuroDBMS 1.2
 
 - Added a limited form of subtyping. Only dummy types can be supertypes.

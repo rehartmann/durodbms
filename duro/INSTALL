@@ -34,11 +34,15 @@ The location of Berkeley DB may also be specified using
 the environment. With Visual C++, the variables LIB and INCLUDE
 can be used.
 
-By default, DuroDBMS is installed in C:\duro.1.2 on Windows, and
-/usr/local/duro.1.2 on all other systems.
+By default, DuroDBMS is installed in C:\duro.pre1.3 on Windows, and
+/usr/local/duro.pre1.3 on all other systems.
 You can specify a different directory by passing an installdir
 variable to scons, e. g.:
 
 scons installdir=/usr install
 
 This will install DuroDBMS in /usr/duro.1.2.
+
+To build the REST server, type:
+
+scons srv/durod

@@ -1,5 +1,5 @@
 ulimit -c unlimited
-LD_LIBRARY_PATH=$PWD
+LD_LIBRARY_PATH=$PWD:/usr/local/lib
 export LD_LIBRARY_PATH
 TCLLIBPATH=$PWD
 export TCLLIBPATH

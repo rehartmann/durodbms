@@ -37,7 +37,7 @@ public class DefaultPossrepObject implements PossrepObject {
         return type;
     }
 
-    DefaultPossrepObject(long ref, DSession dInstance) {
+    DefaultPossrepObject(long ref, LocalSession dInstance) {
         if (dInstance == null)
             throw new NullPointerException();
 

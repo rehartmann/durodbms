@@ -1,9 +1,8 @@
 package net.sf.duro;
 
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
+import java.net.URL;
+
+import net.sf.duro.rest.RESTSession;
 
 /**
  * The central class used by Java applications to access DuroDBMS.
@@ -11,41 +10,32 @@ import java.lang.reflect.Proxy;
  * @author Rene Hartmann
  *
  */
-public class DSession {
-    static {
-        System.loadLibrary("jduro");
-    }
+public abstract class DSession {
 
-    private long interp = 0L; // Contains the pointer to the Duro_interp
-                              // structure
-
-    private DSession() { } // Constructor is private
-
-    native private void initInterp();
-
-    native private void destroyInterp();
-
-    native private void executeI(String s)
-            throws ClassNotFoundException, NoSuchMethodException;
-
-    native private Object evaluateI(String expr)
-            throws ClassNotFoundException, NoSuchMethodException;
-
-    native private void setVarI(String name, Object v);
-
+    protected DSession() { }
+    
     /**
-     * Creates a DSession.
+     * Creates a local DSession.
      * 
      * @return the DSession created.
      * @throws DException
      *             if a Duro error occurs
      */
     static public DSession createSession() {
-        DSession instance = new DSession();
-        synchronized (DSession.class) {
-            instance.initInterp();
-        }
+        DSession instance = new LocalSession();
         return instance;
+    }
+
+    /**
+     * Creates a remote DSession.
+     * 
+     * The URL must be as follows: <protocol>:[port]//database
+     * 
+     * @return the DSession created.
+     * @throws DException
+     */
+    static public DSession createSession(URL url) {
+        return new RESTSession(url);
     }
 
     /**
@@ -55,9 +45,7 @@ public class DSession {
      *             If a Duro error occurs
      */
     public void close() {
-        synchronized (DSession.class) {
-            destroyInterp();
-        }
+        // Do nothing
     }
 
     /**
@@ -117,22 +105,10 @@ public class DSession {
      * @param code
      *            The code to execute
      * @throws DException
-     *             If a Duro error occurs.
-     * @throws IllegalStateException
      *             If the code could not be executed.
      * 
      */
-    public void execute(String code) {
-        try {
-            synchronized (DSession.class) {
-                executeI(code);
-            }
-        } catch (ClassNotFoundException ex) {
-            throw new IllegalStateException(ex);
-        } catch (NoSuchMethodException ex) {
-            throw new IllegalStateException(ex);
-        }
-    }
+    public abstract void execute(String code);
 
     /**
      * Evaluates a Duro D/T expression.
@@ -167,22 +143,10 @@ public class DSession {
      *            The expression to evaluate
      * @return an object representing the result value.
      * @throws DException
-     *             If a Duro error occurs.
-     * @throws IllegalStateException
      *             If the expression could not be evaluated.
      * 
      */
-    public Object evaluate(String expr) {
-        try {
-            synchronized (DSession.class) {
-                return evaluateI(expr);
-            }
-        } catch (ClassNotFoundException ex) {
-            throw new IllegalStateException(ex);
-        } catch (NoSuchMethodException ex) {
-            throw new IllegalStateException(ex);
-        }
-    }
+    public abstract Object evaluate(String expr);
 
     /**
      * Evaluates the expression <code>expr</code> and stores the
@@ -193,41 +157,8 @@ public class DSession {
      * @param expr      the expression to evaluate
      * @param dest      the destination object
      * @throws DException
-     * @throws SecurityException 
-     * @throws NoSuchMethodException 
-     * @throws InvocationTargetException 
-     * @throws IllegalArgumentException 
-     * @throws IllegalAccessException
      */
-    public void evaluate(String expr, Object dest)
-            throws NoSuchMethodException, SecurityException,
-            IllegalAccessException, InvocationTargetException {
-        PossrepObject src;
-        try {
-            src = (PossrepObject) evaluate(expr);
-        } catch (ClassCastException ex) {
-            throw new IllegalArgumentException("Expression type does not have possreps");
-        }
-        Possrep pr = src.getType().getPossreps()[0];
-        for (int i = 0; i < pr.getComponents().length; i++) {
-            String propname = pr.getComponent(i).getName();
-            Object prop = src.getProperty(propname);
-            String setterName = "set" + propname.substring(0, 1).toUpperCase()
-                    + propname.substring(1);
-            Class<?> parameterType;
-            if (prop instanceof Integer) {
-                parameterType = int.class;
-            } else if (prop instanceof Double) {
-                parameterType = double.class;
-            } else if (prop instanceof Boolean) {
-                parameterType = boolean.class;
-            } else {
-                parameterType = prop.getClass();
-            }
-            dest.getClass().getMethod(setterName, parameterType).invoke(dest, prop);
-        }
-        src.dispose();
-    }
+    public abstract void evaluate(String expr, Object dest);
 
     /**
      * Evaluates expr, stores the result in an instance of class <code>destClass</code>
@@ -237,28 +168,10 @@ public class DSession {
      * @param expr the expression to evaluate
      * @param destClass the class or interface the returned object is an instance of. 
      * @return an object of class <code>destClass</code> representing the result value.
-     * @throws NoSuchMethodException
-     * @throws SecurityException
-     * @throws IllegalAccessException
-     * @throws InvocationTargetException
-     * @throws InstantiationException
+     * @throws DException
      */
-    public <T> T evaluate(String expr, Class<T> destClass)
-            throws NoSuchMethodException, SecurityException,
-            IllegalAccessException, InvocationTargetException, InstantiationException {
-        Object result;
-        if (destClass.isInterface()) {
-            PossrepObject po = (PossrepObject) evaluate(expr);
-            result = Proxy.newProxyInstance(destClass.getClassLoader(),
-                    new Class<?>[] { destClass },
-                    new PossrepInvocationHandler(po));
-        } else {
-            result = destClass.newInstance();
-            evaluate(expr, result);
-        }
-        return (T) result;
-    }
-    
+    public abstract <T> T evaluate(String expr, Class<T> destClass);
+
     /**
      * Assigns a value to a variable.
      * 
@@ -271,9 +184,5 @@ public class DSession {
      * @throws java.lang.IllegalArgumentException
      *             If v does not match the type of the variable.
      */
-    public void setVar(String name, Object v) {
-        synchronized (DSession.class) {
-            setVarI(name, v);
-        }
-    }
+    public abstract void setVar(String name, Object v);
 }

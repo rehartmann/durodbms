@@ -130,6 +130,15 @@ RDB_transaction *
 Duro_dt_tx(Duro_interp *);
 
 int
+Duro_begin_tx(Duro_interp *, RDB_exec_context *);
+
+int
+Duro_commit(Duro_interp *, RDB_exec_context *);
+
+int
+Duro_rollback(Duro_interp *, RDB_exec_context *);
+
+int
 Duro_rollback_all(Duro_interp *, RDB_exec_context *);
 
 int

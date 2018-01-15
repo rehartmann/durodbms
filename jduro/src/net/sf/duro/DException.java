@@ -12,6 +12,10 @@ public class DException extends RuntimeException {
     public DException() {
     }
 
+    public DException(Throwable cause) {
+        super(cause);
+    }
+
     public DException(Object error) {
         this.error = error;
     }
