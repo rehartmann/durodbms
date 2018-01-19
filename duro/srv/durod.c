@@ -164,7 +164,7 @@ respond_invalid_query(struct MHD_Connection *connection)
     response = MHD_create_response_from_buffer(strlen(txt),
             (void *) txt, MHD_RESPMEM_PERSISTENT);
     ret = MHD_queue_response(connection, MHD_HTTP_NOT_FOUND, response);
-        MHD_destroy_response(response);
+    MHD_destroy_response(response);
 
     return ret;
 }
