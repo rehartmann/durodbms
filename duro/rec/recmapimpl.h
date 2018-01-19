@@ -4,7 +4,7 @@
 /*
  * Record map internals
  *
- * Copyright (C) 2016 Rene Hartmann.
+ * Copyright (C) 2018 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
