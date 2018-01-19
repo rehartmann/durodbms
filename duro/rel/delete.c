@@ -10,6 +10,7 @@
 #include "qresult.h"
 #include <obj/objinternal.h>
 #include <gen/strfns.h>
+#include <db.h>
 
 #include <string.h>
 
@@ -41,10 +42,10 @@ delete_by_uindex(RDB_object *tbp, RDB_object *objpv[], RDB_tbindex *indexp,
     RDB_cmp_ecp = ecp;
     if (indexp->idxp == NULL) {
         ret = RDB_delete_rec(tbp->val.tbp->stp->recmapp, fv,
-                RDB_table_is_persistent(tbp) ? txp->txid : NULL);
+                RDB_table_is_persistent(tbp) ? txp->tx : NULL);
     } else {
         ret = RDB_index_delete_rec(indexp->idxp, fv,
-                RDB_table_is_persistent(tbp) ? txp->txid : NULL);
+                RDB_table_is_persistent(tbp) ? txp->tx : NULL);
     }
     switch (ret) {
     case RDB_OK:
@@ -94,7 +95,7 @@ RDB_delete_real(RDB_object *tbp, RDB_expression *condp,
     }
 
     ret = RDB_recmap_cursor(&curp, tbp->val.tbp->stp->recmapp, RDB_TRUE,
-            RDB_table_is_persistent(tbp) ? txp->txid : NULL);
+            RDB_table_is_persistent(tbp) ? txp->tx : NULL);
     if (ret != RDB_OK) {
         RDB_handle_errcode(ret, ecp, txp);
         return RDB_ERROR;
@@ -262,7 +263,7 @@ delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
 
     ret = RDB_index_cursor(&curp, indexp->idxp, RDB_TRUE,
             RDB_table_is_persistent(refexp->def.tbref.tbp) ?
-            txp->txid : NULL);
+            txp->tx : NULL);
     if (ret != RDB_OK) {
         RDB_handle_errcode(ret, ecp, txp);
         return RDB_ERROR;

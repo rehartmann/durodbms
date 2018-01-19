@@ -1,11 +1,12 @@
 /*
- * sequence.c
+ * Sequence functions
  *
- *  Created on: 15.11.2013
- *      Author: Rene Hartmann
+ * Copyright (C) 2013 Rene Hartmann.
+ * See the file COPYING for redistribution information.
+ *
  */
 
-#include "env.h"
+#include "envimpl.h"
 #include "sequence.h"
 #include <gen/strfns.h>
 
@@ -13,9 +14,15 @@
 #include <string.h>
 #include <errno.h>
 
+typedef struct RDB_sequence {
+    DB_SEQUENCE *seq;
+    char *filenamp;
+    char *cnamp;
+} RDB_sequence;
+
 int
 RDB_open_sequence(const char *cname, const char *filename,
-        RDB_environment *envp, DB_TXN *txn, RDB_sequence **seqpp)
+        RDB_environment *envp, RDB_rec_transaction *rtxp, RDB_sequence **seqpp)
 {
     DBT key;
     int ret;
@@ -40,7 +47,7 @@ RDB_open_sequence(const char *cname, const char *filename,
      * The sequence key is always the same.
      */
 
-    ret = dbp->open(dbp, txn, filename,
+    ret = dbp->open(dbp, (DB_TXN *) rtxp, filename,
             cname, DB_HASH, DB_CREATE, 0664);
     if (ret != 0)
         return ret;
@@ -58,7 +65,7 @@ RDB_open_sequence(const char *cname, const char *filename,
     if (ret != 0)
         return ret;
 
-    ret = seqp->seq->open(seqp->seq, txn, &key, DB_CREATE);
+    ret = seqp->seq->open(seqp->seq, (DB_TXN *) rtxp, &key, DB_CREATE);
     if (ret != 0)
         return ret;
     *seqpp = seqp;
@@ -84,9 +91,10 @@ RDB_close_sequence(RDB_sequence *seqp)
  * Delete the sequence and its BDB db.
  */
 int
-RDB_delete_sequence(RDB_sequence *seqp, RDB_environment *envp, DB_TXN *txn)
+RDB_delete_sequence(RDB_sequence *seqp, RDB_environment *envp, RDB_rec_transaction *rtxp)
 {
     DB *dbp;
+    DB_TXN *txn = (DB_TXN *) rtxp;
     int ret = seqp->seq->get_db(seqp->seq, &dbp);
     if (ret != 0)
         return ret;
@@ -101,10 +109,10 @@ RDB_delete_sequence(RDB_sequence *seqp, RDB_environment *envp, DB_TXN *txn)
 }
 
 int
-RDB_sequence_next(RDB_sequence *seqp, DB_TXN *txn, RDB_int *valp)
+RDB_sequence_next(RDB_sequence *seqp, RDB_rec_transaction *rtxp, RDB_int *valp)
 {
     db_seq_t seqval;
-    int ret = seqp->seq->get(seqp->seq, txn, (int32_t) 1, &seqval, 0);
+    int ret = seqp->seq->get(seqp->seq, (DB_TXN *) rtxp, (int32_t) 1, &seqval, 0);
     if (ret != 0)
         return ret;
     *valp = (RDB_int) seqval;
@@ -116,8 +124,9 @@ RDB_sequence_next(RDB_sequence *seqp, DB_TXN *txn, RDB_int *valp)
  */
 int
 RDB_rename_sequence(const char *oldname, const char *newname,
-        const char *filename, RDB_environment *envp, DB_TXN *txn)
+        const char *filename, RDB_environment *envp, RDB_rec_transaction *rtxp)
 {
     /* Rename database */
-    return envp->envp->dbrename(envp->envp, txn, filename, oldname, newname, 0);
+    return envp->envp->dbrename(envp->envp, (DB_TXN *) rtxp, filename,
+            oldname, newname, 0);
 }

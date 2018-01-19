@@ -9,6 +9,7 @@
 #include "stable.h"
 #include <gen/strfns.h>
 #include <rec/sequence.h>
+#include <db.h>
 
 #include <string.h>
 
@@ -95,7 +96,7 @@ RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
                     }
 
                     ret = RDB_open_sequence(RDB_obj_string(&seqname),
-                            RDB_DATAFILE, RDB_db_env(RDB_tx_db(txp)), txp->txid, &dflp->seqp);
+                            RDB_DATAFILE, RDB_db_env(RDB_tx_db(txp)), txp->tx, &dflp->seqp);
                     RDB_destroy_obj(&seqname, ecp);
                     if (ret != 0) {
                         RDB_handle_errcode(ret, ecp, txp);
@@ -103,7 +104,7 @@ RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
                         goto cleanup;
                     }
                 }
-                ret = RDB_sequence_next(dflp->seqp, txp->txid, &nextval);
+                ret = RDB_sequence_next(dflp->seqp, txp->tx, &nextval);
                 if (ret != 0) {
                     RDB_handle_errcode(ret, ecp, txp);
                     ret = RDB_ERROR;
@@ -147,11 +148,11 @@ RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
 
     RDB_cmp_ecp = ecp;
     ret = RDB_insert_rec(tbp->val.tbp->stp->recmapp, fvp,
-            RDB_table_is_persistent(tbp) ? txp->txid : NULL);
+            RDB_table_is_persistent(tbp) ? txp->tx : NULL);
     if (ret == DB_KEYEXIST) {
         /* check if the tuple is an element of the table */
         if (RDB_contains_rec(tbp->val.tbp->stp->recmapp, fvp,
-                RDB_table_is_persistent(tbp) ? txp->txid : NULL) == RDB_OK) {
+                RDB_table_is_persistent(tbp) ? txp->tx : NULL) == RDB_OK) {
             RDB_raise_element_exists("tuple is already in table", ecp);
         } else {
             RDB_handle_errcode(ret, ecp, txp);

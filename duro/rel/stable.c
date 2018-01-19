@@ -16,6 +16,7 @@
 #include <obj/objinternal.h>
 #include <gen/strfns.h>
 #include <gen/hashmapit.h>
+#include <db.h>
 #include <string.h>
 #include <errno.h>
 
@@ -141,7 +142,7 @@ compare_field(const void *data1p, size_t len1, const void *data2p, size_t len2,
 
     valv[0] = &val1;
     valv[1] = &val2;
-    tx.txid = NULL;
+    tx.tx = NULL;
     tx.envp = envp;
     (*typ->compare_op->opfn.ro_fp) (2, valv, typ->compare_op, RDB_cmp_ecp, &tx, &retval);
     ret = RDB_obj_int(&retval);
@@ -219,7 +220,7 @@ RDB_create_tbindex(RDB_object *tbp, RDB_tbindex *indexp, RDB_environment *envp,
                   RDB_table_is_persistent(tbp) ? indexp->name : NULL,
                   RDB_table_is_persistent(tbp) ? RDB_DATAFILE : NULL,
                   envp, indexp->attrc, fieldv, cmpv, flags,
-                  txp != NULL ? txp->txid : NULL, &indexp->idxp);
+                  txp != NULL ? txp->tx : NULL, &indexp->idxp);
     if (ret != RDB_OK) {
         RDB_handle_errcode(ret, ecp, txp);
         indexp->idxp = NULL;
@@ -563,7 +564,7 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
     if (ascv == NULL)
         flags |= RDB_UNIQUE;
 
-    if (RDB_table_is_persistent(tbp) && envp->trace) {
+    if (RDB_table_is_persistent(tbp) && RDB_env_trace(envp)) {
         fprintf(stderr, "Creating physical storage for table %s\n",
                 RDB_table_name(tbp));
     }
@@ -571,7 +572,7 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
             (rmname == NULL ? RDB_table_name(tbp) : rmname) : NULL,
             RDB_table_is_persistent(tbp) ? RDB_DATAFILE : NULL,
             envp, attrc, flenv, piattrc, cmpv, flags,
-            txp != NULL ? txp->txid : NULL,
+            txp != NULL ? txp->tx : NULL,
             &tbp->val.tbp->stp->recmapp);
     if (ret != RDB_OK) {
         tbp->val.tbp->stp->recmapp = NULL;
@@ -725,7 +726,7 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
         return RDB_ERROR;
 
     ret = RDB_open_recmap(rmname, RDB_DATAFILE, envp,
-            attrc, flenv, piattrc, txp != NULL ? txp->txid : NULL,
+            attrc, flenv, piattrc, txp != NULL ? txp->tx : NULL,
             &tbp->val.tbp->stp->recmapp);
     if (ret != RDB_OK) {
         if (ret == ENOENT) {
@@ -740,7 +741,7 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
      * Get estimated number of records
      */
     ret = RDB_recmap_est_size(tbp->val.tbp->stp->recmapp,
-            txp != NULL ? txp->txid : NULL,
+            txp != NULL ? txp->tx : NULL,
             &tbp->val.tbp->stp->est_cardinality);
     if (ret != 0) {
         RDB_handle_errcode(ret, ecp, txp);
@@ -821,7 +822,7 @@ RDB_open_tbindex(RDB_object *tbp, RDB_tbindex *indexp,
                   RDB_table_is_persistent(tbp) ? indexp->name : NULL,
                   RDB_table_is_persistent(tbp) ? RDB_DATAFILE : NULL,
                   envp, indexp->attrc, fieldv, cmpv, indexp->unique ? RDB_UNIQUE : 0,
-                  txp != NULL ? txp->txid : NULL, &indexp->idxp);
+                  txp != NULL ? txp->tx : NULL, &indexp->idxp);
     if (ret != RDB_OK) {
         RDB_handle_errcode(ret, ecp, txp);
         indexp->idxp = NULL;

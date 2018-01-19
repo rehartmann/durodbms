@@ -1,10 +1,10 @@
-/* $Id$ */
-
 /*
  * Test table update which references the table itself.
  */
 
 #include <rel/rdb.h>
+#include <db.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>

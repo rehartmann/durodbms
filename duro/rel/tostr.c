@@ -12,6 +12,7 @@
 #include <obj/objinternal.h>
 
 #include <string.h>
+#include <stdio.h>
 
 static int
 append_obj(RDB_object *objp, const RDB_object *srcp, RDB_environment *,

@@ -4,15 +4,26 @@
  */
 
 #include "cursor.h"
-#include "index.h"
+#include "recmapimpl.h"
+#include "indeximpl.h"
 #include <string.h>
 #include <errno.h>
+
+typedef struct RDB_cursor {
+    /* internal */
+    DBC *cursorp;
+    DBT current_key;
+    DBT current_data;
+    RDB_recmap *recmapp;
+    RDB_index *idxp;
+    RDB_rec_transaction *tx;
+} RDB_cursor;
 
 /*
  * Allocate and initialize a RDB_cursor structure.
  */
 static RDB_cursor *
-new_cursor(RDB_recmap *rmp, DB_TXN *txid, RDB_index *idxp)
+new_cursor(RDB_recmap *rmp, RDB_rec_transaction *rtxp, RDB_index *idxp)
 {
     RDB_cursor *curp = malloc(sizeof(RDB_cursor));
     if (curp == NULL)
@@ -20,7 +31,7 @@ new_cursor(RDB_recmap *rmp, DB_TXN *txid, RDB_index *idxp)
 
     curp->recmapp = rmp;
     curp->idxp = idxp;
-    curp->txid = txid;
+    curp->tx = rtxp;
     memset(&curp->current_key, 0, sizeof(DBT));
     curp->current_key.flags = DB_DBT_REALLOC;
     memset(&curp->current_data, 0, sizeof(DBT));
@@ -35,7 +46,7 @@ new_cursor(RDB_recmap *rmp, DB_TXN *txid, RDB_index *idxp)
  */
 int
 RDB_recmap_cursor(RDB_cursor **curpp, RDB_recmap *rmp, RDB_bool wr,
-                  DB_TXN *txid)
+        RDB_rec_transaction *rtxp)
 {
     /*
      * The wr agument is ignored, because setting DB_WRITECURSOR only
@@ -43,11 +54,11 @@ RDB_recmap_cursor(RDB_cursor **curpp, RDB_recmap *rmp, RDB_bool wr,
      */
 
     int ret;
-    RDB_cursor *curp = new_cursor(rmp, txid, NULL);
+    RDB_cursor *curp = new_cursor(rmp, rtxp, NULL);
     
     if (curp == NULL)
         return ENOMEM;
-    ret = rmp->dbp->cursor(rmp->dbp, txid, &curp->cursorp, 0);
+    ret = rmp->dbp->cursor(rmp->dbp, (DB_TXN *) rtxp, &curp->cursorp, 0);
     if (ret != 0) {
         free(curp);
         return ret;
@@ -62,14 +73,14 @@ RDB_recmap_cursor(RDB_cursor **curpp, RDB_recmap *rmp, RDB_bool wr,
  */
 int
 RDB_index_cursor(RDB_cursor **curpp, RDB_index *idxp, RDB_bool wr,
-                  DB_TXN *txid)
+                  RDB_rec_transaction *rtxp)
 {
     int ret;
-    RDB_cursor *curp = new_cursor(idxp->rmp, txid, idxp);
+    RDB_cursor *curp = new_cursor(idxp->rmp, rtxp, idxp);
 
     if (curp == NULL)
         return ENOMEM;
-    ret = idxp->dbp->cursor(idxp->dbp, txid, &curp->cursorp, 0);
+    ret = idxp->dbp->cursor(idxp->dbp, (DB_TXN *) rtxp, &curp->cursorp, 0);
     if (ret != 0) {
         free(curp);        
         return ret;
@@ -176,7 +187,7 @@ RDB_cursor_update(RDB_cursor *curp, int fieldc, const RDB_field fieldv[])
     }
 
     ret = RDB_update_DBT_rec(curp->recmapp, &pkey, &data, fieldc, fieldv,
-            curp->txid);
+            (DB_TXN *) curp->tx);
 
 cleanup:
     free(data.data);

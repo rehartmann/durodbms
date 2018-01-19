@@ -9,20 +9,11 @@
 #include <gen/types.h>
 #include "recmap.h"
 
-#include <db.h>
 #include <stdlib.h>
 
 typedef struct RDB_index RDB_index;
-
-typedef struct {
-    /* internal */
-    DBC *cursorp;
-    DBT current_key;
-    DBT current_data;
-    RDB_recmap *recmapp;
-    RDB_index *idxp;
-    DB_TXN *txid;
-} RDB_cursor;
+typedef struct RDB_rec_transaction RDB_rec_transaction;
+typedef struct RDB_cursor RDB_cursor;
 
 enum {
     RDB_REC_DUP = 1,
@@ -30,10 +21,10 @@ enum {
 };
 
 int
-RDB_recmap_cursor(RDB_cursor **, RDB_recmap *, RDB_bool wr, DB_TXN *);
+RDB_recmap_cursor(RDB_cursor **, RDB_recmap *, RDB_bool wr, RDB_rec_transaction *);
 
 int
-RDB_index_cursor(RDB_cursor **, RDB_index *, RDB_bool wr, DB_TXN *);
+RDB_index_cursor(RDB_cursor **, RDB_index *, RDB_bool wr, RDB_rec_transaction *);
 
 int
 RDB_cursor_get(RDB_cursor *, int fno, void **datapp, size_t *);

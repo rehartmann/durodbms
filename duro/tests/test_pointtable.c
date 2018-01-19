@@ -7,6 +7,9 @@
 
 #include <rel/rdb.h>
 #include <rel/tostr.h>
+#include <rec/envimpl.h>
+#include <db.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>

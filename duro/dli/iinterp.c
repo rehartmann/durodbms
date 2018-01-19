@@ -13,6 +13,7 @@
 
 #include <sys/stat.h>
 #include <errno.h>
+#include <unistd.h>
 #include <stdio.h>
 
 typedef struct yy_buffer_state *YY_BUFFER_STATE;

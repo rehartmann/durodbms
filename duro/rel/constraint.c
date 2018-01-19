@@ -15,6 +15,7 @@
 #include <obj/objinternal.h>
 
 #include <string.h>
+#include <stdio.h>
 
 static int
 optimize_constr_expr(RDB_expression *exp, RDB_exec_context *ecp)

@@ -19,6 +19,7 @@
 #include <obj/objinternal.h>
 
 #include <string.h>
+#include <stdio.h>
 
 typedef struct insert_node {
     RDB_ma_insert ins;

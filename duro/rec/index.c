@@ -1,13 +1,12 @@
 /*
- * $Id$
- *
  * Copyright (C) 2004-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
-#include "index.h"
+#include "indeximpl.h"
+#include "recmapimpl.h"
 #include "dbdefs.h"
-#include "env.h"
+#include "envimpl.h"
 #include <gen/strfns.h>
 
 #include <string.h>
@@ -216,7 +215,7 @@ make_skey(DB *dbp, const DBT *pkeyp, const DBT *pdatap, DBT *skeyp)
 int
 RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
         RDB_environment *envp, int fieldc, const int fieldv[],
-        const RDB_compare_field cmpv[], int flags, DB_TXN *txid,
+        const RDB_compare_field cmpv[], int flags, RDB_rec_transaction *rtxp,
         RDB_index **ixpp)
 {
     RDB_index *ixp;
@@ -226,7 +225,7 @@ RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     if (ret != RDB_OK)
         return ret;
 
-    ret = ixp->dbp->open(ixp->dbp, txid, filenamp, namp,
+    ret = ixp->dbp->open(ixp->dbp, (DB_TXN *) rtxp, filenamp, namp,
             RDB_ORDERED & flags ? DB_BTREE : DB_HASH, DB_CREATE, 0664);
     if (ret != 0) {
         goto error;
@@ -236,7 +235,7 @@ RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     ixp->dbp->app_private = ixp;
 
     /* Associate the index DB with the recmap DB */
-    ret = ixp->dbp->associate(rmp->dbp, txid, ixp->dbp, make_skey, DB_CREATE);
+    ret = ixp->dbp->associate(rmp->dbp, (DB_TXN *) rtxp, ixp->dbp, make_skey, DB_CREATE);
     if (ret != 0) {
         goto error;
     }
@@ -245,14 +244,14 @@ RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     return RDB_OK;
 
 error:
-    RDB_delete_index(ixp, envp, txid);
+    RDB_delete_index(ixp, envp, rtxp);
     return ret;
 }
 
 int
 RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
         RDB_environment *envp, int fieldc, const int fieldv[],
-        const RDB_compare_field cmpv[], int flags, DB_TXN *txid, RDB_index **ixpp)
+        const RDB_compare_field cmpv[], int flags, RDB_rec_transaction *rtxp, RDB_index **ixpp)
 {
     RDB_index *ixp;
     int ret;
@@ -261,7 +260,7 @@ RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     if (ret != 0)
         return ret;
 
-    ret = ixp->dbp->open(ixp->dbp, txid, filenamp, namp, DB_UNKNOWN, 0, 0664);
+    ret = ixp->dbp->open(ixp->dbp, (DB_TXN *) rtxp, filenamp, namp, DB_UNKNOWN, 0, 0664);
     if (ret != 0) {
         goto error;
     }
@@ -270,7 +269,7 @@ RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     ixp->dbp->app_private = ixp;
 
     /* associate the index DB with the recmap DB */
-    ret = ixp->dbp->associate(rmp->dbp, txid, ixp->dbp, make_skey, 0);
+    ret = ixp->dbp->associate(rmp->dbp, (DB_TXN *) rtxp, ixp->dbp, make_skey, 0);
     if (ret != 0) {
         goto error;
     }
@@ -307,14 +306,14 @@ RDB_index_is_ordered(RDB_index *ixp)
 
 /* Delete an index. */
 int
-RDB_delete_index(RDB_index *ixp, RDB_environment *envp, DB_TXN *txid)
+RDB_delete_index(RDB_index *ixp, RDB_environment *envp, RDB_rec_transaction *rtxp)
 {
     int ret = ixp->dbp->close(ixp->dbp, 0);
     if (ret != 0)
         goto cleanup;
 
     if (ixp->namp != NULL)
-        ret = envp->envp->dbremove(envp->envp, txid, ixp->filenamp, ixp->namp, 0);
+        ret = envp->envp->dbremove(envp->envp, (DB_TXN *) rtxp, ixp->filenamp, ixp->namp, 0);
 
 cleanup:
     free(ixp->namp);
@@ -327,7 +326,7 @@ cleanup:
 }
 
 int
-RDB_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc, DB_TXN *txid,
+RDB_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc, RDB_rec_transaction *rtxp,
            RDB_field retfieldv[])
 {
     DBT key, pkey, data;
@@ -347,7 +346,7 @@ RDB_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc, DB_TXN *txid,
     memset(&data, 0, sizeof (DBT));
 
     /* Get primary key and data */
-    ret = ixp->dbp->pget(ixp->dbp, txid, &key, &pkey, &data, 0);
+    ret = ixp->dbp->pget(ixp->dbp, (DB_TXN *) rtxp, &key, &pkey, &data, 0);
     if (ret != 0) {
         return ret;
     }
@@ -376,7 +375,7 @@ RDB_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc, DB_TXN *txid,
 }
 
 int
-RDB_index_delete_rec(RDB_index *ixp, RDB_field keyv[], DB_TXN *txid)
+RDB_index_delete_rec(RDB_index *ixp, RDB_field keyv[], RDB_rec_transaction *rtxp)
 {
     DBT key;
     int ret;
@@ -392,5 +391,5 @@ RDB_index_delete_rec(RDB_index *ixp, RDB_field keyv[], DB_TXN *txid)
         return ret;
 
     /* Delete record */
-    return ixp->dbp->del(ixp->dbp, txid, &key, 0);
+    return ixp->dbp->del(ixp->dbp, (DB_TXN *) rtxp, &key, 0);
 }

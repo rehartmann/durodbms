@@ -1,12 +1,11 @@
 /*
- * $Id$
- *
  * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
 #include "duro.h"
 #include <string.h>
+#include <rec/envimpl.h>
 
 int
 Duro_tcl_close_env(TclState *statep, RDB_environment *envp, Tcl_HashEntry *entryp)

@@ -14,6 +14,8 @@
 #include <signal.h>
 #include <locale.h>
 
+#include <db.h>
+
 /* Don't use GNU readline under Windows */
 #ifndef _WIN32
 #define USE_READLINE

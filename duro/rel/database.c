@@ -18,6 +18,7 @@
 #include <rec/sequence.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdio.h>
 
 /*
  * Marker object indicating that a previous search for a table has failed.
@@ -1486,7 +1487,7 @@ delete_sequences(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
                     return RDB_ERROR;
                 }
                 ret = RDB_open_sequence(RDB_obj_string(&seqname), RDB_DATAFILE,
-                            RDB_db_env(RDB_tx_db(txp)), txp->txid, &seqp);
+                            RDB_db_env(RDB_tx_db(txp)), txp->tx, &seqp);
                 RDB_destroy_obj(&seqname, ecp);
                 if (ret != 0) {
                     RDB_destroy_hashmap_iter(&hiter);
@@ -1494,7 +1495,7 @@ delete_sequences(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
                     return RDB_ERROR;
                 }
             }
-            ret = RDB_delete_sequence(seqp, RDB_db_env(RDB_tx_db(txp)), txp->txid);
+            ret = RDB_delete_sequence(seqp, RDB_db_env(RDB_tx_db(txp)), txp->tx);
             dflp->seqp = NULL;
             if (ret != 0) {
                 RDB_destroy_hashmap_iter(&hiter);
@@ -1743,7 +1744,7 @@ RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
                     }
                     ret = RDB_rename_sequence(RDB_obj_string(&oldname),
                             RDB_obj_string(&newname), RDB_DATAFILE,
-                            RDB_db_env(RDB_tx_db(txp)), txp->txid);
+                            RDB_db_env(RDB_tx_db(txp)), txp->tx);
                     RDB_destroy_obj(&oldname, ecp);
                     RDB_destroy_obj(&newname, ecp);
                     if (ret != 0) {

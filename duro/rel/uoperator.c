@@ -14,6 +14,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 static const char IS_PREFIX[] = "is_";
 static size_t IS_PREFIX_LEN = sizeof(IS_PREFIX) - 1;

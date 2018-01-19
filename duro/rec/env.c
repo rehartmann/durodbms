@@ -3,7 +3,7 @@
  * See the file COPYING for redistribution information.
  */
 
-#include "env.h"
+#include "envimpl.h"
 #include "recmap.h"
 #include <gen/types.h>
 #include <obj/excontext.h>

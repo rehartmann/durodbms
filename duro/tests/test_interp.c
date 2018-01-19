@@ -5,9 +5,9 @@
  *      Author: Rene Hartmann
  */
 
-/* $Id$ */
-
 #include <rel/rdb.h>
+#include <rec/envimpl.h>
+
 #include <dli/iinterp.h>
 #include <stdlib.h>
 #include <stdio.h>

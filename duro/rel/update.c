@@ -11,6 +11,7 @@
 #include "stable.h"
 #include <obj/objinternal.h>
 #include <gen/strfns.h>
+#include <db.h>
 
 #include <string.h>
 
@@ -106,7 +107,7 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
     }
 
     if (RDB_recmap_cursor(&curp, tbp->val.tbp->stp->recmapp, RDB_TRUE,
-            RDB_table_is_persistent(tbp) ? tx.txid : NULL) != RDB_OK) {
+            RDB_table_is_persistent(tbp) ? tx.tx : NULL) != RDB_OK) {
         rcount = (RDB_int) RDB_ERROR;
         goto cleanup;
     }
@@ -366,7 +367,7 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
      * evaluates to true.
      */
     ret = RDB_recmap_cursor(&curp, tbp->val.tbp->stp->recmapp, RDB_TRUE,
-            RDB_table_is_persistent(tbp) ? tx.txid : NULL);
+            RDB_table_is_persistent(tbp) ? tx.tx : NULL);
     if (ret != RDB_OK) {
         RDB_handle_errcode(ret, ecp, RDB_table_is_persistent(tbp) ? &tx: NULL);
         rcount = RDB_ERROR;
@@ -610,7 +611,7 @@ update_where_pindex(RDB_expression *texp, RDB_expression *condp,
     ret = RDB_update_rec(refexp->def.tbref.tbp->val.tbp->stp->recmapp,
             fvv, updc, fieldv,
             RDB_table_is_persistent(refexp->def.tbref.tbp) ?
-                    txp->txid : NULL);
+                    txp->tx : NULL);
     if (ret != RDB_OK) {
         RDB_handle_errcode(ret, ecp, txp);
         rcount = RDB_ERROR;
@@ -681,7 +682,7 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
         RDB_init_obj(&valv[i]);
 
     ret = RDB_index_cursor(&curp, refexp->def.tbref.indexp->idxp, RDB_TRUE,
-            RDB_table_is_persistent(refexp->def.tbref.tbp) ? tx.txid : NULL);
+            RDB_table_is_persistent(refexp->def.tbref.tbp) ? tx.tx : NULL);
     if (ret != RDB_OK) {
         RDB_handle_errcode(ret, ecp, &tx);
         ret = RDB_ERROR;
@@ -926,7 +927,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
     }
 
     ret = RDB_index_cursor(&curp, refexp->def.tbref.indexp->idxp, RDB_TRUE,
-            RDB_table_is_persistent(refexp->def.tbref.tbp) ? tx.txid : NULL);
+            RDB_table_is_persistent(refexp->def.tbref.tbp) ? tx.tx : NULL);
     if (ret != RDB_OK) {
         RDB_handle_errcode(ret, ecp, &tx);
         rcount = RDB_ERROR;

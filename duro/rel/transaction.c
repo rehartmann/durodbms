@@ -12,6 +12,7 @@
 #include <gen/strfns.h>
 
 #include <errno.h>
+#include <stdio.h>
 
 typedef struct RDB_rmlink {
     RDB_recmap *rmp;
@@ -27,7 +28,7 @@ int
 RDB_begin_tx_env(RDB_exec_context *ecp, RDB_transaction *txp, RDB_environment *envp,
         RDB_transaction *parentp)
 {
-    DB_TXN *partxid = parentp != NULL ? parentp->txid : NULL;
+    RDB_rec_transaction *partxid = parentp != NULL ? parentp->tx : NULL;
     int ret;
 
     if (parentp != NULL && partxid == NULL) {
@@ -36,14 +37,14 @@ RDB_begin_tx_env(RDB_exec_context *ecp, RDB_transaction *txp, RDB_environment *e
     }
     txp->parentp = parentp;
     txp->envp = envp;
-    ret = envp->envp->txn_begin(envp->envp, partxid, &txp->txid, 0);
+    ret = RDB_begin_rec_tx(&txp->tx, envp, parentp != NULL ? parentp->tx : NULL);
     if (ret != 0) {
         RDB_raise_system("too many transactions", ecp);
         return RDB_ERROR;
     }
-    if (envp->trace > 0) {
+    if (RDB_env_trace(envp) > 0) {
         fprintf(stderr, "Transaction started, ID=%x\n",
-                (unsigned) txp->txid->id(txp->txid));
+                (unsigned) RDB_rec_tx_id(txp->tx));
     }
     txp->delrmp = NULL;
     txp->delixp = NULL;
@@ -96,7 +97,7 @@ del_storage(RDB_transaction *txp)
          (rmlinkp != NULL) && (ret == RDB_OK);
          rmlinkp = rmlinkp->nextp) {
         /*
-         * Cannot pass txp->txid because it has been closed by the caller -
+         * Cannot pass txp->tx because it has been closed by the caller -
          * BDB transaction handles must be closed before DB handles are closed
          */
         ret = RDB_delete_recmap(rmlinkp->rmp, NULL);
@@ -157,12 +158,12 @@ RDB_commit(RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
-    if (txp->txid == NULL) {
+    if (txp->tx == NULL) {
         RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
-    ret = txp->txid->commit(txp->txid, 0);
+    ret = RDB_commit_rec_tx(txp->tx);
     if (ret != 0) {
         RDB_handle_errcode(ret, ecp, txp);
         return RDB_ERROR;
@@ -175,7 +176,7 @@ RDB_commit(RDB_exec_context *ecp, RDB_transaction *txp)
         return ret;
     }
 
-    txp->txid = NULL;
+    txp->tx = NULL;
     
     return RDB_OK;
 }
@@ -202,18 +203,18 @@ RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
-    if (txp->txid == NULL) {
+    if (txp->tx == NULL) {
         RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
-    ret = txp->txid->abort(txp->txid);
+    ret = RDB_abort_rec_tx(txp->tx);
     if (ret != 0) {
         RDB_handle_errcode(ret, ecp, txp);
         return RDB_ERROR;
     }
 
-    txp->txid = NULL;
+    txp->tx = NULL;
 
     cleanup_storage(txp);
 
@@ -258,7 +259,7 @@ RDB_TRUE if the transaction is running, RDB_FALSE otherwise.
 RDB_bool
 RDB_tx_is_running(RDB_transaction *txp)
 {
-    return (RDB_bool) (txp->txid != NULL);
+    return (RDB_bool) (txp->tx != NULL);
 }
 
 /**

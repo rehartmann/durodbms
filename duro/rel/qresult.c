@@ -16,8 +16,9 @@
 #include "stable.h"
 #include "typeimpl.h"
 #include "transform.h"
-#include "obj/key.h"
-#include "obj/objinternal.h"
+#include <obj/key.h>
+#include <obj/objinternal.h>
+#include <rec/indeximpl.h>
 #include <gen/hashtabit.h>
 #include <gen/strfns.h>
 
@@ -707,7 +708,7 @@ init_index_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_tbindex *indexp,
     qrp->val.stored.tbp = tbp;
     qrp->matp = NULL;
     ret = RDB_index_cursor(&qrp->val.stored.curp, indexp->idxp, RDB_FALSE,
-            txp != NULL ? txp->txid : NULL);
+            txp != NULL ? txp->tx : NULL);
     if (ret != RDB_OK) {
         RDB_handle_errcode(ret, ecp, txp);
         return RDB_ERROR;
@@ -754,7 +755,7 @@ init_where_index_qresult(RDB_qresult *qrp, RDB_expression *texp,
     }
 
     ret = RDB_index_cursor(&qrp->val.stored.curp, indexp->idxp, RDB_FALSE,
-            RDB_table_is_persistent(qrp->val.stored.tbp) ? txp->txid : NULL);
+            RDB_table_is_persistent(qrp->val.stored.tbp) ? txp->tx : NULL);
     if (ret != RDB_OK) {
         RDB_handle_errcode(ret, ecp, txp);
         return RDB_ERROR;
@@ -1574,7 +1575,7 @@ RDB_get_by_uindex(RDB_object *tbp, RDB_object *objpv[], RDB_tbindex *indexp,
                 resfv[rfi++].no = fno;
         }
         ret = RDB_get_fields(tbp->val.tbp->stp->recmapp, fv, resfc,
-                             RDB_table_is_persistent(tbp) ? txp->txid : NULL, resfv);
+                             RDB_table_is_persistent(tbp) ? txp->tx : NULL, resfv);
     } else {
         int rfi = 0;
 
@@ -1590,7 +1591,7 @@ RDB_get_by_uindex(RDB_object *tbp, RDB_object *objpv[], RDB_tbindex *indexp,
                 resfv[rfi++].no = fno;
         }
         ret = RDB_index_get_fields(indexp->idxp, fv, resfc,
-                RDB_table_is_persistent(tbp) ? txp->txid : NULL, resfv);
+                RDB_table_is_persistent(tbp) ? txp->tx : NULL, resfv);
     }
 
     if (ret != RDB_OK) {

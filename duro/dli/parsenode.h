@@ -2,6 +2,7 @@
 #define RDB_PARSENODE_H
 
 #include <rel/rdb.h>
+#include <stdio.h>
 
 /*
  * Copyright (C) 2012 Rene Hartmann.

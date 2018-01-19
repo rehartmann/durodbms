@@ -14,6 +14,7 @@
 #include <obj/objinternal.h>
 
 #include <string.h>
+#include <stdio.h>
 
 /*
  * Convert tuple to operator (without return type)

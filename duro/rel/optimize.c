@@ -14,6 +14,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdio.h>
 
 RDB_bool
 RDB_index_sorts(struct RDB_tbindex *indexp, int seqitc,

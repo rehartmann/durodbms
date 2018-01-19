@@ -5,8 +5,8 @@
  * See the file COPYING for redistribution information.
  */
 
-#include "recmap.h"
-#include "env.h"
+#include "recmapimpl.h"
+#include "envimpl.h"
 #include "dbdefs.h"
 #include <gen/strfns.h>
 
@@ -151,7 +151,7 @@ int
 RDB_create_recmap(const char *name, const char *filename,
         RDB_environment *envp, int fieldc, const int fieldlenv[], int keyfieldc,
         const RDB_compare_field cmpv[], int flags,
-        DB_TXN *txid, RDB_recmap **rmpp)
+        RDB_rec_transaction *rtxp, RDB_recmap **rmpp)
 {
     int i;
     RDB_bool all_cmpfn = RDB_TRUE;
@@ -195,13 +195,13 @@ RDB_create_recmap(const char *name, const char *filename,
     }
 
     /* Create BDB database */
-    ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filename, name,
+    ret = (*rmpp)->dbp->open((*rmpp)->dbp, (DB_TXN *) rtxp, filename, name,
             RDB_ORDERED & flags ? DB_BTREE : DB_HASH,
             DB_CREATE | DB_EXCL, 0664);
     if (ret == EEXIST && envp != NULL) {
         /* BDB database exists - remove it and try again */
-        envp->envp->dbremove(envp->envp, txid, filename, name, 0);
-        ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filename, name,
+        envp->envp->dbremove(envp->envp, (DB_TXN *) rtxp, filename, name, 0);
+        ret = (*rmpp)->dbp->open((*rmpp)->dbp, (DB_TXN *) rtxp, filename, name,
                 RDB_ORDERED & flags ? DB_BTREE : DB_HASH,
                 DB_CREATE | DB_EXCL, 0664);
     }
@@ -220,7 +220,7 @@ error:
 int
 RDB_open_recmap(const char *name, const char *filename,
        RDB_environment *envp, int fieldc, const int fieldlenv[], int keyfieldc,
-       DB_TXN *txid, RDB_recmap **rmpp)
+       RDB_rec_transaction *rtxp, RDB_recmap **rmpp)
 {
     int ret = new_recmap(rmpp, name, filename, envp,
             fieldc, fieldlenv, keyfieldc, RDB_UNIQUE);
@@ -235,7 +235,7 @@ RDB_open_recmap(const char *name, const char *filename,
     }
 
     /* Open database */
-    ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filename, name, DB_UNKNOWN,
+    ret = (*rmpp)->dbp->open((*rmpp)->dbp, (DB_TXN *) rtxp, filename, name, DB_UNKNOWN,
             0, 0664);
     if (ret != 0) {
         goto error;
@@ -262,7 +262,7 @@ RDB_close_recmap(RDB_recmap *rmp)
 
 /* Delete a recmap. */
 int
-RDB_delete_recmap(RDB_recmap *rmp, DB_TXN *txid)
+RDB_delete_recmap(RDB_recmap *rmp, RDB_rec_transaction *rtxp)
 {
     /* The DB handle must be closed before calling DB_ENV->dbremove() */
     int ret = rmp->dbp->close(rmp->dbp, DB_NOSYNC);
@@ -274,7 +274,7 @@ RDB_delete_recmap(RDB_recmap *rmp, DB_TXN *txid)
         if (rmp->envp->trace > 0) {
             fprintf(stderr, "deleting recmap %s\n", rmp->namp);
         }
-        ret = rmp->envp->envp->dbremove(rmp->envp->envp, txid, rmp->filenamp,
+        ret = rmp->envp->envp->dbremove(rmp->envp->envp, (DB_TXN *) rtxp, rmp->filenamp,
                 rmp->namp, 0);
     }
 
@@ -555,7 +555,7 @@ data_to_DBT(RDB_recmap *rmp, RDB_field fldv[], DBT *datap)
  * valv[..].no is ignored.
  */
 int
-RDB_insert_rec(RDB_recmap *rmp, RDB_field flds[], DB_TXN *txid)
+RDB_insert_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp)
 {
     DBT key, data;
     int ret;
@@ -567,7 +567,7 @@ RDB_insert_rec(RDB_recmap *rmp, RDB_field flds[], DB_TXN *txid)
     if (ret != RDB_OK)
         return ret;
 
-    ret = rmp->dbp->put(rmp->dbp, txid, &key, &data,
+    ret = rmp->dbp->put(rmp->dbp, (DB_TXN *) rtxp, &key, &data,
             rmp->dup_keys ? 0 : DB_NOOVERWRITE);
     if (ret == EINVAL) {
         /* Assume duplicate secondary index */
@@ -678,7 +678,7 @@ RDB_update_DBT_rec(RDB_recmap *rmp, DBT *keyp, DBT *datap,
  */
 int
 RDB_update_rec(RDB_recmap *rmp, RDB_field keyv[],
-               int fieldc, const RDB_field fieldv[], DB_TXN *txid)
+               int fieldc, const RDB_field fieldv[], RDB_rec_transaction *rtxp)
 {
     DBT key, data;
     int ret;
@@ -689,11 +689,11 @@ RDB_update_rec(RDB_recmap *rmp, RDB_field keyv[],
     memset(&data, 0, sizeof (data));
     data.flags = DB_DBT_REALLOC;
 
-    ret = rmp->dbp->get(rmp->dbp, txid, &key, &data, 0);
+    ret = rmp->dbp->get(rmp->dbp, (DB_TXN *) rtxp, &key, &data, 0);
     if (ret != 0)
         goto cleanup;
 
-    ret = RDB_update_DBT_rec(rmp, &key, &data, fieldc, fieldv, txid);
+    ret = RDB_update_DBT_rec(rmp, &key, &data, fieldc, fieldv, (DB_TXN *) rtxp);
 
 cleanup:
     free(key.data);
@@ -707,7 +707,7 @@ cleanup:
  * keyv[..].no is ignored.
  */
 int
-RDB_delete_rec(RDB_recmap *rmp, RDB_field keyv[], DB_TXN *txid)
+RDB_delete_rec(RDB_recmap *rmp, RDB_field keyv[], RDB_rec_transaction *rtxp)
 {
     DBT key;
     int ret;
@@ -716,7 +716,7 @@ RDB_delete_rec(RDB_recmap *rmp, RDB_field keyv[], DB_TXN *txid)
     if (ret != RDB_OK)
         return ret;
 
-    ret = rmp->dbp->del(rmp->dbp, txid, &key, 0);
+    ret = rmp->dbp->del(rmp->dbp, (DB_TXN *) rtxp, &key, 0);
     free(key.data);
     return ret;
 }
@@ -761,8 +761,8 @@ RDB_get_DBT_fields(RDB_recmap *rmp, const DBT *keyp, const DBT *datap, int field
  *              Must not contain key fields.
  */
 int
-RDB_get_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc, DB_TXN *txid,
-           RDB_field retfieldv[])
+RDB_get_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
+        RDB_rec_transaction *rtxp, RDB_field retfieldv[])
 {
     DBT key, data;
     int ret;
@@ -773,7 +773,7 @@ RDB_get_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc, DB_TXN *txid,
 
     memset(&data, 0, sizeof (data));
 
-    ret = rmp->dbp->get(rmp->dbp, txid, &key, &data, 0);
+    ret = rmp->dbp->get(rmp->dbp, (DB_TXN *) rtxp, &key, &data, 0);
     if (ret != 0) {
         free(key.data);
         return ret;
@@ -790,7 +790,7 @@ RDB_get_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc, DB_TXN *txid,
  * valv[..].no is ignored.
  */
 int
-RDB_contains_rec(RDB_recmap *rmp, RDB_field flds[], DB_TXN *txid)
+RDB_contains_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp)
 {
     DBT key, data;
     int ret;
@@ -806,7 +806,7 @@ RDB_contains_rec(RDB_recmap *rmp, RDB_field flds[], DB_TXN *txid)
     key.flags = DB_DBT_REALLOC;
     data.flags = DB_DBT_REALLOC;
 
-    ret = rmp->dbp->get(rmp->dbp, txid, &key, &data, DB_GET_BOTH);
+    ret = rmp->dbp->get(rmp->dbp, (DB_TXN *) rtxp, &key, &data, DB_GET_BOTH);
     free(key.data);
     free(data.data);
     return ret;
@@ -818,7 +818,7 @@ RDB_contains_rec(RDB_recmap *rmp, RDB_field flds[], DB_TXN *txid)
  * so the result may not be accurate.
  */
 int
-RDB_recmap_est_size(RDB_recmap *rmp, DB_TXN *txid, unsigned *sz)
+RDB_recmap_est_size(RDB_recmap *rmp, RDB_rec_transaction *rtxp, unsigned *sz)
 {
     DBTYPE dbtype;
     int ret = rmp->dbp->get_type(rmp->dbp, &dbtype);
@@ -828,7 +828,7 @@ RDB_recmap_est_size(RDB_recmap *rmp, DB_TXN *txid, unsigned *sz)
     if (dbtype == DB_BTREE) {
         DB_BTREE_STAT *btstatp;
 
-        ret = rmp->dbp->stat(rmp->dbp, txid, &btstatp, DB_FAST_STAT);
+        ret = rmp->dbp->stat(rmp->dbp, (DB_TXN *) rtxp, &btstatp, DB_FAST_STAT);
         if (ret != 0)
             return ret;
 
@@ -838,7 +838,7 @@ RDB_recmap_est_size(RDB_recmap *rmp, DB_TXN *txid, unsigned *sz)
         /* Hashtable */
         DB_HASH_STAT *hstatp;
 
-        ret = rmp->dbp->stat(rmp->dbp, txid, &hstatp, DB_FAST_STAT);
+        ret = rmp->dbp->stat(rmp->dbp, (DB_TXN *) rtxp, &hstatp, DB_FAST_STAT);
         if (ret != 0)
             return ret;
 

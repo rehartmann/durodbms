@@ -1,6 +1,6 @@
-/* $Id$ */
-
 #include <rel/rdb.h>
+#include <rec/envimpl.h>
+
 #include <stdio.h>
 #include <string.h>
 

@@ -11,6 +11,7 @@
 #include "qresult.h"
 #include "typeimpl.h"
 #include "internal.h"
+#include <db.h>
 
 /*
  * Initializes an RDB_qresult from a stored table.
@@ -46,7 +47,7 @@ RDB_init_stored_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_expression *exp,
     }
 
     ret = RDB_recmap_cursor(&qrp->val.stored.curp, tbp->val.tbp->stp->recmapp,
-                    RDB_FALSE, RDB_table_is_persistent(tbp) ? txp->txid : NULL);
+                    RDB_FALSE, RDB_table_is_persistent(tbp) ? txp->tx : NULL);
     if (ret != RDB_OK) {
         RDB_handle_errcode(ret, ecp, txp);
         return RDB_ERROR;

@@ -24,6 +24,7 @@ along with DuroDBMS; if not, write to the Free Software Foundation, Inc.,
 
 #include <rec/env.h>
 #include <rec/dbdefs.h>
+#include <rec/tx.h>
 #include <gen/hashmap.h>
 #include <gen/hashtable.h>
 #include <gen/types.h>
@@ -81,7 +82,7 @@ typedef struct RDB_transaction {
     /* internal */
     RDB_database *dbp;
     RDB_environment *envp;
-    DB_TXN *txid;
+    RDB_rec_transaction *tx;
     void *user_data;
     struct RDB_transaction *parentp;
     struct RDB_rmlink *delrmp;

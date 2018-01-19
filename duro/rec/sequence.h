@@ -1,38 +1,33 @@
 /*
- * sequence.h
+ * Sequence functions
  *
- *  Created on: 15.11.2013
- *      Author: Rene Hartmann
+ * Copyright (C) 2013 Rene Hartmann.
+ * See the file COPYING for redistribution information.
  */
 
 #ifndef SEQUENCE_H_
 #define SEQUENCE_H_
 
+#include "tx.h"
 #include <gen/types.h>
 
-#include <db.h>
-
-typedef struct RDB_sequence {
-    DB_SEQUENCE *seq;
-    char *filenamp;
-    char *cnamp;
-} RDB_sequence;
+typedef struct RDB_sequence RDB_sequence;
 
 int
-RDB_open_sequence(const char *, const char *, RDB_environment *, DB_TXN *,
+RDB_open_sequence(const char *, const char *, RDB_environment *, RDB_rec_transaction *,
         RDB_sequence **);
 
 int
 RDB_close_sequence(RDB_sequence *);
 
 int
-RDB_delete_sequence(RDB_sequence *, RDB_environment *, DB_TXN *);
+RDB_delete_sequence(RDB_sequence *, RDB_environment *, RDB_rec_transaction *);
 
 int
 RDB_rename_sequence(const char *, const char *, const char *, RDB_environment *,
-        DB_TXN *);
+        RDB_rec_transaction *);
 
 int
-RDB_sequence_next(RDB_sequence *, DB_TXN *, RDB_int *);
+RDB_sequence_next(RDB_sequence *, RDB_rec_transaction *, RDB_int *);
 
 #endif /* SEQUENCE_H_ */
