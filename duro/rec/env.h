@@ -7,7 +7,8 @@
  */
 
 #include <db.h>
-#include <obj/excontext.h>
+
+typedef struct RDB_exec_context RDB_exec_context;
 
 enum {
     RDB_RECOVER = 1

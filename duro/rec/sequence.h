@@ -8,6 +8,8 @@
 #ifndef SEQUENCE_H_
 #define SEQUENCE_H_
 
+#include <gen/types.h>
+
 #include <db.h>
 
 typedef struct RDB_sequence {

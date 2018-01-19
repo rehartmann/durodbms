@@ -7,6 +7,7 @@
 
 #include "array.h"
 #include "type.h"
+#include "excontext.h"
 
 int
 RDB_enlarge_array_buf(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)

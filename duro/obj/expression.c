@@ -10,6 +10,7 @@
 #include "objinternal.h"
 #include "builtintypes.h"
 #include "tuple.h"
+#include "excontext.h"
 #include <gen/strfns.h>
 
 #include <string.h>

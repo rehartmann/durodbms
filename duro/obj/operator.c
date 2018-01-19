@@ -7,6 +7,7 @@
 
 #include "operator.h"
 #include "objinternal.h"
+#include "excontext.h"
 #include "type.h"
 #include <gen/strfns.h>
 

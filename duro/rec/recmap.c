@@ -1,11 +1,12 @@
 /*
- * $Id$
+ * Record map functions
  * 
  * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
 #include "recmap.h"
+#include "env.h"
 #include "dbdefs.h"
 #include <gen/strfns.h>
 

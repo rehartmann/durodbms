@@ -9,12 +9,12 @@
 #define OPERATOR_H_
 
 #include "object.h"
-#include "excontext.h"
 
 #include <ltdl.h>
 
 typedef struct RDB_op_data RDB_operator;
 typedef struct RDB_transaction RDB_transaction;
+typedef struct RDB_exec_context RDB_exec_context;
 
 typedef int RDB_ro_op_func(int, RDB_object *[], RDB_operator *,
         RDB_exec_context *, RDB_transaction *,

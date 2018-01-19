@@ -8,6 +8,7 @@
 #include "rdb.h"
 #include "internal.h"
 #include <rec/env.h>
+#include <rec/index.h>
 #include <gen/strfns.h>
 
 #include <errno.h>

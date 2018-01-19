@@ -6,6 +6,7 @@
 #include "env.h"
 #include "recmap.h"
 #include <gen/types.h>
+#include <obj/excontext.h>
 
 #include <stdlib.h>
 #include <errno.h>
@@ -23,7 +24,7 @@ open_env(const char *path, RDB_environment **envpp, int bdb_flags)
 
     envp = malloc(sizeof (RDB_environment));
     if (envp == NULL)
-       return ENOMEM;
+        return ENOMEM;
 
     envp->closefn = NULL;
     envp->xdata = NULL;

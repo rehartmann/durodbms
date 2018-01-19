@@ -9,6 +9,7 @@
 #include "type.h"
 #include "objmatch.h"
 #include "objinternal.h"
+#include "excontext.h"
 #include <gen/hashmapit.h>
 #include <gen/strfns.h>
 

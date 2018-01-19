@@ -1,11 +1,10 @@
 /*
- * $Id$ 
- *
  * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
 #include "cursor.h"
+#include "index.h"
 #include <string.h>
 #include <errno.h>
 

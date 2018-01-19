@@ -6,10 +6,13 @@
  * See the file COPYING for redistribution information.
  */
 
+#include <gen/types.h>
 #include "recmap.h"
-#include "index.h"
+
 #include <db.h>
 #include <stdlib.h>
+
+typedef struct RDB_index RDB_index;
 
 typedef struct {
     /* internal */
@@ -30,7 +33,7 @@ int
 RDB_recmap_cursor(RDB_cursor **, RDB_recmap *, RDB_bool wr, DB_TXN *);
 
 int
-RDB_index_cursor(RDB_cursor **, struct RDB_index *, RDB_bool wr, DB_TXN *);
+RDB_index_cursor(RDB_cursor **, RDB_index *, RDB_bool wr, DB_TXN *);
 
 int
 RDB_cursor_get(RDB_cursor *, int fno, void **datapp, size_t *);

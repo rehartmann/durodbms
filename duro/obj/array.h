@@ -9,7 +9,8 @@
 #define ARRAY_H_
 
 #include "object.h"
-#include "excontext.h"
+
+typedef struct RDB_exec_context RDB_exec_context;
 
 RDB_object *
 RDB_array_get(const RDB_object *, RDB_int idx, RDB_exec_context *);

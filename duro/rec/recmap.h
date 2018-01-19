@@ -6,10 +6,11 @@
  * See the file COPYING for redistribution information.
  */
 
-#include "env.h"
 #include <gen/types.h>
 #include <db.h>
 #include <stdlib.h>
+
+typedef struct RDB_environment RDB_environment;
 
 /*
  * Functions for managing record maps. A record map contains

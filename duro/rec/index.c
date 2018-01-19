@@ -7,6 +7,7 @@
 
 #include "index.h"
 #include "dbdefs.h"
+#include "env.h"
 #include <gen/strfns.h>
 
 #include <string.h>
