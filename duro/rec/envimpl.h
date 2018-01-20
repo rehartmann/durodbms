@@ -9,12 +9,6 @@
 #define REC_ENVIMPL_H_
 
 #include "env.h"
-
-/*
- * Copyright (C) 2003-2007, 2012-2014 Rene Hartmann.
- * See the file COPYING for redistribution information.
- */
-
 #include <db.h>
 
 typedef struct RDB_environment {

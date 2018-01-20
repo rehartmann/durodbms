@@ -37,6 +37,13 @@ typedef struct RDB_recmap {
     RDB_bool dup_keys;
 } RDB_recmap;
 
+size_t
+RDB_get_vflen(RDB_byte *, size_t, int, int);
+
+int
+RDB_get_field(RDB_recmap *, int, void *, size_t,
+        size_t *, int *);
+
 int
 RDB_set_field(RDB_recmap *, DBT *, const RDB_field *,
                int);
