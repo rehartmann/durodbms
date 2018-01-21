@@ -1,79 +1,15 @@
 /*
- * Copyright (C) 2003, 2012, 2015 Rene Hartmann.
+ * Copyright (C) 2003, 2012, 2015, 2018 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
 #include "envimpl.h"
-#include "recmap.h"
-#include <gen/types.h>
-#include <obj/excontext.h>
-
-#include <stdlib.h>
-#include <errno.h>
+#include <bdbrec/bdbenv.h>
 
 /** @defgroup env Database environment functions 
  * @{
  * \#include <rec/env.h>
  */
-
-static int
-open_env(const char *path, RDB_environment **envpp, int bdb_flags)
-{
-    RDB_environment *envp;
-    int ret;
-
-    envp = malloc(sizeof (RDB_environment));
-    if (envp == NULL)
-        return ENOMEM;
-
-    envp->closefn = NULL;
-    envp->xdata = NULL;
-    envp->trace = 0;
-
-    /* create environment handle */
-    *envpp = envp;
-    ret = db_env_create(&envp->envp, 0);
-    if (ret != 0) {
-        free(envp);
-        return ret;
-    }
-
-    /*
-     * Configure alloc, realloc, and free explicity
-     * because on Windows Berkeley DB may use a different heap
-     */
-    ret = envp->envp->set_alloc(envp->envp, malloc, realloc, free);
-    if (ret != 0) {
-        envp->envp->close(envp->envp, 0);
-        free(envp);
-        return ret;
-    }
-
-    /*
-     * Suppress error output by default
-     */
-    envp->envp->set_errfile(envp->envp, NULL);
-
-    /* Open DB environment */
-    ret = envp->envp->open(envp->envp, path, bdb_flags, 0);
-    if (ret != 0) {
-        envp->envp->close(envp->envp, 0);
-        free(envp);
-        return ret;
-    }
-
-    /*
-     * When acquiring locks, distinguish between timeout and deadlock
-     */
-    ret = envp->envp->set_flags(envp->envp, DB_TIME_NOTGRANTED, 1);
-    if (ret != 0) {
-        envp->envp->close(envp->envp, 0);
-        free(envp);
-        return ret;
-    }
-    
-    return RDB_OK;
-}
 
 /**
  * RDB_open_env opens a database environment identified by the
@@ -97,8 +33,7 @@ open_env(const char *path, RDB_environment **envpp, int bdb_flags)
 int
 RDB_open_env(const char *path, RDB_environment **envpp, int flags)
 {
-    return open_env(path, envpp, DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN
-            | (flags & RDB_RECOVER ? DB_CREATE | DB_RECOVER : DB_CREATE));
+    return RDB_bdb_open_env(path, envpp, flags);
 }
 
 /**
@@ -115,8 +50,7 @@ RDB_open_env(const char *path, RDB_environment **envpp, int flags)
 int
 RDB_create_env(const char *path, RDB_environment **envpp)
 {
-    return open_env(path, envpp,
-            DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_CREATE);
+    return RDB_bdb_create_env(path, envpp);
 }
 
 /**
@@ -133,13 +67,9 @@ RDB_create_env(const char *path, RDB_environment **envpp)
 int
 RDB_close_env(RDB_environment *envp)
 {
-    int ret;
-
-    if (envp->closefn != NULL)
-        (*envp->closefn)(envp);
-    ret = envp->envp->close(envp->envp, 0);
-    free(envp);
-    return ret;
+    if (envp->cleanup_fn != NULL)
+        (*envp->cleanup_fn)(envp);
+    return (*envp->close_fn)(envp);
 }
 
 /**
@@ -160,13 +90,7 @@ RDB_env_set_trace(RDB_environment *envp, unsigned level)
 void
 RDB_set_env_closefn(RDB_environment *envp, void (*fn)(struct RDB_environment *))
 {
-    envp->closefn = fn;
-}
-
-DB_ENV *
-RDB_bdb_env(RDB_environment *envp)
-{
-    return envp->envp;
+    envp->cleanup_fn = fn;
 }
 
 void *
@@ -197,41 +121,5 @@ RDB_env_trace(RDB_environment *envp)
 void
 RDB_errcode_to_error(int errcode, RDB_exec_context *ecp)
 {
-    switch (errcode) {
-        case ENOMEM:
-            RDB_raise_no_memory(ecp);
-            break;
-        case EINVAL:
-            RDB_raise_invalid_argument("", ecp);
-            break;
-        case ENOENT:
-            RDB_raise_resource_not_found(db_strerror(errcode), ecp);
-            break;
-        case DB_KEYEXIST:
-            RDB_raise_key_violation("", ecp);
-            break;
-        case RDB_ELEMENT_EXISTS:
-            RDB_raise_element_exists("", ecp);
-            break;
-        case DB_NOTFOUND:
-            RDB_raise_not_found("", ecp);
-            break;
-        case DB_LOCK_NOTGRANTED:
-            RDB_raise_lock_not_granted(ecp);
-            break;
-        case DB_LOCK_DEADLOCK:
-            RDB_raise_deadlock(ecp);
-            break;
-        case DB_RUNRECOVERY:
-            RDB_raise_run_recovery("run Berkeley DB database recovery", ecp);
-            break;
-        case DB_SECONDARY_BAD:
-            RDB_raise_data_corrupted("secondary index corrupted", ecp);
-            break;
-        case RDB_RECORD_CORRUPTED:
-            RDB_raise_data_corrupted("record corrupted", ecp);
-            break;
-        default:
-            RDB_raise_system(db_strerror(errcode), ecp);
-    }
+    return RDB_bdb_errcode_to_error(errcode, ecp);
 }

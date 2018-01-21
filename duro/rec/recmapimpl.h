@@ -12,6 +12,8 @@
 #include "env.h"
 #include "db.h"
 
+typedef struct RDB_cursor RDB_cursor;
+
 typedef struct RDB_recmap {
     /* internal */
     RDB_environment *envp;
@@ -35,6 +37,18 @@ typedef struct RDB_recmap {
 
     /* RDB_TRUE if duplicate keys are allowed */
     RDB_bool dup_keys;
+
+    int (*close_recmap_fn)(RDB_recmap *);
+    int (*delete_recmap_fn)(RDB_recmap *, RDB_rec_transaction *);
+    int (*insert_rec_fn)(RDB_recmap *, RDB_field[], RDB_rec_transaction *);
+    int (*update_rec_fn)(RDB_recmap *, RDB_field[],
+                   int, const RDB_field[], RDB_rec_transaction *);
+    int (*delete_rec_fn)(RDB_recmap *, RDB_field[], RDB_rec_transaction *);
+    int (*get_fields_fn)(RDB_recmap *, RDB_field[],
+               int, RDB_rec_transaction *, RDB_field[]);
+    int (*contains_rec_fn)(RDB_recmap *, RDB_field[], RDB_rec_transaction *);
+    int (*recmap_est_size_fn)(RDB_recmap *, RDB_rec_transaction *, unsigned *);
+    int (*cursor_fn)(RDB_cursor **, RDB_recmap *, RDB_bool, RDB_rec_transaction *);
 } RDB_recmap;
 
 size_t

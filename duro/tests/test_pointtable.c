@@ -7,7 +7,7 @@
 
 #include <rel/rdb.h>
 #include <rel/tostr.h>
-#include <rec/envimpl.h>
+#include <bdbrec/bdbenv.h>
 #include <db.h>
 
 #include <stdlib.h>

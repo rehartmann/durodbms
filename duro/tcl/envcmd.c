@@ -5,7 +5,7 @@
 
 #include "duro.h"
 #include <string.h>
-#include <rec/envimpl.h>
+#include <bdbrec/bdbenv.h>
 
 int
 Duro_tcl_close_env(TclState *statep, RDB_environment *envp, Tcl_HashEntry *entryp)

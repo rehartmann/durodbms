@@ -42,13 +42,13 @@ typedef struct {
 } RDB_compare_field;
 
 int
-RDB_create_recmap(const char *name, const char *filename,
-        RDB_environment *, int fieldc, const int fieldlenv[], int keyfieldc,
-        const RDB_compare_field cmpv[], int flags, RDB_rec_transaction *, RDB_recmap **);
+RDB_create_recmap(const char *, const char *,
+        RDB_environment *, int, const int[], int,
+        const RDB_compare_field[], int, RDB_rec_transaction *, RDB_recmap **);
 
 int
-RDB_open_recmap(const char *name, const char *filename,
-        RDB_environment *, int fieldc, const int fieldlenv[], int keyfieldc,
+RDB_open_recmap(const char *, const char *,
+        RDB_environment *, int, const int[], int,
         RDB_rec_transaction *, RDB_recmap **);
 
 int

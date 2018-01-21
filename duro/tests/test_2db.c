@@ -1,5 +1,5 @@
 #include <rel/rdb.h>
-#include <rec/envimpl.h>
+#include <bdbrec/bdbenv.h>
 #include <db.h>
 
 #include <stdio.h>
