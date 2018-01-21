@@ -9,6 +9,7 @@
 #include <bdbrec/bdbrecmap.h>
 #include <gen/types.h>
 #include <obj/excontext.h>
+#include <bdbrec/bdbsequence.h>
 
 #include <stdlib.h>
 #include <errno.h>
@@ -24,8 +25,10 @@ open_env(const char *path, RDB_environment **envpp, int bdb_flags)
         return ENOMEM;
 
     envp->close_fn = &RDB_bdb_close_env;
-    envp->create_recmap_fn = RDB_create_bdb_recmap;
-    envp->open_recmap_fn = RDB_open_bdb_recmap;
+    envp->create_recmap_fn = &RDB_create_bdb_recmap;
+    envp->open_recmap_fn = &RDB_open_bdb_recmap;
+    envp->open_sequence_fn = &RDB_open_bdb_sequence;
+    envp->rename_sequence_fn = &RDB_rename_bdb_sequence;
 
     envp->cleanup_fn = NULL;
     envp->xdata = NULL;

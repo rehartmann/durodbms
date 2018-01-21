@@ -12,6 +12,8 @@
 #include "recmap.h"
 #include <db.h>
 
+typedef struct RDB_sequence RDB_sequence;
+
 typedef struct RDB_environment {
     /* The Berkeley DB environment */
     DB_ENV *envp;
@@ -24,6 +26,10 @@ typedef struct RDB_environment {
     int (*open_recmap_fn)(const char *, const char *,
             RDB_environment *, int, const int[], int,
             RDB_rec_transaction *, RDB_recmap **);
+    int (*open_sequence_fn)(const char *, const char *, RDB_environment *, RDB_rec_transaction *,
+            RDB_sequence **);
+    int (*rename_sequence_fn)(const char *, const char *, const char *, RDB_environment *,
+            RDB_rec_transaction *);
 
     /* Function which is invoked by RDB_close_env() */
     void (*cleanup_fn)(struct RDB_environment *);
