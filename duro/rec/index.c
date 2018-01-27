@@ -8,6 +8,7 @@
 #include "dbdefs.h"
 #include "envimpl.h"
 #include <gen/strfns.h>
+#include <obj/excontext.h>
 
 #include <string.h>
 #include <errno.h>
@@ -327,7 +328,7 @@ cleanup:
 
 int
 RDB_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc, RDB_rec_transaction *rtxp,
-           RDB_field retfieldv[])
+           RDB_field retfieldv[], RDB_exec_context *ecp)
 {
     DBT key, pkey, data;
     int ret;
@@ -339,8 +340,10 @@ RDB_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc, RDB_rec_trans
 
     /* Fill key DBT */
     ret = RDB_fields_to_DBT(ixp->rmp, ixp->fieldc, keyv, &key);
-    if (ret != RDB_OK)
-        return ret;
+    if (ret != RDB_OK) {
+        RDB_errcode_to_error(ret, ecp);
+        return RDB_ERROR;
+    }
 
     memset(&pkey, 0, sizeof (DBT));
     memset(&data, 0, sizeof (DBT));
@@ -348,7 +351,8 @@ RDB_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc, RDB_rec_trans
     /* Get primary key and data */
     ret = ixp->dbp->pget(ixp->dbp, (DB_TXN *) rtxp, &key, &pkey, &data, 0);
     if (ret != 0) {
-        return ret;
+        RDB_errcode_to_error(ret, ecp);
+        return RDB_ERROR;
     }
 
     /* Get field values */
@@ -375,7 +379,8 @@ RDB_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc, RDB_rec_trans
 }
 
 int
-RDB_index_delete_rec(RDB_index *ixp, RDB_field keyv[], RDB_rec_transaction *rtxp)
+RDB_index_delete_rec(RDB_index *ixp, RDB_field keyv[], RDB_rec_transaction *rtxp,
+        RDB_exec_context *ecp)
 {
     DBT key;
     int ret;
@@ -387,9 +392,16 @@ RDB_index_delete_rec(RDB_index *ixp, RDB_field keyv[], RDB_rec_transaction *rtxp
 
     /* Fill key DBT */
     ret = RDB_fields_to_DBT(ixp->rmp, ixp->fieldc, keyv, &key);
-    if (ret != RDB_OK)
-        return ret;
+    if (ret != RDB_OK) {
+        RDB_errcode_to_error(ret, ecp);
+        return RDB_ERROR;
+    }
 
     /* Delete record */
-    return ixp->dbp->del(ixp->dbp, (DB_TXN *) rtxp, &key, 0);
+    ret = ixp->dbp->del(ixp->dbp, (DB_TXN *) rtxp, &key, 0);
+    if (ret != RDB_OK) {
+        RDB_errcode_to_error(ret, ecp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
 }

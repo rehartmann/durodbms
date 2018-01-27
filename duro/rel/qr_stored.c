@@ -46,19 +46,19 @@ RDB_init_stored_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_expression *exp,
         }
     }
 
-    ret = RDB_recmap_cursor(&qrp->val.stored.curp, tbp->val.tbp->stp->recmapp,
-                    RDB_FALSE, RDB_table_is_persistent(tbp) ? txp->tx : NULL);
-    if (ret != RDB_OK) {
-        RDB_handle_errcode(ret, ecp, txp);
+    qrp->val.stored.curp = RDB_recmap_cursor(tbp->val.tbp->stp->recmapp,
+                    RDB_FALSE, RDB_table_is_persistent(tbp) ? txp->tx : NULL, ecp);
+    if (qrp->val.stored.curp == NULL) {
+        RDB_handle_err(ecp, txp);
         return RDB_ERROR;
     }
-    ret = RDB_cursor_first(qrp->val.stored.curp);
-    if (ret == DB_NOTFOUND) {
+    ret = RDB_cursor_first(qrp->val.stored.curp, ecp);
+    if (ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
         qrp->endreached = RDB_TRUE;
         return RDB_OK;
     }
     if (ret != RDB_OK) {
-        RDB_handle_errcode(ret, ecp, txp);
+        RDB_handle_err(ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -83,20 +83,20 @@ RDB_next_stored_tuple(RDB_qresult *qrp, RDB_object *tbp, RDB_object *tplp,
         }
     }
     if (asc) {
-        ret = RDB_cursor_next(qrp->val.stored.curp, dup ? RDB_REC_DUP : 0);
+        ret = RDB_cursor_next(qrp->val.stored.curp, dup ? RDB_REC_DUP : 0, ecp);
     } else {
         if (dup) {
             RDB_raise_invalid_argument("", ecp);
             return RDB_ERROR;
         }
-        ret = RDB_cursor_prev(qrp->val.stored.curp);
+        ret = RDB_cursor_prev(qrp->val.stored.curp, ecp);
     }
-    if (ret == DB_NOTFOUND) {
+    if (ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
         qrp->endreached = RDB_TRUE;
         return RDB_OK;
     }
     if (ret != RDB_OK) {
-        RDB_handle_errcode(ret, ecp, txp);
+        RDB_handle_err(ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -121,9 +121,9 @@ RDB_get_by_cursor(RDB_object *tbp, RDB_cursor *curp, RDB_type *tpltyp,
         attrp = &tpltyp->def.tuple.attrv[i];
 
         fno = *RDB_field_no(tbp->val.tbp->stp, attrp->name);
-        ret = RDB_cursor_get(curp, fno, &datap, &len);
+        ret = RDB_cursor_get(curp, fno, &datap, &len, ecp);
         if (ret != RDB_OK) {
-            RDB_handle_errcode(ret, ecp, txp);
+            RDB_handle_err(ecp, txp);
             return RDB_ERROR;
         }
         RDB_init_obj(&val);

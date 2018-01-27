@@ -9,13 +9,13 @@
 #include "recmap.h"
 
 typedef struct RDB_recmap RDB_recmap;
+typedef struct RDB_exec_context RDB_exec_context;
 
 /*
  * Secondary index.
  */
 
 typedef struct RDB_index RDB_index;
-
 typedef struct RDB_rec_transaction RDB_rec_transaction;
 
 int
@@ -42,9 +42,10 @@ RDB_delete_index(RDB_index *, RDB_environment *, RDB_rec_transaction *);
 
 int
 RDB_index_get_fields(RDB_index *, RDB_field[], int, RDB_rec_transaction *,
-           RDB_field[]);
+           RDB_field[], RDB_exec_context *);
 
 int
-RDB_index_delete_rec(RDB_index *, RDB_field[], RDB_rec_transaction *);
+RDB_index_delete_rec(RDB_index *, RDB_field[], RDB_rec_transaction *,
+        RDB_exec_context *);
 
 #endif

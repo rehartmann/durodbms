@@ -21,19 +21,25 @@
  * to RDB_open_env.
  *
  * @param path  pathname of the direcory where the data is stored.
- * @param envpp   location where the pointer to the environment is stored.
  * @param flags can be zero or RDB_RECOVER. If it is RDB_RECOVER,
  *        all necessary files will be created.
  *
- * @return On success, RDB_OK is returned. On failure, an error code is returned.
+ * @return On success, a pointer to the environment is returned.
+ * On failure, NULL is returned and an error value is stored in *ecp.
  *
  * @par Errors:
  * See the documentation of the Berkeley DB function DB_ENV->open for details.
  */
-int
-RDB_open_env(const char *path, RDB_environment **envpp, int flags)
+RDB_environment *
+RDB_open_env(const char *path, int flags, RDB_exec_context *ecp)
 {
-    return RDB_bdb_open_env(path, envpp, flags);
+    RDB_environment *envp;
+    int ret = RDB_bdb_open_env(path, &envp, flags);
+    if (ret != RDB_OK) {
+        RDB_errcode_to_error(ret, ecp);
+        return NULL;
+    }
+    return envp;
 }
 
 /**
@@ -42,15 +48,22 @@ RDB_open_env(const char *path, RDB_environment **envpp, int flags)
  * @param path  pathname of the direcory where the data is stored.
  * @param envpp   location where the pointer to the environment is stored.
  *
- * @return On success, RDB_OK is returned. On failure, an error code is returned.
+ * @return On success, a pointer to the environment is returned.
+ * On failure, NULL is returned and an error value is stored in *ecp.
  *
  * @par Errors:
  * See the documentation of the Berkeley DB function DB_ENV->open for details.
  */
-int
-RDB_create_env(const char *path, RDB_environment **envpp)
+RDB_environment *
+RDB_create_env(const char *path, RDB_exec_context *ecp)
 {
-    return RDB_bdb_create_env(path, envpp);
+    RDB_environment *envp;
+    int ret = RDB_bdb_create_env(path, &envp);
+    if (ret != RDB_OK) {
+        RDB_bdb_errcode_to_error(ret, ecp);
+        return NULL;
+    }
+    return envp;
 }
 
 /**
@@ -65,11 +78,11 @@ RDB_create_env(const char *path, RDB_environment **envpp)
  * See the documentation of the Berkeley function DB_ENV->close for details.
  */
 int
-RDB_close_env(RDB_environment *envp)
+RDB_close_env(RDB_environment *envp, RDB_exec_context *ecp)
 {
     if (envp->cleanup_fn != NULL)
         (*envp->cleanup_fn)(envp);
-    return (*envp->close_fn)(envp);
+    return (*envp->close_fn)(envp, ecp);
 }
 
 /**

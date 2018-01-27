@@ -257,18 +257,20 @@ main(int argc, char *argv[])
         return 1;
     }
 
-    if (RDB_open_env(envname, &envp, 0) != RDB_OK) {
-        if (RDB_open_env(envname, &envp, RDB_RECOVER) != RDB_OK) {
-            fprintf(stderr, "unable to open environment %s: %s\n", envname,
-                db_strerror(errno));
-            return 1;
-        }
-    }
-
     RDB_init_exec_context(&ec);
+
     if (RDB_init_builtin(&ec) != RDB_OK) {
         Duro_println_error(RDB_get_err(&ec));
         goto error;
+    }
+
+    envp = RDB_open_env(envname, 0, &ec);
+    if (envp == NULL) {
+        envp = RDB_open_env(envname, RDB_RECOVER, &ec);
+        if (envp == NULL) {
+            Duro_println_error(RDB_get_err(&ec));
+            goto error;
+        }
     }
 
     if (Duro_init_interp(&interp, &ec, envp, NULL) != RDB_OK) {
@@ -287,10 +289,20 @@ main(int argc, char *argv[])
 
     MHD_stop_daemon(daemon);
 
+    if (envp != NULL) {
+        if (RDB_close_env(envp, &ec) != RDB_OK) {
+            Duro_println_error(RDB_get_err(&ec));
+        }
+    }
+
     RDB_destroy_exec_context(&ec);
     return 0;
 
 error:
+    if (envp != NULL) {
+        RDB_close_env(envp, &ec);
+    }
+
     RDB_destroy_exec_context(&ec);
     return 1;
 }

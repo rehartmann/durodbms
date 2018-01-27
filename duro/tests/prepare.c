@@ -215,15 +215,17 @@ main(void)
     int ret;
     RDB_exec_context ec;
 
+    RDB_init_exec_context(&ec);
     printf("Opening environment\n");
-    ret = RDB_create_env("dbenv", &envp);
-    if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", db_strerror(ret));
+    envp = RDB_create_env("dbenv", &ec);
+    if (envp == NULL) {
+        fprintf(stderr, "Error: %s\n",
+                RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
+        RDB_destroy_exec_context(&ec);
         return 1;
     }
 
     RDB_bdb_env(envp)->set_errfile(RDB_bdb_env(envp), stderr);
-    RDB_init_exec_context(&ec);
 
     printf("Creating DB\n");
     dbp = RDB_create_db_from_env("TEST", envp, &ec);
@@ -249,7 +251,7 @@ main(void)
     }
 
     printf ("Closing environment\n");
-    ret = RDB_close_env(envp);
+    ret = RDB_close_env(envp, &ec);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
         RDB_destroy_exec_context(&ec);

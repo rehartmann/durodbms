@@ -100,15 +100,16 @@ main(void)
     RDB_transaction tx;
     RDB_object tb;
 
-    ret = RDB_open_env("dbenv", &dsp, RDB_RECOVER);
-    if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", db_strerror(ret));
+    RDB_init_exec_context(&ec);
+    dsp = RDB_open_env("dbenv", RDB_RECOVER, &ec);
+    if (dsp == NULL) {
+        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
+        RDB_destroy_exec_context(&ec);
         return 1;
     }
 
-    RDB_init_exec_context(&ec);
     dbp = RDB_get_db_from_env("TEST", dsp, &ec);
-    if (ret != RDB_OK) {
+    if (dbp == NULL) {
         fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 1;
@@ -129,13 +130,13 @@ main(void)
 
     assert(RDB_commit(&ec, &tx) == RDB_OK);
 
-    RDB_destroy_exec_context(&ec);
-
-    ret = RDB_close_env(dsp);
+    ret = RDB_close_env(dsp, &ec);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", db_strerror(ret));
+        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
+        RDB_destroy_exec_context(&ec);
         return 2;
     }
 
+    RDB_destroy_exec_context(&ec);
     return 0;
 }

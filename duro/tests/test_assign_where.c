@@ -89,18 +89,19 @@ main(void)
     RDB_database *dbp;
     RDB_exec_context ec;
     
-    assert(RDB_open_env("dbenv", &envp, RDB_RECOVER) == RDB_OK);
+    RDB_init_exec_context(&ec);
+    envp = RDB_open_env("dbenv", RDB_RECOVER, &ec);
+    assert(envp != NULL);
 
     RDB_bdb_env(envp)->set_errfile(RDB_bdb_env(envp), stderr);
 
-    RDB_init_exec_context(&ec);
     dbp = RDB_get_db_from_env("TEST", envp, &ec);
     assert(dbp != NULL);
 
     test_assign_select(dbp, &ec);
     RDB_destroy_exec_context(&ec);
 
-    assert(RDB_close_env(envp) == RDB_OK);
+    assert(RDB_close_env(envp, &ec) == RDB_OK);
 
     return 0;
 }

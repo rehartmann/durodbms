@@ -2581,7 +2581,8 @@ RDB_cat_get_ptable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
     ret = RDB_hashmap_put(&txp->dbp->dbrootp->ptbmap,
             name, tbp);
     if (ret != RDB_OK) {
-        RDB_handle_errcode(ret, ecp, NULL);
+        RDB_errcode_to_error(ret, ecp);
+        RDB_handle_err(ecp, txp);
         return RDB_ERROR;
     }
 

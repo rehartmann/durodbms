@@ -78,7 +78,7 @@ connect_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     /* If a connection exists, close it */
     if (interp->envp != NULL) {
-        RDB_close_env(interp->envp);
+        RDB_close_env(interp->envp, ecp);
     }
 
     /*
@@ -86,16 +86,15 @@ connect_op(int argc, RDB_object *argv[], RDB_operator *op,
      * to attach to existing memory pool
      */
 
-    ret = RDB_open_env(RDB_obj_string(argv[0]), &interp->envp, 0);
-    if (ret != RDB_OK) {
+    interp->envp = RDB_open_env(RDB_obj_string(argv[0]), 0, ecp);
+    if (interp->envp == NULL) {
         /*
          * Retry with RDB_RECOVER option, re-creating necessary files
          * and running recovery
          */
-        ret = RDB_open_env(RDB_obj_string(argv[0]), &interp->envp,
-                RDB_RECOVER);
-        if (ret != RDB_OK) {
-            RDB_handle_errcode(ret, ecp, txp);
+        interp->envp = RDB_open_env(RDB_obj_string(argv[0]), RDB_RECOVER, ecp);
+        if (interp->envp == NULL) {
+            RDB_handle_err(ecp, txp);
             interp->envp = NULL;
             return RDB_ERROR;
         }
@@ -117,13 +116,13 @@ connect_recover_op(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     if (interp->envp != NULL) {
-        RDB_close_env(interp->envp);
+        RDB_close_env(interp->envp, ecp);
     }
 
-    ret = RDB_open_env(RDB_obj_string(argv[0]), &interp->envp,
-            RDB_obj_bool(argv[1]) ? RDB_RECOVER : 0);
-    if (ret != RDB_OK) {
-        RDB_handle_errcode(ret, ecp, txp);
+    interp->envp = RDB_open_env(RDB_obj_string(argv[0]),
+            RDB_obj_bool(argv[1]) ? RDB_RECOVER : 0, ecp);
+    if (interp->envp == NULL) {
+        RDB_handle_err(ecp, txp);
         interp->envp = NULL;
         return RDB_ERROR;
     }
@@ -157,11 +156,10 @@ disconnect_op(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     /* Close DB environment */
-    ret = RDB_close_env(interp->envp);
+    ret = RDB_close_env(interp->envp, ecp);
     interp->envp = NULL;
     if (ret != RDB_OK) {
-        RDB_handle_errcode(ret, ecp, txp);
-        interp->envp = NULL;
+        RDB_handle_err(ecp, txp);
         return RDB_ERROR;
     }
 
@@ -181,7 +179,7 @@ create_env_op(int argc, RDB_object *argv[], RDB_operator *op,
     Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
 
     if (interp->envp != NULL) {
-        RDB_close_env(interp->envp);
+        RDB_close_env(interp->envp, ecp);
     }
 
     /* Create directory if does not exist */
@@ -197,10 +195,9 @@ create_env_op(int argc, RDB_object *argv[], RDB_operator *op,
         return RDB_ERROR;
     }
 
-    ret = RDB_create_env(RDB_obj_string(argv[0]), &interp->envp);
-    if (ret != RDB_OK) {
-        RDB_handle_errcode(ret, ecp, txp);
-        interp->envp = NULL;
+    interp->envp = RDB_create_env(RDB_obj_string(argv[0]), ecp);
+    if (interp->envp == NULL) {
+        RDB_handle_err(ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -409,7 +406,7 @@ Duro_destroy_interp(Duro_interp *interp)
     RDB_destroy_obj(&interp->pkg_name, &ec);
 
     if (interp->envp != NULL)
-        RDB_close_env(interp->envp);
+        RDB_close_env(interp->envp, &ec);
 
     RDB_destroy_exec_context(&ec);
 }

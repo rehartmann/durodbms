@@ -12,6 +12,7 @@
 typedef struct RDB_recmap RDB_recmap;
 typedef struct RDB_environment RDB_environment;
 typedef struct RDB_rec_transaction RDB_rec_transaction;
+typedef struct RDB_exec_context RDB_exec_context;
 
 /*
  * Functions for managing record maps. A record map contains
@@ -41,40 +42,41 @@ typedef struct {
     RDB_bool asc;
 } RDB_compare_field;
 
-int
+RDB_recmap *
 RDB_create_recmap(const char *, const char *,
         RDB_environment *, int, const int[], int,
-        const RDB_compare_field[], int, RDB_rec_transaction *, RDB_recmap **);
+        const RDB_compare_field[], int, RDB_rec_transaction *,
+        RDB_exec_context *);
 
-int
+RDB_recmap *
 RDB_open_recmap(const char *, const char *,
         RDB_environment *, int, const int[], int,
-        RDB_rec_transaction *, RDB_recmap **);
+        RDB_rec_transaction *, RDB_exec_context *);
 
 int
-RDB_close_recmap(RDB_recmap *);
+RDB_close_recmap(RDB_recmap *, RDB_exec_context *);
 
 int
-RDB_delete_recmap(RDB_recmap *, RDB_rec_transaction *);
+RDB_delete_recmap(RDB_recmap *, RDB_rec_transaction *, RDB_exec_context *);
 
 int
-RDB_insert_rec(RDB_recmap *, RDB_field[], RDB_rec_transaction *);
+RDB_insert_rec(RDB_recmap *, RDB_field[], RDB_rec_transaction *, RDB_exec_context *);
 
 int
 RDB_update_rec(RDB_recmap *, RDB_field[],
-               int, const RDB_field[], RDB_rec_transaction *);
+               int, const RDB_field[], RDB_rec_transaction *, RDB_exec_context *);
 
 int
-RDB_delete_rec(RDB_recmap *, RDB_field[], RDB_rec_transaction *);
+RDB_delete_rec(RDB_recmap *, RDB_field[], RDB_rec_transaction *, RDB_exec_context *);
 
 int
-RDB_get_fields(RDB_recmap *, RDB_field[],
-           int, RDB_rec_transaction *, RDB_field[]);
+RDB_get_fields(RDB_recmap *, RDB_field[], int,
+        RDB_rec_transaction *, RDB_field[], RDB_exec_context *);
 
 int
-RDB_contains_rec(RDB_recmap *, RDB_field[], RDB_rec_transaction *);
+RDB_contains_rec(RDB_recmap *, RDB_field[], RDB_rec_transaction *, RDB_exec_context *);
 
 int
-RDB_recmap_est_size(RDB_recmap *, RDB_rec_transaction *, unsigned *);
+RDB_recmap_est_size(RDB_recmap *, RDB_rec_transaction *, unsigned *, RDB_exec_context *);
 
 #endif

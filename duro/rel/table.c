@@ -64,7 +64,7 @@ RDB_new_rtable(const char *name, RDB_bool persistent,
 }
 
 void
-RDB_close_sequences(RDB_object *tbp)
+RDB_close_sequences(RDB_object *tbp, RDB_exec_context *ecp)
 {
     RDB_attr_default *entryp;
     RDB_hashmap_iter hiter;
@@ -75,7 +75,7 @@ RDB_close_sequences(RDB_object *tbp)
         while (RDB_hashmap_next(&hiter, &valp) != NULL) {
             entryp = valp;
             if (entryp->seqp != NULL) {
-                RDB_close_sequence(entryp->seqp);
+                RDB_close_sequence(entryp->seqp, ecp);
                 entryp->seqp = NULL;
             }
         }
@@ -88,7 +88,7 @@ cleanup_tb(RDB_object *tbp, RDB_exec_context *ecp)
 {
     int ret;
 
-    RDB_close_sequences(tbp);
+    RDB_close_sequences(tbp, ecp);
 
     if (tbp->val.tbp->keyv != NULL) {
         RDB_free_keys(tbp->val.tbp->keyc, tbp->val.tbp->keyv);

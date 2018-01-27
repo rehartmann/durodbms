@@ -6,14 +6,13 @@
  * See the file COPYING for redistribution information.
  */
 
-typedef struct RDB_exec_context RDB_exec_context;
-
 enum {
     RDB_RECOVER = 1
 };
 
 typedef void (RDB_errfn)(const char *msg, void *arg);
 
+typedef struct RDB_exec_context RDB_exec_context;
 typedef struct RDB_environment RDB_environment;
 
 void *
@@ -28,14 +27,14 @@ RDB_env_trace(RDB_environment *);
 void
 RDB_env_set_trace(RDB_environment *, unsigned);
 
-int
-RDB_open_env(const char *, RDB_environment **, int);
+RDB_environment *
+RDB_open_env(const char *, int, RDB_exec_context *);
+
+RDB_environment *
+RDB_create_env(const char *, RDB_exec_context *);
 
 int
-RDB_create_env(const char *, RDB_environment **);
-
-int
-RDB_close_env(RDB_environment *);
+RDB_close_env(RDB_environment *, RDB_exec_context *);
 
 void
 RDB_set_env_closefn(RDB_environment *, void (*)(RDB_environment *));

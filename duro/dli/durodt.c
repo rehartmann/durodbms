@@ -179,10 +179,12 @@ main(int argc, char *argv[])
     }
 
     if (envname != NULL) {
-        if (RDB_open_env(envname, &envp, 0) != RDB_OK) {
-            if (RDB_open_env(envname, &envp, RDB_RECOVER) != RDB_OK) {
-                fprintf(stderr, "unable to open environment %s: %s\n", envname,
-                    db_strerror(errno));
+        envp = RDB_open_env(envname, 0, &ec);
+        if (envp == NULL) {
+            envp = RDB_open_env(envname, RDB_RECOVER, &ec);
+            if (envp == NULL) {
+                fprintf(stderr, "unable to open environment %s:", envname);
+                Duro_println_error(RDB_get_err(&ec));
                 return 1;
             }
         }

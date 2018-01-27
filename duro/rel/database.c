@@ -134,7 +134,7 @@ close_table(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp)
     RDB_dbroot *dbrootp;
     RDB_database *dbp;
 
-    RDB_close_sequences(tbp);
+    RDB_close_sequences(tbp, ecp);
 
     if (tbp->val.tbp->stp != NULL) {
         if (RDB_close_stored_table(tbp->val.tbp->stp, ecp) != RDB_OK)
@@ -1009,7 +1009,7 @@ RDB_assoc_table_db(RDB_object *tbp, RDB_database *dbp, RDB_exec_context *ecp)
     /* Insert table into table map */
     int ret = RDB_hashmap_put(&dbp->tbmap, RDB_table_name(tbp), tbp);
     if (ret != RDB_OK) {
-        RDB_handle_errcode(ret, ecp, NULL);
+        RDB_errcode_to_error(ret, ecp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -1486,20 +1486,21 @@ delete_sequences(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
                     RDB_destroy_hashmap_iter(&hiter);
                     return RDB_ERROR;
                 }
-                ret = RDB_open_sequence(RDB_obj_string(&seqname), RDB_DATAFILE,
-                            RDB_db_env(RDB_tx_db(txp)), txp->tx, &seqp);
-                RDB_destroy_obj(&seqname, ecp);
-                if (ret != 0) {
+                seqp = RDB_open_sequence(RDB_obj_string(&seqname), RDB_DATAFILE,
+                            RDB_db_env(RDB_tx_db(txp)), txp->tx, ecp);
+                if (seqp == NULL) {
+                    RDB_destroy_obj(&seqname, ecp);
                     RDB_destroy_hashmap_iter(&hiter);
-                    RDB_handle_errcode(ret, ecp, txp);
+                    RDB_handle_err(ecp, txp);
                     return RDB_ERROR;
                 }
+                RDB_destroy_obj(&seqname, ecp);
             }
-            ret = RDB_delete_sequence(seqp, RDB_db_env(RDB_tx_db(txp)), txp->tx);
+            ret = RDB_delete_sequence(seqp, RDB_db_env(RDB_tx_db(txp)), txp->tx, ecp);
             dflp->seqp = NULL;
             if (ret != 0) {
                 RDB_destroy_hashmap_iter(&hiter);
-                RDB_handle_errcode(ret, ecp, txp);
+                RDB_handle_err(ecp, txp);
                 return RDB_ERROR;
             }
         }
@@ -1727,7 +1728,7 @@ RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
                     RDB_init_obj(&oldname);
                     RDB_init_obj(&newname);
                     if (entryp->seqp != NULL) {
-                        RDB_close_sequence(entryp->seqp);
+                        RDB_close_sequence(entryp->seqp, ecp);
                         entryp->seqp = NULL;
                     }
 
@@ -1744,11 +1745,11 @@ RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
                     }
                     ret = RDB_rename_sequence(RDB_obj_string(&oldname),
                             RDB_obj_string(&newname), RDB_DATAFILE,
-                            RDB_db_env(RDB_tx_db(txp)), txp->tx);
+                            RDB_db_env(RDB_tx_db(txp)), txp->tx, ecp);
                     RDB_destroy_obj(&oldname, ecp);
                     RDB_destroy_obj(&newname, ecp);
-                    if (ret != 0) {
-                        RDB_handle_errcode(ret, ecp, txp);
+                    if (ret != RDB_OK) {
+                        RDB_handle_err(ecp, txp);
                         return RDB_ERROR;
                     }
                 }
@@ -1948,7 +1949,7 @@ RDB_set_user_tables_check(RDB_database *dbp, RDB_exec_context *ecp)
                 while (RDB_hashmap_next(&hiter, &valp) != NULL) {
                     entryp = valp;
                     if (entryp->seqp != NULL) {
-                        RDB_close_sequence(entryp->seqp);
+                        RDB_close_sequence(entryp->seqp, ecp);
                         entryp->seqp = NULL;
                     }
                 }

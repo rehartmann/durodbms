@@ -78,7 +78,7 @@ cleanup_storage(RDB_transaction *txp)
 }
 
 static int
-del_storage(RDB_transaction *txp)
+del_storage(RDB_transaction *txp, RDB_exec_context *ecp)
 {
     RDB_rmlink *rmlinkp;
     RDB_ixlink *ixlinkp;
@@ -100,7 +100,7 @@ del_storage(RDB_transaction *txp)
          * Cannot pass txp->tx because it has been closed by the caller -
          * BDB transaction handles must be closed before DB handles are closed
          */
-        ret = RDB_delete_recmap(rmlinkp->rmp, NULL);
+        ret = RDB_delete_recmap(rmlinkp->rmp, NULL, ecp);
     }
 
     cleanup_storage(txp);
@@ -165,14 +165,14 @@ RDB_commit(RDB_exec_context *ecp, RDB_transaction *txp)
 
     ret = RDB_commit_rec_tx(txp->tx);
     if (ret != 0) {
-        RDB_handle_errcode(ret, ecp, txp);
+        RDB_handle_err(ecp, txp);
         return RDB_ERROR;
     }
 
     /* Delete recmaps and indexes scheduled for deletion */
-    ret = del_storage(txp);
+    ret = del_storage(txp, ecp);
     if (ret != 0) {
-        RDB_handle_errcode(ret, ecp, NULL);
+        RDB_handle_err(ecp, NULL);
         return ret;
     }
 
@@ -210,7 +210,7 @@ RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp)
 
     ret = RDB_abort_rec_tx(txp->tx);
     if (ret != 0) {
-        RDB_handle_errcode(ret, ecp, txp);
+        RDB_handle_err(ecp, txp);
         return RDB_ERROR;
     }
 

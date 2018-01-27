@@ -10,6 +10,8 @@
 
 #include <db.h>
 
+typedef struct RDB_exec_context RDB_exec_context;
+
 typedef struct RDB_cursor {
     /* internal */
     DBC *cursorp;
@@ -19,14 +21,14 @@ typedef struct RDB_cursor {
     RDB_index *idxp;
     RDB_rec_transaction *tx;
 
-    int (*destroy_fn)(struct RDB_cursor *);
-    int (*get_fn)(struct RDB_cursor *, int, void**, size_t *);
-    int (*set_fn)(struct RDB_cursor *, int, RDB_field[]);
-    int (*delete_fn)(struct RDB_cursor *);
-    int (*first_fn)(struct RDB_cursor *);
-    int (*next_fn)(struct RDB_cursor *, int);
-    int (*prev_fn)(struct RDB_cursor *);
-    int (*seek_fn)(struct RDB_cursor *, int, RDB_field[], int);
+    int (*destroy_fn)(struct RDB_cursor *, RDB_exec_context *);
+    int (*get_fn)(struct RDB_cursor *, int, void**, size_t *, RDB_exec_context *);
+    int (*set_fn)(struct RDB_cursor *, int, RDB_field[], RDB_exec_context *);
+    int (*delete_fn)(struct RDB_cursor *, RDB_exec_context *);
+    int (*first_fn)(struct RDB_cursor *, RDB_exec_context *);
+    int (*next_fn)(struct RDB_cursor *, int, RDB_exec_context *);
+    int (*prev_fn)(struct RDB_cursor *, RDB_exec_context *);
+    int (*seek_fn)(struct RDB_cursor *, int, RDB_field[], int, RDB_exec_context *);
 } RDB_cursor;
 
 #endif /* REC_CURSORIMPL_H_ */

@@ -2521,7 +2521,8 @@ exec_explain(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
 
     ret = puts(RDB_obj_string(&strobj));
     if (ret == EOF) {
-        RDB_handle_errcode(errno, ecp, txp);
+        RDB_errcode_to_error(errno, ecp);
+        RDB_handle_err(ecp, txp);
     } else {
         ret = RDB_OK;
     }

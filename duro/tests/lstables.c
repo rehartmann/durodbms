@@ -18,7 +18,6 @@ static int
 getargs(RDB_exec_context *ecp, int *argcp, char **argvp[],
         RDB_environment **envpp, RDB_database **dbpp)
 {
-    int ret;
     char *envnamp = NULL;
     char *dbnamp = NULL;
 
@@ -40,13 +39,13 @@ getargs(RDB_exec_context *ecp, int *argcp, char **argvp[],
             break;
     }
     if (envnamp != NULL) {
-        ret = RDB_open_env(envnamp, envpp, 0);
-        if (ret != RDB_OK)
-            return ret;
+        *envpp = RDB_open_env(envnamp, 0, ecp);
+        if (*envpp == NULL)
+            return RDB_ERROR;
         if (dbnamp != NULL) {
             *dbpp = RDB_get_db_from_env(dbnamp, *envpp, ecp);
             if (*dbpp == NULL) {
-                RDB_close_env(*envpp);
+                RDB_close_env(*envpp, ecp);
                 return RDB_ERROR;
             }
         }
@@ -208,7 +207,7 @@ main(int argc, char *argv[])
     }
     RDB_destroy_exec_context(&ec);
 
-    ret = RDB_close_env(envp);
+    ret = RDB_close_env(envp, &ec);
     if (ret != RDB_OK) {
         fprintf(stderr, "lstables: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         return 1;

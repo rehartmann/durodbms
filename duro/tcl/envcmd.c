@@ -51,7 +51,7 @@ Duro_tcl_close_env(TclState *statep, RDB_environment *envp, Tcl_HashEntry *entry
     }
 
     bdb_envp->get_errfile(bdb_envp, &errfp);
-    ret = RDB_close_env(envp);
+    ret = RDB_close_env(envp, &statep->ec);
     if (errfp != NULL) {
         fclose(errfp);
     }
@@ -94,16 +94,9 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
             path = argv[2];
         }
 
-        ret = RDB_open_env(path, &envp, flags);
-        if (ret != RDB_OK) {
-            Tcl_AppendResult(interp, "database error: ", db_strerror(ret),
-                    (char *) NULL);
-
-            /* If it is a POSIX error, set errorCode */
-            if (strerror(ret) != NULL) {
-                Tcl_SetErrno(ret);
-                Tcl_PosixError(interp);
-            }
+        envp = RDB_open_env(path, flags, &statep->ec);
+        if (envp == NULL) {
+            Duro_dberror(interp, RDB_get_err(&statep->ec), NULL);
             return TCL_ERROR;
         }
 
@@ -122,16 +115,9 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
             return TCL_ERROR;
         }
 
-        ret = RDB_create_env(argv[2], &envp);
-        if (ret != RDB_OK) {
-            Tcl_AppendResult(interp, "database error: ", db_strerror(ret),
-                    (char *) NULL);
-
-            /* If it is a POSIX error, set errorCode */
-            if (strerror(ret) != NULL) {
-                Tcl_SetErrno(ret);
-                Tcl_PosixError(interp);
-            }
+        envp = RDB_create_env(argv[2], &statep->ec);
+        if (envp == NULL) {
+            Duro_dberror(interp, RDB_get_err(&statep->ec), NULL);
             return TCL_ERROR;
         }
 

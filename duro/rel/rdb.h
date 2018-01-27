@@ -442,7 +442,7 @@ int
 RDB_rollback_all(RDB_exec_context *, RDB_transaction *);
 
 void
-RDB_handle_errcode(int errcode, RDB_exec_context *, RDB_transaction *);
+RDB_handle_err(RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_obj_equals(const RDB_object *, const RDB_object *,

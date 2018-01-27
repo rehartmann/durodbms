@@ -116,12 +116,16 @@ RDB_bdb_create_env(const char *path, RDB_environment **envpp)
  * See the documentation of the Berkeley function DB_ENV->close for details.
  */
 int
-RDB_bdb_close_env(RDB_environment *envp)
+RDB_bdb_close_env(RDB_environment *envp, RDB_exec_context *ecp)
 {
     int ret;
 
     ret = envp->envp->close(envp->envp, 0);
     free(envp);
+    if (ret != RDB_OK) {
+        RDB_bdb_errcode_to_error(ret, ecp);
+        return RDB_ERROR;
+    }
     return ret;
 }
 

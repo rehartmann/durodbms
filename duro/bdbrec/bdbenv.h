@@ -18,7 +18,7 @@ int
 RDB_bdb_create_env(const char *, RDB_environment **);
 
 int
-RDB_bdb_close_env(RDB_environment *);
+RDB_bdb_close_env(RDB_environment *, RDB_exec_context *);
 
 DB_ENV *
 RDB_bdb_env(RDB_environment *);

@@ -113,14 +113,14 @@ main(void)
     int ret;
     RDB_exec_context ec;
 
-    ret = RDB_open_env("dbenv", &envp, RDB_RECOVER);
-    if (ret != 0) {
-        fprintf(stderr, "Error: %s\n", db_strerror(ret));
+    RDB_init_exec_context(&ec);
+    envp = RDB_open_env("dbenv", RDB_RECOVER, &ec);
+    if (envp == NULL) {
+        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         return 1;
     }
 
     RDB_bdb_env(envp)->set_errfile(RDB_bdb_env(envp), stderr);
-    RDB_init_exec_context(&ec);
     dbp = RDB_get_db_from_env("TEST", envp, &ec);
     if (dbp == NULL) {
         fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
@@ -142,9 +142,9 @@ main(void)
         return 2;
     }
 
-    ret = RDB_close_env(envp);
+    ret = RDB_close_env(envp, &ec);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", db_strerror(ret));
+        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 2;
     }

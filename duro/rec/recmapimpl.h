@@ -13,6 +13,7 @@
 #include "db.h"
 
 typedef struct RDB_cursor RDB_cursor;
+typedef struct RDB_exec_context RDB_exec_context;
 
 typedef struct RDB_recmap {
     /* internal */
@@ -38,17 +39,22 @@ typedef struct RDB_recmap {
     /* RDB_TRUE if duplicate keys are allowed */
     RDB_bool dup_keys;
 
-    int (*close_recmap_fn)(RDB_recmap *);
-    int (*delete_recmap_fn)(RDB_recmap *, RDB_rec_transaction *);
-    int (*insert_rec_fn)(RDB_recmap *, RDB_field[], RDB_rec_transaction *);
+    int (*close_recmap_fn)(RDB_recmap *, RDB_exec_context *);
+    int (*delete_recmap_fn)(RDB_recmap *, RDB_rec_transaction *, RDB_exec_context *);
+    int (*insert_rec_fn)(RDB_recmap *, RDB_field[], RDB_rec_transaction *,
+            RDB_exec_context *);
     int (*update_rec_fn)(RDB_recmap *, RDB_field[],
-                   int, const RDB_field[], RDB_rec_transaction *);
-    int (*delete_rec_fn)(RDB_recmap *, RDB_field[], RDB_rec_transaction *);
+                   int, const RDB_field[], RDB_rec_transaction *, RDB_exec_context *);
+    int (*delete_rec_fn)(RDB_recmap *, RDB_field[], RDB_rec_transaction *,
+            RDB_exec_context *);
     int (*get_fields_fn)(RDB_recmap *, RDB_field[],
-               int, RDB_rec_transaction *, RDB_field[]);
-    int (*contains_rec_fn)(RDB_recmap *, RDB_field[], RDB_rec_transaction *);
-    int (*recmap_est_size_fn)(RDB_recmap *, RDB_rec_transaction *, unsigned *);
-    int (*cursor_fn)(RDB_cursor **, RDB_recmap *, RDB_bool, RDB_rec_transaction *);
+               int, RDB_rec_transaction *, RDB_field[], RDB_exec_context *);
+    int (*contains_rec_fn)(RDB_recmap *, RDB_field[], RDB_rec_transaction *,
+            RDB_exec_context *);
+    int (*recmap_est_size_fn)(RDB_recmap *, RDB_rec_transaction *, unsigned *,
+            RDB_exec_context *);
+    RDB_cursor * (*cursor_fn)(RDB_recmap *, RDB_bool, RDB_rec_transaction *,
+            RDB_exec_context *);
 } RDB_recmap;
 
 size_t

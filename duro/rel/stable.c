@@ -71,10 +71,10 @@ RDB_close_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp)
 
     /* Close recmap */
     if (stp->recmapp != NULL) {
-        ret = RDB_close_recmap(stp->recmapp);
+        ret = RDB_close_recmap(stp->recmapp, ecp);
         free_stored_table(stp);
-        if (ret != 0) {
-            RDB_handle_errcode(ret, ecp, NULL);
+        if (ret != RDB_OK) {
+            RDB_handle_err(ecp, NULL);
             return RDB_ERROR;
         }
     } else {
@@ -222,7 +222,7 @@ RDB_create_tbindex(RDB_object *tbp, RDB_tbindex *indexp, RDB_environment *envp,
                   envp, indexp->attrc, fieldv, cmpv, flags,
                   txp != NULL ? txp->tx : NULL, &indexp->idxp);
     if (ret != RDB_OK) {
-        RDB_handle_errcode(ret, ecp, txp);
+        RDB_handle_err(ecp, txp);
         indexp->idxp = NULL;
         ret = RDB_ERROR;
     }
@@ -568,15 +568,13 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
         fprintf(stderr, "Creating physical storage for table %s\n",
                 RDB_table_name(tbp));
     }
-    ret = RDB_create_recmap(RDB_table_is_persistent(tbp) ?
+    tbp->val.tbp->stp->recmapp = RDB_create_recmap(RDB_table_is_persistent(tbp) ?
             (rmname == NULL ? RDB_table_name(tbp) : rmname) : NULL,
             RDB_table_is_persistent(tbp) ? RDB_DATAFILE : NULL,
             envp, attrc, flenv, piattrc, cmpv, flags,
-            txp != NULL ? txp->tx : NULL,
-            &tbp->val.tbp->stp->recmapp);
-    if (ret != RDB_OK) {
-        tbp->val.tbp->stp->recmapp = NULL;
-        RDB_handle_errcode(ret, ecp, txp);
+            txp != NULL ? txp->tx : NULL, ecp);
+    if (tbp->val.tbp->stp->recmapp == NULL) {
+        RDB_handle_err(ecp, txp);
         goto error;
     }
 
@@ -616,7 +614,7 @@ error:
          * (If the transaction has been created under the control of a transaction,
          * the transaction must have been committed before the DB handle can be destroyed)
          */
-        RDB_delete_recmap(tbp->val.tbp->stp->recmapp, NULL);
+        RDB_delete_recmap(tbp->val.tbp->stp->recmapp, NULL, ecp);
     }
     RDB_free(tbp->val.tbp->stp);
     tbp->val.tbp->stp = NULL;
@@ -725,14 +723,13 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
     if (ret != RDB_OK)
         return RDB_ERROR;
 
-    ret = RDB_open_recmap(rmname, RDB_DATAFILE, envp,
-            attrc, flenv, piattrc, txp != NULL ? txp->tx : NULL,
-            &tbp->val.tbp->stp->recmapp);
-    if (ret != RDB_OK) {
-        if (ret == ENOENT) {
+    tbp->val.tbp->stp->recmapp = RDB_open_recmap(rmname, RDB_DATAFILE, envp,
+            attrc, flenv, piattrc, txp != NULL ? txp->tx : NULL, ecp);
+    if (tbp->val.tbp->stp->recmapp == NULL) {
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_RESOURCE_NOT_FOUND_ERROR) {
             RDB_raise_not_found("table not found", ecp);
         } else {
-            RDB_handle_errcode(ret, ecp, txp);
+            RDB_handle_err(ecp, txp);
         }
         goto error;
     }
@@ -742,9 +739,9 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
      */
     ret = RDB_recmap_est_size(tbp->val.tbp->stp->recmapp,
             txp != NULL ? txp->tx : NULL,
-            &tbp->val.tbp->stp->est_cardinality);
-    if (ret != 0) {
-        RDB_handle_errcode(ret, ecp, txp);
+            &tbp->val.tbp->stp->est_cardinality, ecp);
+    if (ret != RDB_OK) {
+        RDB_handle_err(ecp, txp);
         goto error;
     }
     if (tbp->val.tbp->stp->est_cardinality == 0) {
@@ -824,7 +821,7 @@ RDB_open_tbindex(RDB_object *tbp, RDB_tbindex *indexp,
                   envp, indexp->attrc, fieldv, cmpv, indexp->unique ? RDB_UNIQUE : 0,
                   txp != NULL ? txp->tx : NULL, &indexp->idxp);
     if (ret != RDB_OK) {
-        RDB_handle_errcode(ret, ecp, txp);
+        RDB_handle_err(ecp, txp);
         indexp->idxp = NULL;
         ret = RDB_ERROR;
     }
@@ -864,9 +861,9 @@ RDB_delete_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp,
          */
         ret = RDB_add_del_recmap(txp, stp->recmapp, ecp);
     } else {
-        ret = RDB_delete_recmap(stp->recmapp, NULL);
+        ret = RDB_delete_recmap(stp->recmapp, NULL, ecp);
         if (ret != RDB_OK) {
-            RDB_handle_errcode(ret, ecp, txp);
+            RDB_handle_err(ecp, txp);
             ret = RDB_ERROR;
         }
     }
@@ -875,17 +872,12 @@ RDB_delete_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp,
 }
 
 /**
- * Raise an error that corresponds to the error code <var>errcode</var>.
- * <var>errcode</var> can be a POSIX error code,
- * a Berkeley DB error code or an error code from the record layer.
- *
  * If txp is not NULL and the error is a deadlock, abort the transaction
  */
 void
-RDB_handle_errcode(int errcode, RDB_exec_context *ecp, RDB_transaction *txp)
+RDB_handle_err(RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    if (errcode == DB_LOCK_DEADLOCK && txp != NULL) {
+    if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_DEADLOCK_ERROR && txp != NULL) {
         RDB_rollback_all(ecp, txp);
     }
-    return RDB_errcode_to_error(errcode, ecp);
 }

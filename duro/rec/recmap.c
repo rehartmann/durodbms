@@ -20,44 +20,44 @@
  * If a recmap with name <var>name</var> already exists and envp is NULL,
  * the existing recmap is deleted.
  */
-int
+RDB_recmap *
 RDB_create_recmap(const char *name, const char *filename,
         RDB_environment *envp, int fieldc, const int fieldlenv[], int keyfieldc,
         const RDB_compare_field cmpv[], int flags,
-        RDB_rec_transaction *rtxp, RDB_recmap **rmpp)
+        RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     if (envp == NULL)
         return RDB_create_bdb_recmap(name, filename, envp, fieldc, fieldlenv,
-            keyfieldc, cmpv, flags, rtxp, rmpp);
+            keyfieldc, cmpv, flags, rtxp, ecp);
     return (*envp->create_recmap_fn)(name, filename, envp, fieldc, fieldlenv,
-            keyfieldc, cmpv, flags, rtxp, rmpp);
+            keyfieldc, cmpv, flags, rtxp, ecp);
 }
 
 /* Open a recmap. For a description of the arguments, see RDB_create_recmap(). */
-int
+RDB_recmap *
 RDB_open_recmap(const char *name, const char *filename,
        RDB_environment *envp, int fieldc, const int fieldlenv[], int keyfieldc,
-       RDB_rec_transaction *rtxp, RDB_recmap **rmpp)
+       RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     if (envp == NULL)
         return RDB_open_recmap(name, filename, envp, fieldc, fieldlenv,
-            keyfieldc, rtxp, rmpp);
+            keyfieldc, rtxp, ecp);
     return (*envp->open_recmap_fn)(name, filename, envp, fieldc, fieldlenv,
-            keyfieldc, rtxp, rmpp);
+            keyfieldc, rtxp, ecp);
 }
 
 /* Close a recmap. */
 int
-RDB_close_recmap(RDB_recmap *rmp)
+RDB_close_recmap(RDB_recmap *rmp, RDB_exec_context *ecp)
 {
-    return (*rmp->close_recmap_fn)(rmp);
+    return (*rmp->close_recmap_fn)(rmp, ecp);
 }
 
 /* Delete a recmap. */
 int
-RDB_delete_recmap(RDB_recmap *rmp, RDB_rec_transaction *rtxp)
+RDB_delete_recmap(RDB_recmap *rmp, RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
-    return (*rmp->delete_recmap_fn)(rmp, rtxp);
+    return (*rmp->delete_recmap_fn)(rmp, rtxp, ecp);
 }
 
 /*
@@ -65,9 +65,10 @@ RDB_delete_recmap(RDB_recmap *rmp, RDB_rec_transaction *rtxp)
  * valv[..].no is ignored.
  */
 int
-RDB_insert_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp)
+RDB_insert_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp,
+        RDB_exec_context *ecp)
 {
-    return (*rmp->insert_rec_fn)(rmp, flds, rtxp);
+    return (*rmp->insert_rec_fn)(rmp, flds, rtxp, ecp);
 }
 
 /* Update the record whose key values are given by keyv.
@@ -76,9 +77,10 @@ RDB_insert_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp)
  */
 int
 RDB_update_rec(RDB_recmap *rmp, RDB_field keyv[],
-               int fieldc, const RDB_field fieldv[], RDB_rec_transaction *rtxp)
+               int fieldc, const RDB_field fieldv[], RDB_rec_transaction *rtxp,
+               RDB_exec_context *ecp)
 {
-    return (*rmp->update_rec_fn)(rmp, keyv, fieldc, fieldv, rtxp);
+    return (*rmp->update_rec_fn)(rmp, keyv, fieldc, fieldv, rtxp, ecp);
 }
 
 /*
@@ -86,9 +88,10 @@ RDB_update_rec(RDB_recmap *rmp, RDB_field keyv[],
  * keyv[..].no is ignored.
  */
 int
-RDB_delete_rec(RDB_recmap *rmp, RDB_field keyv[], RDB_rec_transaction *rtxp)
+RDB_delete_rec(RDB_recmap *rmp, RDB_field keyv[], RDB_rec_transaction *rtxp,
+        RDB_exec_context *ecp)
 {
-    return (*rmp->delete_rec_fn)(rmp, keyv, rtxp);
+    return (*rmp->delete_rec_fn)(rmp, keyv, rtxp, ecp);
 }
 
 /*
@@ -105,20 +108,21 @@ RDB_delete_rec(RDB_recmap *rmp, RDB_field keyv[], RDB_rec_transaction *rtxp)
  */
 int
 RDB_get_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
-        RDB_rec_transaction *rtxp, RDB_field retfieldv[])
+        RDB_rec_transaction *rtxp, RDB_field retfieldv[], RDB_exec_context *ecp)
 {
-    return (*rmp->get_fields_fn)(rmp, keyv, fieldc, rtxp, retfieldv);
+    return (*rmp->get_fields_fn)(rmp, keyv, fieldc, rtxp, retfieldv, ecp);
 }
 
 /*
  * Check if the recmap contains the record whose values are given by valv.
- * Return RDB_OK if yes, RDB_NOT_FOUND if no.
+ * Return RDB_OK if yes, RDB_ERROR with RDB_NOT_FOUND_FOUND_ERROR in *ecp if no.
  * valv[..].no is ignored.
  */
 int
-RDB_contains_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp)
+RDB_contains_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp,
+        RDB_exec_context *ecp)
 {
-    return (*rmp->contains_rec_fn)(rmp, flds, rtxp);
+    return (*rmp->contains_rec_fn)(rmp, flds, rtxp, ecp);
 }
 
 /*
@@ -127,7 +131,8 @@ RDB_contains_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp)
  * so the result may not be accurate.
  */
 int
-RDB_recmap_est_size(RDB_recmap *rmp, RDB_rec_transaction *rtxp, unsigned *sz)
+RDB_recmap_est_size(RDB_recmap *rmp, RDB_rec_transaction *rtxp, unsigned *sz,
+        RDB_exec_context *ecp)
 {
-    return (*rmp->recmap_est_size_fn)(rmp, rtxp, sz);
+    return (*rmp->recmap_est_size_fn)(rmp, rtxp, sz, ecp);
 }
