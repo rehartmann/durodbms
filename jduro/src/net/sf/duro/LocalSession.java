@@ -35,14 +35,14 @@ public class LocalSession extends DSession {
      *             If a Duro error occurs
      */
     public void close() {
-        synchronized (DSession.class) {
+        synchronized (LocalSession.class) {
             destroyInterp();
         }
     }
 
     public void execute(String code) {
         try {
-            synchronized (DSession.class) {
+            synchronized (LocalSession.class) {
                 executeI(code);
             }
         } catch (ClassNotFoundException|NoSuchMethodException e) {
@@ -52,7 +52,7 @@ public class LocalSession extends DSession {
 
     public Object evaluate(String expr) {
         try {
-            synchronized (DSession.class) {
+            synchronized (LocalSession.class) {
                 return evaluateI(expr);
             }
         } catch (ClassNotFoundException|NoSuchMethodException e) {
@@ -125,7 +125,7 @@ public class LocalSession extends DSession {
      *             If v does not match the type of the variable.
      */
     public void setVar(String name, Object v) {
-        synchronized (DSession.class) {
+        synchronized (LocalSession.class) {
             setVarI(name, v);
         }
     }

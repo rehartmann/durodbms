@@ -49,13 +49,13 @@ public class DefaultPossrepObject implements PossrepObject {
     }
 
     public void setProperty(String name, Object value) {
-        synchronized (DSession.class) {
+        synchronized (LocalSession.class) {
             setProperty(name, session, ref, value);
         }
     }
 
     public Object getProperty(String name) {
-        synchronized (DSession.class) {
+        synchronized (LocalSession.class) {
             return getProperty(name, session, ref);
         }
     }
@@ -75,7 +75,7 @@ public class DefaultPossrepObject implements PossrepObject {
             return false;
         }
 
-        synchronized (DSession.class) {
+        synchronized (LocalSession.class) {
             return equals(ref, probj.ref, session);
         }
     }
@@ -104,7 +104,7 @@ public class DefaultPossrepObject implements PossrepObject {
     }
 
     public void dispose() {
-        synchronized (DSession.class) {
+        synchronized (LocalSession.class) {
             if (session != null) {
                 dispose(session, ref);
                 session = null;
