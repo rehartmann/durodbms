@@ -178,6 +178,11 @@ main(int argc, char *argv[])
         infilename = NULL;
     }
 
+    if (RDB_init_builtin(&ec) != RDB_OK) {
+        Duro_println_error(RDB_get_err(&ec));
+        goto error;
+    }
+
     if (envname != NULL) {
         envp = RDB_open_env(envname, 0, &ec);
         if (envp == NULL) {
@@ -198,11 +203,6 @@ main(int argc, char *argv[])
     RDB_parse_set_free_line_fn(&free_line_interactive);
 
     RDB_init_exec_context(&ec);
-
-    if (RDB_init_builtin(&ec) != RDB_OK) {
-        Duro_println_error(RDB_get_err(&ec));
-        goto error;
-    }
 
     if (Duro_init_interp(&interp, &ec, envp, dbname) != RDB_OK) {
         Duro_println_error(RDB_get_err(&ec));
