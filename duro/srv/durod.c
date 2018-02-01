@@ -83,6 +83,7 @@ query_to_json(const char *dbname, const char *expstr, RDB_object *json)
     RDB_expression *exp;
     const char *varname;
 
+    RDB_init_obj(&result);
     dbobjp = Duro_lookup_var("current_db", &interp, &ec);
     if (dbobjp == NULL) {
         goto error;
@@ -92,7 +93,6 @@ query_to_json(const char *dbname, const char *expstr, RDB_object *json)
         goto error;
     }
 
-    RDB_init_obj(&result);
     exp = Duro_dt_parse_expr_str(expstr, &interp, &ec);
     if (exp == NULL) {
         goto error;
