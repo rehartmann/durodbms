@@ -8,29 +8,29 @@
 #include "tx.h"
 #include "envimpl.h"
 
-#include <db.h>
-
-int
-RDB_begin_rec_tx(RDB_rec_transaction **rtxpp, RDB_environment *envp,
-        RDB_rec_transaction *parent_rtxp)
+RDB_rec_transaction *
+RDB_begin_rec_tx(RDB_environment *envp,
+        RDB_rec_transaction *parent_rtxp, RDB_exec_context *ecp)
 {
-    return ((DB_ENV *)envp->envp)->txn_begin(envp->envp, (DB_TXN *) parent_rtxp,
-            (DB_TXN **) rtxpp, 0);
+    return (*envp->begin_tx_fn)(envp, parent_rtxp, ecp);
 }
 
 int
-RDB_commit_rec_tx(RDB_rec_transaction *rtxp)
+RDB_commit_rec_tx(RDB_rec_transaction *rtxp, RDB_environment *envp,
+        RDB_exec_context *ecp)
 {
-    return ((DB_TXN *) rtxp)->commit((DB_TXN *) rtxp, 0);
+    return (*envp->commit_fn)(rtxp, ecp);
 }
 
 int
-RDB_abort_rec_tx(RDB_rec_transaction *rtxp)
+RDB_abort_rec_tx(RDB_rec_transaction *rtxp, RDB_environment *envp,
+        RDB_exec_context *ecp)
 {
-    return ((DB_TXN *) rtxp)->abort((DB_TXN *) rtxp);
+    return (*envp->abort_fn)(rtxp, ecp);
 }
 
 int
-RDB_rec_tx_id(RDB_rec_transaction *rtxp) {
-    return ((DB_TXN *) rtxp)->id((DB_TXN *) rtxp);
+RDB_rec_tx_id(RDB_rec_transaction *rtxp, RDB_environment *envp)
+{
+    return (*envp->tx_id_fn)(rtxp);
 }

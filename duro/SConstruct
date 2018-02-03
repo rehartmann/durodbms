@@ -4,6 +4,7 @@
 #
 
 import os
+import subprocess
 
 #
 # Basic settings
@@ -19,6 +20,8 @@ java_home = os.getenv('JAVA_HOME', '/usr/lib/jvm/java-8-openjdk-i386')
 
 oshlibsuffix = env['SHLIBSUFFIX']
 
+postgresql = ARGUMENTS.get('postgresql', 'false') 
+
 if env['PLATFORM'] == 'win32':
     default_prefix = 'C:'
     env.Replace(LIBS = ['libdb61', 'ltdl', 'shlwapi'])
@@ -27,14 +30,16 @@ else:
     default_prefix = '/usr/local'
     env.Replace(SHLIBSUFFIX = env['SHLIBSUFFIX'] + '.' + release)
     env.Replace(LIBS = ['db', 'ltdl', 'm'])
-    durolibs = ['db', 'ltdl', 'm']
+    durolibs = ['db', 'ltdl', 'm', 'pq']
 
 prefix = ARGUMENTS.get('prefix', default_prefix)
 
 installdir = prefix + '/durodbms.' + release
 
 env.Replace(CPPPATH = ['.', bdbhome + '/include', '/usr/include/tcl'])
+
 env.Replace(LIBPATH = ['.', bdbhome + '/lib'])
+
 env.Replace(RPATH = [installdir + '/lib', bdbhome + '/lib'])
 
 if (os.environ.has_key('CFLAGS')):
@@ -42,6 +47,13 @@ if (os.environ.has_key('CFLAGS')):
 
 if (os.environ.has_key('LDFLAGS')):
     env.Append(LINKFLAGS = os.environ['LDFLAGS'])
+
+if postgresql == 'true':
+    pginclude = subprocess.check_output(['pg_config', '--includedir']).rstrip()
+    env.Replace(CPPPATH = env['CPPPATH'] + [pginclude])
+    pglib = subprocess.check_output(['pg_config', '--libdir']).rstrip()
+    env.Replace(LIBPATH = env['LIBPATH'] + [pglib])
+    env.Append(CCFLAGS = ' -DPOSTGRESQL')
 
 #
 # DuroDBMS core library
@@ -65,7 +77,10 @@ objsrc = ['obj/object.c', 'obj/excontext.c', 'obj/type.c',
 
 recsrc = ['rec/cursor.c', 'rec/env.c', 'rec/index.c', 'rec/recmap.c', 'rec/sequence.c',
           'rec/tx.c', 'bdbrec/bdbenv.c', 'bdbrec/bdbrecmap.c', 'bdbrec/bdbcursor.c',
-          'bdbrec/bdbsequence.c']
+          'bdbrec/bdbsequence.c', 'bdbrec/bdbtx.c', 'bdbrec/bdbindex.c']
+if postgresql == 'true':
+	recsrc.append(['pgrec/pgenv.c', 'pgrec/pgrecmap.c', 'pgrec/pgtx.c', 'pgrec/pgindex.c',
+          'pgrec/pgcursor.c'])
 
 relsrc = ['rel/arrayx.c', 'rel/database.c', 'rel/uoperator.c',
         'rel/expressionx.c', 'rel/evaluate.c', 'rel/exprtype.c', 'rel/tuplex.c',
@@ -268,8 +283,9 @@ gen_hdrs = Split('gen/hashmap.h gen/hashmapit.h gen/hashtable.h '
 rec_hdrs = Split('rec/cursor.h rec/env.h rec/dbdefs.h rec/index.h rec/recmap.h '
                  'rec/sequence.h rec/tx.h rec/envimpl.h rec/recmapimpl.h '
                  'rec/indeximpl.h rec/cursorimpl.h rec/sequenceimpl.h '
-                 'bdbrec/bdbenv.h bdbrec/bdbrecmap.h bdbrec/bdbcursor.h '
-                 'bdbrec/bdbsequence.h')
+                 'bdbrec/bdbenv.h bdbrec/bdbrecmap.h bdbrec/bdbcursor.h bdbrec/bdbindex.h '
+                 'bdbrec/bdbsequence.h bdbrec/bdbtx.h '
+                 'pgrec/pgenv.h pgrec/pgrecmap.h pgrec/pgtx.h pgrec/pgindex.h pgrec/pgcursor.h')
 obj_hdrs = Split('obj/object.h obj/excontext.h obj/type.h obj/builtintypes.h '
                 'obj/expression.h obj/operator.h obj/opmap.h obj/objmatch.h '
                 'obj/tuple.h obj/array.h obj/json.h')

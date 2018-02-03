@@ -29,7 +29,6 @@ RDB_begin_tx_env(RDB_exec_context *ecp, RDB_transaction *txp, RDB_environment *e
         RDB_transaction *parentp)
 {
     RDB_rec_transaction *partxid = parentp != NULL ? parentp->tx : NULL;
-    int ret;
 
     if (parentp != NULL && partxid == NULL) {
         RDB_raise_no_running_tx(ecp);
@@ -37,14 +36,13 @@ RDB_begin_tx_env(RDB_exec_context *ecp, RDB_transaction *txp, RDB_environment *e
     }
     txp->parentp = parentp;
     txp->envp = envp;
-    ret = RDB_begin_rec_tx(&txp->tx, envp, parentp != NULL ? parentp->tx : NULL);
-    if (ret != 0) {
-        RDB_raise_system("too many transactions", ecp);
+    txp->tx = RDB_begin_rec_tx(envp, parentp != NULL ? parentp->tx : NULL, ecp);
+    if (txp->tx == NULL) {
         return RDB_ERROR;
     }
     if (RDB_env_trace(envp) > 0) {
         fprintf(stderr, "Transaction started, ID=%x\n",
-                (unsigned) RDB_rec_tx_id(txp->tx));
+                (unsigned) RDB_rec_tx_id(txp->tx, envp));
     }
     txp->delrmp = NULL;
     txp->delixp = NULL;
@@ -87,10 +85,12 @@ del_storage(RDB_transaction *txp, RDB_exec_context *ecp)
     for (ixlinkp = txp->delixp;
         (ixlinkp != NULL) && (ret == RDB_OK);
         ixlinkp = ixlinkp->nextp) {
-        ret = RDB_delete_index(ixlinkp->ixp, txp->envp, NULL);
+        ret = RDB_delete_index(ixlinkp->ixp, txp->envp, NULL, ecp);
         /* If the index was not found, ignore it */
-        if (ret == ENOENT)
-            ret = 0;
+        if (ret != RDB_OK
+                && RDB_obj_type(RDB_get_err(ecp)) == &RDB_RESOURCE_NOT_FOUND_ERROR) {
+            ret = RDB_OK;
+        }
     }
 
     for (rmlinkp = txp->delrmp;
@@ -163,8 +163,8 @@ RDB_commit(RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
 
-    ret = RDB_commit_rec_tx(txp->tx);
-    if (ret != 0) {
+    ret = RDB_commit_rec_tx(txp->tx, txp->envp, ecp);
+    if (ret == RDB_ERROR) {
         RDB_handle_err(ecp, txp);
         return RDB_ERROR;
     }
@@ -208,7 +208,7 @@ RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
 
-    ret = RDB_abort_rec_tx(txp->tx);
+    ret = RDB_abort_rec_tx(txp->tx, txp->envp, ecp);
     if (ret != 0) {
         RDB_handle_err(ecp, txp);
         return RDB_ERROR;

@@ -25,10 +25,11 @@ typedef struct RDB_recmap {
     int keyfieldcount;  /* # of primary index fields */
 
     /*
-     * The length of each field, if it's fixed-length field,
+     * Information about the fields.
+     * len contains the length of each field, if it's fixed-length field,
      * RDB_VARIABLE_LEN if it's a variable-length field
      */
-    RDB_int *fieldlens;
+    RDB_field_info *fieldinfos;
 
     int varkeyfieldcount; /* # of variable-length key fields */
     int vardatafieldcount; /* # of variable-length nonkey fields */
@@ -57,27 +58,9 @@ typedef struct RDB_recmap {
             RDB_exec_context *);
 } RDB_recmap;
 
-size_t
-RDB_get_vflen(RDB_byte *, size_t, int, int);
-
-int
-RDB_get_field(RDB_recmap *, int, void *, size_t,
-        size_t *, int *);
-
-int
-RDB_set_field(RDB_recmap *, DBT *, const RDB_field *,
-               int);
-
-int
-RDB_get_DBT_fields(RDB_recmap *, const DBT *, const DBT *, int,
-           RDB_field[]);
-
-int
-RDB_fields_to_DBT(RDB_recmap *, int, const RDB_field[],
-                   DBT *);
-
-int
-RDB_update_DBT_rec(RDB_recmap *, DBT *, DBT *,
-        int, const RDB_field[], DB_TXN *);
+RDB_recmap *
+RDB_new_recmap(const char *, const char *,
+        RDB_environment *, int, const RDB_field_info[],
+        int, int, RDB_exec_context *);
 
 #endif

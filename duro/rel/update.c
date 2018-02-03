@@ -791,9 +791,9 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
                     goto cleanup;
                 }
             }
-                
+
             RDB_cmp_ecp = ecp;
-            ret = RDB_cursor_update(curp, updc, fieldv, ecp);
+            ret = RDB_cursor_set(curp, updc, fieldv, ecp); /* update */
             if (ret != RDB_OK) {
                 RDB_handle_err(ecp, txp);
                 rcount = RDB_ERROR;
@@ -1242,8 +1242,9 @@ RDB_update_real(RDB_object *tbp, RDB_expression *condp,
             return RDB_OK;
     }
 
-    if (upd_complex(tbp, updc, updv, ecp)
-            || (condp != NULL && RDB_expr_refers(condp, tbp)))
+    if ((txp == NULL || !RDB_env_queries(txp->envp))
+            && (upd_complex(tbp, updc, updv, ecp)
+            || (condp != NULL && RDB_expr_refers(condp, tbp))))
         return update_stored_complex(tbp, condp, updc, updv, getfn, getarg,
                 ecp, txp);
     return update_stored_simple(tbp, condp, updc, updv, getfn, getarg,

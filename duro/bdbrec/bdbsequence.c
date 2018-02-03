@@ -44,7 +44,7 @@ RDB_open_bdb_sequence(const char *cname, const char *filename,
     seqp->next_fn = &RDB_bdb_sequence_next;
     seqp->delete_sequence_fn = &RDB_delete_bdb_sequence;
 
-    ret = db_create(&dbp, envp->envp, 0);
+    ret = db_create(&dbp, envp->env.envp, 0);
     if (ret != 0) {
         RDB_errcode_to_error(ret, ecp);
         return NULL;
@@ -121,7 +121,7 @@ RDB_delete_bdb_sequence(RDB_sequence *seqp, RDB_environment *envp, RDB_rec_trans
 
     ret = seqp->seq->remove(seqp->seq, txn, 0);
     dbp->close(dbp, 0);
-    envp->envp->dbremove(envp->envp, txn, seqp->filenamp, seqp->cnamp, 0);
+    envp->env.envp->dbremove(envp->env.envp, txn, seqp->filenamp, seqp->cnamp, 0);
     free(seqp->filenamp);
     free(seqp->cnamp);
     free(seqp);
@@ -156,7 +156,7 @@ RDB_rename_bdb_sequence(const char *oldname, const char *newname,
         RDB_exec_context *ecp)
 {
     /* Rename database */
-    int ret = envp->envp->dbrename(envp->envp, (DB_TXN *) rtxp, filename,
+    int ret = envp->env.envp->dbrename(envp->env.envp, (DB_TXN *) rtxp, filename,
             oldname, newname, 0);
     if (ret != 0) {
         RDB_errcode_to_error(ret, ecp);

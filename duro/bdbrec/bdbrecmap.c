@@ -25,64 +25,16 @@ enum {
  * Allocate a RDB_recmap structure and initialize its fields.
  * The underlying BDB database is created using db_create(), but not opened.
  */
-static int
-new_recmap(RDB_recmap **rmpp, const char *namp, const char *filenamp,
-        RDB_environment *envp, int fieldc, const int fieldlenv[], int keyfieldc,
-        int flags)
+static RDB_recmap *
+new_recmap(const char *namp, const char *filenamp,
+        RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[],
+        int keyfieldc, int flags, RDB_exec_context *ecp)
 {
-    int i, ret;
-    RDB_recmap *rmp = malloc(sizeof(RDB_recmap));
-
+    int ret;
+    RDB_recmap *rmp = RDB_new_recmap(namp, filenamp, envp, fieldc, fieldinfov,
+            keyfieldc, flags, ecp);
     if (rmp == NULL)
-        return ENOMEM;
-
-    rmp->envp = envp;
-    rmp->filenamp = NULL;
-    rmp->fieldlens = NULL;
-    if (namp != NULL) {
-        rmp->namp = RDB_dup_str(namp);
-        if (rmp->namp == NULL) {
-            ret = ENOMEM;
-            goto error;
-        }
-    } else {
-        rmp->namp = NULL;
-    }
-
-    if (filenamp != NULL) {
-        rmp->filenamp = RDB_dup_str(filenamp);
-        if (rmp->filenamp == NULL) {
-            ret = ENOMEM;
-            goto error;
-        }
-    } else {
-        rmp->filenamp = NULL;
-    }
-
-    rmp->fieldlens = malloc(sizeof(int) * fieldc);
-    if (rmp->fieldlens == NULL) {
-        ret = ENOMEM;
-        goto error;
-    }
-
-    rmp->fieldcount = fieldc;
-    rmp->keyfieldcount = keyfieldc;
-    rmp->cmpv = NULL;    
-    rmp->dup_keys = (RDB_bool) !(RDB_UNIQUE & flags);
-
-    rmp->varkeyfieldcount = rmp->vardatafieldcount = 0;
-    for (i = 0; i < fieldc; i++) {
-        rmp->fieldlens[i] = fieldlenv[i];
-        if (fieldlenv[i] == RDB_VARIABLE_LEN) {
-            if (i < rmp->keyfieldcount) {
-                /* It's a key field */
-                rmp->varkeyfieldcount++;
-            } else {
-                /* It's a data field */
-                rmp->vardatafieldcount++;
-            }
-        }
-    }
+        return NULL;
 
     rmp->close_recmap_fn = RDB_close_bdb_recmap;
     rmp->delete_recmap_fn = &RDB_delete_bdb_recmap;
@@ -94,20 +46,20 @@ new_recmap(RDB_recmap **rmpp, const char *namp, const char *filenamp,
     rmp->recmap_est_size_fn = &RDB_bdb_recmap_est_size;
     rmp->cursor_fn = &RDB_bdb_recmap_cursor;
 
-    ret = db_create(&rmp->dbp, envp != NULL ? envp->envp : NULL, 0);
+    ret = db_create(&rmp->dbp, envp != NULL ? envp->env.envp : NULL, 0);
     if (ret != 0) {
+        RDB_errcode_to_error(ret, ecp);
         goto error;
     }
 
-    *rmpp = rmp;
-    return RDB_OK;
+    return rmp;
 
 error:
     free(rmp->namp);
     free(rmp->filenamp);
-    free(rmp->fieldlens);
+    free(rmp->fieldinfos);
     free(rmp);
-    return ret;
+    return NULL;
 }
 
 /*
@@ -153,18 +105,20 @@ compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p, size_t *locp)
 
 RDB_recmap *
 RDB_create_bdb_recmap(const char *name, const char *filename,
-        RDB_environment *envp, int fieldc, const int fieldlenv[], int keyfieldc,
-        const RDB_compare_field cmpv[], int flags,
+        RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[],
+        int keyfieldc, const RDB_compare_field cmpv[], int flags,
         RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     RDB_recmap *rmp;
     int i;
+    int ret;
     RDB_bool all_cmpfn = RDB_TRUE;
+
     /* Allocate and initialize RDB_recmap structure */
-    int ret = new_recmap(&rmp, name, filename, envp,
-            fieldc, fieldlenv, keyfieldc, flags);
-    if (ret != RDB_OK) {
-        RDB_errcode_to_error(ret, ecp);
+
+    rmp = new_recmap(name, filename, envp,
+            fieldc, fieldinfov, keyfieldc, flags, ecp);
+    if (rmp == NULL) {
         return NULL;
     }
 
@@ -201,13 +155,16 @@ RDB_create_bdb_recmap(const char *name, const char *filename,
         }
     }
 
+    /* Suppress error output */
+    rmp->dbp->set_errfile(rmp->dbp, NULL);
+
     /* Create BDB database */
     ret = rmp->dbp->open(rmp->dbp, (DB_TXN *) rtxp, filename, name,
             RDB_ORDERED & flags ? DB_BTREE : DB_HASH,
             DB_CREATE | DB_EXCL, 0664);
     if (ret == EEXIST && envp != NULL) {
         /* BDB database exists - remove it and try again */
-        envp->envp->dbremove(envp->envp, (DB_TXN *) rtxp, filename, name, 0);
+        envp->env.envp->dbremove(envp->env.envp, (DB_TXN *) rtxp, filename, name, 0);
         ret = rmp->dbp->open(rmp->dbp, (DB_TXN *) rtxp, filename, name,
                 RDB_ORDERED & flags ? DB_BTREE : DB_HASH,
                 DB_CREATE | DB_EXCL, 0664);
@@ -226,14 +183,14 @@ error:
 
 RDB_recmap *
 RDB_open_bdb_recmap(const char *name, const char *filename,
-       RDB_environment *envp, int fieldc, const int fieldlenv[], int keyfieldc,
+       RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[], int keyfieldc,
        RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     RDB_recmap *rmp;
-    int ret = new_recmap(&rmp, name, filename, envp,
-            fieldc, fieldlenv, keyfieldc, RDB_UNIQUE);
-    if (ret != RDB_OK) {
-        RDB_errcode_to_error(ret, ecp);
+    int ret;
+    rmp = new_recmap(name, filename, envp, fieldc, fieldinfov, keyfieldc,
+            RDB_UNIQUE, ecp);
+    if (rmp == NULL) {
         return NULL;
     }
 
@@ -264,7 +221,7 @@ RDB_close_bdb_recmap(RDB_recmap *rmp, RDB_exec_context *ecp)
     int ret = rmp->dbp->close(rmp->dbp, 0);
     free(rmp->namp);
     free(rmp->filenamp);
-    free(rmp->fieldlens);
+    free(rmp->fieldinfos);
     free(rmp->cmpv);
     free(rmp);
     if (ret != 0) {
@@ -287,14 +244,14 @@ RDB_delete_bdb_recmap(RDB_recmap *rmp, RDB_rec_transaction *rtxp, RDB_exec_conte
         if (rmp->envp->trace > 0) {
             fprintf(stderr, "deleting recmap %s\n", rmp->namp);
         }
-        ret = rmp->envp->envp->dbremove(rmp->envp->envp, (DB_TXN *) rtxp, rmp->filenamp,
-                rmp->namp, 0);
+        ret = rmp->envp->env.envp->dbremove(rmp->envp->env.envp, (DB_TXN *) rtxp,
+                rmp->filenamp, rmp->namp, 0);
     }
 
 cleanup:
     free(rmp->namp);
     free(rmp->filenamp);
-    free(rmp->fieldlens);
+    free(rmp->fieldinfos);
     free(rmp->cmpv);
     free(rmp);
 
@@ -342,15 +299,15 @@ RDB_get_field(RDB_recmap *rmp, int fno, void *datap, size_t len, size_t *lenp,
         /*
          * compute offset and length for key
          */
-        if (rmp->fieldlens[fno] != RDB_VARIABLE_LEN) {
+        if (rmp->fieldinfos[fno].len != RDB_VARIABLE_LEN) {
             /* offset is sum of lengths of previous fields */
             for (i = 0; i < fno; i++) {
-                if (rmp->fieldlens[i] != RDB_VARIABLE_LEN) {
-                    offs += rmp->fieldlens[i];
+                if (rmp->fieldinfos[i].len != RDB_VARIABLE_LEN) {
+                    offs += rmp->fieldinfos[i].len;
                 }
             }
 
-            *lenp = (size_t) rmp->fieldlens[fno];
+            *lenp = (size_t) rmp->fieldinfos[fno].len;
         } else {
             /* offset is sum of lengths of fixed-length fields
              * plus lengths of previous variable-length fields 
@@ -358,15 +315,15 @@ RDB_get_field(RDB_recmap *rmp, int fno, void *datap, size_t len, size_t *lenp,
              
             /* add fixed-length fields */
             for (i = 0; i < rmp->keyfieldcount; i++) {
-                if (rmp->fieldlens[i] != RDB_VARIABLE_LEN) {
-                    offs += rmp->fieldlens[i];
+                if (rmp->fieldinfos[i].len != RDB_VARIABLE_LEN) {
+                    offs += rmp->fieldinfos[i].len;
                 }
             }
             
             /* compute position within var-length fields */
             vpos = 0;
             for (i = 0; i < fno; i++) {
-                if (rmp->fieldlens[i] == RDB_VARIABLE_LEN) {
+                if (rmp->fieldinfos[i].len == RDB_VARIABLE_LEN) {
                     vpos++;
                 }
             }
@@ -382,15 +339,15 @@ RDB_get_field(RDB_recmap *rmp, int fno, void *datap, size_t len, size_t *lenp,
         /*
          * compute offset and length for data
          */
-        if (rmp->fieldlens[fno] != RDB_VARIABLE_LEN) {
+        if (rmp->fieldinfos[fno].len != RDB_VARIABLE_LEN) {
             /* offset is sum of lengths of previous fields */
             for (i = rmp->keyfieldcount; i < fno; i++) {
-                if (rmp->fieldlens[i] != RDB_VARIABLE_LEN) {
-                    offs += rmp->fieldlens[i];
+                if (rmp->fieldinfos[i].len != RDB_VARIABLE_LEN) {
+                    offs += rmp->fieldinfos[i].len;
                 }
             }
 
-            *lenp = (size_t) rmp->fieldlens[fno];
+            *lenp = (size_t) rmp->fieldinfos[fno].len;
         } else {
             /* offset is sum of lengths of fixed-length fields
              * plus lengths of previous variable-length fields 
@@ -398,15 +355,15 @@ RDB_get_field(RDB_recmap *rmp, int fno, void *datap, size_t len, size_t *lenp,
              
             /* add fixed-length fields */
             for (i = rmp->keyfieldcount; i < rmp->fieldcount; i++) {
-                if (rmp->fieldlens[i] != RDB_VARIABLE_LEN) {
-                    offs += rmp->fieldlens[i];
+                if (rmp->fieldinfos[i].len != RDB_VARIABLE_LEN) {
+                    offs += rmp->fieldinfos[i].len;
                 }
             }
             
             /* compute position within var-length fields */
             vpos = 0;
             for (i = rmp->keyfieldcount; i < fno; i++) {
-                if (rmp->fieldlens[i] == RDB_VARIABLE_LEN) {
+                if (rmp->fieldinfos[i].len == RDB_VARIABLE_LEN) {
                     vpos++;
                 }
             }
@@ -457,7 +414,7 @@ RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
     vfldc = 0;
     for (i = 0; i < fldc; i++) {
         dbtp->size += fldv[i].len;
-        if (rmp->fieldlens[fldv[i].no] == RDB_VARIABLE_LEN) {
+        if (rmp->fieldinfos[fldv[i].no].len == RDB_VARIABLE_LEN) {
             /* RECLEN_SIZE bytes extra for length */
             dbtp->size += RECLEN_SIZE;
 
@@ -491,7 +448,7 @@ RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
 
     vfi = fi = 0;   
     for (i = 0; i < fldc; i++) {
-        if (rmp->fieldlens[fldv[i].no] == RDB_VARIABLE_LEN) {
+        if (rmp->fieldinfos[fldv[i].no].len == RDB_VARIABLE_LEN) {
             vfno[vfi++] = i;
         } else {
             fno[fi++] = i;
@@ -514,11 +471,9 @@ RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
     /* variable-length fields */
     for (i = 0; i < vfldc; i++) {
         int fn = vfno[i];
-        if (fldv[fn].len != (size_t) RDB_VARIABLE_LEN) {
-            (*fldv[fn].copyfp)(databp + offs, fldv[fn].datap, fldv[fn].len);
-            offs += fldv[fn].len;
-        }
-        
+        (*fldv[fn].copyfp)(databp + offs, fldv[fn].datap, fldv[fn].len);
+        offs += fldv[fn].len;
+
         /* field length */
         set_len(&databp[dbtp->size - vfldc * RECLEN_SIZE + i * RECLEN_SIZE],
                 fldv[fn].len);

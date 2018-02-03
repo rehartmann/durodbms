@@ -519,6 +519,31 @@ RDB_obj_irep(RDB_object *valp, size_t *lenp)
     }
 }
 
+static int
+irep_to_bin(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
+        RDB_exec_context *ecp)
+{
+    valp->val.bin.len = len;
+    if (len > 0) {
+        /* If there is no nullbyte and the type is STRING, append it */
+        int no_nullbyte = (typ == &RDB_STRING && datap != NULL
+                && memchr(datap, '\0', len) == NULL);
+        valp->val.bin.len = len;
+        if (no_nullbyte)
+            ++valp->val.bin.len;
+        valp->val.bin.datap = RDB_alloc(valp->val.bin.len, ecp);
+        if (valp->val.bin.datap == NULL) {
+            return RDB_ERROR;
+        }
+        if (datap != NULL) {
+            memcpy(valp->val.bin.datap, datap, len);
+            if (no_nullbyte)
+                ((char *) valp->val.bin.datap)[len] = '\0';
+        }
+    }
+    return RDB_OK;
+}
+
 /**
  * Initializes the value pointed to by valp with the internal
  * representation given by @a datap and @a len.
@@ -592,15 +617,8 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
         memcpy(&valp->val.time, datap, sizeof (RDB_time));
         break;
     case RDB_OB_BIN:
-        valp->val.bin.len = len;
-        if (len > 0) {
-            valp->val.bin.datap = RDB_alloc(len, ecp);
-            if (valp->val.bin.datap == NULL) {
-                return RDB_ERROR;
-            }
-            if (datap != NULL)
-                memcpy(valp->val.bin.datap, datap, len);
-        }
+        if (irep_to_bin(valp, typ, datap, len, ecp) != RDB_OK)
+            return RDB_ERROR;
         break;
     case RDB_OB_TUPLE:
         ret = irep_to_tuple(valp, RDB_type_is_dummy(typ) ? valp->impl_typ : typ,

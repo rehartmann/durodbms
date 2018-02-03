@@ -5,6 +5,8 @@
 
 #include "envimpl.h"
 #include <bdbrec/bdbenv.h>
+#include <pgrec/pgenv.h>
+#include <string.h>
 
 /** @defgroup env Database environment functions 
  * @{
@@ -34,7 +36,15 @@ RDB_environment *
 RDB_open_env(const char *path, int flags, RDB_exec_context *ecp)
 {
     RDB_environment *envp;
-    int ret = RDB_bdb_open_env(path, &envp, flags);
+    int ret;
+
+#ifdef POSTGRESQL
+    if (strstr(path, "postgresql://") == path) {
+        return RDB_pg_open_env(path, ecp);
+    }
+#endif
+
+    ret = RDB_bdb_open_env(path, &envp, flags);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp);
         return NULL;
@@ -135,4 +145,9 @@ void
 RDB_errcode_to_error(int errcode, RDB_exec_context *ecp)
 {
     return RDB_bdb_errcode_to_error(errcode, ecp);
+}
+
+RDB_bool
+RDB_env_queries(const RDB_environment *envp) {
+    return envp->queries;
 }

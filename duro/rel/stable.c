@@ -18,7 +18,6 @@
 #include <gen/hashmapit.h>
 #include <db.h>
 #include <string.h>
-#include <errno.h>
 
 void
 RDB_free_tbindex(RDB_tbindex *idxp)
@@ -65,7 +64,7 @@ RDB_close_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp)
     /* Close secondary indexes */
     for (i = 0; i < stp->indexc; i++) {
         if (stp->indexv[i].idxp != NULL) {
-            RDB_close_index(stp->indexv[i].idxp);
+            RDB_close_index(stp->indexv[i].idxp, ecp);
         }
     }
 
@@ -184,7 +183,8 @@ RDB_create_tbindex(RDB_object *tbp, RDB_tbindex *indexp, RDB_environment *envp,
     int i;
     int flags;
     RDB_compare_field *cmpv = NULL;
-    int *fieldv = RDB_alloc(sizeof(int *) * indexp->attrc, ecp);
+    RDB_field_descriptor *fieldv = RDB_alloc(sizeof(RDB_field_descriptor) * indexp->attrc,
+            ecp);
 
     if (fieldv == NULL) {
         ret = RDB_ERROR;
@@ -206,7 +206,8 @@ RDB_create_tbindex(RDB_object *tbp, RDB_tbindex *indexp, RDB_environment *envp,
             RDB_raise_name(indexp->attrv[i].attrname, ecp);
             return RDB_ERROR;
         }
-        fieldv[i] = *np;
+        fieldv[i].no = *np;
+        fieldv[i].attrname = indexp->attrv[i].attrname;
     }
 
     flags = 0;
@@ -216,15 +217,16 @@ RDB_create_tbindex(RDB_object *tbp, RDB_tbindex *indexp, RDB_environment *envp,
         flags |= RDB_ORDERED;
 
     /* Create record-layer index */
-    ret = RDB_create_index(tbp->val.tbp->stp->recmapp,
+    indexp->idxp = RDB_create_index(tbp->val.tbp->stp->recmapp,
                   RDB_table_is_persistent(tbp) ? indexp->name : NULL,
                   RDB_table_is_persistent(tbp) ? RDB_DATAFILE : NULL,
                   envp, indexp->attrc, fieldv, cmpv, flags,
-                  txp != NULL ? txp->tx : NULL, &indexp->idxp);
-    if (ret != RDB_OK) {
+                  txp != NULL ? txp->tx : NULL, ecp);
+    if (indexp->idxp == NULL) {
         RDB_handle_err(ecp, txp);
-        indexp->idxp = NULL;
         ret = RDB_ERROR;
+    } else {
+        ret = RDB_OK;
     }
 
 cleanup:
@@ -361,7 +363,7 @@ replen(const RDB_type *typ)
 }
 
 static int
-key_fnos(RDB_object *tbp, int **flenvp, const RDB_bool ascv[],
+key_fnos(RDB_object *tbp, RDB_field_info **finfovp, const RDB_bool ascv[],
          RDB_compare_field *cmpv, RDB_exec_context *ecp)
 {
     int ret;
@@ -372,8 +374,8 @@ key_fnos(RDB_object *tbp, int **flenvp, const RDB_bool ascv[],
     int piattrc = tbp->val.tbp->keyv[0].strc;
     char **piattrv = tbp->val.tbp->keyv[0].strv;
 
-    *flenvp = RDB_alloc(sizeof(int) * attrc, ecp);
-    if (*flenvp == NULL) {
+    *finfovp = RDB_alloc(sizeof(RDB_field_info) * attrc, ecp);
+    if (*finfovp == NULL) {
         return RDB_ERROR;
     }
 
@@ -435,11 +437,23 @@ key_fnos(RDB_object *tbp, int **flenvp, const RDB_bool ascv[],
         ret = RDB_put_field_no(tbp->val.tbp->stp,
                 tbp->typ->def.basetyp->def.tuple.attrv[i].name, fno, ecp);
         if (ret != RDB_OK) {
-            RDB_free(*flenvp);
+            RDB_free(*finfovp);
             return ret;
         }
 
-        (*flenvp)[fno] = replen(heading[i].typ);
+        (*finfovp)[fno].len = replen(heading[i].typ);
+        (*finfovp)[fno].attrname = heading[i].name;
+
+        (*finfovp)[fno].flags = 0;
+        if (heading[i].typ == &RDB_STRING) {
+            (*finfovp)[fno].flags |= RDB_FTYPE_CHAR;
+        } else if (heading[i].typ == &RDB_BOOLEAN) {
+            (*finfovp)[fno].flags |= RDB_FTYPE_BOOLEAN;
+        } else if (heading[i].typ == &RDB_INTEGER) {
+            (*finfovp)[fno].flags |= RDB_FTYPE_INTEGER;
+        } else if (heading[i].typ == &RDB_FLOAT) {
+            (*finfovp)[fno].flags |= RDB_FTYPE_FLOAT;
+        }
     }
     return RDB_OK;
 }
@@ -475,7 +489,7 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
     int flags;
     RDB_hashtable_iter hiter;
     RDB_attrmap_entry *entryp;
-    int *flenv = NULL;
+    RDB_field_info *finfov = NULL;
     char *rmname = NULL;
     RDB_compare_field *cmpv = NULL;
     int attrc = tbp->typ->def.basetyp->def.tuple.attrc;
@@ -523,7 +537,7 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
     if (ret != RDB_OK)
         goto error;
 
-    ret = key_fnos(tbp, &flenv, ascv, cmpv, ecp);
+    ret = key_fnos(tbp, &finfov, ascv, cmpv, ecp);
     if (ret != RDB_OK)
         goto error;
 
@@ -571,7 +585,8 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
     tbp->val.tbp->stp->recmapp = RDB_create_recmap(RDB_table_is_persistent(tbp) ?
             (rmname == NULL ? RDB_table_name(tbp) : rmname) : NULL,
             RDB_table_is_persistent(tbp) ? RDB_DATAFILE : NULL,
-            envp, attrc, flenv, piattrc, cmpv, flags,
+            RDB_table_is_persistent(tbp) ? envp : NULL,
+            attrc, finfov, piattrc, cmpv, flags,
             txp != NULL ? txp->tx : NULL, ecp);
     if (tbp->val.tbp->stp->recmapp == NULL) {
         RDB_handle_err(ecp, txp);
@@ -585,15 +600,15 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
             goto error;
     }
 
-    RDB_free(flenv);
+    RDB_free(finfov);
     RDB_free(cmpv);
     RDB_free(rmname);
     return RDB_OK;
 
 error:
     /* clean up */
-    if (flenv != NULL) {
-        RDB_free(flenv);
+    if (finfov != NULL) {
+        RDB_free(finfov);
     }
     RDB_free(cmpv);
     RDB_free(rmname);
@@ -680,15 +695,13 @@ error:
  */
 int
 RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
-        const char *rmname,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+        const char *rmname, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     int i;
-    int *flenv = NULL;
+    RDB_field_info *finfov = NULL;
     RDB_hashtable_iter hiter;
     RDB_attrmap_entry *entryp;
-    RDB_compare_field *cmpv = NULL;
     int attrc = tbp->typ->def.basetyp->def.tuple.attrc;
     int piattrc = tbp->val.tbp->keyv[0].strc;
 
@@ -719,12 +732,12 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
     RDB_init_hashtable(&tbp->val.tbp->stp->attrmap, RDB_DFL_MAP_CAPACITY, &hash_str,
             &str_equals);
 
-    ret = key_fnos(tbp, &flenv, NULL, NULL, ecp);
+    ret = key_fnos(tbp, &finfov, NULL, NULL, ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
     tbp->val.tbp->stp->recmapp = RDB_open_recmap(rmname, RDB_DATAFILE, envp,
-            attrc, flenv, piattrc, txp != NULL ? txp->tx : NULL, ecp);
+            attrc, finfov, piattrc, txp != NULL ? txp->tx : NULL, ecp);
     if (tbp->val.tbp->stp->recmapp == NULL) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_RESOURCE_NOT_FOUND_ERROR) {
             RDB_raise_not_found("table not found", ecp);
@@ -764,14 +777,12 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
         }
     }
 
-    RDB_free(flenv);
-    RDB_free(cmpv);
+    RDB_free(finfov);
     return RDB_OK;
 
 error:
     /* clean up */
-    RDB_free(flenv);
-    RDB_free(cmpv);
+    RDB_free(finfov);
 
     RDB_init_hashtable_iter(&hiter, &tbp->val.tbp->stp->attrmap);
     while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
@@ -815,15 +826,15 @@ RDB_open_tbindex(RDB_object *tbp, RDB_tbindex *indexp,
     }
 
     /* open index */
-    ret = RDB_open_index(tbp->val.tbp->stp->recmapp,
+    indexp->idxp = RDB_open_index(tbp->val.tbp->stp->recmapp,
                   RDB_table_is_persistent(tbp) ? indexp->name : NULL,
                   RDB_table_is_persistent(tbp) ? RDB_DATAFILE : NULL,
                   envp, indexp->attrc, fieldv, cmpv, indexp->unique ? RDB_UNIQUE : 0,
-                  txp != NULL ? txp->tx : NULL, &indexp->idxp);
-    if (ret != RDB_OK) {
-        RDB_handle_err(ecp, txp);
-        indexp->idxp = NULL;
+                  txp != NULL ? txp->tx : NULL, ecp);
+    if (indexp->idxp == NULL) {
         ret = RDB_ERROR;
+    } else {
+        ret = RDB_OK;
     }
 
 cleanup:
@@ -847,7 +858,7 @@ RDB_delete_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp,
                 if (ret != RDB_OK)
                     return ret;
             } else {
-                ret = RDB_delete_index(stp->indexv[i].idxp, NULL, NULL);
+                ret = RDB_delete_index(stp->indexv[i].idxp, NULL, NULL, ecp);
             }
         }
     }

@@ -1,5 +1,7 @@
 all:
 	scons
+all_pg:
+	scons postgresql=true
 test:
 	scons test
 testbins:

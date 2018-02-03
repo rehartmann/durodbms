@@ -5,7 +5,10 @@
 
 #include "cursorimpl.h"
 #include "recmapimpl.h"
+#include "indeximpl.h"
+#include "envimpl.h"
 #include <bdbrec/bdbcursor.h>
+#include <obj/excontext.h>
 
 /*
  * Create a cursor for a recmap. The initial position of the cursor is
@@ -26,6 +29,10 @@ RDB_cursor *
 RDB_index_cursor(RDB_index *idxp, RDB_bool wr,
                   RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
+    if (idxp->rmp->envp != NULL && idxp->rmp->envp->queries) {
+        RDB_raise_not_supported("RDB_index_cursor", ecp);
+        return NULL;
+    }
     return RDB_bdb_index_cursor(idxp, wr, rtxp, ecp);
 }
 
@@ -62,16 +69,9 @@ RDB_cursor_delete(RDB_cursor *curp, RDB_exec_context *ecp)
     return (*curp->delete_fn)(curp, ecp);
 }
 
-int
-RDB_cursor_update(RDB_cursor *curp, int fieldc, const RDB_field fieldv[],
-        RDB_exec_context *ecp)
-{
-    return RDB_bdb_cursor_update(curp, fieldc, fieldv, ecp);
-}
-
 /*
  * Move the cursor to the first record.
- * If there is no first record, DB_NOTFOUND is returned.
+ * If there is no first record, RDB_NOT_FOUND_ERROR is returned in *ecp.
  */
 int
 RDB_cursor_first(RDB_cursor *curp, RDB_exec_context *ecp)
@@ -103,5 +103,9 @@ RDB_cursor_prev(RDB_cursor *curp, RDB_exec_context *ecp)
 int
 RDB_cursor_seek(RDB_cursor *curp, int fieldc, RDB_field keyv[], int flags, RDB_exec_context *ecp)
 {
-    return (*curp->seek_fn)(curp, fieldc, keyv, flags, ecp);
+    if (curp->recmapp->envp != NULL && curp->recmapp->envp->queries) {
+        RDB_raise_not_supported("RDB_cursor_seek", ecp);
+        return RDB_ERROR;
+    }
+    return RDB_bdb_cursor_seek(curp, fieldc, keyv, flags, ecp);
 }

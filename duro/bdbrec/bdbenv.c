@@ -10,6 +10,8 @@
 #include <gen/types.h>
 #include <obj/excontext.h>
 #include <bdbrec/bdbsequence.h>
+#include <bdbrec/bdbtx.h>
+#include <bdbrec/bdbindex.h>
 
 #include <stdlib.h>
 #include <errno.h>
@@ -29,14 +31,22 @@ open_env(const char *path, RDB_environment **envpp, int bdb_flags)
     envp->open_recmap_fn = &RDB_open_bdb_recmap;
     envp->open_sequence_fn = &RDB_open_bdb_sequence;
     envp->rename_sequence_fn = &RDB_rename_bdb_sequence;
+    envp->begin_tx_fn = &RDB_bdb_begin_tx;
+    envp->commit_fn = &RDB_bdb_commit;
+    envp->abort_fn = &RDB_bdb_abort;
+    envp->tx_id_fn = &RDB_bdb_tx_id;
+    envp->create_index_fn = &RDB_create_bdb_index;
+    envp->close_index_fn = &RDB_close_bdb_index;
+    envp->delete_index_fn = &RDB_delete_bdb_index;
 
     envp->cleanup_fn = NULL;
     envp->xdata = NULL;
     envp->trace = 0;
+    envp->queries = RDB_FALSE;
 
     /* create environment handle */
     *envpp = envp;
-    ret = db_env_create(&envp->envp, 0);
+    ret = db_env_create(&envp->env.envp, 0);
     if (ret != 0) {
         free(envp);
         return ret;
@@ -46,9 +56,9 @@ open_env(const char *path, RDB_environment **envpp, int bdb_flags)
      * Configure alloc, realloc, and free explicity
      * because on Windows Berkeley DB may use a different heap
      */
-    ret = envp->envp->set_alloc(envp->envp, malloc, realloc, free);
+    ret = envp->env.envp->set_alloc(envp->env.envp, malloc, realloc, free);
     if (ret != 0) {
-        envp->envp->close(envp->envp, 0);
+        envp->env.envp->close(envp->env.envp, 0);
         free(envp);
         return ret;
     }
@@ -56,12 +66,13 @@ open_env(const char *path, RDB_environment **envpp, int bdb_flags)
     /*
      * Suppress error output by default
      */
-    envp->envp->set_errfile(envp->envp, NULL);
+    if (envp->trace == 0)
+        envp->env.envp->set_errfile(envp->env.envp, NULL);
 
     /* Open DB environment */
-    ret = envp->envp->open(envp->envp, path, bdb_flags, 0);
+    ret = envp->env.envp->open(envp->env.envp, path, bdb_flags, 0);
     if (ret != 0) {
-        envp->envp->close(envp->envp, 0);
+        envp->env.envp->close(envp->env.envp, 0);
         free(envp);
         return ret;
     }
@@ -69,9 +80,9 @@ open_env(const char *path, RDB_environment **envpp, int bdb_flags)
     /*
      * When acquiring locks, distinguish between timeout and deadlock
      */
-    ret = envp->envp->set_flags(envp->envp, DB_TIME_NOTGRANTED, 1);
+    ret = envp->env.envp->set_flags(envp->env.envp, DB_TIME_NOTGRANTED, 1);
     if (ret != 0) {
-        envp->envp->close(envp->envp, 0);
+        envp->env.envp->close(envp->env.envp, 0);
         free(envp);
         return ret;
     }
@@ -120,7 +131,7 @@ RDB_bdb_close_env(RDB_environment *envp, RDB_exec_context *ecp)
 {
     int ret;
 
-    ret = envp->envp->close(envp->envp, 0);
+    ret = envp->env.envp->close(envp->env.envp, 0);
     free(envp);
     if (ret != RDB_OK) {
         RDB_bdb_errcode_to_error(ret, ecp);
@@ -132,7 +143,7 @@ RDB_bdb_close_env(RDB_environment *envp, RDB_exec_context *ecp)
 DB_ENV *
 RDB_bdb_env(RDB_environment *envp)
 {
-    return envp->envp;
+    return envp->env.envp;
 }
 
 /**

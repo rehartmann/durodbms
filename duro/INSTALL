@@ -17,6 +17,10 @@ SCons is available from www.scons.org.
 
 To compile DuroDBMS, you need GNU Libtool and Berkeley DB (6.1 recommended).
 
+To build DuroDBMS with PostgreSQL support, use:
+
+scons postgresql=true
+
 Building the Java interface requires Java Development Kit 8. 
 
 Building the Tcl interface requires Tcl (8.1 or later).

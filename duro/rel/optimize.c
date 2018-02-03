@@ -1955,6 +1955,7 @@ RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
 {
     RDB_expression *nexp;
     RDB_expression *optexp;
+    RDB_database *dbp = NULL;
 
     trace_plan_cost(texp, -1, "plan before transformation", ecp, txp);
 
@@ -1971,26 +1972,35 @@ RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
     if (RDB_transform(nexp, NULL, NULL, ecp, txp) != RDB_OK)
         return NULL;
 
+    if (txp != NULL)
+        dbp = RDB_tx_db(txp);
+
     /*
      * Replace tables which are declared to be empty
      * by a constraint
      */
-    if (txp != NULL && RDB_tx_db(txp) != NULL) {
+    if (dbp != NULL) {
         if (empty_exp != NULL) {
             if (replace_empty(nexp, empty_exp, ecp, txp) != RDB_OK)
                 return NULL;
         }
     }
 
-    /*
-     * Try to find cheapest table
-     */
+    if (dbp != NULL && RDB_env_queries(RDB_db_env(dbp))) {
+        /* Optimization has to be performed by the storage engine */
+        nexp->optimized = RDB_TRUE;
+        optexp = nexp;
+    } else {
+        /*
+         * Try to find cheapest table
+         */
 
-    optexp = mutate_select(nexp, seqitc, seqitv, empty_exp, ecp, txp);
+        optexp = mutate_select(nexp, seqitc, seqitv, empty_exp, ecp, txp);
 
-    /* If a better expression has been found, destroy the original one */
-    if (optexp != nexp) {
-        RDB_del_expr(nexp, ecp);
+        /* If a better expression has been found, destroy the original one */
+        if (optexp != nexp) {
+            RDB_del_expr(nexp, ecp);
+        }
     }
 
     return optexp;

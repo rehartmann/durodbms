@@ -10,16 +10,31 @@
 
 #include <db.h>
 
+#ifdef POSTGRESQL
+#include <libpq-fe.h>
+#endif
+
 typedef struct RDB_exec_context RDB_exec_context;
 
 typedef struct RDB_cursor {
     /* internal */
-    DBC *cursorp;
-    DBT current_key;
-    DBT current_data;
+    union {
+        struct {
+            DBC *cursorp;
+            DBT current_key;
+            DBT current_data;
+        } bdb;
+        struct {
+            int id;
+#ifdef POSTGRESQL
+            PGresult *current_row;
+#endif
+        } pg;
+    } cur;
     RDB_recmap *recmapp;
     RDB_index *idxp;
     RDB_rec_transaction *tx;
+    RDB_bool secondary;
 
     int (*destroy_fn)(struct RDB_cursor *, RDB_exec_context *);
     int (*get_fn)(struct RDB_cursor *, int, void**, size_t *, RDB_exec_context *);
@@ -28,7 +43,6 @@ typedef struct RDB_cursor {
     int (*first_fn)(struct RDB_cursor *, RDB_exec_context *);
     int (*next_fn)(struct RDB_cursor *, int, RDB_exec_context *);
     int (*prev_fn)(struct RDB_cursor *, RDB_exec_context *);
-    int (*seek_fn)(struct RDB_cursor *, int, RDB_field[], int, RDB_exec_context *);
 } RDB_cursor;
 
 #endif /* REC_CURSORIMPL_H_ */

@@ -2,7 +2,7 @@
 #define RDB_RECMAP_H
 
 /*
- * Copyright (C) 2003-2005, 2009, 2012-2013 Rene Hartmann.
+ * Copyright (C) 2003-2005, 2009, 2012-2013, 2018 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -20,6 +20,11 @@ typedef struct RDB_exec_context RDB_exec_context;
  */
 
 enum {
+    RDB_FTYPE_CHAR = 1,
+    RDB_FTYPE_BOOLEAN = 2,
+    RDB_FTYPE_INTEGER = 4,
+    RDB_FTYPE_FLOAT = 8,
+
     RDB_ELEMENT_EXISTS = -200,
     RDB_KEY_VIOLATION = -201,
     RDB_RECORD_CORRUPTED = -202
@@ -37,6 +42,17 @@ typedef int RDB_field_compare_func(const void *, size_t,
                 void *);
 
 typedef struct {
+    int len;
+    const char *attrname;
+    int flags;
+} RDB_field_info;
+
+typedef struct {
+    int no;
+    const char *attrname;
+} RDB_field_descriptor;
+
+typedef struct {
     RDB_field_compare_func *comparep;
     void *arg;
     RDB_bool asc;
@@ -44,13 +60,13 @@ typedef struct {
 
 RDB_recmap *
 RDB_create_recmap(const char *, const char *,
-        RDB_environment *, int, const int[], int,
+        RDB_environment *, int, const RDB_field_info[], int,
         const RDB_compare_field[], int, RDB_rec_transaction *,
         RDB_exec_context *);
 
 RDB_recmap *
 RDB_open_recmap(const char *, const char *,
-        RDB_environment *, int, const int[], int,
+        RDB_environment *, int, const RDB_field_info[], int,
         RDB_rec_transaction *, RDB_exec_context *);
 
 int

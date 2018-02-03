@@ -8,6 +8,9 @@
 #include "recmapimpl.h"
 #include "envimpl.h"
 #include "dbdefs.h"
+#include <gen/strfns.h>
+#include <obj/object.h>
+#include <obj/excontext.h>
 #include <bdbrec/bdbrecmap.h>
 
 /*
@@ -22,27 +25,24 @@
  */
 RDB_recmap *
 RDB_create_recmap(const char *name, const char *filename,
-        RDB_environment *envp, int fieldc, const int fieldlenv[], int keyfieldc,
+        RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[], int keyfieldc,
         const RDB_compare_field cmpv[], int flags,
         RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     if (envp == NULL)
-        return RDB_create_bdb_recmap(name, filename, envp, fieldc, fieldlenv,
+        return RDB_create_bdb_recmap(name, filename, NULL, fieldc, fieldinfov,
             keyfieldc, cmpv, flags, rtxp, ecp);
-    return (*envp->create_recmap_fn)(name, filename, envp, fieldc, fieldlenv,
+    return (*envp->create_recmap_fn)(name, filename, envp, fieldc, fieldinfov,
             keyfieldc, cmpv, flags, rtxp, ecp);
 }
 
 /* Open a recmap. For a description of the arguments, see RDB_create_recmap(). */
 RDB_recmap *
 RDB_open_recmap(const char *name, const char *filename,
-       RDB_environment *envp, int fieldc, const int fieldlenv[], int keyfieldc,
+       RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[], int keyfieldc,
        RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
-    if (envp == NULL)
-        return RDB_open_recmap(name, filename, envp, fieldc, fieldlenv,
-            keyfieldc, rtxp, ecp);
-    return (*envp->open_recmap_fn)(name, filename, envp, fieldc, fieldlenv,
+    return (*envp->open_recmap_fn)(name, filename, envp, fieldc, fieldinfov,
             keyfieldc, rtxp, ecp);
 }
 
@@ -101,7 +101,7 @@ RDB_delete_rec(RDB_recmap *rmp, RDB_field keyv[], RDB_rec_transaction *rtxp,
  * keyv     array of the key fields specifying the record to read.
  * txid     pointer to a Berkeley DB transaction
  * fieldc   how many fields are to be read
- * resfieldv    the fields to read.
+ * retfieldv    the fields to read.
  *              no must be set by the caller,
  *              size and datap are set by RDB_get_fields().
  *              Must not contain key fields.
@@ -135,4 +135,77 @@ RDB_recmap_est_size(RDB_recmap *rmp, RDB_rec_transaction *rtxp, unsigned *sz,
         RDB_exec_context *ecp)
 {
     return (*rmp->recmap_est_size_fn)(rmp, rtxp, sz, ecp);
+}
+
+/*
+ * Allocate a RDB_recmap structure and initialize its storage-independent fields.
+ */
+RDB_recmap *
+RDB_new_recmap(const char *namp, const char *filenamp,
+        RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[],
+        int keyfieldc, int flags, RDB_exec_context *ecp)
+{
+    int i;
+    RDB_recmap *rmp = RDB_alloc(sizeof(RDB_recmap), ecp);
+
+    if (rmp == NULL)
+        return NULL;
+
+    rmp->envp = envp;
+    rmp->filenamp = NULL;
+    rmp->fieldinfos = NULL;
+    if (namp != NULL) {
+        rmp->namp = RDB_dup_str(namp);
+        if (rmp->namp == NULL) {
+            RDB_raise_no_memory(ecp);
+            goto error;
+        }
+    } else {
+        rmp->namp = NULL;
+    }
+
+    if (filenamp != NULL) {
+        rmp->filenamp = RDB_dup_str(filenamp);
+        if (rmp->filenamp == NULL) {
+            RDB_raise_no_memory(ecp);
+            goto error;
+        }
+    } else {
+        rmp->filenamp = NULL;
+    }
+
+    rmp->fieldinfos = RDB_alloc(sizeof(RDB_field_info) * fieldc, ecp);
+    if (rmp->fieldinfos == NULL) {
+        goto error;
+    }
+
+    rmp->fieldcount = fieldc;
+    rmp->keyfieldcount = keyfieldc;
+    rmp->cmpv = NULL;
+    rmp->dup_keys = (RDB_bool) !(RDB_UNIQUE & flags);
+
+    rmp->varkeyfieldcount = rmp->vardatafieldcount = 0;
+    for (i = 0; i < fieldc; i++) {
+        rmp->fieldinfos[i].len = fieldinfov[i].len;
+        if (fieldinfov[i].len == RDB_VARIABLE_LEN) {
+            if (i < rmp->keyfieldcount) {
+                /* It's a key field */
+                rmp->varkeyfieldcount++;
+            } else {
+                /* It's a data field */
+                rmp->vardatafieldcount++;
+            }
+        }
+        rmp->fieldinfos[i].flags = fieldinfov[i].flags;
+        rmp->fieldinfos[i].attrname = fieldinfov[i].attrname;
+    }
+
+    return rmp;
+
+error:
+    free(rmp->namp);
+    free(rmp->filenamp);
+    free(rmp->fieldinfos);
+    free(rmp);
+    return NULL;
 }

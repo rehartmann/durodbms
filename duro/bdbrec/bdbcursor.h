@@ -32,9 +32,6 @@ int
 RDB_bdb_cursor_delete(RDB_cursor *, RDB_exec_context *);
 
 int
-RDB_bdb_cursor_update(RDB_cursor *, int fieldc, const RDB_field[], RDB_exec_context *);
-
-int
 RDB_bdb_cursor_first(RDB_cursor *, RDB_exec_context *);
 
 int
