@@ -67,7 +67,6 @@ RDB_pg_commit(RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    puts("committed");
     PQclear(res);
     RDB_free(tx);
     return RDB_OK;
@@ -80,7 +79,7 @@ RDB_pg_abort(RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
     PGresult *res;
 
     if(tx->savepoint_id != -1) {
-        puts("Ignoring nested commit");
+        puts("Ignoring nested abort");
         RDB_free(tx);
         return RDB_OK;
     }
@@ -94,7 +93,6 @@ RDB_pg_abort(RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    puts("aborted");
     PQclear(res);
     RDB_free(tx);
     return RDB_OK;

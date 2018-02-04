@@ -444,15 +444,22 @@ table_field_infos(RDB_object *tbp, RDB_field_info **finfovp, const RDB_bool ascv
         (*finfovp)[fno].len = replen(heading[i].typ);
         (*finfovp)[fno].attrname = heading[i].name;
 
-        (*finfovp)[fno].flags = 0;
         if (RDB_irep_is_string(heading[i].typ)) {
-            (*finfovp)[fno].flags |= RDB_FTYPE_CHAR;
-        } else if (heading[i].typ == &RDB_BOOLEAN) {
-            (*finfovp)[fno].flags |= RDB_FTYPE_BOOLEAN;
-        } else if (heading[i].typ == &RDB_INTEGER) {
-            (*finfovp)[fno].flags |= RDB_FTYPE_INTEGER;
-        } else if (heading[i].typ == &RDB_FLOAT) {
-            (*finfovp)[fno].flags |= RDB_FTYPE_FLOAT;
+            (*finfovp)[fno].flags = RDB_FTYPE_CHAR;
+        } else {
+            switch (RDB_val_kind(heading[i].typ)) {
+            case RDB_OB_BOOL:
+                (*finfovp)[fno].flags = RDB_FTYPE_BOOLEAN;
+                break;
+            case RDB_OB_INT:
+                (*finfovp)[fno].flags = RDB_FTYPE_INTEGER;
+                break;
+            case RDB_OB_FLOAT:
+                (*finfovp)[fno].flags = RDB_FTYPE_FLOAT;
+                break;
+            default:
+                (*finfovp)[fno].flags = 0;
+            }
         }
     }
     return RDB_OK;
