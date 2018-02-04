@@ -519,6 +519,14 @@ RDB_obj_irep(RDB_object *valp, size_t *lenp)
     }
 }
 
+RDB_bool
+RDB_irep_is_string(const RDB_type *typ)
+{
+    if (typ == &RDB_STRING)
+        return RDB_TRUE;
+    return (RDB_bool) (typ->kind == RDB_TP_SCALAR && typ->def.scalar.arep == &RDB_STRING);
+}
+
 static int
 irep_to_bin(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
         RDB_exec_context *ecp)
@@ -526,7 +534,7 @@ irep_to_bin(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
     valp->val.bin.len = len;
     if (len > 0) {
         /* If there is no nullbyte and the type is STRING, append it */
-        int no_nullbyte = (typ == &RDB_STRING && datap != NULL
+        int no_nullbyte = (RDB_irep_is_string(typ) && datap != NULL
                 && memchr(datap, '\0', len) == NULL);
         valp->val.bin.len = len;
         if (no_nullbyte)

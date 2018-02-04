@@ -363,7 +363,7 @@ replen(const RDB_type *typ)
 }
 
 static int
-key_fnos(RDB_object *tbp, RDB_field_info **finfovp, const RDB_bool ascv[],
+table_field_infos(RDB_object *tbp, RDB_field_info **finfovp, const RDB_bool ascv[],
          RDB_compare_field *cmpv, RDB_exec_context *ecp)
 {
     int ret;
@@ -445,7 +445,7 @@ key_fnos(RDB_object *tbp, RDB_field_info **finfovp, const RDB_bool ascv[],
         (*finfovp)[fno].attrname = heading[i].name;
 
         (*finfovp)[fno].flags = 0;
-        if (heading[i].typ == &RDB_STRING) {
+        if (RDB_irep_is_string(heading[i].typ)) {
             (*finfovp)[fno].flags |= RDB_FTYPE_CHAR;
         } else if (heading[i].typ == &RDB_BOOLEAN) {
             (*finfovp)[fno].flags |= RDB_FTYPE_BOOLEAN;
@@ -537,7 +537,7 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
     if (ret != RDB_OK)
         goto error;
 
-    ret = key_fnos(tbp, &finfov, ascv, cmpv, ecp);
+    ret = table_field_infos(tbp, &finfov, ascv, cmpv, ecp);
     if (ret != RDB_OK)
         goto error;
 
@@ -732,7 +732,7 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
     RDB_init_hashtable(&tbp->val.tbp->stp->attrmap, RDB_DFL_MAP_CAPACITY, &hash_str,
             &str_equals);
 
-    ret = key_fnos(tbp, &finfov, NULL, NULL, ecp);
+    ret = table_field_infos(tbp, &finfov, NULL, NULL, ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 

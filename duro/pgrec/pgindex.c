@@ -70,7 +70,6 @@ RDB_create_pg_index(RDB_recmap *rmp, const char *name, const char *filename,
     if (RDB_append_char(&command, ')', ecp) != RDB_OK)
         goto error;
 
-    fprintf(stderr, "command is: %s\n", RDB_obj_string(&command));
     res = PQexec(envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {

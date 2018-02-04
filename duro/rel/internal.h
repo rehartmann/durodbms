@@ -465,4 +465,7 @@ RDB_get_subtype(RDB_type *, const char *);
 RDB_type *
 RDB_get_supertype_of_subtype(RDB_type *, const char *);
 
+RDB_bool
+RDB_irep_is_string(const RDB_type *);
+
 #endif
