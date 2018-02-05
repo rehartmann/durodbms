@@ -191,7 +191,7 @@ main(int argc, char *argv[])
             if (envp == NULL) {
                 fprintf(stderr, "unable to open environment %s:", envname);
                 Duro_println_error(RDB_get_err(&ec));
-                return 1;
+                goto error;
             }
         }
     }
