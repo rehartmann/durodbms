@@ -32,6 +32,7 @@ typedef struct RDB_cursor {
         } pg;
     } cur;
     RDB_recmap *recmapp;
+    RDB_environment *envp;
     RDB_index *idxp;
     RDB_rec_transaction *tx;
     RDB_bool secondary;

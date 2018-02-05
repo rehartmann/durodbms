@@ -6,6 +6,8 @@
 #ifndef EXPRESSION_H_
 #define EXPRESSION_H_
 
+typedef struct RDB_type RDB_type;
+
 enum RDB_expr_kind {
     RDB_EX_OBJ,
     RDB_EX_TBP,

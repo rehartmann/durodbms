@@ -93,7 +93,7 @@ relsrc = ['rel/arrayx.c', 'rel/database.c', 'rel/uoperator.c',
         'rel/cat_op.c', 'rel/optimize.c', 'rel/transform.c',
         'rel/constraint.c', 'rel/assign.c', 'obj/opmap.c',
         'rel/match.c', 'rel/tostr.c',
-        'rel/pexpr.c', 'util/www.c']
+        'rel/pexpr.c', 'util/www.c', 'rel/sqlgen.c']
 
 interpsrc = ['dli/exparse.c', 'dli/exlex.c', 'dli/parse.c', 'dli/parsenode.c',
         'dli/iinterp.c', 'dli/interp_stmt.c', 'dli/interp_core.c',
@@ -297,7 +297,7 @@ rel_ihdrs = Split('rel/catalog.h rel/cat_stored.h rel/cat_type.h rel/cat_op.h '
 		'rel/delete.h rel/serialize.h '
         'rel/insert.h rel/transform.h rel/internal.h rel/stable.h '
         'rel/update.h rel/qr_stored.h rel/qr_join.h rel/qr_tclose.h '
-        'rel/pexpr.h')
+        'rel/pexpr.h rel/sqlgen.h')
 dli_hdrs = ['dli/parse.h', 'dli/parsenode.h', 'dli/iinterp.h', 'dli/varmap.h']
 dli_ihdrs = ['dli/exparse.h', 'dli/iinterp.h', 'dli/interp_stmt.h', 'dli/interp_core.h',
         'dli/interp_assign.h', 'dli/interp_vardef.h',

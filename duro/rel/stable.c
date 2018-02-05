@@ -362,6 +362,30 @@ replen(const RDB_type *typ)
     abort();
 }
 
+int
+RDB_type_field_flags(const RDB_type *typ)
+{
+    int flags;
+    if (RDB_irep_is_string(typ)) {
+        flags = RDB_FTYPE_CHAR;
+    } else {
+        switch (RDB_val_kind(typ)) {
+        case RDB_OB_BOOL:
+            flags = RDB_FTYPE_BOOLEAN;
+            break;
+        case RDB_OB_INT:
+            flags = RDB_FTYPE_INTEGER;
+            break;
+        case RDB_OB_FLOAT:
+            flags = RDB_FTYPE_FLOAT;
+            break;
+        default:
+            flags = 0;
+        }
+    }
+    return flags;
+}
+
 static int
 table_field_infos(RDB_object *tbp, RDB_field_info **finfovp, const RDB_bool ascv[],
          RDB_compare_field *cmpv, RDB_exec_context *ecp)
@@ -443,24 +467,7 @@ table_field_infos(RDB_object *tbp, RDB_field_info **finfovp, const RDB_bool ascv
 
         (*finfovp)[fno].len = replen(heading[i].typ);
         (*finfovp)[fno].attrname = heading[i].name;
-
-        if (RDB_irep_is_string(heading[i].typ)) {
-            (*finfovp)[fno].flags = RDB_FTYPE_CHAR;
-        } else {
-            switch (RDB_val_kind(heading[i].typ)) {
-            case RDB_OB_BOOL:
-                (*finfovp)[fno].flags = RDB_FTYPE_BOOLEAN;
-                break;
-            case RDB_OB_INT:
-                (*finfovp)[fno].flags = RDB_FTYPE_INTEGER;
-                break;
-            case RDB_OB_FLOAT:
-                (*finfovp)[fno].flags = RDB_FTYPE_FLOAT;
-                break;
-            default:
-                (*finfovp)[fno].flags = 0;
-            }
-        }
+        (*finfovp)[fno].flags = RDB_type_field_flags(heading[i].typ);
     }
     return RDB_OK;
 }

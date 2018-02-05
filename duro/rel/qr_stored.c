@@ -13,19 +13,41 @@
 #include "internal.h"
 #include <db.h>
 
-/*
- * Initializes an RDB_qresult from a stored table.
- * Does not initialize matp, this has to be done by the caller.
- */
+#ifdef POSTGRESQL
+#include <pgrec/pgcursor.h>
+#endif
+
 int
-RDB_init_stored_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_expression *exp,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+RDB_init_cursor_qresult(RDB_qresult *qrp, RDB_cursor *curp, RDB_object *tbp,
+        RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
     qrp->exp = exp;
     qrp->nested = RDB_FALSE;
     qrp->val.stored.tbp = tbp;
+    qrp->endreached = RDB_FALSE;
+    qrp->matp = NULL;
+
+    qrp->val.stored.curp = curp;
+    ret = RDB_cursor_first(qrp->val.stored.curp, ecp);
+    if (ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+        qrp->endreached = RDB_TRUE;
+        return RDB_OK;
+    }
+    if (ret != RDB_OK) {
+        RDB_handle_err(ecp, txp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+int
+RDB_init_stored_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_expression *exp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_cursor *curp;
+
     if (tbp->val.tbp->stp == NULL) {
         /*
          * The stored table may have been created by another process,
@@ -40,25 +62,23 @@ RDB_init_stored_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_expression *exp,
             /*
              * Table has no physical representation which means it is empty
              */
+            qrp->exp = exp;
+            qrp->nested = RDB_FALSE;
+            qrp->val.stored.tbp = tbp;
+            qrp->matp = NULL;
             qrp->endreached = RDB_TRUE;
             qrp->val.stored.curp = NULL;
             return RDB_OK;
         }
     }
-
-    qrp->val.stored.curp = RDB_recmap_cursor(tbp->val.tbp->stp->recmapp,
+    curp = RDB_recmap_cursor(tbp->val.tbp->stp->recmapp,
                     RDB_FALSE, RDB_table_is_persistent(tbp) ? txp->tx : NULL, ecp);
-    if (qrp->val.stored.curp == NULL) {
+    if (curp == NULL) {
         RDB_handle_err(ecp, txp);
         return RDB_ERROR;
     }
-    ret = RDB_cursor_first(qrp->val.stored.curp, ecp);
-    if (ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
-        qrp->endreached = RDB_TRUE;
-        return RDB_OK;
-    }
-    if (ret != RDB_OK) {
-        RDB_handle_err(ecp, txp);
+    if (RDB_init_cursor_qresult(qrp, curp, tbp, exp, ecp, txp) != RDB_OK) {
+        RDB_destroy_cursor(curp, ecp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -120,8 +140,18 @@ RDB_get_by_cursor(RDB_object *tbp, RDB_cursor *curp, RDB_type *tpltyp,
     for (i = 0; i < tpltyp->def.tuple.attrc; i++) {
         attrp = &tpltyp->def.tuple.attrv[i];
 
-        fno = *RDB_field_no(tbp->val.tbp->stp, attrp->name);
-        ret = RDB_cursor_get(curp, fno, &datap, &len, ecp);
+        if (tbp != NULL) {
+            fno = *RDB_field_no(tbp->val.tbp->stp, attrp->name);
+            ret = RDB_cursor_get(curp, fno, &datap, &len, ecp);
+        } else {
+#ifdef POSTGRESQL
+            ret = RDB_pg_cursor_get_by_name(curp, attrp->name, &datap, &len,
+                    RDB_type_field_flags(attrp->typ), ecp);
+#else
+            RDB_raise_not_supported("SQL queries not supported", ecp);
+            ret = RDB_ERROR;
+#endif
+        }
         if (ret != RDB_OK) {
             RDB_handle_err(ecp, txp);
             return RDB_ERROR;

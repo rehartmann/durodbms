@@ -19,7 +19,7 @@ int last_cur_id = 0;
  * Allocate and initialize a RDB_cursor structure.
  */
 static RDB_cursor *
-new_pg_cursor(RDB_recmap *rmp, RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
+new_pg_cursor(RDB_environment *envp, RDB_recmap *rmp, RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     RDB_cursor *curp;
 
@@ -28,6 +28,7 @@ new_pg_cursor(RDB_recmap *rmp, RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
         return NULL;
 
     curp->recmapp = rmp;
+    curp->envp = envp;
     curp->tx = rtxp;
     curp->destroy_fn = &RDB_destroy_pg_cursor;
     curp->get_fn = &RDB_pg_cursor_get;
@@ -46,13 +47,39 @@ RDB_cursor *
 RDB_pg_recmap_cursor(RDB_recmap *rmp, RDB_bool wr,
         RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
+    RDB_object query;
+    RDB_cursor *curp;
+
+    RDB_init_obj(&query);
+
+    if (RDB_string_to_obj(&query, "SELECT * FROM ", ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&query, rmp->namp, ecp) != RDB_OK)
+        goto error;
+    curp = RDB_pg_query_cursor(rmp->envp, RDB_obj_string(&query), wr, rtxp, ecp);
+    if (curp == NULL)
+        goto error;
+
+    RDB_destroy_obj(&query, ecp);
+    curp->recmapp = rmp;
+    return curp;
+
+error:
+    RDB_destroy_obj(&query, ecp);
+    return NULL;
+}
+
+RDB_cursor *
+RDB_pg_query_cursor(RDB_environment *envp, const char *query, RDB_bool wr,
+        RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
+{
     RDB_object command;
     char idbuf[12];
     RDB_cursor *curp;
     PGresult *res;
 
     RDB_init_obj(&command);
-    curp = new_pg_cursor(rmp, rtxp, ecp);
+    curp = new_pg_cursor(envp, NULL, rtxp, ecp);
     if (curp == NULL)
         goto error;
 
@@ -62,15 +89,15 @@ RDB_pg_recmap_cursor(RDB_recmap *rmp, RDB_bool wr,
     sprintf(idbuf, "%d", curp->cur.pg.id);
     if (RDB_append_string(&command, idbuf, ecp) != RDB_OK)
         goto error;
-    if (RDB_append_string(&command, " CURSOR FOR SELECT * FROM ", ecp) != RDB_OK)
+    if (RDB_append_string(&command, " CURSOR FOR ", ecp) != RDB_OK)
         goto error;
-    if (RDB_append_string(&command, rmp->namp, ecp) != RDB_OK)
+    if (RDB_append_string(&command, query, ecp) != RDB_OK)
         goto error;
 
-    res = PQexec(rmp->envp->env.pgconn, RDB_obj_string(&command));
+    res = PQexec(envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
-        RDB_raise_system(PQerrorMessage(rmp->envp->env.pgconn), ecp);
+        RDB_raise_system(PQerrorMessage(envp->env.pgconn), ecp);
         PQclear(res);
         goto error;
     }
@@ -101,10 +128,10 @@ RDB_destroy_pg_cursor(RDB_cursor *curp, RDB_exec_context *ecp)
     if (RDB_append_string(&command, idbuf, ecp) != RDB_OK)
         goto error;
 
-    res = PQexec(curp->recmapp->envp->env.pgconn, RDB_obj_string(&command));
+    res = PQexec(curp->envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
-        RDB_raise_system(PQerrorMessage(curp->recmapp->envp->env.pgconn), ecp);
+        RDB_raise_system(PQerrorMessage(curp->envp->env.pgconn), ecp);
         PQclear(res);
         goto error;
     }
@@ -125,13 +152,9 @@ error:
     return RDB_ERROR;
 }
 
-/*
- * Read the value of field fno from the current record.
- * Character data is returned without a trailing null byte.
- */
-int
-RDB_pg_cursor_get(RDB_cursor *curp, int fno, void **datapp, size_t *lenp,
-        RDB_exec_context *ecp)
+static int
+pg_cursor_get(RDB_cursor *curp, int fno, void **datapp, size_t *lenp,
+        int flags, RDB_exec_context *ecp)
 {
     static RDB_int fieldval;
 
@@ -145,11 +168,54 @@ RDB_pg_cursor_get(RDB_cursor *curp, int fno, void **datapp, size_t *lenp,
         return RDB_ERROR;
     }
     *lenp = (size_t) PQgetlength(curp->cur.pg.current_row, 0, fno);
-    if (RDB_FTYPE_INTEGER & curp->recmapp->fieldinfos[fno].flags) {
+    if (RDB_FTYPE_INTEGER & flags) {
         fieldval = ntohl(*((uint32_t *)*datapp));
         *datapp = &fieldval;
     }
     return RDB_OK;
+}
+
+/*
+ * Read the value of field fno from the current record.
+ * Character data is returned without a trailing null byte.
+ */
+int
+RDB_pg_cursor_get(RDB_cursor *curp, int fno, void **datapp, size_t *lenp,
+        RDB_exec_context *ecp)
+{
+    if (curp->recmapp == NULL) {
+        RDB_raise_invalid_argument("access by field number only supported by recmap cursors", ecp);
+        return RDB_ERROR;
+    }
+    return pg_cursor_get(curp, fno, datapp, lenp, curp->recmapp->fieldinfos[fno].flags, ecp);
+}
+
+int
+RDB_pg_cursor_get_by_name(RDB_cursor *curp, const char *attrname, void **datapp,
+        size_t *lenp, int flags, RDB_exec_context *ecp)
+{
+    RDB_object colname;
+    int colnum;
+    if (curp->cur.pg.current_row == NULL) {
+        RDB_raise_not_found("", ecp);
+        return RDB_ERROR;
+    }
+
+    RDB_init_obj(&colname);
+    if (RDB_string_to_obj(&colname, "d_", ecp) != RDB_OK) {
+        RDB_destroy_obj(&colname, ecp);
+        return RDB_ERROR;
+    }
+    if (RDB_append_string(&colname, attrname, ecp) != RDB_OK) {
+        RDB_destroy_obj(&colname, ecp);
+        return RDB_ERROR;
+    }
+    colnum = PQfnumber(curp->cur.pg.current_row, RDB_obj_string(&colname));
+    RDB_destroy_obj(&colname, ecp);
+    if (colnum == -1) {
+        RDB_raise_not_found(attrname, ecp);
+    }
+    return pg_cursor_get(curp, colnum, datapp, lenp, flags, ecp);
 }
 
 static int
@@ -170,15 +236,15 @@ exec_fetch(RDB_cursor *curp, const char *curcmd, RDB_exec_context *ecp)
 
     if (curp->cur.pg.current_row != NULL)
         PQclear(curp->cur.pg.current_row);
-    curp->cur.pg.current_row = PQexecParams(curp->recmapp->envp->env.pgconn,
+    curp->cur.pg.current_row = PQexecParams(curp->envp->env.pgconn,
             RDB_obj_string(&command), 0, NULL, NULL, NULL, NULL, 1);
     execstatus = PQresultStatus(curp->cur.pg.current_row);
     if (execstatus != PGRES_TUPLES_OK && execstatus != PGRES_SINGLE_TUPLE) {
-        RDB_raise_system(PQerrorMessage(curp->recmapp->envp->env.pgconn), ecp);
+        RDB_raise_system(PQerrorMessage(curp->envp->env.pgconn), ecp);
         goto error;
     }
     if (PQntuples(curp->cur.pg.current_row) == 0) {
-        RDB_raise_not_found(PQerrorMessage(curp->recmapp->envp->env.pgconn), ecp);
+        RDB_raise_not_found(PQerrorMessage(curp->envp->env.pgconn), ecp);
         goto error;
     }
     RDB_destroy_obj(&command, ecp);
@@ -271,12 +337,12 @@ RDB_pg_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[],
     if (RDB_append_string(&command, numbuf, ecp) != RDB_OK)
         goto error;
 
-    res = PQexecParams(curp->recmapp->envp->env.pgconn, RDB_obj_string(&command),
+    res = PQexecParams(curp->envp->env.pgconn, RDB_obj_string(&command),
             fieldc, NULL, (const char * const *) valuev, lenv,
             formatv, 0);
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
-        RDB_raise_system(PQerrorMessage(curp->recmapp->envp->env.pgconn), ecp);
+        RDB_raise_system(PQerrorMessage(curp->envp->env.pgconn), ecp);
         PQclear(res);
         goto error;
     }
@@ -324,10 +390,10 @@ RDB_pg_cursor_delete(RDB_cursor *curp, RDB_exec_context *ecp)
     if (RDB_append_string(&command, numbuf, ecp) != RDB_OK)
         goto error;
 
-    res = PQexec(curp->recmapp->envp->env.pgconn, RDB_obj_string(&command));
+    res = PQexec(curp->envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
-        RDB_raise_system(PQerrorMessage(curp->recmapp->envp->env.pgconn), ecp);
+        RDB_raise_system(PQerrorMessage(curp->envp->env.pgconn), ecp);
         PQclear(res);
         goto error;
     }

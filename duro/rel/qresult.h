@@ -20,7 +20,7 @@ typedef struct RDB_qresult {
     union {
         /* !nested */
         struct {
-            /* May be a descendant of *exp, NULL for sorter */
+            /* May be a descendant of *exp, NULL for sorter or SQL query */
             RDB_object *tbp;
 
             /* NULL if a unique index is used */

@@ -16,11 +16,16 @@
 #include "stable.h"
 #include "typeimpl.h"
 #include "transform.h"
+#include "sqlgen.h"
 #include <obj/key.h>
 #include <obj/objinternal.h>
 #include <rec/indeximpl.h>
 #include <gen/hashtabit.h>
 #include <gen/strfns.h>
+
+#ifdef POSTGRESQL
+#include <pgrec/pgcursor.h>
+#endif
 
 #include <string.h>
 
@@ -832,6 +837,29 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
+#ifdef POSTGRESQL
+    if (txp != NULL && RDB_env_queries(txp->envp)) {
+        if (exp->kind != RDB_EX_TBP && RDB_sql_convertible(exp)) {
+            RDB_object sql;
+            RDB_cursor *curp;
+            RDB_init_obj(&sql);
+            if (RDB_expr_to_sql(&sql, exp, ecp) != RDB_OK) {
+                RDB_destroy_obj(&sql, ecp);
+                return RDB_ERROR;
+            }
+            if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
+                fprintf(stderr, "SQL generated: %s\n", RDB_obj_string(&sql));
+            }
+            curp = RDB_pg_query_cursor(txp->envp, RDB_obj_string(&sql), RDB_FALSE,
+                    txp->tx, ecp);
+            RDB_destroy_obj(&sql, ecp);
+            if (curp == NULL)
+                return RDB_ERROR;
+            return RDB_init_cursor_qresult(qrp, curp, NULL, exp, ecp, txp);
+        }
+    }
+#endif
+
     if (exp->kind == RDB_EX_OBJ) {
         return init_qresult(qrp, &exp->def.obj, ecp, txp);
     }
@@ -1111,6 +1139,12 @@ int
 RDB_duprem(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_bool rd;
+
+    /*
+     * SQL queries use DISTINCT and cannot return duplicates
+     */
+    if (txp != NULL && RDB_env_queries(txp->envp))
+        return RDB_OK;
 
     if (qr_dups(qrp, ecp, &rd) != RDB_OK)
         return RDB_ERROR;
@@ -2281,6 +2315,15 @@ RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
                 : RDB_obj_impl_type(qrp->val.stored.tbp)->def.scalar.arep->def.basetyp;
         return RDB_next_stored_tuple(qrp, qrp->val.stored.tbp, tplp, RDB_TRUE,
                 RDB_FALSE, tpltyp, ecp, txp);
+    }
+
+    if (!qrp->nested && qrp->val.stored.tbp == NULL && qrp->val.stored.curp != NULL) {
+        RDB_type *tbtyp = RDB_expr_type(qrp->exp, NULL, NULL, NULL, ecp, txp);
+        if (tbtyp == NULL)
+            return RDB_ERROR;
+
+        return RDB_next_stored_tuple(qrp, qrp->val.stored.tbp, tplp, RDB_TRUE,
+                        RDB_FALSE, RDB_base_type(tbtyp), ecp, txp);
     }
 
     if (qrp->exp->kind != RDB_EX_RO_OP) {
