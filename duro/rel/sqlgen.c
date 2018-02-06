@@ -10,6 +10,7 @@
 #include <obj/objinternal.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 RDB_bool
 RDB_sql_convertible(RDB_expression *exp) {
@@ -28,11 +29,13 @@ RDB_sql_convertible(RDB_expression *exp) {
 }
 
 static int
-expr_to_sql_te(RDB_object *, RDB_expression *, RDB_exec_context *);
+expr_to_sql(RDB_object *, RDB_expression *, RDB_exec_context *);
 
 static int
-append_te(RDB_object *sql, const char *te, RDB_exec_context *ecp)
+append_sub_sql(RDB_object *sql, const char *te, RDB_exec_context *ecp)
 {
+    static int aliasno = 0;
+    char aliasbuf[18];
     /*
      * Append a table expression, putting it into parentheses if it's
      * already a SELECT
@@ -44,7 +47,8 @@ append_te(RDB_object *sql, const char *te, RDB_exec_context *ecp)
         if (RDB_append_string(sql, te, ecp) != RDB_OK) {
             return RDB_ERROR;
         }
-        if (RDB_append_char(sql, '(', ecp) != RDB_OK) {
+        sprintf(aliasbuf, ") AS p%d", aliasno++);
+        if (RDB_append_string(sql, aliasbuf, ecp) != RDB_OK) {
             return RDB_ERROR;
         }
     } else {
@@ -83,11 +87,11 @@ project_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
         return RDB_ERROR;
 
     RDB_init_obj(&te);
-    if (expr_to_sql_te(&te, RDB_expr_list_get(&exp->def.op.args, 0), ecp) != RDB_OK) {
+    if (expr_to_sql(&te, RDB_expr_list_get(&exp->def.op.args, 0), ecp) != RDB_OK) {
         RDB_destroy_obj(&te, ecp);
         return RDB_ERROR;
     }
-    if (append_te(sql, RDB_obj_string(&te), ecp) != RDB_OK) {
+    if (append_sub_sql(sql, RDB_obj_string(&te), ecp) != RDB_OK) {
         RDB_destroy_obj(&te, ecp);
         return RDB_ERROR;
     }
@@ -96,7 +100,7 @@ project_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
 }
 
 static int
-expr_to_sql_te(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
 {
     switch (exp->kind)
     {
@@ -120,7 +124,7 @@ RDB_expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
     RDB_object te;
     RDB_init_obj(&te);
 
-    if (expr_to_sql_te(&te, exp, ecp) != RDB_OK)
+    if (expr_to_sql(&te, exp, ecp) != RDB_OK)
         goto error;
 
     /*
