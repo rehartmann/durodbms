@@ -184,6 +184,31 @@ RDB_delete_pg_recmap(RDB_recmap *rmp, RDB_rec_transaction *rtxp, RDB_exec_contex
     return RDB_ERROR;
 }
 
+static void
+hton(void *p, size_t len)
+{
+    uint32_t v = 1;
+    if ((*(char*)&v) == 1) {
+        int i;
+        char *cp = p;
+        for (i = 0; i < len; i++)
+            cp[i] = cp[len - 1 - i];
+    }
+}
+
+void
+RDB_ntoh(void *dstp, void *srcp, size_t len)
+{
+    uint32_t v = 1;
+    if ((*(char*)&v) == 1) {
+        int i;
+        char *srccp = srcp;
+        char *dstcp = dstp;
+        for (i = 0; i < len; i++)
+            dstcp[i] = srccp[len - 1 - i];
+    }
+}
+
 void *
 RDB_field_to_pg(RDB_field *field, RDB_field_info *fieldinfo, int *formatp,
         RDB_exec_context *ecp)
@@ -193,8 +218,11 @@ RDB_field_to_pg(RDB_field *field, RDB_field_info *fieldinfo, int *formatp,
         return NULL;
 
     (*field->copyfp)(valuep, field->datap, field->len);
-    if (RDB_FTYPE_INTEGER & fieldinfo->flags)
+    if (RDB_FTYPE_INTEGER & fieldinfo->flags) {
         *((uint32_t *)valuep) = htonl(*((uint32_t *)valuep));
+    } else if (RDB_FTYPE_FLOAT & fieldinfo->flags) {
+        hton(valuep, sizeof(RDB_float));
+    }
     *formatp = RDB_FTYPE_CHAR & fieldinfo->flags ? 0 : 1;
     return valuep;
 }
@@ -307,12 +335,17 @@ RDB_delete_pg_rec(RDB_recmap *rmp, RDB_field keyv[], RDB_rec_transaction *rtxp,
     return RDB_ERROR;
 }
 
+union num {
+    RDB_int i;
+    RDB_float r;
+};
+
 int
 RDB_get_pg_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
         RDB_rec_transaction *rtxp, RDB_field retfieldv[], RDB_exec_context *ecp)
 {
     static PGresult *res = NULL;
-    static RDB_int *intres = NULL;
+    static union num *numres = NULL;
     int i;
     RDB_object command;
     char numbuf[14];
@@ -349,6 +382,10 @@ RDB_get_pg_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
                 goto error;
         }
     }
+    if (fieldc == 0) {
+        if (RDB_append_string(&command, "*", ecp) != RDB_OK)
+            goto error;
+    }
     if (RDB_append_string(&command, " FROM ", ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(&command, rmp->namp, ecp) != RDB_OK)
@@ -373,7 +410,6 @@ RDB_get_pg_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
         if (valuev[i] == NULL)
             goto error;
     }
-    printf("command: %s\n", RDB_obj_string(&command));
     if (res != NULL)
         PQclear(res);
     res = PQexecParams(rmp->envp->env.pgconn, RDB_obj_string(&command),
@@ -391,18 +427,20 @@ RDB_get_pg_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
     }
 
     /* Read integer fields and adjust byte order */
-    if (intres != NULL) {
-        RDB_free(intres);
+    if (numres != NULL) {
+        RDB_free(numres);
     }
-    intres = RDB_alloc(sizeof(RDB_int) * fieldc, ecp);
-    if (intres == NULL)
+    numres = RDB_alloc(sizeof(union num) * fieldc, ecp);
+    if (numres == NULL)
         goto error;
     for (i = 0; i < fieldc; i++) {
         retfieldv[i].datap = PQgetvalue(res, 0, i);
         retfieldv[i].len = (size_t) PQgetlength(res, 0, i);
         if (RDB_FTYPE_INTEGER & rmp->fieldinfos[retfieldv[i].no].flags) {
-            intres[i] = ntohl(*((uint32_t *)retfieldv[i].datap));
-            retfieldv[i].datap = &intres[i];
+            numres[i].i = ntohl(*((uint32_t *)retfieldv[i].datap));
+            retfieldv[i].datap = &numres[i].i;
+        } else if (RDB_FTYPE_FLOAT & rmp->fieldinfos[retfieldv[i].no].flags) {
+            RDB_ntoh(&numres[i], retfieldv[i].datap, sizeof(RDB_float));
         }
     }
 

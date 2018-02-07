@@ -24,12 +24,12 @@ typedef struct RDB_cursor {
             DBT current_key;
             DBT current_data;
         } bdb;
-        struct {
-            int id;
 #ifdef POSTGRESQL
+        struct {
+            unsigned id;
             PGresult *current_row;
-#endif
         } pg;
+#endif
     } cur;
     RDB_recmap *recmapp;
     RDB_environment *envp;

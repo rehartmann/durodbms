@@ -13,7 +13,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 
-int last_cur_id = 0;
+unsigned last_cur_id = 0;
 
 /*
  * Allocate and initialize a RDB_cursor structure.
@@ -86,7 +86,7 @@ RDB_pg_query_cursor(RDB_environment *envp, const char *query, RDB_bool wr,
     curp->cur.pg.id = last_cur_id++;
     if (RDB_string_to_obj(&command, "DECLARE c", ecp) != RDB_OK)
         goto error;
-    sprintf(idbuf, "%d", curp->cur.pg.id);
+    sprintf(idbuf, "%u", curp->cur.pg.id);
     if (RDB_append_string(&command, idbuf, ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(&command, " CURSOR FOR ", ecp) != RDB_OK)
@@ -124,7 +124,7 @@ RDB_destroy_pg_cursor(RDB_cursor *curp, RDB_exec_context *ecp)
     RDB_init_obj(&command);
     if (RDB_string_to_obj(&command, "CLOSE c", ecp) != RDB_OK)
         goto error;
-    sprintf(idbuf, "%d", curp->cur.pg.id);
+    sprintf(idbuf, "%u", curp->cur.pg.id);
     if (RDB_append_string(&command, idbuf, ecp) != RDB_OK)
         goto error;
 
@@ -156,7 +156,10 @@ static int
 pg_cursor_get(RDB_cursor *curp, int fno, void **datapp, size_t *lenp,
         int flags, RDB_exec_context *ecp)
 {
-    static RDB_int fieldval;
+    static union {
+        RDB_int i;
+        RDB_float f;
+    } fieldval;
 
     if (curp->cur.pg.current_row == NULL) {
         RDB_raise_not_found("", ecp);
@@ -169,8 +172,10 @@ pg_cursor_get(RDB_cursor *curp, int fno, void **datapp, size_t *lenp,
     }
     *lenp = (size_t) PQgetlength(curp->cur.pg.current_row, 0, fno);
     if (RDB_FTYPE_INTEGER & flags) {
-        fieldval = ntohl(*((uint32_t *)*datapp));
+        fieldval.i = ntohl(*((uint32_t *)*datapp));
         *datapp = &fieldval;
+    } else if (RDB_FTYPE_FLOAT & flags) {
+        RDB_ntoh(&fieldval, *datapp, sizeof(RDB_float));
     }
     return RDB_OK;
 }
@@ -230,7 +235,7 @@ exec_fetch(RDB_cursor *curp, const char *curcmd, RDB_exec_context *ecp)
         goto error;
     if (RDB_append_string(&command, " c", ecp) != RDB_OK)
         goto error;
-    sprintf(idbuf, "%d", curp->cur.pg.id);
+    sprintf(idbuf, "%u", curp->cur.pg.id);
     if (RDB_append_string(&command, idbuf, ecp) != RDB_OK)
         goto error;
 
@@ -317,7 +322,7 @@ RDB_pg_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[],
                 curp->recmapp->fieldinfos[fields[i].no].attrname, ecp)) {
             goto error;
         }
-        sprintf(numbuf, "=$%d", i + 1);
+        sprintf(numbuf, "=$%u", i + 1);
         if (RDB_append_string(&command, numbuf, ecp) != RDB_OK)
             goto error;
         if (i < fieldc - 1) {
@@ -333,7 +338,7 @@ RDB_pg_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[],
 
     if (RDB_append_string(&command, " WHERE CURRENT OF c", ecp) != RDB_OK)
         goto error;
-    sprintf(numbuf, "%d", curp->cur.pg.id);
+    sprintf(numbuf, "%u", curp->cur.pg.id);
     if (RDB_append_string(&command, numbuf, ecp) != RDB_OK)
         goto error;
 
@@ -380,13 +385,14 @@ RDB_pg_cursor_delete(RDB_cursor *curp, RDB_exec_context *ecp)
     char numbuf[14];
     PGresult *res;
 
+    RDB_init_obj(&command);
     if (RDB_string_to_obj(&command, "DELETE FROM ", ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(&command, curp->recmapp->namp, ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(&command, " WHERE CURRENT OF c", ecp) != RDB_OK)
         goto error;
-    sprintf(numbuf, "%d", curp->cur.pg.id);
+    sprintf(numbuf, "%u", curp->cur.pg.id);
     if (RDB_append_string(&command, numbuf, ecp) != RDB_OK)
         goto error;
 

@@ -51,4 +51,7 @@ RDB_pg_recmap_est_size(RDB_recmap *, RDB_rec_transaction *, unsigned *, RDB_exec
 void *
 RDB_field_to_pg(RDB_field *, RDB_field_info *, int *, RDB_exec_context *);
 
+void
+RDB_ntoh(void *, void *, size_t);
+
 #endif /* PGREC_PGRECMAP_H_ */
