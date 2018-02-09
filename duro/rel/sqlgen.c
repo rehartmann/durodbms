@@ -8,9 +8,51 @@
 #include "sqlgen.h"
 #include "rdb.h"
 #include <obj/objinternal.h>
+#include <obj/type.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+
+static RDB_bool
+scalar_sql_convertible(RDB_expression *);
+
+static RDB_bool
+explist_user_types(RDB_expr_list *explistp)
+{
+    RDB_exec_context ec;
+    RDB_expression *exp;
+
+    RDB_init_exec_context(&ec);
+    exp = explistp->firstp;
+    while (exp != NULL) {
+        RDB_type *typ = RDB_expr_type(exp, NULL, NULL, NULL, &ec, NULL);
+        if (typ == NULL) {
+            RDB_destroy_exec_context(&ec);
+            return RDB_FALSE;
+        }
+        if (RDB_type_is_scalar(typ) && !typ->def.scalar.builtin) {
+            RDB_destroy_exec_context(&ec);
+            return RDB_FALSE;
+        }
+        exp = exp->nextp;
+    }
+    RDB_destroy_exec_context(&ec);
+    return RDB_TRUE;
+}
+
+static RDB_bool
+explist_scalar_sql_convertible(RDB_expr_list *explistp)
+{
+    RDB_expression *exp;
+
+    exp = explistp->firstp;
+    while (exp != NULL) {
+        if (!scalar_sql_convertible(exp))
+            return RDB_FALSE;
+        exp = exp->nextp;
+    }
+    return RDB_TRUE;
+}
 
 static RDB_bool
 scalar_sql_convertible(RDB_expression *exp)
@@ -26,16 +68,47 @@ scalar_sql_convertible(RDB_expression *exp)
                 || typ == &RDB_BOOLEAN || typ == &RDB_FLOAT);
     case RDB_EX_RO_OP:
         if (strcmp(exp->def.op.name, "=") == 0
-                || strcmp(exp->def.op.name, "<>") == 0
-                || strcmp(exp->def.op.name, "and") == 0
-                || strcmp(exp->def.op.name, "or") == 0) {
+                || strcmp(exp->def.op.name, "<>") == 0) {
             return (RDB_bool) (RDB_expr_list_length(&exp->def.op.args) == 2
-                    && scalar_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 0))
-                    && scalar_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 1)));
+                    && explist_scalar_sql_convertible(&exp->def.op.args));
         }
-        if (strcmp(exp->def.op.name, "not") == 0) {
+        if (strcmp(exp->def.op.name, ">") == 0
+                || strcmp(exp->def.op.name, "<") == 0
+                || strcmp(exp->def.op.name, ">=") == 0
+                || strcmp(exp->def.op.name, "<=") == 0
+                || strcmp(exp->def.op.name, "+") == 0
+                || strcmp(exp->def.op.name, "*") == 0
+                || strcmp(exp->def.op.name, "/") == 0
+                || strcmp(exp->def.op.name, "%") == 0
+                || strcmp(exp->def.op.name, "power") == 0
+                || strcmp(exp->def.op.name, "atan2") == 0
+                || strcmp(exp->def.op.name, "||") == 0) {
+            return (RDB_bool) (RDB_expr_list_length(&exp->def.op.args) == 2
+                    && explist_user_types(&exp->def.op.args)
+                    && explist_scalar_sql_convertible(&exp->def.op.args));
+        }
+        if (strcmp(exp->def.op.name, "not") == 0
+                || strcmp(exp->def.op.name, "abs") == 0
+                || strcmp(exp->def.op.name, "sqrt") == 0
+                || strcmp(exp->def.op.name, "sin") == 0
+                || strcmp(exp->def.op.name, "cos") == 0
+                || strcmp(exp->def.op.name, "atan") == 0
+                || strcmp(exp->def.op.name, "log") == 0
+                || strcmp(exp->def.op.name, "ln") == 0
+                || strcmp(exp->def.op.name, "power") == 0
+                || strcmp(exp->def.op.name, "exp") == 0
+                || strcmp(exp->def.op.name, "strlen") == 0
+                )
+        {
             return (RDB_bool) (RDB_expr_list_length(&exp->def.op.args) == 1
+                    && explist_user_types(&exp->def.op.args)
                     && scalar_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 0)));
+        }
+        if (strcmp(exp->def.op.name, "-") == 0) {
+            RDB_int len = RDB_expr_list_length(&exp->def.op.args);
+            return (RDB_bool) ((len == 1 || len == 2)
+                    && explist_user_types(&exp->def.op.args)
+                    && explist_scalar_sql_convertible(&exp->def.op.args));
         }
         return RDB_FALSE;
     default: ;
@@ -250,6 +323,45 @@ error:
 }
 
 static int
+op_inv_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+{
+    RDB_object arg;
+    RDB_expression *argexp;
+
+    RDB_init_obj(&arg);
+    if (strcmp(exp->def.op.name, "strlen") == 0) {
+        if (RDB_string_to_obj(sql, "char_length", ecp) != RDB_OK)
+            goto error;
+    } else {
+        if (RDB_string_to_obj(sql, exp->def.op.name, ecp) != RDB_OK)
+            goto error;
+    }
+    if (RDB_append_string(sql, "(", ecp) != RDB_OK)
+        goto error;
+    argexp = exp->def.op.args.firstp;
+    while (argexp != NULL) {
+        if (expr_to_sql(&arg, argexp, ecp) != RDB_OK)
+            goto error;
+        if (RDB_append_string(sql, RDB_obj_string(&arg), ecp) != RDB_OK)
+            goto error;
+        if (argexp->nextp != NULL) {
+            if (RDB_append_char(sql, ',', ecp) != RDB_OK)
+                goto error;
+        }
+        argexp = argexp->nextp;
+    }
+    if (RDB_append_char(sql, ')', ecp) != RDB_OK)
+        goto error;
+
+    RDB_destroy_obj(&arg, ecp);
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&arg, ecp);
+    return RDB_ERROR;
+}
+
+static int
 obj_to_sql(RDB_object *sql, RDB_object *srcp, RDB_exec_context *ecp)
 {
     RDB_object str;
@@ -299,14 +411,43 @@ expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
         }
         if (strcmp(exp->def.op.name, "=") == 0
                 || strcmp(exp->def.op.name, "<>") == 0
+                || strcmp(exp->def.op.name, ">") == 0
+                || strcmp(exp->def.op.name, "<") == 0
+                || strcmp(exp->def.op.name, ">=") == 0
+                || strcmp(exp->def.op.name, "<=") == 0
                 || strcmp(exp->def.op.name, "and") == 0
-                || strcmp(exp->def.op.name, "or") == 0) {
+                || strcmp(exp->def.op.name, "or") == 0
+                || strcmp(exp->def.op.name, "+") == 0
+                || strcmp(exp->def.op.name, "/") == 0
+                || strcmp(exp->def.op.name, "%") == 0
+                || strcmp(exp->def.op.name, "*") == 0
+                || strcmp(exp->def.op.name, "||") == 0) {
             return infix_binop_to_sql(sql, exp, ecp);
         }
         if (strcmp(exp->def.op.name, "not") == 0) {
             return unop_to_sql(sql, exp, ecp);
         }
+        if (strcmp(exp->def.op.name, "-") == 0) {
+            RDB_int len = RDB_expr_list_length(&exp->def.op.args);
+            if (len == 1)
+                return unop_to_sql(sql, exp, ecp);
+            if (len == 2)
+                return infix_binop_to_sql(sql, exp, ecp);
+        }
         RDB_raise_invalid_argument(exp->def.op.name, ecp);
+        if (strcmp(exp->def.op.name, "abs") == 0
+                || strcmp(exp->def.op.name, "sqrt") == 0
+                || strcmp(exp->def.op.name, "sin") == 0
+                || strcmp(exp->def.op.name, "cos") == 0
+                || strcmp(exp->def.op.name, "atan") == 0
+                || strcmp(exp->def.op.name, "atan2") == 0
+                || strcmp(exp->def.op.name, "log") == 0
+                || strcmp(exp->def.op.name, "ln") == 0
+                || strcmp(exp->def.op.name, "power") == 0
+                || strcmp(exp->def.op.name, "exp") == 0
+                || strcmp(exp->def.op.name, "strlen") == 0) {
+            return op_inv_to_sql(sql, exp, ecp);
+        }
         return RDB_ERROR;
     case RDB_EX_OBJ:
         return obj_to_sql(sql, RDB_expr_obj(exp), ecp);

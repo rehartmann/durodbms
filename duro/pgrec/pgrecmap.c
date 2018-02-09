@@ -12,8 +12,10 @@
 #include <pgrec/pgcursor.h>
 #include <obj/excontext.h>
 #include <obj/object.h>
+#include <gen/types.h>
 #include <gen/strfns.h>
 #include <arpa/inet.h>
+#include <string.h>
 
 static RDB_recmap *
 new_pg_recmap(const char *name, RDB_environment *envp,
@@ -180,7 +182,32 @@ RDB_close_pg_recmap(RDB_recmap *rmp, RDB_exec_context *ecp)
 int
 RDB_delete_pg_recmap(RDB_recmap *rmp, RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
-    RDB_raise_not_supported("RDB_delete_pg_recmap", ecp);
+    RDB_object command;
+    PGresult *res;
+
+    RDB_init_obj(&command);
+    if (RDB_string_to_obj(&command, "DROP TABLE ", ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&command, rmp->namp, ecp) != RDB_OK)
+        goto error;
+
+    res = PQexec(rmp->envp->env.pgconn, RDB_obj_string(&command));
+    if (PQresultStatus(res) != PGRES_COMMAND_OK)
+    {
+        RDB_raise_system(PQerrorMessage(rmp->envp->env.pgconn), ecp);
+        PQclear(res);
+        goto error;
+    }
+    PQclear(res);
+    RDB_free(rmp->namp);
+    RDB_free(rmp->filenamp);
+    RDB_free(rmp->fieldinfos);
+    RDB_free(rmp);
+    RDB_destroy_obj(&command, ecp);
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&command, ecp);
     return RDB_ERROR;
 }
 
@@ -188,24 +215,31 @@ static void
 hton(void *p, size_t len)
 {
     uint32_t v = 1;
-    if ((*(char*)&v) == 1) {
+    if ((*(RDB_byte*)&v) == 1) {
         int i;
-        char *cp = p;
-        for (i = 0; i < len; i++)
-            cp[i] = cp[len - 1 - i];
+        RDB_byte *cp = p;
+        RDB_byte h;
+        for (i = 0; i < len / 2; i++) {
+            h = cp[len - 1 - i];
+            cp[len - 1 - i] = cp[i];
+            cp[i] = h;
+        }
     }
 }
 
 void
-RDB_ntoh(void *dstp, void *srcp, size_t len)
+RDB_ntoh(void *dstp, const void *srcp, size_t len)
 {
     uint32_t v = 1;
-    if ((*(char*)&v) == 1) {
+    if ((*(RDB_byte*)&v) == 1) {
         int i;
-        char *srccp = srcp;
-        char *dstcp = dstp;
-        for (i = 0; i < len; i++)
+        const RDB_byte *srccp = srcp;
+        RDB_byte *dstcp = dstp;
+        for (i = 0; i < len; i++) {
             dstcp[i] = srccp[len - 1 - i];
+        }
+    } else {
+        memcpy(dstp, srcp, len);
     }
 }
 

@@ -9,6 +9,8 @@ scons tcl	(optional, builds the Tcl interface)
 scons test	(optional, runs the tests)
 scons install
 
+To build DuroDBMS with PostgreSQL support, add postgresql=true to each invocation.
+
 'scons test' will build the Tcl interface if it has not already been built
 because the tests depend on it. If Tcl is not available, running the tests
 will not be possible. Duroadmin will not be available either.
@@ -16,10 +18,6 @@ will not be possible. Duroadmin will not be available either.
 SCons is available from www.scons.org.
 
 To compile DuroDBMS, you need GNU Libtool and Berkeley DB (6.1 recommended).
-
-To build DuroDBMS with PostgreSQL support, use:
-
-scons postgresql=true
 
 Building the Java interface requires Java Development Kit 8. 
 

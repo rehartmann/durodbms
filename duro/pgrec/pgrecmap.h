@@ -52,6 +52,6 @@ void *
 RDB_field_to_pg(RDB_field *, RDB_field_info *, int *, RDB_exec_context *);
 
 void
-RDB_ntoh(void *, void *, size_t);
+RDB_ntoh(void *, const void *, size_t);
 
 #endif /* PGREC_PGRECMAP_H_ */

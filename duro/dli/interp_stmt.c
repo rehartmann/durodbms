@@ -496,6 +496,7 @@ int
 Duro_commit(Duro_interp *interp, RDB_exec_context *ecp)
 {
     tx_node *ptxnp;
+    int ret;
 
     if (interp->txnp == NULL) {
         RDB_raise_no_running_tx(ecp);
@@ -507,14 +508,13 @@ Duro_commit(Duro_interp *interp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    if (RDB_commit(ecp, &interp->txnp->tx) != RDB_OK)
-        return RDB_ERROR;
+    ret = RDB_commit(ecp, &interp->txnp->tx);
 
     ptxnp = interp->txnp->parentp;
     RDB_free(interp->txnp);
     interp->txnp = ptxnp;
 
-    return RDB_OK;
+    return ret;
 }
 
 static int

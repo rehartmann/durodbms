@@ -176,6 +176,7 @@ pg_cursor_get(RDB_cursor *curp, int fno, void **datapp, size_t *lenp,
         *datapp = &fieldval;
     } else if (RDB_FTYPE_FLOAT & flags) {
         RDB_ntoh(&fieldval, *datapp, sizeof(RDB_float));
+        *datapp = &fieldval;
     }
     return RDB_OK;
 }
