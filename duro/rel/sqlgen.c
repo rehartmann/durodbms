@@ -140,7 +140,10 @@ RDB_sql_convertible(RDB_expression *exp)
                 && scalar_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 1)));
     }
     if (strcmp(exp->def.op.name, "join") == 0
-            || strcmp(exp->def.op.name, "semijoin") == 0) {
+            || strcmp(exp->def.op.name, "semijoin") == 0
+            || strcmp(exp->def.op.name, "union") == 0
+            || strcmp(exp->def.op.name, "intersect") == 0
+            || strcmp(exp->def.op.name, "minus") == 0) {
         return (RDB_bool) (RDB_expr_list_length(&exp->def.op.args) == 2
                 && RDB_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 0))
                 && RDB_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 1)));
@@ -322,19 +325,16 @@ rename_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
 }
 
 static int
-extend_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+add_select_attrs(RDB_object *sql, RDB_expression *exp,
+        RDB_exec_context *ecp)
 {
-    int i;
     RDB_attr *attrs;
     int attrc;
-    RDB_expression *argexp;
-    RDB_object e;
-    RDB_type *typ = RDB_expr_type(exp->def.op.args.firstp, NULL, NULL, NULL, ecp, NULL);
+    int i;
+    RDB_type *typ = RDB_expr_type(exp, NULL, NULL, NULL, ecp, NULL);
     if (typ == NULL) {
-        RDB_raise_invalid_argument("missing type", ecp);
         return RDB_ERROR;
     }
-
     attrs = RDB_type_attrs(typ, &attrc);
     if (attrs == NULL) {
         if (typ == NULL) {
@@ -342,9 +342,6 @@ extend_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
             return RDB_ERROR;
         }
     }
-
-    if (RDB_string_to_obj(sql, "SELECT ", ecp) != RDB_OK)
-        return RDB_ERROR;
     for (i = 0; i < attrc; i++) {
         if (RDB_append_string(sql, "d_", ecp) != RDB_OK)
             return RDB_ERROR;
@@ -355,6 +352,19 @@ extend_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
                 return RDB_ERROR;
         }
     }
+    return RDB_OK;
+}
+
+static int
+extend_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+{
+    RDB_expression *argexp;
+    RDB_object e;
+
+    if (RDB_string_to_obj(sql, "SELECT ", ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (add_select_attrs(sql, exp->def.op.args.firstp, ecp) != RDB_OK)
+        return RDB_ERROR;
     argexp = exp->def.op.args.firstp->nextp;
     RDB_init_obj(&e);
     while (argexp != NULL) {
@@ -454,6 +464,57 @@ join_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
     if (RDB_append_string(sql, " NATURAL JOIN ", ecp) != RDB_OK)
         return RDB_ERROR;
     return append_sub_expr(sql, RDB_expr_list_get(&exp->def.op.args, 1), ecp);
+}
+
+static int
+combine_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+{
+    RDB_object se;
+
+    RDB_init_obj(&se);
+    if (expr_to_sql(&se, RDB_expr_list_get(&exp->def.op.args, 0), ecp) != RDB_OK)
+        goto error;
+    if (RDB_string_to_obj(sql, "", ecp) != RDB_OK)
+        goto error;
+    if (strstr(RDB_obj_string(&se), "SELECT ") != RDB_obj_string(&se)) {
+        if (RDB_append_string(sql, "SELECT ", ecp) != RDB_OK)
+            goto error;
+        if (add_select_attrs(sql, RDB_expr_list_get(&exp->def.op.args, 0), ecp) != RDB_OK)
+            return RDB_ERROR;
+        if (RDB_append_string(sql, " FROM ", ecp) != RDB_OK)
+            goto error;
+    }
+    if (RDB_append_string(sql, RDB_obj_string(&se), ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_char(sql, ' ', ecp) != RDB_OK)
+        goto error;
+    if (strcmp(exp->def.op.name, "minus") == 0) {
+        if (RDB_append_string(sql, "EXCEPT", ecp) != RDB_OK)
+            goto error;
+    } else {
+        if (RDB_append_string(sql, exp->def.op.name, ecp) != RDB_OK)
+            goto error;
+    }
+    if (RDB_append_char(sql, ' ', ecp) != RDB_OK)
+        goto error;
+    if (expr_to_sql(&se, RDB_expr_list_get(&exp->def.op.args, 1), ecp) != RDB_OK)
+        goto error;
+    if (strstr(RDB_obj_string(&se), "SELECT ") != RDB_obj_string(&se)) {
+        if (RDB_append_string(sql, "SELECT ", ecp) != RDB_OK)
+            goto error;
+        if (add_select_attrs(sql, RDB_expr_list_get(&exp->def.op.args, 0), ecp) != RDB_OK)
+            return RDB_ERROR;
+        if (RDB_append_string(sql, " FROM ", ecp) != RDB_OK)
+            goto error;
+    }
+    if (RDB_append_string(sql, RDB_obj_string(&se), ecp) != RDB_OK)
+        goto error;
+    RDB_destroy_obj(&se, ecp);
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&se, ecp);
+    return RDB_ERROR;
 }
 
 static int
@@ -616,6 +677,11 @@ expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
         if (strcmp(exp->def.op.name, "join") == 0
                 || strcmp(exp->def.op.name, "semijoin") == 0) {
             return join_to_sql(sql, exp, ecp);
+        }
+        if (strcmp(exp->def.op.name, "union") == 0
+                || strcmp(exp->def.op.name, "intersect") == 0
+                || strcmp(exp->def.op.name, "minus") == 0) {
+            return combine_to_sql(sql, exp, ecp);
         }
         if (strcmp(exp->def.op.name, "extend") == 0) {
             return extend_to_sql(sql, exp, ecp);

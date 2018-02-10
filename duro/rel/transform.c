@@ -23,6 +23,10 @@ RDB_exprs_compl(const RDB_expression *ex1p, const RDB_expression *ex2p,
 {
     *resp = RDB_FALSE;
 
+    if (ex1p->kind != RDB_EX_RO_OP || ex2p->kind != RDB_EX_RO_OP) {
+        return RDB_OK;
+    }
+
     if (strcmp(ex2p->def.op.name, "not") == 0) {
         if (RDB_expr_equals(ex1p, ex2p->def.op.args.firstp, ecp, txp, resp)
                 != RDB_OK)
