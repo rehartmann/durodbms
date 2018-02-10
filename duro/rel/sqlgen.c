@@ -97,8 +97,7 @@ scalar_sql_convertible(RDB_expression *exp)
                 || strcmp(exp->def.op.name, "ln") == 0
                 || strcmp(exp->def.op.name, "power") == 0
                 || strcmp(exp->def.op.name, "exp") == 0
-                || strcmp(exp->def.op.name, "strlen") == 0
-                )
+                || strcmp(exp->def.op.name, "strlen") == 0)
         {
             return (RDB_bool) (RDB_expr_list_length(&exp->def.op.args) == 1
                     && explist_user_types(&exp->def.op.args)
@@ -126,19 +125,46 @@ RDB_sql_convertible(RDB_expression *exp)
     if (exp->kind != RDB_EX_RO_OP)
         return RDB_FALSE;
     if (strcmp(exp->def.op.name, "project") == 0) {
-        RDB_expression *tbexp = RDB_expr_list_get(&exp->def.op.args, 0);
-        return tbexp != NULL && RDB_sql_convertible(tbexp)
-                && RDB_expr_list_length(&exp->def.op.args) >= 2;
+        if (RDB_expr_list_length(&exp->def.op.args) < 2)
+            return RDB_FALSE;
+        return (RDB_bool) RDB_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 0));
+    }
+    if (strcmp(exp->def.op.name, "rename") == 0) {
+        if (RDB_expr_list_length(&exp->def.op.args) < 3)
+            return RDB_FALSE;
+        return (RDB_bool) RDB_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 0));
     }
     if (strcmp(exp->def.op.name, "where") == 0) {
         return (RDB_bool) (RDB_expr_list_length(&exp->def.op.args) == 2
                 && RDB_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 0))
                 && scalar_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 1)));
     }
-    if (strcmp(exp->def.op.name, "join") == 0) {
+    if (strcmp(exp->def.op.name, "join") == 0
+            || strcmp(exp->def.op.name, "semijoin") == 0) {
         return (RDB_bool) (RDB_expr_list_length(&exp->def.op.args) == 2
                 && RDB_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 0))
                 && RDB_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 1)));
+    }
+    if (strcmp(exp->def.op.name, "extend") == 0) {
+        RDB_expression *argexp;
+
+        if (RDB_expr_list_length(&exp->def.op.args) == 0
+                || !RDB_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 0)))
+            return RDB_FALSE;
+        argexp = exp->def.op.args.firstp->nextp;
+        while (argexp != NULL) {
+            RDB_object *objp;
+            if (!scalar_sql_convertible(argexp))
+                return RDB_FALSE;
+            argexp = argexp->nextp;
+            if (argexp == NULL)
+                return RDB_FALSE;
+            objp = RDB_expr_obj(argexp);
+            if (objp == NULL || RDB_obj_type(objp) != &RDB_STRING)
+                return RDB_FALSE;
+            argexp = argexp->nextp;
+        }
+        return RDB_TRUE;
     }
     return RDB_FALSE;
 }
@@ -223,6 +249,146 @@ project_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
+static char *
+find_renaming(RDB_expr_list *explistp, const char *attrname)
+{
+    RDB_expression *exp = explistp->firstp->nextp;
+    while (exp != NULL) {
+        RDB_object *fromobjp, *toobjp;
+        RDB_expression *toexp = exp->nextp;
+        if (toexp == NULL) {
+            return NULL;
+        }
+        fromobjp = RDB_expr_obj(exp);
+        toobjp = RDB_expr_obj(toexp);
+        if (fromobjp != NULL && toobjp != NULL
+                && RDB_obj_type(fromobjp) == &RDB_STRING
+                && RDB_obj_type(toobjp) == &RDB_STRING
+                && strcmp(RDB_obj_string(fromobjp), attrname) == 0) {
+            return RDB_obj_string(toobjp);
+        }
+        exp = toexp->nextp;
+    }
+    return NULL;
+}
+
+static int
+rename_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+{
+    int i;
+    RDB_attr *attrs;
+    int attrc;
+    RDB_type *typ = RDB_expr_type(exp->def.op.args.firstp, NULL, NULL, NULL, ecp, NULL);
+    if (typ == NULL) {
+        RDB_raise_invalid_argument("missing type", ecp);
+        return RDB_ERROR;
+    }
+
+    attrs = RDB_type_attrs(typ, &attrc);
+    if (attrs == NULL) {
+        if (typ == NULL) {
+            RDB_raise_invalid_argument("invalid 1st argument to rename", ecp);
+            return RDB_ERROR;
+        }
+    }
+
+    if (RDB_string_to_obj(sql, "SELECT ", ecp) != RDB_OK)
+        return RDB_ERROR;
+    for (i = 0; i < attrc; i++) {
+        char *toname;
+
+        if (RDB_append_string(sql, "d_", ecp) != RDB_OK)
+            return RDB_ERROR;
+        if (RDB_append_string(sql, attrs[i].name, ecp) != RDB_OK)
+            return RDB_ERROR;
+        toname = find_renaming(&exp->def.op.args, attrs[i].name);
+        if (toname != NULL) {
+            if (RDB_append_string(sql, " AS d_", ecp) != RDB_OK)
+                return RDB_ERROR;
+            if (RDB_append_string(sql, toname, ecp) != RDB_OK)
+                return RDB_ERROR;
+        }
+        if (i < attrc - 1) {
+            if (RDB_append_char(sql, ',', ecp) != RDB_OK)
+                return RDB_ERROR;
+        }
+    }
+    if (RDB_append_string(sql, " FROM ", ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (append_sub_expr(sql, RDB_expr_list_get(&exp->def.op.args, 0), ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int
+extend_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+{
+    int i;
+    RDB_attr *attrs;
+    int attrc;
+    RDB_expression *argexp;
+    RDB_object e;
+    RDB_type *typ = RDB_expr_type(exp->def.op.args.firstp, NULL, NULL, NULL, ecp, NULL);
+    if (typ == NULL) {
+        RDB_raise_invalid_argument("missing type", ecp);
+        return RDB_ERROR;
+    }
+
+    attrs = RDB_type_attrs(typ, &attrc);
+    if (attrs == NULL) {
+        if (typ == NULL) {
+            RDB_raise_invalid_argument("invalid 1st argument to rename", ecp);
+            return RDB_ERROR;
+        }
+    }
+
+    if (RDB_string_to_obj(sql, "SELECT ", ecp) != RDB_OK)
+        return RDB_ERROR;
+    for (i = 0; i < attrc; i++) {
+        if (RDB_append_string(sql, "d_", ecp) != RDB_OK)
+            return RDB_ERROR;
+        if (RDB_append_string(sql, attrs[i].name, ecp) != RDB_OK)
+            return RDB_ERROR;
+        if (i < attrc - 1) {
+            if (RDB_append_char(sql, ',', ecp) != RDB_OK)
+                return RDB_ERROR;
+        }
+    }
+    argexp = exp->def.op.args.firstp->nextp;
+    RDB_init_obj(&e);
+    while (argexp != NULL) {
+        if (RDB_append_char(sql, ',', ecp) != RDB_OK)
+            return RDB_ERROR;
+
+        if (expr_to_sql(&e, argexp, ecp) != RDB_OK) {
+            RDB_destroy_obj(&e, ecp);
+            return RDB_ERROR;
+        }
+        if (RDB_append_string(sql, RDB_obj_string(&e), ecp) != RDB_OK) {
+            RDB_destroy_obj(&e, ecp);
+            return RDB_ERROR;
+        }
+
+        if (RDB_append_string(sql, " AS d_", ecp) != RDB_OK)
+            return RDB_ERROR;
+
+        argexp = argexp->nextp;
+        if (RDB_append_string(sql, RDB_obj_string(RDB_expr_obj(argexp)), ecp) != RDB_OK)
+            return RDB_ERROR;
+
+        argexp = argexp->nextp;
+    }
+    RDB_destroy_obj(&e, ecp);
+
+    if (RDB_append_string(sql, " FROM ", ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (append_sub_expr(sql, RDB_expr_list_get(&exp->def.op.args, 0), ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
 static int
 where_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
 {
@@ -251,7 +417,37 @@ where_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
 static int
 join_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
 {
-    if (RDB_string_to_obj(sql, "SELECT * FROM ", ecp) != RDB_OK)
+    if (RDB_string_to_obj(sql, "SELECT ", ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (strcmp(exp->def.op.name, "semijoin") == 0) {
+        RDB_attr *attrs;
+        int attrc;
+        int i;
+        RDB_type *typ = RDB_expr_type(exp->def.op.args.firstp, NULL, NULL, NULL,
+                ecp, NULL);
+        if (typ == NULL) {
+            return RDB_ERROR;
+        }
+        attrs = RDB_type_attrs(typ, &attrc);
+        if (attrs == NULL) {
+            RDB_raise_internal("Unable to get relation attributes", ecp);
+            return RDB_ERROR;
+        }
+        for (i = 0; i < attrc; i++) {
+            if (RDB_append_string(sql, "d_", ecp) != RDB_OK)
+                return RDB_ERROR;
+            if (RDB_append_string(sql, attrs[i].name, ecp) != RDB_OK)
+                return RDB_ERROR;
+            if (i < attrc - 1) {
+                if (RDB_append_char(sql, ',', ecp) != RDB_OK)
+                    return RDB_ERROR;
+            }
+        }
+    } else {
+        if (RDB_append_char(sql, '*', ecp) != RDB_OK)
+            return RDB_ERROR;
+    }
+    if (RDB_append_string(sql, " FROM ", ecp) != RDB_OK)
         return RDB_ERROR;
     if (append_sub_expr(sql, RDB_expr_list_get(&exp->def.op.args, 0), ecp) != RDB_OK)
         return RDB_ERROR;
@@ -366,6 +562,7 @@ obj_to_sql(RDB_object *sql, RDB_object *srcp, RDB_exec_context *ecp)
 {
     RDB_object str;
     int is_string = RDB_obj_type(srcp) == &RDB_STRING;
+    int is_float = RDB_obj_type(srcp) == &RDB_FLOAT;
 
     RDB_init_obj(&str);
     if (RDB_obj_to_string(&str, srcp, ecp) != RDB_OK)
@@ -373,10 +570,18 @@ obj_to_sql(RDB_object *sql, RDB_object *srcp, RDB_exec_context *ecp)
 
     if (RDB_string_to_obj(sql, is_string ? "'" : "", ecp) != RDB_OK)
         return RDB_ERROR;
+    if (is_float) {
+        if (RDB_append_string(sql, "CAST (", ecp) != RDB_OK)
+            return RDB_ERROR;
+    }
     if (RDB_append_string(sql, RDB_obj_string(&str), ecp) != RDB_OK)
         return RDB_ERROR;
     if (is_string) {
         if (RDB_append_char(sql, '\'', ecp) != RDB_OK)
+            return RDB_ERROR;
+    }
+    if (is_float) {
+        if (RDB_append_string(sql, " AS DOUBLE PRECISION)", ecp) != RDB_OK)
             return RDB_ERROR;
     }
     RDB_destroy_obj(&str, ecp);
@@ -390,7 +595,6 @@ error:
 static int
 expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
 {
-
     switch (exp->kind)
     {
     case RDB_EX_VAR:
@@ -403,11 +607,18 @@ expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
         if (strcmp(exp->def.op.name, "project") == 0) {
             return project_to_sql(sql, exp, ecp);
         }
+        if (strcmp(exp->def.op.name, "rename") == 0) {
+            return rename_to_sql(sql, exp, ecp);
+        }
         if (strcmp(exp->def.op.name, "where") == 0) {
             return where_to_sql(sql, exp, ecp);
         }
-        if (strcmp(exp->def.op.name, "join") == 0) {
+        if (strcmp(exp->def.op.name, "join") == 0
+                || strcmp(exp->def.op.name, "semijoin") == 0) {
             return join_to_sql(sql, exp, ecp);
+        }
+        if (strcmp(exp->def.op.name, "extend") == 0) {
+            return extend_to_sql(sql, exp, ecp);
         }
         if (strcmp(exp->def.op.name, "=") == 0
                 || strcmp(exp->def.op.name, "<>") == 0
