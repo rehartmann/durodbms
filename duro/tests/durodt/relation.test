@@ -84,6 +84,9 @@ test insert_delete {creating table, insert, delete} \
         var t init tuple {i 2 + 1, d 1.0, c 'Z'};
         insert r update t : {i := i + 1};
 
+        -- With this it does not work because i resolves against the table
+        -- var i real rel {int i};
+
         io.put_line(cast_as_string(count(r)));
         io.put_line(cast_as_string(count(s)));
         io.put_line((tuple from r where i=2).c);
@@ -328,6 +331,10 @@ test extend {EXTEND} -setup $SETUP -cleanup $CLEANUP -body {
 
         begin transaction;
 
+        -- Tables with same name as attributes
+        var b real relation { a int };
+        var c real relation { a int };
+
         var t1 real relation { a int, b string, c int }
         		init relation { tuple {a 1, b 'x', c 1},
         		        tuple {a 2, b 'yo', c 10} } key { a };
@@ -343,8 +350,10 @@ test extend {EXTEND} -setup $SETUP -cleanup $CLEANUP -body {
 
         commit;
 
-        -- Test insert, delete
+        -- Test query, insert, delete
         begin tx;
+
+        io.put_line((tuple from (extend t1: {bb := b || b} where a = 1)).bb);
 
         insert t2x rel { tup { a 3, b 'u', c 1, bx 'uu', cx 101 } };
 
@@ -387,6 +396,7 @@ test extend {EXTEND} -setup $SETUP -cleanup $CLEANUP -body {
     }
 } -result {1 xx 101
 2 yoyo 110
+xx
 4 t t  1100
 }
 

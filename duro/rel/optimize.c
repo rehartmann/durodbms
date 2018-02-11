@@ -931,7 +931,33 @@ dup_ro_op_expr_deep(const RDB_expression *exp, RDB_exec_context *ecp,
             return NULL;
         }
         RDB_add_arg(newexp, nargp);
+    } else if (strcmp(exp->def.op.name, "extend") == 0
+           || RDB_expr_is_binop(exp, "where")) {
+        /* In the case of extend and where, only do deep copy on 1st argument */
+        argp = exp->def.op.args.firstp;
+        if (argp != NULL) {
+            nargp = dup_expr_deep(argp, ecp, txp);
+            if (nargp == NULL) {
+                RDB_del_expr(newexp, ecp);
+                return NULL;
+            }
+            RDB_add_arg(newexp, nargp);
+            argp = argp->nextp;
+            while (argp != NULL) {
+                nargp = RDB_dup_expr(argp, ecp);
+                if (nargp == NULL) {
+                    RDB_del_expr(newexp, ecp);
+                    return NULL;
+                }
+                RDB_add_arg(newexp, nargp);
+                argp = argp->nextp;
+            }
+        }
     } else {
+        if (strcmp(exp->def.op.name, "where") == 0) {
+            /* puts("Da!"); */
+        }
+
         argp = exp->def.op.args.firstp;
         while (argp != NULL) {
             nargp = dup_expr_deep(argp, ecp, txp);
@@ -982,30 +1008,33 @@ dup_expr_deep(const RDB_expression *exp, RDB_exec_context *ecp,
          * If the name refers to a virtual table, convert it
          * to its defining expression
          */
-         newexp = NULL;
-         if (txp != NULL
-                 && (exp->typ == NULL || RDB_type_is_relation(exp->typ))) {
-             RDB_object *tbp = RDB_get_table(RDB_expr_var_name(exp),
-                     ecp, txp);
-             if (tbp != NULL) {
-                 if (RDB_table_is_real(tbp)) {
-                     newexp = RDB_table_ref(tbp, ecp);
-                 } else {
-                     newexp = dup_expr_deep(RDB_vtable_expr(tbp), ecp, txp);
-                 }
-                 if (newexp == NULL)
-                     return NULL;
-             } else {
-                 if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NAME_ERROR) {
-                     /* Ignore error */
-                 } else {
-                     return NULL;
-                 }
-             }
-         }
-         if (newexp == NULL)
-             newexp = RDB_var_ref(RDB_expr_var_name(exp), ecp);
-         break;
+        if (strcmp(RDB_expr_var_name(exp), "names") == 0) {
+            /* puts("Dort!"); */
+        }
+        newexp = NULL;
+        if (txp != NULL
+                && (exp->typ == NULL || RDB_type_is_relation(exp->typ))) {
+            RDB_object *tbp = RDB_get_table(RDB_expr_var_name(exp),
+                    ecp, txp);
+            if (tbp != NULL) {
+                if (RDB_table_is_real(tbp)) {
+                    newexp = RDB_table_ref(tbp, ecp);
+                } else {
+                    newexp = dup_expr_deep(RDB_vtable_expr(tbp), ecp, txp);
+                }
+                if (newexp == NULL)
+                    return NULL;
+            } else {
+                if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NAME_ERROR) {
+                    /* Ignore error */
+                } else {
+                    return NULL;
+                }
+            }
+        }
+        if (newexp == NULL)
+            newexp = RDB_var_ref(RDB_expr_var_name(exp), ecp);
+        break;
     }
     if (newexp == NULL)
         return NULL;

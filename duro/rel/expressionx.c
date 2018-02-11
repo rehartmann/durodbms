@@ -37,10 +37,12 @@ RDB_expr_resolve_varnames(RDB_expression *exp, RDB_getobjfn *getfnp,
         if (newexp == NULL)
             return NULL;
 
-        /* Perform resolve on all arguments */
-        argp = exp->def.op.args.firstp;
-        while (argp != NULL) {
-            RDB_expression *argexp = RDB_expr_resolve_varnames(
+        if (strcmp(exp->def.op.name, "extend") == 0
+                && exp->def.op.args.firstp != NULL) {
+            /* For extend, perform resolve only on 1st argument */
+            RDB_expression *argexp;
+            argp = exp->def.op.args.firstp;
+            argexp = RDB_expr_resolve_varnames(
                     argp, getfnp, getdata, ecp, txp);
             if (argexp == NULL) {
                 RDB_del_expr(newexp, ecp);
@@ -48,8 +50,29 @@ RDB_expr_resolve_varnames(RDB_expression *exp, RDB_getobjfn *getfnp,
             }
             RDB_add_arg(newexp, argexp);
             argp = argp->nextp;
+            while (argp != NULL) {
+                argexp = RDB_dup_expr(argp, ecp);
+                if (argexp == NULL) {
+                    RDB_del_expr(newexp, ecp);
+                    return NULL;
+                }
+                RDB_add_arg(newexp, argexp);
+                argp = argp->nextp;
+            }
+        } else {
+            /* Perform resolve on all arguments */
+            argp = exp->def.op.args.firstp;
+            while (argp != NULL) {
+                RDB_expression *argexp = RDB_expr_resolve_varnames(
+                        argp, getfnp, getdata, ecp, txp);
+                if (argexp == NULL) {
+                    RDB_del_expr(newexp, ecp);
+                    return NULL;
+                }
+                RDB_add_arg(newexp, argexp);
+                argp = argp->nextp;
+            }
         }
-
         /*
          * Duplicate type of RELATION() because otherwise the type information
          * is lost

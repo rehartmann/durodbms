@@ -602,19 +602,31 @@ RDB_dup_expr(const RDB_expression *exp, RDB_exec_context *ecp)
 
     switch (exp->kind) {
     case RDB_EX_RO_OP:
-        return dup_ro_op(exp, ecp);
+        newexp = dup_ro_op(exp, ecp);
+        break;
     case RDB_EX_OBJ:
-        return RDB_obj_to_expr(&exp->def.obj, ecp);
+        newexp = RDB_obj_to_expr(&exp->def.obj, ecp);
+        break;
     case RDB_EX_TBP:
         newexp = RDB_table_ref(exp->def.tbref.tbp, ecp);
         if (newexp == NULL)
             return NULL;
         newexp->def.tbref.indexp = exp->def.tbref.indexp;
-        return newexp;
+        break;
     case RDB_EX_VAR:
-        return RDB_var_ref(exp->def.varname, ecp);
+        newexp = RDB_var_ref(exp->def.varname, ecp);
     }
-    abort();
+    if (newexp == NULL)
+        return NULL;
+
+    if (exp->typ != NULL) {
+        newexp->typ = RDB_dup_nonscalar_type(exp->typ, ecp);
+        if (newexp->typ == NULL) {
+            RDB_del_expr(newexp, ecp);
+            return NULL;
+        }
+    }
+    return newexp;
 }
 
 /**
