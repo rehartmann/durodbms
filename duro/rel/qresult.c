@@ -379,10 +379,10 @@ summarize_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     RDB_type *tb1typ;
     RDB_type *tb2typ = NULL;
     RDB_type *reltyp = NULL;
+    RDB_object *matp = NULL;
 
     key.strv = NULL;
 
-    qrp->matp = NULL;
     qrp->exp = exp;
     qrp->nested = RDB_FALSE;
 
@@ -440,14 +440,15 @@ summarize_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     }
 
     /* Create materialized table */
-    qrp->matp = RDB_new_obj(ecp);
-    if (qrp->matp == NULL)
+    matp = RDB_new_obj(ecp);
+    if (matp == NULL)
         goto error;
 
-    if (RDB_init_table_i(qrp->matp, NULL, RDB_FALSE, reltyp, 1, &key,
+    if (RDB_init_table_i(matp, NULL, RDB_FALSE, reltyp, 1, &key,
             0, NULL, RDB_TRUE, NULL, ecp) != RDB_OK)
         goto error;
 
+    qrp->matp = matp;
     if (init_summ_table(qrp, tb1typ, hasavg, ecp, txp) != RDB_OK) {
         goto error;
     }
@@ -457,17 +458,18 @@ summarize_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
         goto error;
     }
 
-    if (RDB_init_stored_qresult(qrp, qrp->matp, NULL, ecp, txp) != RDB_OK) {
+    if (RDB_init_stored_qresult(qrp, matp, NULL, ecp, txp) != RDB_OK) {
         goto error;
     }
+    qrp->matp = matp;
 
     RDB_free(key.strv);
     return RDB_OK;
 
 error:
     RDB_free(key.strv);
-    if (qrp->matp != NULL) {
-        RDB_drop_table(qrp->matp, ecp, txp);
+    if (matp != NULL) {
+        RDB_drop_table(matp, ecp, txp);
     } else if (reltyp != NULL) {
         RDB_del_nonscalar_type(reltyp, ecp);
     }
@@ -646,6 +648,7 @@ group_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     int keyc;
     int ret;
     RDB_bool freekeys;
+    RDB_object *matp = NULL;
     RDB_type *reltyp = RDB_expr_type(exp, NULL, NULL, NULL, ecp, txp);
     if (reltyp == NULL)
         return RDB_ERROR;
@@ -660,38 +663,40 @@ group_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     }
 
     /* create materialized table */
-    qrp->matp = RDB_new_obj(ecp);
-    if (qrp->matp == NULL) {
-        RDB_free_obj(qrp->matp, ecp);
+    matp = RDB_new_obj(ecp);
+    if (matp == NULL) {
+        RDB_free_obj(matp, ecp);
         return RDB_ERROR;
     }
 
     reltyp = RDB_dup_nonscalar_type(reltyp, NULL);
     if (reltyp == NULL) {
-        RDB_free_obj(qrp->matp, ecp);
+        RDB_free_obj(matp, ecp);
         return RDB_ERROR;
     }
 
-    ret = RDB_init_table_i(qrp->matp, NULL, RDB_FALSE, reltyp,
+    ret = RDB_init_table_i(matp, NULL, RDB_FALSE, reltyp,
             keyc, keyv, 0, NULL, RDB_TRUE, NULL, ecp);
     if (freekeys)
         RDB_free_keys(keyc, keyv);
     if (ret != RDB_OK) {
         RDB_del_nonscalar_type(reltyp, ecp);
-        RDB_drop_table(qrp->matp, ecp, txp);
+        RDB_drop_table(matp, ecp, txp);
         return RDB_ERROR;
     }
 
     /* do the grouping */
+    qrp->matp = matp;
     if (do_group(qrp, ecp, txp) != RDB_OK) {
-        RDB_drop_table(qrp->matp, ecp, txp);
+        RDB_drop_table(matp, ecp, txp);
         return RDB_ERROR;
     }
 
-    if (RDB_init_stored_qresult(qrp, qrp->matp, NULL, ecp, txp) != RDB_OK) {
-        RDB_drop_table(qrp->matp, ecp, txp);
+    if (RDB_init_stored_qresult(qrp, matp, NULL, ecp, txp) != RDB_OK) {
+        RDB_drop_table(matp, ecp, txp);
         return RDB_ERROR;
     }
+    qrp->matp = matp;
 
     return RDB_OK;
 }
@@ -807,21 +812,23 @@ static int
 init_eval_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    qrp->matp = RDB_new_obj(ecp);
-    if (qrp->matp == NULL)
+    RDB_object *matp = RDB_new_obj(ecp);
+    if (matp == NULL)
         return RDB_ERROR;
 
-    RDB_init_obj(qrp->matp);
-    if (RDB_evaluate(exp, NULL, NULL, NULL, ecp, txp, qrp->matp) != RDB_OK)
+    RDB_init_obj(matp);
+    if (RDB_evaluate(exp, NULL, NULL, NULL, ecp, txp, matp) != RDB_OK)
         goto error;
 
     qrp->endreached = RDB_FALSE;
 
-    return RDB_init_stored_qresult(qrp, qrp->matp, NULL, ecp, txp);
+    if (RDB_init_stored_qresult(qrp, matp, NULL, ecp, txp) != RDB_OK)
+        goto error;
+    qrp->matp = matp;
+    return RDB_OK;
 
 error:
-    RDB_free(qrp->matp);
-    qrp->matp = NULL;
+    RDB_free(matp);
     return RDB_ERROR;
 }
 
@@ -924,7 +931,7 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
                 return RDB_ERROR;
             qrp->val.children.qr2p = NULL;
         }
-        return RDB_OK;        
+        return RDB_OK;
     }
     if ((strcmp(exp->def.op.name, "where") == 0)
             || (strcmp(exp->def.op.name, "union") == 0)
