@@ -1263,6 +1263,7 @@ RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
     RDB_qresult *tmpqrp;
     RDB_object tpl;
     RDB_type *typ = NULL;
+    RDB_object *matp = NULL;
     RDB_qresult *qrp = RDB_alloc(sizeof (RDB_qresult), ecp);
     if (qrp == NULL) {
         return RDB_ERROR;
@@ -1300,14 +1301,14 @@ RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
     if (typ == NULL)
         goto error;
 
-    qrp->matp = RDB_new_rtable(NULL, RDB_FALSE,
+    matp = RDB_new_rtable(NULL, RDB_FALSE,
             typ, 1, &key, 0, NULL, RDB_TRUE, ecp);
-    if (qrp->matp == NULL) {
+    if (matp == NULL) {
         RDB_del_nonscalar_type(typ, ecp);
         goto error;
     }
 
-    if (RDB_create_stored_table(qrp->matp,
+    if (RDB_create_stored_table(matp,
             txp!= NULL ? txp->dbp->dbrootp->envp : NULL, ascv, ecp, txp) != RDB_OK)
         goto error;
 
@@ -1326,7 +1327,7 @@ RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
      */
     RDB_init_obj(&tpl);
     while ((ret = RDB_next_tuple(tmpqrp, &tpl, ecp, txp)) == RDB_OK) {
-        ret = RDB_insert(qrp->matp, &tpl, ecp, NULL);
+        ret = RDB_insert(matp, &tpl, ecp, NULL);
         if (ret != RDB_OK) {
             if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_ELEMENT_EXISTS_ERROR) {
                 RDB_destroy_obj(&tpl, ecp);
@@ -1345,9 +1346,10 @@ RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         goto error;
 
-    ret = RDB_init_stored_qresult(qrp, qrp->matp, NULL, ecp, txp);
+    ret = RDB_init_stored_qresult(qrp, matp, NULL, ecp, txp);
     if (ret != RDB_OK)
         goto error;
+    qrp->matp = matp;
 
     RDB_free(key.strv);
     RDB_free(ascv);
@@ -1360,8 +1362,8 @@ error:
         RDB_free(key.strv);
     if (ascv != NULL)
         RDB_free(ascv);
-    if (qrp->matp != NULL)
-        RDB_drop_table(qrp->matp, ecp, NULL);
+    if (matp != NULL)
+        RDB_drop_table(matp, ecp, NULL);
     RDB_free(qrp);
 
     return RDB_ERROR;
