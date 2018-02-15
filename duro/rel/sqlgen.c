@@ -97,7 +97,10 @@ scalar_sql_convertible(RDB_expression *exp)
                 || strcmp(exp->def.op.name, "ln") == 0
                 || strcmp(exp->def.op.name, "power") == 0
                 || strcmp(exp->def.op.name, "exp") == 0
-                || strcmp(exp->def.op.name, "strlen") == 0)
+                || strcmp(exp->def.op.name, "strlen") == 0
+                || strcmp(exp->def.op.name, "cast_as_integer") == 0
+                || strcmp(exp->def.op.name, "cast_as_float") == 0
+                || strcmp(exp->def.op.name, "cast_as_string") == 0)
         {
             return (RDB_bool) (RDB_expr_list_length(&exp->def.op.args) == 1
                     && explist_user_types(&exp->def.op.args)
@@ -619,6 +622,40 @@ error:
 }
 
 static int
+cast_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+{
+    RDB_object arg;
+    const char *type = exp->def.op.name + 8;
+
+    RDB_init_obj(&arg);
+    if (strcmp(type, "float") == 0) {
+        type = "double precision";
+    } else if (strcmp(type, "string") == 0) {
+        type = "text";
+    }
+
+    if (RDB_string_to_obj(sql, "cast(", ecp) != RDB_OK)
+        goto error;
+    if (expr_to_sql(&arg, exp->def.op.args.firstp, ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(sql, RDB_obj_string(&arg), ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(sql, " AS ", ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(sql, type, ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_char(sql, ')', ecp) != RDB_OK)
+        goto error;
+
+    RDB_destroy_obj(&arg, ecp);
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&arg, ecp);
+    return RDB_ERROR;
+}
+
+static int
 obj_to_sql(RDB_object *sql, RDB_object *srcp, RDB_exec_context *ecp)
 {
     RDB_object str;
@@ -711,7 +748,6 @@ expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
             if (len == 2)
                 return infix_binop_to_sql(sql, exp, ecp);
         }
-        RDB_raise_invalid_argument(exp->def.op.name, ecp);
         if (strcmp(exp->def.op.name, "abs") == 0
                 || strcmp(exp->def.op.name, "sqrt") == 0
                 || strcmp(exp->def.op.name, "sin") == 0
@@ -725,6 +761,12 @@ expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
                 || strcmp(exp->def.op.name, "strlen") == 0) {
             return op_inv_to_sql(sql, exp, ecp);
         }
+        if (strcmp(exp->def.op.name, "cast_as_integer") == 0
+                || strcmp(exp->def.op.name, "cast_as_float") == 0
+                || strcmp(exp->def.op.name, "cast_as_string") == 0) {
+            return cast_to_sql(sql, exp, ecp);
+        }
+        RDB_raise_invalid_argument(exp->def.op.name, ecp);
         return RDB_ERROR;
     case RDB_EX_OBJ:
         return obj_to_sql(sql, RDB_expr_obj(exp), ecp);
