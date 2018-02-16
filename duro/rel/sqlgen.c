@@ -98,11 +98,17 @@ scalar_sql_convertible(RDB_expression *exp)
                 || strcmp(exp->def.op.name, "power") == 0
                 || strcmp(exp->def.op.name, "exp") == 0
                 || strcmp(exp->def.op.name, "strlen") == 0
+                || strcmp(exp->def.op.name, "strlen_b") == 0
                 || strcmp(exp->def.op.name, "cast_as_integer") == 0
                 || strcmp(exp->def.op.name, "cast_as_float") == 0
                 || strcmp(exp->def.op.name, "cast_as_string") == 0)
         {
             return (RDB_bool) (RDB_expr_list_length(&exp->def.op.args) == 1
+                    && explist_user_types(&exp->def.op.args)
+                    && scalar_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 0)));
+        }
+        if (strcmp(exp->def.op.name, "substr") == 0) {
+            return (RDB_bool) (RDB_expr_list_length(&exp->def.op.args) == 3
                     && explist_user_types(&exp->def.op.args)
                     && scalar_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 0)));
         }
@@ -583,6 +589,45 @@ error:
 }
 
 static int
+substr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+{
+    RDB_object arg;
+    RDB_expression *argexp;
+
+    RDB_init_obj(&arg);
+    if (RDB_string_to_obj(sql, "substring(", ecp) != RDB_OK)
+        goto error;
+    argexp = exp->def.op.args.firstp;
+    if (expr_to_sql(&arg, argexp, ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(sql, RDB_obj_string(&arg), ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(sql, " from 1+", ecp) != RDB_OK)
+        goto error;
+    argexp = argexp->nextp;
+    if (expr_to_sql(&arg, argexp, ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(sql, RDB_obj_string(&arg), ecp) != RDB_OK)
+        goto error;
+    argexp = argexp->nextp;
+    if (RDB_append_string(sql, " for ", ecp) != RDB_OK)
+        goto error;
+    if (expr_to_sql(&arg, argexp, ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(sql, RDB_obj_string(&arg), ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_char(sql, ')', ecp) != RDB_OK)
+        goto error;
+
+    RDB_destroy_obj(&arg, ecp);
+    return RDB_OK;
+
+    error:
+    RDB_destroy_obj(&arg, ecp);
+    return RDB_ERROR;
+}
+
+static int
 op_inv_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
 {
     RDB_object arg;
@@ -592,7 +637,10 @@ op_inv_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
     if (strcmp(exp->def.op.name, "strlen") == 0) {
         if (RDB_string_to_obj(sql, "char_length", ecp) != RDB_OK)
             goto error;
-    } else {
+    } else if (strcmp(exp->def.op.name, "strlen_b") == 0) {
+        if (RDB_string_to_obj(sql, "octet_length", ecp) != RDB_OK)
+            goto error;
+     } else {
         if (RDB_string_to_obj(sql, exp->def.op.name, ecp) != RDB_OK)
             goto error;
     }
@@ -765,6 +813,9 @@ expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
                 || strcmp(exp->def.op.name, "cast_as_float") == 0
                 || strcmp(exp->def.op.name, "cast_as_string") == 0) {
             return cast_to_sql(sql, exp, ecp);
+        }
+        if (strcmp(exp->def.op.name, "substr") == 0) {
+            return substr_to_sql(sql, exp, ecp);
         }
         RDB_raise_invalid_argument(exp->def.op.name, ecp);
         return RDB_ERROR;
