@@ -10,20 +10,28 @@
 #include <obj/objinternal.h>
 
 #include <string.h>
+#include <stdio.h>
 
-/** @addtogroup expr
- * @{
- */
+struct chained_type {
+    RDB_type *typ;
+    struct chained_type *prevp;
+};
 
-/**
- * Return a new expression in which all variable names for which
- * *<var>getfnp</var>() or RDB_get_table() return an RDB_object
- * have been replaced by this object.
- * Table names are replaced by table refs.
- */
-RDB_expression *
-RDB_expr_resolve_varnames(RDB_expression *exp, RDB_getobjfn *getfnp,
-        void *getdata, RDB_exec_context *ecp, RDB_transaction *txp)
+static RDB_bool
+var_in_typelist(const char *varname, struct chained_type *types)
+{
+    while (types != NULL) {
+        if (RDB_type_attr_type(types->typ, varname) != NULL)
+            return RDB_TRUE;
+        types = types->prevp;
+    }
+    return RDB_FALSE;
+}
+
+static RDB_expression *
+expr_resolve_varnames(RDB_expression *exp, RDB_getobjfn *getfnp,
+        void *getdata, RDB_exec_context *ecp, RDB_transaction *txp,
+        struct chained_type *noresolve)
 {
     RDB_object *objp;
 
@@ -32,46 +40,35 @@ RDB_expr_resolve_varnames(RDB_expression *exp, RDB_getobjfn *getfnp,
     {
         RDB_expression *argp;
         RDB_expression *newexp;
+        struct chained_type nrtype;
 
         newexp = RDB_ro_op(exp->def.op.name, ecp);
         if (newexp == NULL)
             return NULL;
 
-        if (strcmp(exp->def.op.name, "extend") == 0
-                && exp->def.op.args.firstp != NULL) {
-            /* For extend, perform resolve only on 1st argument */
-            RDB_expression *argexp;
-            argp = exp->def.op.args.firstp;
-            argexp = RDB_expr_resolve_varnames(
-                    argp, getfnp, getdata, ecp, txp);
+        if ((strcmp(exp->def.op.name, "extend") == 0
+                || strcmp(exp->def.op.name, "update") == 0
+                || strcmp(exp->def.op.name, "where") == 0
+                || strcmp(exp->def.op.name, "summarize") == 0)
+                    && exp->def.op.args.firstp != NULL) {
+            nrtype.typ = RDB_expr_type(exp->def.op.args.firstp, NULL, NULL, NULL,
+                    ecp, txp);
+            if (nrtype.typ != NULL) {
+                nrtype.prevp = noresolve;
+                noresolve = &nrtype;
+            }
+        }
+
+        argp = exp->def.op.args.firstp;
+        while (argp != NULL) {
+            RDB_expression *argexp = expr_resolve_varnames(
+                    argp, getfnp, getdata, ecp, txp, noresolve);
             if (argexp == NULL) {
                 RDB_del_expr(newexp, ecp);
                 return NULL;
             }
             RDB_add_arg(newexp, argexp);
             argp = argp->nextp;
-            while (argp != NULL) {
-                argexp = RDB_dup_expr(argp, ecp);
-                if (argexp == NULL) {
-                    RDB_del_expr(newexp, ecp);
-                    return NULL;
-                }
-                RDB_add_arg(newexp, argexp);
-                argp = argp->nextp;
-            }
-        } else {
-            /* Perform resolve on all arguments */
-            argp = exp->def.op.args.firstp;
-            while (argp != NULL) {
-                RDB_expression *argexp = RDB_expr_resolve_varnames(
-                        argp, getfnp, getdata, ecp, txp);
-                if (argexp == NULL) {
-                    RDB_del_expr(newexp, ecp);
-                    return NULL;
-                }
-                RDB_add_arg(newexp, argexp);
-                argp = argp->nextp;
-            }
         }
         /*
          * Duplicate type of RELATION() because otherwise the type information
@@ -89,30 +86,50 @@ RDB_expr_resolve_varnames(RDB_expression *exp, RDB_getobjfn *getfnp,
     case RDB_EX_TBP:
         return RDB_table_ref(exp->def.tbref.tbp, ecp);
     case RDB_EX_VAR:
-        if (getfnp != (RDB_getobjfn *) NULL) {
-            objp = (*getfnp)(exp->def.varname, getdata);
-            if (objp != NULL) {
-                if (objp->kind == RDB_OB_TABLE && objp->val.tbp->exp != NULL) {
-                    return RDB_expr_resolve_varnames(objp->val.tbp->exp,
-                            getfnp, getdata, ecp, txp);
+        /* Resolve only if the name does not appear in the noresolve chain */
+        if (!var_in_typelist(exp->def.varname, noresolve)) {
+            if (getfnp != (RDB_getobjfn *) NULL) {
+                objp = (*getfnp)(exp->def.varname, getdata);
+                if (objp != NULL) {
+                    if (objp->kind == RDB_OB_TABLE && objp->val.tbp->exp != NULL) {
+                        return RDB_expr_resolve_varnames(objp->val.tbp->exp,
+                                getfnp, getdata, ecp, txp);
+                    }
+                    if (objp->kind == RDB_OB_TABLE)
+                        return RDB_table_ref(objp, ecp);
+                    return RDB_obj_to_expr(objp, ecp);
                 }
-                if (objp->kind == RDB_OB_TABLE)
+            }
+            if (txp != NULL) {
+                objp = RDB_get_table(exp->def.varname, ecp, txp);
+                if (objp != NULL) {
                     return RDB_table_ref(objp, ecp);
-                return RDB_obj_to_expr(objp, ecp);
+                }
+                RDB_clear_err(ecp);
             }
-        }
-        if (txp != NULL) {
-            objp = RDB_get_table(exp->def.varname, ecp, txp);
-            if (objp != NULL) {
-                return RDB_table_ref(objp, ecp);
-            }
-            RDB_clear_err(ecp);
         }
 
         return RDB_var_ref(exp->def.varname, ecp);
     }
     abort();
-} /* RDB_expr_resolve_varnames */
+} /* expr_resolve_varnames */
+
+/** @addtogroup expr
+ * @{
+ */
+
+/**
+ * Return a new expression in which all variable names for which
+ * *<var>getfnp</var>() or RDB_get_table() return an RDB_object
+ * have been replaced by this object.
+ * Table names are replaced by table refs.
+ */
+RDB_expression *
+RDB_expr_resolve_varnames(RDB_expression *exp, RDB_getobjfn *getfnp,
+        void *getdata, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    return expr_resolve_varnames(exp, getfnp, getdata, ecp, txp, NULL);
+}
 
 /**
  * Compare the two expression *<var>ex1p</var> and *<var>ex2p</var>

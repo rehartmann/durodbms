@@ -1254,7 +1254,7 @@ The call may also fail for a @ref system-errors "system error",
 in which case the transaction may be implicitly rolled back.
 
 If a call failed with a name_error, subsequent attempts to get the
-same table from the same connection will also fail.
+same table from the same database will also fail.
 This is to prevent costly multiple attempts to resolve variables by
 searching them as tables in the catalog.
 */

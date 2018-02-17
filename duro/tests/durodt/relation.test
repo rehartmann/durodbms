@@ -84,11 +84,11 @@ test insert_delete {creating table, insert, delete} \
         var t init tuple {i 2 + 1, d 1.0, c 'Z'};
         insert r update t : {i := i + 1};
 
-        -- With this it does not work because i resolves against the table
-        -- var i real rel {int i};
-
         io.put_line(cast_as_string(count(r)));
         io.put_line(cast_as_string(count(s)));
+
+        var i real rel {i int};
+        -- The i in the where clause should not be resolved to the table above
         io.put_line((tuple from r where i=2).c);
         
         -- Test table with 2 keys
@@ -1147,6 +1147,7 @@ test summarize {SUMMARIZE} -setup $SETUP -cleanup $CLEANUP -body {
 		insert t tup {a 2, b 1};
 		insert t tup {a 2, b 2};
 
+        var b real relation { n int };
 		var v virtual SUMMARIZE t PER t {a} : {
 				a_sum := SUM(b),
 		        a_all := ALL(b > 0),

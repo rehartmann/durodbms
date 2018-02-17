@@ -932,8 +932,9 @@ dup_ro_op_expr_deep(const RDB_expression *exp, RDB_exec_context *ecp,
         }
         RDB_add_arg(newexp, nargp);
     } else if (strcmp(exp->def.op.name, "extend") == 0
+            || strcmp(exp->def.op.name, "update") == 0
            || RDB_expr_is_binop(exp, "where")) {
-        /* In the case of extend and where, only do deep copy on 1st argument */
+        /* In the case of extend, update, and where, only do deep copy on 1st argument */
         argp = exp->def.op.args.firstp;
         if (argp != NULL) {
             nargp = dup_expr_deep(argp, ecp, txp);
@@ -953,11 +954,37 @@ dup_ro_op_expr_deep(const RDB_expression *exp, RDB_exec_context *ecp,
                 argp = argp->nextp;
             }
         }
-    } else {
-        if (strcmp(exp->def.op.name, "where") == 0) {
-            /* puts("Da!"); */
+    } else if (strcmp(exp->def.op.name, "summarize") == 0) {
+        /* In the case of summarize, only do deep copy on first 2 arguments */
+        argp = exp->def.op.args.firstp;
+        if (argp != NULL) {
+            nargp = dup_expr_deep(argp, ecp, txp);
+            if (nargp == NULL) {
+                RDB_del_expr(newexp, ecp);
+                return NULL;
+            }
+            RDB_add_arg(newexp, nargp);
+            argp = argp->nextp;
+            if (argp != NULL) {
+                nargp = dup_expr_deep(argp, ecp, txp);
+                if (nargp == NULL) {
+                    RDB_del_expr(newexp, ecp);
+                    return NULL;
+                }
+                RDB_add_arg(newexp, nargp);
+                argp = argp->nextp;
+                while (argp != NULL) {
+                    nargp = RDB_dup_expr(argp, ecp);
+                    if (nargp == NULL) {
+                        RDB_del_expr(newexp, ecp);
+                        return NULL;
+                    }
+                    RDB_add_arg(newexp, nargp);
+                    argp = argp->nextp;
+                }
+            }
         }
-
+    } else {
         argp = exp->def.op.args.firstp;
         while (argp != NULL) {
             nargp = dup_expr_deep(argp, ecp, txp);
@@ -1008,9 +1035,6 @@ dup_expr_deep(const RDB_expression *exp, RDB_exec_context *ecp,
          * If the name refers to a virtual table, convert it
          * to its defining expression
          */
-        if (strcmp(RDB_expr_var_name(exp), "names") == 0) {
-            /* puts("Dort!"); */
-        }
         newexp = NULL;
         if (txp != NULL
                 && (exp->typ == NULL || RDB_type_is_relation(exp->typ))) {

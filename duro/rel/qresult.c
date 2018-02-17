@@ -1061,6 +1061,10 @@ expr_dups(RDB_expression *exp, RDB_exec_context *ecp, RDB_bool *resp)
             return RDB_OK;
         }
     }
+    if (exp->kind == RDB_EX_VAR) {
+        RDB_raise_internal("unexpected variable", ecp);
+        return RDB_ERROR;
+    }
 
     if (strcmp(exp->def.op.name, "relation") == 0) {
         /* A tuple may appear twice among the arguments */
