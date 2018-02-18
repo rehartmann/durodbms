@@ -243,8 +243,6 @@ RDB_raise_internal(const char *msg, RDB_exec_context *ecp)
     return raise_msg_err(&RDB_INTERNAL_ERROR, msg, ecp);
 }
 
-/**
- */
 RDB_object *
 RDB_raise_lock_not_granted(RDB_exec_context *ecp)
 {
@@ -301,12 +299,16 @@ RDB_raise_run_recovery(const char *msg, RDB_exec_context *ecp)
     return raise_msg_err(&RDB_RUN_RECOVERY_ERROR, msg, ecp);
 }
 
-/**
- */
 RDB_object *
 RDB_raise_syntax(const char *msg, RDB_exec_context *ecp)
 {
     return raise_msg_err(&RDB_SYNTAX_ERROR, msg, ecp);
+}
+
+RDB_object *
+RDB_raise_connection(const char *msg, RDB_exec_context *ecp)
+{
+    return raise_msg_err(&RDB_CONNECTION_ERROR, msg, ecp);
 }
 
 /*@}*/

@@ -4,6 +4,7 @@
  */
 
 #include "pgindex.h"
+#include "pgenv.h"
 #include <rec/envimpl.h>
 #include <rec/recmapimpl.h>
 #include <rec/indeximpl.h>
@@ -73,7 +74,7 @@ RDB_create_pg_index(RDB_recmap *rmp, const char *name, const char *filename,
     res = PQexec(envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
-        RDB_raise_system(PQerrorMessage(envp->env.pgconn), ecp);
+        RDB_pgresult_to_error(envp, res, ecp);
         PQclear(res);
         goto error;
     }

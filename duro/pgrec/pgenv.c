@@ -12,6 +12,8 @@
 #include "pgtx.h"
 #include "pgindex.h"
 
+#include <string.h>
+
 RDB_environment *
 RDB_pg_open_env(const char *path, RDB_exec_context *ecp)
 {
@@ -42,7 +44,7 @@ RDB_pg_open_env(const char *path, RDB_exec_context *ecp)
     envp->env.pgconn = PQconnectdb(path);
     if (PQstatus(envp->env.pgconn) != CONNECTION_OK)
     {
-        RDB_raise_system(PQerrorMessage(envp->env.pgconn), ecp);
+        RDB_raise_connection(PQerrorMessage(envp->env.pgconn), ecp);
         PQfinish(envp->env.pgconn);
         free(envp);
         return NULL;
@@ -67,4 +69,42 @@ RDB_pg_close_env(RDB_environment *envp, RDB_exec_context *ecp)
     PQfinish(envp->env.pgconn);
     free(envp);
     return RDB_OK;
+}
+
+void
+RDB_pgresult_to_error(const RDB_environment *envp, const PGresult *res,
+        RDB_exec_context *ecp)
+{
+    char *errmsg = PQerrorMessage(envp->env.pgconn);
+    char *sqlstate = PQresultErrorField(res, PG_DIAG_SQLSTATE);
+
+    if (strcmp(sqlstate, "02000") == 0) {
+       RDB_raise_not_found(errmsg, ecp);
+    } else if (strncmp(sqlstate, "08", 2) == 0) {
+       RDB_raise_connection(errmsg, ecp);
+    } else if (strncmp(sqlstate, "0A", 2) == 0) {
+       RDB_raise_not_supported(errmsg, ecp);
+    } else if (strncmp(sqlstate, "22", 2) == 0
+            || strncmp(sqlstate, "42", 2) == 0) {
+        RDB_raise_invalid_argument(errmsg, ecp);
+    } else if (strcmp(sqlstate, "23505") == 0) {
+        RDB_raise_key_violation(errmsg, ecp);
+    } else if (strncmp(sqlstate, "23", 2) == 0) {
+        RDB_raise_predicate_violation(errmsg, ecp);
+    } else if (strcmp(sqlstate, "42804") == 0) {
+        RDB_raise_type_mismatch(errmsg, ecp);
+    } else if (strcmp(sqlstate, "53100") == 0
+            || strcmp(sqlstate, "53200") == 0) {
+        RDB_raise_no_memory(ecp);
+    } else if (strcmp(sqlstate, "40P01") == 0) {
+        RDB_raise_deadlock(ecp);
+    } else if (strcmp(sqlstate, "55006") == 0) {
+        RDB_raise_in_use(errmsg, ecp);
+    } else if (strncmp(sqlstate, "58", 2) == 0) {
+        RDB_raise_system(errmsg, ecp);
+    } else if (strcmp(sqlstate, "XX001") == 0) {
+        RDB_raise_data_corrupted(errmsg, ecp);
+    } else {
+        RDB_raise_internal(errmsg, ecp);
+    }
 }

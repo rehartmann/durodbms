@@ -48,6 +48,10 @@ RDB_contains_pg_rec(RDB_recmap *, RDB_field[], RDB_rec_transaction *, RDB_exec_c
 int
 RDB_pg_recmap_est_size(RDB_recmap *, RDB_rec_transaction *, unsigned *, RDB_exec_context *);
 
+RDB_int
+RDB_delete_pg_sql(RDB_recmap *, const char *, RDB_rec_transaction *,
+        RDB_exec_context *);
+
 void *
 RDB_field_to_pg(RDB_field *, RDB_field_info *, int *, RDB_exec_context *);
 

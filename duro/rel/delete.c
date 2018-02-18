@@ -8,10 +8,13 @@
 #include "internal.h"
 #include "stable.h"
 #include "qresult.h"
+#include "sqlgen.h"
 #include <obj/objinternal.h>
 #include <gen/strfns.h>
+#include <pgrec/pgrecmap.h>
 
 #include <string.h>
+#include <stdio.h>
 
 static RDB_int
 delete_by_uindex(RDB_object *tbp, RDB_object *objpv[], RDB_tbindex *indexp,
@@ -62,6 +65,33 @@ cleanup:
     return rcount;
 }
 
+#ifdef POSTGRESQL
+static RDB_int
+sql_delete(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_object where;
+    RDB_int ret;
+
+    RDB_init_obj(&where);
+    if (condp != NULL) {
+        if (RDB_expr_to_sql(&where, condp, ecp) != RDB_OK)
+            goto error;
+        if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
+            fprintf(stderr, "SQL generated for delete: %s\n", RDB_obj_string(&where));
+        }
+    }
+    ret = RDB_delete_pg_sql(tbp->val.tbp->stp->recmapp,
+            condp != NULL ? RDB_obj_string(&where) : NULL, txp->tx, ecp);
+    RDB_destroy_obj(&where, ecp);
+    return ret;
+
+error:
+    RDB_destroy_obj(&where, ecp);
+    return (RDB_int) RDB_ERROR;
+}
+#endif
+
 RDB_int
 RDB_delete_real(RDB_object *tbp, RDB_expression *condp,
         RDB_getobjfn *getfn, void *getarg,
@@ -91,6 +121,27 @@ RDB_delete_real(RDB_object *tbp, RDB_expression *condp,
             return 0;
         }
     }
+
+#ifdef POSTGRESQL
+    if (txp != NULL && RDB_env_queries(txp->envp)) {
+        RDB_int cnt;
+        RDB_expression *repcondp = NULL;
+
+        if (condp != NULL) {
+            repcondp = RDB_expr_resolve_varnames(condp, getfn, getarg, ecp, txp);
+            if (repcondp == NULL)
+                return (RDB_int) RDB_ERROR;
+        }
+        if (condp == NULL || RDB_scalar_sql_convertible(repcondp)) {
+            cnt = sql_delete(tbp, repcondp, ecp, txp);
+            if (repcondp != NULL)
+                RDB_del_expr(repcondp, ecp);
+            return cnt;
+        }
+        if (repcondp != NULL)
+            RDB_del_expr(repcondp, ecp);
+    }
+#endif
 
     curp = RDB_recmap_cursor(tbp->val.tbp->stp->recmapp, RDB_TRUE,
             RDB_table_is_persistent(tbp) ? txp->tx : NULL, ecp);

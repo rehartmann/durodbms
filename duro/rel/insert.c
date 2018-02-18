@@ -150,12 +150,12 @@ RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
     ret = RDB_insert_rec(tbp->val.tbp->stp->recmapp, fvp,
             RDB_table_is_persistent(tbp) ? txp->tx : NULL, ecp);
     if (ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR) {
-        /* check if the tuple is an element of the table */
         if (RDB_contains_rec(tbp->val.tbp->stp->recmapp, fvp,
                 RDB_table_is_persistent(tbp) ? txp->tx : NULL, ecp) == RDB_OK) {
             RDB_raise_element_exists("tuple is already in table", ecp);
         } else {
-            RDB_raise_key_violation("", ecp);
+            if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR)
+                RDB_raise_key_violation("", ecp);
         }
         ret = RDB_ERROR;
     } else if (ret != RDB_OK) {

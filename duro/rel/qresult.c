@@ -850,7 +850,7 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
             RDB_object sql;
             RDB_cursor *curp;
             RDB_init_obj(&sql);
-            if (RDB_expr_to_sql(&sql, exp, ecp) != RDB_OK) {
+            if (RDB_expr_to_sql_select(&sql, exp, ecp) != RDB_OK) {
                 RDB_destroy_obj(&sql, ecp);
                 return RDB_ERROR;
             }

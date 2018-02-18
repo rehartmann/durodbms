@@ -6,10 +6,12 @@
  */
 
 #include "pgrecmap.h"
+#include "pgcursor.h"
+#include "pgenv.h"
+#include "pgtx.h"
 #include <rec/recmapimpl.h>
 #include <rec/envimpl.h>
 #include <rec/dbdefs.h>
-#include <pgrec/pgcursor.h>
 #include <obj/excontext.h>
 #include <obj/object.h>
 #include <gen/types.h>
@@ -122,7 +124,7 @@ RDB_create_pg_recmap(const char *name, const char *filename,
     res = PQexec(envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
-        RDB_raise_system(PQerrorMessage(envp->env.pgconn), ecp);
+        RDB_pgresult_to_error(envp, res, ecp);
         PQclear(res);
         goto error;
     }
@@ -153,7 +155,7 @@ RDB_open_pg_recmap(const char *name, const char *filename,
             1, NULL, &name, NULL, NULL, 0);
     if (PQresultStatus(res) != PGRES_TUPLES_OK)
     {
-        RDB_raise_system(PQerrorMessage(envp->env.pgconn), ecp);
+        RDB_pgresult_to_error(envp, res, ecp);
         PQclear(res);
         return NULL;
     }
@@ -194,7 +196,7 @@ RDB_delete_pg_recmap(RDB_recmap *rmp, RDB_rec_transaction *rtxp, RDB_exec_contex
     res = PQexec(rmp->envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
-        RDB_raise_system(PQerrorMessage(rmp->envp->env.pgconn), ecp);
+        RDB_pgresult_to_error(rmp->envp, res, ecp);
         PQclear(res);
         goto error;
     }
@@ -261,8 +263,8 @@ RDB_field_to_pg(RDB_field *field, RDB_field_info *fieldinfo, int *formatp,
     return valuep;
 }
 
-int
-RDB_insert_pg_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp,
+static int
+insert_pg_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
 {
     RDB_object command;
@@ -321,7 +323,7 @@ RDB_insert_pg_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp,
             formatv, 0);
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
-        RDB_raise_system(PQerrorMessage(rmp->envp->env.pgconn), ecp);
+        RDB_pgresult_to_error(rmp->envp, res, ecp);
         PQclear(res);
         goto error;
     }
@@ -350,6 +352,25 @@ error:
     }
     RDB_destroy_obj(&command, ecp);
     return RDB_ERROR;
+}
+
+int
+RDB_insert_pg_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp,
+        RDB_exec_context *ecp)
+{
+    /*
+     * Do insert in a subtransaction, so the transaction remains valid
+     * after a key violation
+     */
+    RDB_rec_transaction *chrtxp = RDB_pg_begin_tx(rmp->envp, rtxp, ecp);
+    if (chrtxp == NULL)
+        return RDB_ERROR;
+
+    if (insert_pg_rec(rmp, flds, chrtxp, ecp) != RDB_OK) {
+        RDB_pg_abort(chrtxp, ecp);
+        return RDB_ERROR;
+    }
+    return RDB_pg_commit(chrtxp, ecp);
 }
 
 int
@@ -450,7 +471,7 @@ RDB_get_pg_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
             rmp->keyfieldcount, NULL, (const char * const *) valuev, lenv,
             formatv, 1);
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-        RDB_raise_system(PQerrorMessage(rmp->envp->env.pgconn), ecp);
+        RDB_pgresult_to_error(rmp->envp, res, ecp);
         PQclear(res);
         res = NULL;
         goto error;
@@ -505,7 +526,105 @@ int
 RDB_contains_pg_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
 {
-    RDB_raise_not_supported("RDB_contains_pg_rec", ecp);
+    RDB_object command;
+    char parambuf[14];
+    PGresult *res = NULL;
+    int *lenv = NULL;
+    void **valuev = NULL;
+    int *formatv = NULL;
+    int i;
+    char *resvalp;
+
+    RDB_init_obj(&command);
+
+    lenv = RDB_alloc(rmp->fieldcount * sizeof(int), ecp);
+    if (lenv == NULL)
+        goto error;
+    valuev = RDB_alloc(rmp->fieldcount * sizeof(void*), ecp);
+    if (valuev == NULL)
+        goto error;
+    for (i = 0; i < rmp->fieldcount; i++) {
+        valuev[i] = NULL;
+    }
+    formatv = RDB_alloc(rmp->fieldcount * sizeof(int), ecp);
+    if (formatv == NULL)
+        goto error;
+
+    if (RDB_string_to_obj(&command, "SELECT EXISTS(SELECT 1 FROM ", ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&command, rmp->namp, ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&command, " WHERE ", ecp) != RDB_OK)
+        goto error;
+
+    for (i = 0; i < rmp->fieldcount; i++) {
+        if (RDB_append_string(&command, "d_", ecp) != RDB_OK) {
+            goto error;
+        }
+        if (RDB_append_string(&command, rmp->fieldinfos[i].attrname, ecp) != RDB_OK) {
+            goto error;
+        }
+
+        sprintf(parambuf, "=$%d", i + 1);
+        if (RDB_append_string(&command, parambuf, ecp) != RDB_OK) {
+            goto error;
+        }
+        if (i < rmp->fieldcount - 1) {
+            if (RDB_append_string(&command, " AND ", ecp) != RDB_OK) {
+                goto error;
+            }
+        }
+        lenv[i] = (int) flds[i].len;
+        valuev[i] = RDB_field_to_pg(&flds[i], &rmp->fieldinfos[i], &formatv[i], ecp);
+        if (valuev[i] == NULL)
+            goto error;
+    }
+    if (RDB_append_char(&command, ')', ecp) != RDB_OK)
+        goto error;
+    res = PQexecParams(rmp->envp->env.pgconn, RDB_obj_string(&command),
+            rmp->fieldcount, NULL, (const char * const *) valuev, lenv,
+            formatv, 1);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+        RDB_pgresult_to_error(rmp->envp, res, ecp);
+        PQclear(res);
+        goto error;
+    }
+    resvalp = PQgetvalue(res, 0, 0);
+    if (resvalp == NULL) {
+        PQclear(res);
+        RDB_raise_internal("no result from SELECT EXISTS", ecp);
+        goto error;
+    }
+    if (*resvalp == 0) {
+        /* Raise not_found to indicate that the recmap does not contain the tuple */
+        PQclear(res);
+        RDB_raise_not_found("", ecp);
+        goto error;
+    }
+
+    PQclear(res);
+    RDB_free(lenv);
+    for (i = 0; i < rmp->fieldcount; i++) {
+        RDB_free(valuev[i]);
+    }
+    RDB_free(formatv);
+    RDB_free(valuev);
+    RDB_destroy_obj(&command, ecp);
+    return RDB_OK;
+
+error:
+    if (lenv != NULL)
+        RDB_free(lenv);
+    if (formatv != NULL)
+        RDB_free(formatv);
+    if (valuev != NULL) {
+        for (i = 0; i < rmp->fieldcount; i++) {
+            if (valuev[i] != NULL)
+                RDB_free(valuev[i]);
+        }
+        RDB_free(valuev);
+    }
+    RDB_destroy_obj(&command, ecp);
     return RDB_ERROR;
 }
 
@@ -515,4 +634,41 @@ RDB_pg_recmap_est_size(RDB_recmap *rmp, RDB_rec_transaction *rtxp, unsigned *sz,
 {
     *sz = 0;
     return RDB_OK;
+}
+
+RDB_int
+RDB_delete_pg_sql(RDB_recmap *rmp, const char *where, RDB_rec_transaction *rtxp,
+        RDB_exec_context *ecp)
+{
+    PGresult *res = NULL;
+    RDB_object command;
+    RDB_int cnt;
+
+    RDB_init_obj(&command);
+    if (RDB_string_to_obj(&command, "DELETE FROM ", ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&command, rmp->namp, ecp) != RDB_OK)
+        goto error;
+    if (where != NULL) {
+        if (RDB_append_string(&command, " WHERE ", ecp) != RDB_OK)
+            goto error;
+        if (RDB_append_string(&command, where, ecp) != RDB_OK)
+            goto error;
+    }
+    res = PQexec(rmp->envp->env.pgconn, RDB_obj_string(&command));
+    if (PQresultStatus(res) != PGRES_COMMAND_OK)
+    {
+        RDB_pgresult_to_error(rmp->envp, res, ecp);
+        PQclear(res);
+        goto error;
+    }
+    cnt = (RDB_int) atoi(PQcmdTuples(res));
+    PQclear(res);
+
+    RDB_destroy_obj(&command, ecp);
+    return cnt;
+
+error:
+    RDB_destroy_obj(&command, ecp);
+    return RDB_ERROR;
 }

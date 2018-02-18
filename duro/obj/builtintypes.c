@@ -148,6 +148,7 @@ RDB_type RDB_INTERNAL_ERROR;
 RDB_type RDB_DATA_CORRUPTED_ERROR;
 RDB_type RDB_RUN_RECOVERY_ERROR;
 RDB_type RDB_SYSTEM_ERROR;
+RDB_type RDB_CONNECTION_ERROR;
 
 RDB_type RDB_SYNTAX_ERROR;
 
@@ -1085,6 +1086,23 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
     RDB_SYNTAX_ERROR.def.scalar.init_val_is_valid = RDB_TRUE;
     RDB_SYNTAX_ERROR.compare_op = NULL;
 
+    RDB_CONNECTION_ERROR.kind = RDB_TP_SCALAR;
+    RDB_CONNECTION_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_CONNECTION_ERROR.name = "connection_error";
+    RDB_CONNECTION_ERROR.def.scalar.builtin = RDB_TRUE;
+    RDB_CONNECTION_ERROR.def.scalar.ordered = RDB_FALSE;
+    RDB_CONNECTION_ERROR.def.scalar.repc = 1;
+    RDB_CONNECTION_ERROR.def.scalar.repv = &system_rep;
+    RDB_CONNECTION_ERROR.def.scalar.arep = &RDB_STRING;
+    RDB_CONNECTION_ERROR.def.scalar.constraintp = NULL;
+    RDB_CONNECTION_ERROR.def.scalar.initexp = NULL;
+    RDB_CONNECTION_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    if (select_e_str(&RDB_CONNECTION_ERROR.def.scalar.init_val,
+            &RDB_CONNECTION_ERROR, ecp) != RDB_OK)
+        return RDB_ERROR;
+    RDB_CONNECTION_ERROR.def.scalar.init_val_is_valid = RDB_TRUE;
+    RDB_CONNECTION_ERROR.compare_op = NULL;
+
     RDB_IDENTIFIER.kind = RDB_TP_SCALAR;
     RDB_IDENTIFIER.ireplen = RDB_VARIABLE_LEN;
     RDB_IDENTIFIER.name = "identifier";
@@ -1201,6 +1219,10 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     if (RDB_add_type(&RDB_SYNTAX_ERROR, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+    if (RDB_add_type(&RDB_CONNECTION_ERROR,
+            ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 

@@ -114,6 +114,9 @@ RDB_raise_run_recovery(const char *, RDB_exec_context *);
 RDB_object *
 RDB_raise_syntax(const char *, RDB_exec_context *);
 
+RDB_object *
+RDB_raise_connection(const char *, RDB_exec_context *);
+
 int
 RDB_ec_set_property(RDB_exec_context *, const char *, void *);
 

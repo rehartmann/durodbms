@@ -4,6 +4,7 @@
  */
 
 #include "pgcursor.h"
+#include "pgenv.h"
 #include "pgrecmap.h"
 #include <rec/cursorimpl.h>
 #include <rec/envimpl.h>
@@ -13,7 +14,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 
-unsigned last_cur_id = 0;
+unsigned next_cur_id = 0;
 
 /*
  * Allocate and initialize a RDB_cursor structure.
@@ -83,7 +84,7 @@ RDB_pg_query_cursor(RDB_environment *envp, const char *query, RDB_bool wr,
     if (curp == NULL)
         goto error;
 
-    curp->cur.pg.id = last_cur_id++;
+    curp->cur.pg.id = next_cur_id++;
     if (RDB_string_to_obj(&command, "DECLARE c", ecp) != RDB_OK)
         goto error;
     sprintf(idbuf, "%u", curp->cur.pg.id);
@@ -97,7 +98,7 @@ RDB_pg_query_cursor(RDB_environment *envp, const char *query, RDB_bool wr,
     res = PQexec(envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
-        RDB_raise_system(PQerrorMessage(envp->env.pgconn), ecp);
+        RDB_pgresult_to_error(envp, res, ecp);
         PQclear(res);
         goto error;
     }
@@ -131,7 +132,7 @@ RDB_destroy_pg_cursor(RDB_cursor *curp, RDB_exec_context *ecp)
     res = PQexec(curp->envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
-        RDB_raise_system(PQerrorMessage(curp->envp->env.pgconn), ecp);
+        RDB_pgresult_to_error(curp->envp, res, ecp);
         PQclear(res);
         goto error;
     }
@@ -246,7 +247,7 @@ exec_fetch(RDB_cursor *curp, const char *curcmd, RDB_exec_context *ecp)
             RDB_obj_string(&command), 0, NULL, NULL, NULL, NULL, 1);
     execstatus = PQresultStatus(curp->cur.pg.current_row);
     if (execstatus != PGRES_TUPLES_OK && execstatus != PGRES_SINGLE_TUPLE) {
-        RDB_raise_system(PQerrorMessage(curp->envp->env.pgconn), ecp);
+        RDB_pgresult_to_error(curp->envp, curp->cur.pg.current_row, ecp);
         goto error;
     }
     if (PQntuples(curp->cur.pg.current_row) == 0) {
@@ -348,7 +349,7 @@ RDB_pg_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[],
             formatv, 0);
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
-        RDB_raise_system(PQerrorMessage(curp->envp->env.pgconn), ecp);
+        RDB_pgresult_to_error(curp->envp, res, ecp);
         PQclear(res);
         goto error;
     }
@@ -400,7 +401,7 @@ RDB_pg_cursor_delete(RDB_cursor *curp, RDB_exec_context *ecp)
     res = PQexec(curp->envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
-        RDB_raise_system(PQerrorMessage(curp->envp->env.pgconn), ecp);
+        RDB_pgresult_to_error(curp->envp, res, ecp);
         PQclear(res);
         goto error;
     }

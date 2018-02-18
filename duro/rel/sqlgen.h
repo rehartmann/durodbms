@@ -17,7 +17,13 @@ typedef struct RDB_exec_context RDB_exec_context;
 RDB_bool
 RDB_sql_convertible(RDB_expression *);
 
+RDB_bool
+RDB_scalar_sql_convertible(RDB_expression *);
+
 int
 RDB_expr_to_sql(RDB_object *, RDB_expression *, RDB_exec_context *);
+
+int
+RDB_expr_to_sql_select(RDB_object *, RDB_expression *, RDB_exec_context *);
 
 #endif /* REL_SQLGEN_H_ */

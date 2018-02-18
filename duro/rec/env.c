@@ -5,7 +5,11 @@
 
 #include "envimpl.h"
 #include <bdbrec/bdbenv.h>
+
+#ifdef POSTGRESQL
 #include <pgrec/pgenv.h>
+#endif
+
 #include <string.h>
 
 /** @defgroup env Database environment functions 
