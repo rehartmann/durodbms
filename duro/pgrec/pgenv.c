@@ -7,6 +7,7 @@
 #include <rec/recmap.h>
 #include <gen/types.h>
 #include <obj/excontext.h>
+#include <obj/builtintypes.h>
 #include "pgenv.h"
 #include "pgrecmap.h"
 #include "pgtx.h"
@@ -126,4 +127,49 @@ RDB_update_pg_sql(RDB_environment *envp, const char *command,
     }
     PQclear(res);
     return ret;
+}
+
+int
+RDB_pg_literal(RDB_environment *envp, RDB_object *dstp, const RDB_object *srcp,
+        RDB_exec_context *ecp)
+{
+    int ret;
+    int is_float;
+    RDB_object str;
+    RDB_type *typ = RDB_obj_type(srcp);
+
+    if (typ == &RDB_STRING) {
+        char *estr = PQescapeLiteral(envp->env.pgconn, RDB_obj_string(srcp),
+                strlen(RDB_obj_string(srcp)));
+        if (estr == NULL) {
+            RDB_raise_system(PQerrorMessage(envp->env.pgconn), ecp);
+            return RDB_ERROR;
+        }
+        ret = RDB_string_to_obj(dstp, estr, ecp);
+        PQfreemem(estr);
+        return ret;
+    }
+    is_float = typ == &RDB_FLOAT;
+    RDB_init_obj(&str);
+
+    if (RDB_obj_to_string(&str, srcp, ecp) != RDB_OK)
+         goto error;
+    if (RDB_string_to_obj(dstp, "", ecp) != RDB_OK)
+         goto error;
+    if (is_float) {
+         if (RDB_append_string(dstp, "CAST (", ecp) != RDB_OK)
+             return RDB_ERROR;
+     }
+     if (RDB_append_string(dstp, RDB_obj_string(&str), ecp) != RDB_OK)
+         return RDB_ERROR;
+     if (is_float) {
+         if (RDB_append_string(dstp, " AS DOUBLE PRECISION)", ecp) != RDB_OK)
+             goto error;
+     }
+     RDB_destroy_obj(&str, ecp);
+     return RDB_OK;
+
+error:
+     RDB_destroy_obj(&str, ecp);
+     return RDB_ERROR;
 }

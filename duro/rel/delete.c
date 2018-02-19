@@ -76,6 +76,7 @@ sql_delete(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
     RDB_object command;
     RDB_object where;
     RDB_int ret;
+    RDB_environment *envp = RDB_db_env(RDB_tx_db(txp));
 
     RDB_init_obj(&command);
     RDB_init_obj(&where);
@@ -86,15 +87,15 @@ sql_delete(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
     if (condp != NULL) {
         if (RDB_append_string(&command, " WHERE ", ecp) != RDB_OK)
             goto error;
-        if (RDB_expr_to_sql(&where, condp, ecp) != RDB_OK)
+        if (RDB_expr_to_sql(&where, condp, envp, ecp) != RDB_OK)
             goto error;
         if (RDB_append_string(&command, RDB_obj_string(&where), ecp) != RDB_OK)
             goto error;
     }
-    if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
+    if (RDB_env_trace(envp) > 0) {
         fprintf(stderr, "SQL generated for delete: %s\n", RDB_obj_string(&command));
     }
-    ret = RDB_update_pg_sql(RDB_db_env(RDB_tx_db(txp)), RDB_obj_string(&command),
+    ret = RDB_update_pg_sql(envp, RDB_obj_string(&command),
             txp->tx, ecp);
     RDB_destroy_obj(&where, ecp);
     RDB_destroy_obj(&command, ecp);

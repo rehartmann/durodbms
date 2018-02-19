@@ -1298,7 +1298,7 @@ sql_update(RDB_object *tbp, RDB_expression *condp,
             goto error;
         if (RDB_append_string(&command, " = ", ecp) != RDB_OK)
             goto error;
-        if (RDB_expr_to_sql(&sqlexp, updv[i].exp, ecp) != RDB_OK)
+        if (RDB_expr_to_sql(&sqlexp, updv[i].exp, RDB_db_env(RDB_tx_db(txp)), ecp) != RDB_OK)
             goto error;
         if (RDB_append_string(&command, RDB_obj_string(&sqlexp), ecp) != RDB_OK)
             goto error;
@@ -1311,7 +1311,7 @@ sql_update(RDB_object *tbp, RDB_expression *condp,
     if (condp != NULL) {
         if (RDB_append_string(&command, " WHERE ", ecp) != RDB_OK)
             goto error;
-        if (RDB_expr_to_sql(&sqlexp, condp, ecp) != RDB_OK)
+        if (RDB_expr_to_sql(&sqlexp, condp, RDB_db_env(RDB_tx_db(txp)), ecp) != RDB_OK)
             goto error;
         if (RDB_append_string(&command, RDB_obj_string(&sqlexp), ecp) != RDB_OK)
             goto error;

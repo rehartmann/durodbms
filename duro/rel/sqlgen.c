@@ -9,6 +9,7 @@
 #include "rdb.h"
 #include <obj/objinternal.h>
 #include <obj/type.h>
+#include <pgrec/pgenv.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -208,12 +209,13 @@ append_sub_sql(RDB_object *sql, const char *te, RDB_exec_context *ecp)
 }
 
 static int
-append_sub_expr(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+append_sub_expr(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
+        RDB_exec_context *ecp)
 {
     RDB_object se;
 
     RDB_init_obj(&se);
-    if (RDB_expr_to_sql(&se, exp, ecp) != RDB_OK)
+    if (RDB_expr_to_sql(&se, exp, envp, ecp) != RDB_OK)
         goto error;
     if (append_sub_sql(sql, RDB_obj_string(&se), ecp) != RDB_OK)
         goto error;
@@ -226,7 +228,8 @@ error:
 }
 
 static int
-project_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+project_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
+        RDB_exec_context *ecp)
 {
     int i;
     int argcount = (int) RDB_expr_list_length(&exp->def.op.args);
@@ -250,7 +253,7 @@ project_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
     }
     if (RDB_append_string(sql, " FROM ", ecp) != RDB_OK)
         return RDB_ERROR;
-    if (append_sub_expr(sql, RDB_expr_list_get(&exp->def.op.args, 0), ecp) != RDB_OK) {
+    if (append_sub_expr(sql, RDB_expr_list_get(&exp->def.op.args, 0), envp, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -280,7 +283,7 @@ find_renaming(RDB_expr_list *explistp, const char *attrname)
 }
 
 static int
-rename_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+rename_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp, RDB_exec_context *ecp)
 {
     int i;
     RDB_attr *attrs;
@@ -322,7 +325,7 @@ rename_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
     }
     if (RDB_append_string(sql, " FROM ", ecp) != RDB_OK)
         return RDB_ERROR;
-    if (append_sub_expr(sql, RDB_expr_list_get(&exp->def.op.args, 0), ecp) != RDB_OK) {
+    if (append_sub_expr(sql, RDB_expr_list_get(&exp->def.op.args, 0), envp, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -360,7 +363,8 @@ add_select_attrs(RDB_object *sql, RDB_expression *exp,
 }
 
 static int
-extend_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+extend_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
+        RDB_exec_context *ecp)
 {
     RDB_expression *argexp;
     RDB_object e;
@@ -375,7 +379,7 @@ extend_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
         if (RDB_append_char(sql, ',', ecp) != RDB_OK)
             return RDB_ERROR;
 
-        if (RDB_expr_to_sql(&e, argexp, ecp) != RDB_OK) {
+        if (RDB_expr_to_sql(&e, argexp, envp, ecp) != RDB_OK) {
             RDB_destroy_obj(&e, ecp);
             return RDB_ERROR;
         }
@@ -397,26 +401,26 @@ extend_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
 
     if (RDB_append_string(sql, " FROM ", ecp) != RDB_OK)
         return RDB_ERROR;
-    if (append_sub_expr(sql, RDB_expr_list_get(&exp->def.op.args, 0), ecp) != RDB_OK) {
+    if (append_sub_expr(sql, RDB_expr_list_get(&exp->def.op.args, 0), envp, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
     return RDB_OK;
 }
 
 static int
-where_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+where_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp, RDB_exec_context *ecp)
 {
     RDB_object e;
 
     if (RDB_string_to_obj(sql, "SELECT * FROM ", ecp) != RDB_OK)
         return RDB_ERROR;
-    if (append_sub_expr(sql, RDB_expr_list_get(&exp->def.op.args, 0), ecp) != RDB_OK)
+    if (append_sub_expr(sql, RDB_expr_list_get(&exp->def.op.args, 0), envp, ecp) != RDB_OK)
         return RDB_ERROR;
     if (RDB_append_string(sql, " WHERE ", ecp) != RDB_OK)
         return RDB_ERROR;
 
     RDB_init_obj(&e);
-    if (RDB_expr_to_sql(&e, RDB_expr_list_get(&exp->def.op.args, 1), ecp) != RDB_OK) {
+    if (RDB_expr_to_sql(&e, RDB_expr_list_get(&exp->def.op.args, 1), envp, ecp) != RDB_OK) {
         RDB_destroy_obj(&e, ecp);
         return RDB_ERROR;
     }
@@ -429,7 +433,8 @@ where_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
 }
 
 static int
-join_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+join_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
+        RDB_exec_context *ecp)
 {
     if (RDB_string_to_obj(sql, "SELECT ", ecp) != RDB_OK)
         return RDB_ERROR;
@@ -463,20 +468,21 @@ join_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
     }
     if (RDB_append_string(sql, " FROM ", ecp) != RDB_OK)
         return RDB_ERROR;
-    if (append_sub_expr(sql, RDB_expr_list_get(&exp->def.op.args, 0), ecp) != RDB_OK)
+    if (append_sub_expr(sql, RDB_expr_list_get(&exp->def.op.args, 0), envp, ecp) != RDB_OK)
         return RDB_ERROR;
     if (RDB_append_string(sql, " NATURAL JOIN ", ecp) != RDB_OK)
         return RDB_ERROR;
-    return append_sub_expr(sql, RDB_expr_list_get(&exp->def.op.args, 1), ecp);
+    return append_sub_expr(sql, RDB_expr_list_get(&exp->def.op.args, 1), envp, ecp);
 }
 
 static int
-combine_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+combine_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
+        RDB_exec_context *ecp)
 {
     RDB_object se;
 
     RDB_init_obj(&se);
-    if (RDB_expr_to_sql(&se, RDB_expr_list_get(&exp->def.op.args, 0), ecp) != RDB_OK)
+    if (RDB_expr_to_sql(&se, RDB_expr_list_get(&exp->def.op.args, 0), envp, ecp) != RDB_OK)
         goto error;
     if (RDB_string_to_obj(sql, "", ecp) != RDB_OK)
         goto error;
@@ -501,7 +507,7 @@ combine_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
     }
     if (RDB_append_char(sql, ' ', ecp) != RDB_OK)
         goto error;
-    if (RDB_expr_to_sql(&se, RDB_expr_list_get(&exp->def.op.args, 1), ecp) != RDB_OK)
+    if (RDB_expr_to_sql(&se, RDB_expr_list_get(&exp->def.op.args, 1), envp, ecp) != RDB_OK)
         goto error;
     if (strstr(RDB_obj_string(&se), "SELECT ") != RDB_obj_string(&se)) {
         if (RDB_append_string(sql, "SELECT ", ecp) != RDB_OK)
@@ -522,14 +528,15 @@ error:
 }
 
 static int
-infix_binop_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+infix_binop_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
+        RDB_exec_context *ecp)
 {
     RDB_object arg;
 
     RDB_init_obj(&arg);
     if (RDB_string_to_obj(sql, "(", ecp) != RDB_OK)
         goto error;
-    if (RDB_expr_to_sql(&arg, RDB_expr_list_get(&exp->def.op.args, 0), ecp) != RDB_OK)
+    if (RDB_expr_to_sql(&arg, RDB_expr_list_get(&exp->def.op.args, 0), envp, ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(sql, RDB_obj_string(&arg), ecp) != RDB_OK)
         goto error;
@@ -541,7 +548,7 @@ infix_binop_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
     if (RDB_append_char(sql, ' ', ecp) != RDB_OK)
         goto error;
 
-    if (RDB_expr_to_sql(&arg, RDB_expr_list_get(&exp->def.op.args, 1), ecp) != RDB_OK)
+    if (RDB_expr_to_sql(&arg, RDB_expr_list_get(&exp->def.op.args, 1), envp, ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(sql, RDB_obj_string(&arg), ecp) != RDB_OK)
         goto error;
@@ -557,7 +564,8 @@ error:
 }
 
 static int
-unop_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+unop_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
+        RDB_exec_context *ecp)
 {
     RDB_object arg;
 
@@ -568,7 +576,7 @@ unop_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
         goto error;
     if (RDB_append_char(sql, ' ', ecp) != RDB_OK)
         goto error;
-    if (RDB_expr_to_sql(&arg, RDB_expr_list_get(&exp->def.op.args, 0), ecp) != RDB_OK)
+    if (RDB_expr_to_sql(&arg, RDB_expr_list_get(&exp->def.op.args, 0), envp, ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(sql, RDB_obj_string(&arg), ecp) != RDB_OK)
         goto error;
@@ -584,7 +592,8 @@ error:
 }
 
 static int
-substr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+substr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
+        RDB_exec_context *ecp)
 {
     RDB_object arg;
     RDB_expression *argexp;
@@ -593,21 +602,21 @@ substr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
     if (RDB_string_to_obj(sql, "substring(", ecp) != RDB_OK)
         goto error;
     argexp = exp->def.op.args.firstp;
-    if (RDB_expr_to_sql(&arg, argexp, ecp) != RDB_OK)
+    if (RDB_expr_to_sql(&arg, argexp, envp, ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(sql, RDB_obj_string(&arg), ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(sql, " from 1+", ecp) != RDB_OK)
         goto error;
     argexp = argexp->nextp;
-    if (RDB_expr_to_sql(&arg, argexp, ecp) != RDB_OK)
+    if (RDB_expr_to_sql(&arg, argexp, envp, ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(sql, RDB_obj_string(&arg), ecp) != RDB_OK)
         goto error;
     argexp = argexp->nextp;
     if (RDB_append_string(sql, " for ", ecp) != RDB_OK)
         goto error;
-    if (RDB_expr_to_sql(&arg, argexp, ecp) != RDB_OK)
+    if (RDB_expr_to_sql(&arg, argexp, envp, ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(sql, RDB_obj_string(&arg), ecp) != RDB_OK)
         goto error;
@@ -623,7 +632,8 @@ substr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
 }
 
 static int
-op_inv_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+op_inv_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
+        RDB_exec_context *ecp)
 {
     RDB_object arg;
     RDB_expression *argexp;
@@ -643,7 +653,7 @@ op_inv_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
         goto error;
     argexp = exp->def.op.args.firstp;
     while (argexp != NULL) {
-        if (RDB_expr_to_sql(&arg, argexp, ecp) != RDB_OK)
+        if (RDB_expr_to_sql(&arg, argexp, envp, ecp) != RDB_OK)
             goto error;
         if (RDB_append_string(sql, RDB_obj_string(&arg), ecp) != RDB_OK)
             goto error;
@@ -665,7 +675,8 @@ error:
 }
 
 static int
-cast_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+cast_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
+        RDB_exec_context *ecp)
 {
     RDB_object arg;
     const char *type = exp->def.op.name + 8;
@@ -679,7 +690,7 @@ cast_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
 
     if (RDB_string_to_obj(sql, "cast(", ecp) != RDB_OK)
         goto error;
-    if (RDB_expr_to_sql(&arg, exp->def.op.args.firstp, ecp) != RDB_OK)
+    if (RDB_expr_to_sql(&arg, exp->def.op.args.firstp, envp, ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(sql, RDB_obj_string(&arg), ecp) != RDB_OK)
         goto error;
@@ -698,43 +709,9 @@ error:
     return RDB_ERROR;
 }
 
-static int
-obj_to_sql(RDB_object *sql, RDB_object *srcp, RDB_exec_context *ecp)
-{
-    RDB_object str;
-    int is_string = RDB_obj_type(srcp) == &RDB_STRING;
-    int is_float = RDB_obj_type(srcp) == &RDB_FLOAT;
-
-    RDB_init_obj(&str);
-    if (RDB_obj_to_string(&str, srcp, ecp) != RDB_OK)
-        goto error;
-
-    if (RDB_string_to_obj(sql, is_string ? "'" : "", ecp) != RDB_OK)
-        return RDB_ERROR;
-    if (is_float) {
-        if (RDB_append_string(sql, "CAST (", ecp) != RDB_OK)
-            return RDB_ERROR;
-    }
-    if (RDB_append_string(sql, RDB_obj_string(&str), ecp) != RDB_OK)
-        return RDB_ERROR;
-    if (is_string) {
-        if (RDB_append_char(sql, '\'', ecp) != RDB_OK)
-            return RDB_ERROR;
-    }
-    if (is_float) {
-        if (RDB_append_string(sql, " AS DOUBLE PRECISION)", ecp) != RDB_OK)
-            return RDB_ERROR;
-    }
-    RDB_destroy_obj(&str, ecp);
-    return RDB_OK;
-
-error:
-    RDB_destroy_obj(&str, ecp);
-    return RDB_ERROR;
-}
-
 int
-RDB_expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+RDB_expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
+        RDB_exec_context *ecp)
 {
     switch (exp->kind)
     {
@@ -746,25 +723,25 @@ RDB_expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
         return RDB_string_to_obj(sql, RDB_table_name(exp->def.tbref.tbp), ecp);
     case RDB_EX_RO_OP:
         if (strcmp(exp->def.op.name, "project") == 0) {
-            return project_to_sql(sql, exp, ecp);
+            return project_to_sql(sql, exp, envp, ecp);
         }
         if (strcmp(exp->def.op.name, "rename") == 0) {
-            return rename_to_sql(sql, exp, ecp);
+            return rename_to_sql(sql, exp, envp, ecp);
         }
         if (strcmp(exp->def.op.name, "where") == 0) {
-            return where_to_sql(sql, exp, ecp);
+            return where_to_sql(sql, exp, envp, ecp);
         }
         if (strcmp(exp->def.op.name, "join") == 0
                 || strcmp(exp->def.op.name, "semijoin") == 0) {
-            return join_to_sql(sql, exp, ecp);
+            return join_to_sql(sql, exp, envp, ecp);
         }
         if (strcmp(exp->def.op.name, "union") == 0
                 || strcmp(exp->def.op.name, "intersect") == 0
                 || strcmp(exp->def.op.name, "minus") == 0) {
-            return combine_to_sql(sql, exp, ecp);
+            return combine_to_sql(sql, exp, envp, ecp);
         }
         if (strcmp(exp->def.op.name, "extend") == 0) {
-            return extend_to_sql(sql, exp, ecp);
+            return extend_to_sql(sql, exp, envp, ecp);
         }
         if (strcmp(exp->def.op.name, "=") == 0
                 || strcmp(exp->def.op.name, "<>") == 0
@@ -779,17 +756,17 @@ RDB_expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
                 || strcmp(exp->def.op.name, "%") == 0
                 || strcmp(exp->def.op.name, "*") == 0
                 || strcmp(exp->def.op.name, "||") == 0) {
-            return infix_binop_to_sql(sql, exp, ecp);
+            return infix_binop_to_sql(sql, exp, envp, ecp);
         }
         if (strcmp(exp->def.op.name, "not") == 0) {
-            return unop_to_sql(sql, exp, ecp);
+            return unop_to_sql(sql, exp, envp, ecp);
         }
         if (strcmp(exp->def.op.name, "-") == 0) {
             RDB_int len = RDB_expr_list_length(&exp->def.op.args);
             if (len == 1)
-                return unop_to_sql(sql, exp, ecp);
+                return unop_to_sql(sql, exp, envp, ecp);
             if (len == 2)
-                return infix_binop_to_sql(sql, exp, ecp);
+                return infix_binop_to_sql(sql, exp, envp, ecp);
         }
         if (strcmp(exp->def.op.name, "abs") == 0
                 || strcmp(exp->def.op.name, "sqrt") == 0
@@ -802,20 +779,20 @@ RDB_expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
                 || strcmp(exp->def.op.name, "power") == 0
                 || strcmp(exp->def.op.name, "exp") == 0
                 || strcmp(exp->def.op.name, "strlen") == 0) {
-            return op_inv_to_sql(sql, exp, ecp);
+            return op_inv_to_sql(sql, exp, envp, ecp);
         }
         if (strcmp(exp->def.op.name, "cast_as_integer") == 0
                 || strcmp(exp->def.op.name, "cast_as_float") == 0
                 || strcmp(exp->def.op.name, "cast_as_string") == 0) {
-            return cast_to_sql(sql, exp, ecp);
+            return cast_to_sql(sql, exp, envp, ecp);
         }
         if (strcmp(exp->def.op.name, "substr") == 0) {
-            return substr_to_sql(sql, exp, ecp);
+            return substr_to_sql(sql, exp, envp, ecp);
         }
         RDB_raise_invalid_argument(exp->def.op.name, ecp);
         return RDB_ERROR;
     case RDB_EX_OBJ:
-        return obj_to_sql(sql, RDB_expr_obj(exp), ecp);
+        return RDB_pg_literal(envp, sql, RDB_expr_obj(exp), ecp);
     default: ;
     }
     RDB_raise_invalid_argument("", ecp);
@@ -823,12 +800,13 @@ RDB_expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
 }
 
 int
-RDB_expr_to_sql_select(RDB_object *sql, RDB_expression *exp, RDB_exec_context *ecp)
+RDB_expr_to_sql_select(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
+        RDB_exec_context *ecp)
 {
     RDB_object te;
     RDB_init_obj(&te);
 
-    if (RDB_expr_to_sql(&te, exp, ecp) != RDB_OK)
+    if (RDB_expr_to_sql(&te, exp, envp, ecp) != RDB_OK)
         goto error;
 
     /*
