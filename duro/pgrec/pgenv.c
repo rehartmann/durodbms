@@ -108,3 +108,22 @@ RDB_pgresult_to_error(const RDB_environment *envp, const PGresult *res,
         RDB_raise_internal(errmsg, ecp);
     }
 }
+
+RDB_int
+RDB_update_pg_sql(RDB_environment *envp, const char *command,
+        RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
+{
+    PGresult *res;
+    RDB_int ret;
+
+    res = PQexec(envp->env.pgconn, command);
+    if (PQresultStatus(res) != PGRES_COMMAND_OK)
+    {
+        RDB_pgresult_to_error(envp, res, ecp);
+        ret = (RDB_int) RDB_ERROR;
+    } else {
+        ret = (RDB_int) atoi(PQcmdTuples(res));
+    }
+    PQclear(res);
+    return ret;
+}

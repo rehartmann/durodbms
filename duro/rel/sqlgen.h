@@ -8,17 +8,13 @@
 #ifndef REL_SQLGEN_H_
 #define REL_SQLGEN_H_
 
-#include <gen/types.h>
-
-typedef struct RDB_expression RDB_expression;
-typedef struct RDB_object RDB_object;
-typedef struct RDB_exec_context RDB_exec_context;
+#include "rdb.h"
 
 RDB_bool
 RDB_sql_convertible(RDB_expression *);
 
 RDB_bool
-RDB_scalar_sql_convertible(RDB_expression *);
+RDB_scalar_sql_convertible(RDB_expression *, RDB_gettypefn *getfnp, void *getarg);
 
 int
 RDB_expr_to_sql(RDB_object *, RDB_expression *, RDB_exec_context *);

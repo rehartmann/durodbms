@@ -9,10 +9,16 @@
 #include "insert.h"
 #include "internal.h"
 #include "stable.h"
+#include "sqlgen.h"
 #include <obj/objinternal.h>
 #include <gen/strfns.h>
 
+#ifdef POSTGRESQL
+#include <pgrec/pgenv.h>
+#endif
+
 #include <string.h>
+#include <stdio.h>
 
 static RDB_bool
 is_keyattr(const char *attrname, RDB_object *tbp, RDB_exec_context *ecp)
@@ -1226,21 +1232,167 @@ upd_complex(RDB_object *tbp, int updc, const RDB_attr_update updv[],
     return RDB_FALSE;
 }
 
+RDB_attr_update *upd_replace_varnames(int updc, const RDB_attr_update updv[],
+        RDB_getobjfn *getfn, void *getarg, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    int i;
+    RDB_attr_update *newupdv = RDB_alloc(sizeof(RDB_attr_update) * updc, ecp);
+    if (newupdv == NULL)
+        return NULL;
+
+    for (i = 0; i < updc; i++) {
+        newupdv[i].exp = NULL;
+    }
+
+    for (i = 0; i < updc; i++) {
+        newupdv[i].name = updv[i].name;
+        newupdv[i].exp = RDB_expr_resolve_varnames(updv[i].exp, getfn, getarg, ecp, txp);
+        if (newupdv[i].exp == NULL)
+            goto error;
+    }
+    return newupdv;
+
+error:
+    for (i = 0; i < updc; i++) {
+        if (newupdv[i].exp != NULL) {
+            RDB_del_expr(newupdv[i].exp, ecp);
+        }
+    }
+    RDB_free(newupdv);
+    return NULL;
+}
+
+#ifdef POSTGRESQL
+static void
+free_updv(int updc, RDB_attr_update updv[], RDB_exec_context *ecp) {
+    int i;
+    for (i = 0; i < updc; i++) {
+        RDB_del_expr(updv[i].exp, ecp);
+    }
+    RDB_free(updv);
+}
+
+static RDB_int
+sql_update(RDB_object *tbp, RDB_expression *condp,
+        int updc, const RDB_attr_update updv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_object command;
+    RDB_object sqlexp;
+    RDB_int ret;
+    int i;
+
+    RDB_init_obj(&command);
+    RDB_init_obj(&sqlexp);
+    if (RDB_string_to_obj(&command, "UPDATE ", ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&command, RDB_table_name(tbp), ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&command, " SET ", ecp) != RDB_OK)
+        goto error;
+    for (i = 0; i < updc; i++) {
+        if (RDB_append_string(&command, "d_", ecp) != RDB_OK)
+            goto error;
+        if (RDB_append_string(&command, updv[i].name, ecp) != RDB_OK)
+            goto error;
+        if (RDB_append_string(&command, " = ", ecp) != RDB_OK)
+            goto error;
+        if (RDB_expr_to_sql(&sqlexp, updv[i].exp, ecp) != RDB_OK)
+            goto error;
+        if (RDB_append_string(&command, RDB_obj_string(&sqlexp), ecp) != RDB_OK)
+            goto error;
+        if (i < updc - 1) {
+            if (RDB_append_char(&command, ',', ecp) != RDB_OK)
+                goto error;
+        }
+    }
+
+    if (condp != NULL) {
+        if (RDB_append_string(&command, " WHERE ", ecp) != RDB_OK)
+            goto error;
+        if (RDB_expr_to_sql(&sqlexp, condp, ecp) != RDB_OK)
+            goto error;
+        if (RDB_append_string(&command, RDB_obj_string(&sqlexp), ecp) != RDB_OK)
+            goto error;
+    }
+    if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
+        fprintf(stderr, "SQL generated for update: %s\n", RDB_obj_string(&command));
+    }
+    ret = RDB_update_pg_sql(RDB_db_env(RDB_tx_db(txp)), RDB_obj_string(&command),
+            txp->tx, ecp);
+    RDB_destroy_obj(&sqlexp, ecp);
+    RDB_destroy_obj(&command, ecp);
+    return ret;
+
+error:
+    RDB_destroy_obj(&sqlexp, ecp);
+    RDB_destroy_obj(&command, ecp);
+    return (RDB_int) RDB_ERROR;
+}
+
+static RDB_bool
+updv_sql_convertible(int updc, const RDB_attr_update updv[],
+        RDB_gettypefn *getfnp, void *getarg)
+{
+    int i;
+    for (i = 0; i < updc; i++) {
+        if (!RDB_scalar_sql_convertible(updv[i].exp, getfnp, getarg))
+            return RDB_FALSE;
+    }
+    return RDB_TRUE;
+}
+#endif
+
 RDB_int
 RDB_update_real(RDB_object *tbp, RDB_expression *condp,
         int updc, const RDB_attr_update updv[],
         RDB_getobjfn *getfn, void *getarg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    if (updc == 0)
+        return (RDB_int) 0;
+
     if (tbp->val.tbp->stp == NULL) {
-        if (RDB_provide_stored_table(tbp,
-                RDB_FALSE, ecp, txp) != RDB_OK) {
+        if (RDB_provide_stored_table(tbp, RDB_FALSE, ecp, txp) != RDB_OK) {
             return RDB_ERROR;
         }
 
         if (tbp->val.tbp->stp == NULL)
             return RDB_OK;
     }
+
+#ifdef POSTGRESQL
+    if (txp != NULL && RDB_env_queries(txp->envp)) {
+        RDB_int cnt;
+        RDB_expression *repcondp = NULL;
+        RDB_attr_update *repupdv = upd_replace_varnames(updc, updv,
+                getfn, getarg, ecp, txp);
+        if (repupdv == NULL)
+            return RDB_ERROR;
+
+        if (condp != NULL) {
+            repcondp = RDB_expr_resolve_varnames(condp, getfn, getarg, ecp, txp);
+            if (repcondp == NULL) {
+                free_updv(updc, repupdv, ecp);
+                return (RDB_int) RDB_ERROR;
+            }
+        }
+        if ((condp == NULL || RDB_scalar_sql_convertible(repcondp,
+                &RDB_get_tuple_attr_type, tbp->typ->def.basetyp))
+                && updv_sql_convertible(updc, repupdv,
+                        &RDB_get_tuple_attr_type, tbp->typ->def.basetyp)) {
+            cnt = sql_update(tbp, repcondp, updc, repupdv, ecp, txp);
+            if (repcondp != NULL)
+                RDB_del_expr(repcondp, ecp);
+            free_updv(updc, repupdv, ecp);
+            return cnt;
+        }
+        if (repcondp != NULL)
+            RDB_del_expr(repcondp, ecp);
+        free_updv(updc, repupdv, ecp);
+    }
+#endif
 
     if ((txp == NULL || !RDB_env_queries(txp->envp))
             && (upd_complex(tbp, updc, updv, ecp)

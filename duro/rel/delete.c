@@ -11,7 +11,10 @@
 #include "sqlgen.h"
 #include <obj/objinternal.h>
 #include <gen/strfns.h>
-#include <pgrec/pgrecmap.h>
+
+#ifdef POSTGRESQL
+#include <pgrec/pgenv.h>
+#endif
 
 #include <string.h>
 #include <stdio.h>
@@ -70,24 +73,36 @@ static RDB_int
 sql_delete(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
+    RDB_object command;
     RDB_object where;
     RDB_int ret;
 
+    RDB_init_obj(&command);
     RDB_init_obj(&where);
+    if (RDB_string_to_obj(&command, "DELETE FROM ", ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&command, RDB_table_name(tbp), ecp) != RDB_OK)
+        goto error;
     if (condp != NULL) {
+        if (RDB_append_string(&command, " WHERE ", ecp) != RDB_OK)
+            goto error;
         if (RDB_expr_to_sql(&where, condp, ecp) != RDB_OK)
             goto error;
-        if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
-            fprintf(stderr, "SQL generated for delete: %s\n", RDB_obj_string(&where));
-        }
+        if (RDB_append_string(&command, RDB_obj_string(&where), ecp) != RDB_OK)
+            goto error;
     }
-    ret = RDB_delete_pg_sql(tbp->val.tbp->stp->recmapp,
-            condp != NULL ? RDB_obj_string(&where) : NULL, txp->tx, ecp);
+    if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
+        fprintf(stderr, "SQL generated for delete: %s\n", RDB_obj_string(&command));
+    }
+    ret = RDB_update_pg_sql(RDB_db_env(RDB_tx_db(txp)), RDB_obj_string(&command),
+            txp->tx, ecp);
     RDB_destroy_obj(&where, ecp);
+    RDB_destroy_obj(&command, ecp);
     return ret;
 
 error:
     RDB_destroy_obj(&where, ecp);
+    RDB_destroy_obj(&command, ecp);
     return (RDB_int) RDB_ERROR;
 }
 #endif
@@ -132,7 +147,8 @@ RDB_delete_real(RDB_object *tbp, RDB_expression *condp,
             if (repcondp == NULL)
                 return (RDB_int) RDB_ERROR;
         }
-        if (condp == NULL || RDB_scalar_sql_convertible(repcondp)) {
+        if (condp == NULL || RDB_scalar_sql_convertible(repcondp,
+                &RDB_get_tuple_attr_type, tpltyp)) {
             cnt = sql_delete(tbp, repcondp, ecp, txp);
             if (repcondp != NULL)
                 RDB_del_expr(repcondp, ecp);

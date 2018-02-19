@@ -14,7 +14,7 @@
 #include <stdio.h>
 
 static RDB_bool
-explist_user_types(RDB_expr_list *explistp)
+explist_user_types(RDB_expr_list *explistp, RDB_gettypefn *getfnp, void *getarg)
 {
     RDB_exec_context ec;
     RDB_expression *exp;
@@ -22,7 +22,7 @@ explist_user_types(RDB_expr_list *explistp)
     RDB_init_exec_context(&ec);
     exp = explistp->firstp;
     while (exp != NULL) {
-        RDB_type *typ = RDB_expr_type(exp, NULL, NULL, NULL, &ec, NULL);
+        RDB_type *typ = RDB_expr_type(exp, getfnp, getarg, NULL, &ec, NULL);
         if (typ == NULL) {
             RDB_destroy_exec_context(&ec);
             return RDB_FALSE;
@@ -38,13 +38,14 @@ explist_user_types(RDB_expr_list *explistp)
 }
 
 static RDB_bool
-explist_scalar_sql_convertible(RDB_expr_list *explistp)
+explist_scalar_sql_convertible(RDB_expr_list *explistp, RDB_gettypefn *getfnp,
+        void *getarg)
 {
     RDB_expression *exp;
 
     exp = explistp->firstp;
     while (exp != NULL) {
-        if (!RDB_scalar_sql_convertible(exp))
+        if (!RDB_scalar_sql_convertible(exp, getfnp, getarg))
             return RDB_FALSE;
         exp = exp->nextp;
     }
@@ -52,7 +53,7 @@ explist_scalar_sql_convertible(RDB_expr_list *explistp)
 }
 
 RDB_bool
-RDB_scalar_sql_convertible(RDB_expression *exp)
+RDB_scalar_sql_convertible(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg)
 {
     RDB_type *typ;
 
@@ -67,7 +68,7 @@ RDB_scalar_sql_convertible(RDB_expression *exp)
         if (strcmp(exp->def.op.name, "=") == 0
                 || strcmp(exp->def.op.name, "<>") == 0) {
             return (RDB_bool) (RDB_expr_list_length(&exp->def.op.args) == 2
-                    && explist_scalar_sql_convertible(&exp->def.op.args));
+                    && explist_scalar_sql_convertible(&exp->def.op.args, getfnp, getarg));
         }
         if (strcmp(exp->def.op.name, ">") == 0
                 || strcmp(exp->def.op.name, "<") == 0
@@ -81,8 +82,8 @@ RDB_scalar_sql_convertible(RDB_expression *exp)
                 || strcmp(exp->def.op.name, "atan2") == 0
                 || strcmp(exp->def.op.name, "||") == 0) {
             return (RDB_bool) (RDB_expr_list_length(&exp->def.op.args) == 2
-                    && explist_user_types(&exp->def.op.args)
-                    && explist_scalar_sql_convertible(&exp->def.op.args));
+                    && explist_user_types(&exp->def.op.args, getfnp, getarg)
+                    && explist_scalar_sql_convertible(&exp->def.op.args, getfnp, getarg));
         }
         if (strcmp(exp->def.op.name, "not") == 0
                 || strcmp(exp->def.op.name, "abs") == 0
@@ -101,19 +102,19 @@ RDB_scalar_sql_convertible(RDB_expression *exp)
                 || strcmp(exp->def.op.name, "cast_as_string") == 0)
         {
             return (RDB_bool) (RDB_expr_list_length(&exp->def.op.args) == 1
-                    && explist_user_types(&exp->def.op.args)
-                    && RDB_scalar_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 0)));
+                    && explist_user_types(&exp->def.op.args, getfnp, getarg)
+                    && RDB_scalar_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 0), getfnp, getarg));
         }
         if (strcmp(exp->def.op.name, "substr") == 0) {
             return (RDB_bool) (RDB_expr_list_length(&exp->def.op.args) == 3
-                    && explist_user_types(&exp->def.op.args)
-                    && RDB_scalar_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 0)));
+                    && explist_user_types(&exp->def.op.args, getfnp, getarg)
+                    && RDB_scalar_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 0), getfnp, getarg));
         }
         if (strcmp(exp->def.op.name, "-") == 0) {
             RDB_int len = RDB_expr_list_length(&exp->def.op.args);
             return (RDB_bool) ((len == 1 || len == 2)
-                    && explist_user_types(&exp->def.op.args)
-                    && explist_scalar_sql_convertible(&exp->def.op.args));
+                    && explist_user_types(&exp->def.op.args, getfnp, getarg)
+                    && explist_scalar_sql_convertible(&exp->def.op.args, getfnp, getarg));
         }
         return RDB_FALSE;
     default: ;
@@ -143,7 +144,7 @@ RDB_sql_convertible(RDB_expression *exp)
     if (strcmp(exp->def.op.name, "where") == 0) {
         return (RDB_bool) (RDB_expr_list_length(&exp->def.op.args) == 2
                 && RDB_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 0))
-                && RDB_scalar_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 1)));
+                && RDB_scalar_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 1), NULL, NULL));
     }
     if (strcmp(exp->def.op.name, "join") == 0
             || strcmp(exp->def.op.name, "semijoin") == 0
@@ -163,7 +164,7 @@ RDB_sql_convertible(RDB_expression *exp)
         argexp = exp->def.op.args.firstp->nextp;
         while (argexp != NULL) {
             RDB_object *objp;
-            if (!RDB_scalar_sql_convertible(argexp))
+            if (!RDB_scalar_sql_convertible(argexp, NULL, NULL))
                 return RDB_FALSE;
             argexp = argexp->nextp;
             if (argexp == NULL)
