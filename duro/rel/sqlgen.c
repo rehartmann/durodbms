@@ -7,8 +7,8 @@
 
 #include "sqlgen.h"
 #include "rdb.h"
+#include "internal.h"
 #include <obj/objinternal.h>
-#include <obj/type.h>
 #include <pgrec/pgenv.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,7 +46,7 @@ explist_scalar_sql_convertible(RDB_expr_list *explistp, RDB_gettypefn *getfnp,
 
     exp = explistp->firstp;
     while (exp != NULL) {
-        if (!RDB_scalar_sql_convertible(exp, getfnp, getarg))
+        if (!RDB_nontable_sql_convertible(exp, getfnp, getarg))
             return RDB_FALSE;
         exp = exp->nextp;
     }
@@ -54,17 +54,13 @@ explist_scalar_sql_convertible(RDB_expr_list *explistp, RDB_gettypefn *getfnp,
 }
 
 RDB_bool
-RDB_scalar_sql_convertible(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg)
+RDB_nontable_sql_convertible(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg)
 {
-    RDB_type *typ;
-
     switch (exp->kind) {
     case RDB_EX_VAR:
         return RDB_TRUE;
     case RDB_EX_OBJ:
-        typ = RDB_obj_type(RDB_expr_obj(exp));
-        return (RDB_bool) (typ == &RDB_STRING || typ == &RDB_INTEGER
-                || typ == &RDB_BOOLEAN || typ == &RDB_FLOAT);
+        return RDB_TRUE;
     case RDB_EX_RO_OP:
         if (strcmp(exp->def.op.name, "=") == 0
                 || strcmp(exp->def.op.name, "<>") == 0) {
@@ -104,18 +100,28 @@ RDB_scalar_sql_convertible(RDB_expression *exp, RDB_gettypefn *getfnp, void *get
         {
             return (RDB_bool) (RDB_expr_list_length(&exp->def.op.args) == 1
                     && explist_user_types(&exp->def.op.args, getfnp, getarg)
-                    && RDB_scalar_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 0), getfnp, getarg));
+                    && RDB_nontable_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 0), getfnp, getarg));
         }
         if (strcmp(exp->def.op.name, "substr") == 0) {
             return (RDB_bool) (RDB_expr_list_length(&exp->def.op.args) == 3
                     && explist_user_types(&exp->def.op.args, getfnp, getarg)
-                    && RDB_scalar_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 0), getfnp, getarg));
+                    && RDB_nontable_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 0), getfnp, getarg));
         }
         if (strcmp(exp->def.op.name, "-") == 0) {
             RDB_int len = RDB_expr_list_length(&exp->def.op.args);
             return (RDB_bool) ((len == 1 || len == 2)
                     && explist_user_types(&exp->def.op.args, getfnp, getarg)
                     && explist_scalar_sql_convertible(&exp->def.op.args, getfnp, getarg));
+        }
+        if (strcmp(exp->def.op.name, "tuple") == 0
+                || strcmp(exp->def.op.name, "relation") == 0
+                || strcmp(exp->def.op.name, "array") == 0) {
+            RDB_exec_context ec;
+            RDB_type *typ;
+            RDB_init_exec_context(&ec);
+            typ = RDB_expr_type(exp, NULL, NULL, NULL, &ec, NULL);
+            RDB_destroy_exec_context(&ec);
+            return (RDB_bool) (typ != NULL);
         }
         return RDB_FALSE;
     default: ;
@@ -145,7 +151,7 @@ RDB_sql_convertible(RDB_expression *exp)
     if (strcmp(exp->def.op.name, "where") == 0) {
         return (RDB_bool) (RDB_expr_list_length(&exp->def.op.args) == 2
                 && RDB_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 0))
-                && RDB_scalar_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 1), NULL, NULL));
+                && RDB_nontable_sql_convertible(RDB_expr_list_get(&exp->def.op.args, 1), NULL, NULL));
     }
     if (strcmp(exp->def.op.name, "join") == 0
             || strcmp(exp->def.op.name, "semijoin") == 0
@@ -165,7 +171,7 @@ RDB_sql_convertible(RDB_expression *exp)
         argexp = exp->def.op.args.firstp->nextp;
         while (argexp != NULL) {
             RDB_object *objp;
-            if (!RDB_scalar_sql_convertible(argexp, NULL, NULL))
+            if (!RDB_nontable_sql_convertible(argexp, NULL, NULL))
                 return RDB_FALSE;
             argexp = argexp->nextp;
             if (argexp == NULL)
@@ -688,7 +694,7 @@ cast_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
         type = "text";
     }
 
-    if (RDB_string_to_obj(sql, "cast(", ecp) != RDB_OK)
+    if (RDB_string_to_obj(sql, "CAST(", ecp) != RDB_OK)
         goto error;
     if (RDB_expr_to_sql(&arg, exp->def.op.args.firstp, envp, ecp) != RDB_OK)
         goto error;
@@ -709,10 +715,85 @@ error:
     return RDB_ERROR;
 }
 
+static int
+obj_to_sql(RDB_object *sql, RDB_object *srcp, RDB_type *typ, RDB_environment *envp,
+        RDB_exec_context *ecp)
+{
+    RDB_field fld;
+    void *buf;
+    int ret;
+
+    switch(srcp->kind) {
+    case RDB_OB_INT:
+        return RDB_obj_to_string(sql, srcp, ecp);
+    case RDB_OB_FLOAT:
+        {
+            RDB_object str;
+
+            if (RDB_string_to_obj(sql, "CAST (", ecp) != RDB_OK)
+                return RDB_ERROR;
+            RDB_init_obj(&str);
+            if (RDB_obj_to_string(&str, srcp, ecp) != RDB_OK) {
+                RDB_destroy_obj(&str, ecp);
+                return RDB_ERROR;
+            }
+            if (RDB_append_string(sql, RDB_obj_string(&str), ecp) != RDB_OK) {
+                RDB_destroy_obj(&str, ecp);
+                return RDB_ERROR;
+            }
+            RDB_destroy_obj(&str, ecp);
+            return RDB_append_string(sql, " AS DOUBLE PRECISION)", ecp);
+        }
+    case RDB_OB_BIN:
+        if (RDB_irep_is_string(RDB_obj_type(srcp))) {
+            return RDB_pg_string_literal(envp, sql, RDB_obj_string(srcp), ecp);
+        } else {
+            return RDB_pg_binary_literal(envp, sql, srcp->val.bin.datap, srcp->val.bin.len, ecp);
+        }
+    default: ;
+    }
+
+    srcp->store_typ = typ;
+    if (RDB_obj_to_field(&fld, srcp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    buf = RDB_alloc(fld.len, ecp);
+    if (buf == NULL)
+        return RDB_ERROR;
+    (*fld.copyfp)(buf, fld.datap, fld.len);
+    ret = RDB_pg_binary_literal(envp, sql, buf, fld.len, ecp);
+    RDB_free(buf);
+    return ret;
+}
+
+int
+eval_expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
+        RDB_exec_context *ecp)
+{
+    RDB_object value;
+    RDB_type *typ;
+
+    RDB_init_obj(&value);
+    typ = RDB_expr_type(exp, NULL, NULL, envp, ecp, NULL);
+    if (typ == NULL)
+        goto error;
+    if (RDB_evaluate(exp, NULL, NULL, envp, ecp, NULL, &value) != RDB_OK)
+        goto error;
+    if (obj_to_sql(sql, &value, typ, envp, ecp) != RDB_OK)
+        goto error;
+
+    RDB_destroy_obj(&value, ecp);
+    return RDB_OK;
+error:
+    RDB_destroy_obj(&value, ecp);
+    return RDB_ERROR;
+}
+
 int
 RDB_expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
         RDB_exec_context *ecp)
 {
+    RDB_type *typ;
+
     switch (exp->kind)
     {
     case RDB_EX_VAR:
@@ -789,10 +870,12 @@ RDB_expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
         if (strcmp(exp->def.op.name, "substr") == 0) {
             return substr_to_sql(sql, exp, envp, ecp);
         }
-        RDB_raise_invalid_argument(exp->def.op.name, ecp);
-        return RDB_ERROR;
+        return eval_expr_to_sql(sql, exp, envp, ecp);
     case RDB_EX_OBJ:
-        return RDB_pg_literal(envp, sql, RDB_expr_obj(exp), ecp);
+        typ = RDB_expr_type(exp, NULL, NULL, envp, ecp, NULL);
+        if (typ == NULL)
+            return RDB_ERROR;
+        return obj_to_sql(sql, RDB_expr_obj(exp), typ, envp, ecp);
     default: ;
     }
     RDB_raise_invalid_argument("", ecp);

@@ -685,3 +685,38 @@ RDB_datetime_to_tm(struct tm *tm, const RDB_object *dt)
     tm->tm_sec = dt->val.time.second;
     tm->tm_isdst = -1;
 }
+
+enum RDB_obj_kind
+RDB_val_kind(const RDB_type *typ)
+{
+    switch (typ->kind) {
+    case RDB_TP_SCALAR:
+        if (typ == &RDB_BOOLEAN)
+            return RDB_OB_BOOL;
+        if (typ == &RDB_INTEGER)
+            return RDB_OB_INT;
+        if (typ == &RDB_FLOAT)
+            return RDB_OB_FLOAT;
+        if (typ == &RDB_DATETIME)
+            return RDB_OB_TIME;
+        if (typ->def.scalar.arep != NULL)
+            return RDB_val_kind(typ->def.scalar.arep);
+        return RDB_OB_BIN;
+    case RDB_TP_TUPLE:
+        return RDB_OB_TUPLE;
+    case RDB_TP_RELATION:
+        return RDB_OB_TABLE;
+    case RDB_TP_ARRAY:
+        return RDB_OB_ARRAY;
+    }
+    /* Should never be reached */
+    abort();
+}
+
+RDB_bool
+RDB_irep_is_string(const RDB_type *typ)
+{
+    if (typ == &RDB_STRING)
+        return RDB_TRUE;
+    return (RDB_bool) (typ->kind == RDB_TP_SCALAR && typ->def.scalar.arep == &RDB_STRING);
+}

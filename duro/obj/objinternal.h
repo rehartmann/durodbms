@@ -136,4 +136,7 @@ RDB_del_type(RDB_type *, RDB_exec_context *);
 RDB_type *
 RDB_obj_impl_type(const RDB_object *);
 
+RDB_bool
+RDB_irep_is_string(const RDB_type *);
+
 #endif /* OBJINTERNAL_H_ */

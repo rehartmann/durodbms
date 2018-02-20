@@ -28,6 +28,11 @@ void
 RDB_pgresult_to_error(const RDB_environment *, const PGresult *, RDB_exec_context *);
 
 int
-RDB_pg_literal(RDB_environment *, RDB_object *, const RDB_object *, RDB_exec_context *);
+RDB_pg_string_literal(RDB_environment *, RDB_object *, const char *,
+        RDB_exec_context *);
+
+int
+RDB_pg_binary_literal(RDB_environment *, RDB_object *, const void *,
+        size_t, RDB_exec_context *);
 
 #endif /* BDBREC_BDBENV_H_ */

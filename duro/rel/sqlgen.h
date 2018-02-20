@@ -14,7 +14,7 @@ RDB_bool
 RDB_sql_convertible(RDB_expression *);
 
 RDB_bool
-RDB_scalar_sql_convertible(RDB_expression *, RDB_gettypefn *getfnp, void *getarg);
+RDB_nontable_sql_convertible(RDB_expression *, RDB_gettypefn *getfnp, void *getarg);
 
 int
 RDB_expr_to_sql(RDB_object *, RDB_expression *, RDB_environment *, RDB_exec_context *);

@@ -120,33 +120,6 @@ RDB_obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
-enum RDB_obj_kind
-RDB_val_kind(const RDB_type *typ)
-{
-    switch (typ->kind) {
-    case RDB_TP_SCALAR:
-        if (typ == &RDB_BOOLEAN)
-            return RDB_OB_BOOL;
-        if (typ == &RDB_INTEGER)
-            return RDB_OB_INT;
-        if (typ == &RDB_FLOAT)
-            return RDB_OB_FLOAT;
-        if (typ == &RDB_DATETIME)
-            return RDB_OB_TIME;
-        if (typ->def.scalar.arep != NULL)
-            return RDB_val_kind(typ->def.scalar.arep);
-        return RDB_OB_BIN;
-    case RDB_TP_TUPLE:
-        return RDB_OB_TUPLE;
-    case RDB_TP_RELATION:
-        return RDB_OB_TABLE;
-    case RDB_TP_ARRAY:
-        return RDB_OB_ARRAY;
-    }
-    /* Should never be reached */
-    abort();
-}
-
 static int
 len_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap,
         RDB_exec_context *ecp)
@@ -184,7 +157,7 @@ irep_to_tuple(RDB_object *tplp, RDB_type *typ, const void *datap,
         typ = typ->def.scalar.arep;
 
     /*
-     * Read attribute in the alphabetical order of their names
+     * Read attributes in the alphabetical order of their names
      */
     for (i = 0; i < typ->def.tuple.attrc; i++) {
         RDB_object obj;
@@ -415,7 +388,7 @@ RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
 
         /*
          * Write attributes in alphabetical order of their names,
-         * so the order corresponds with serializes tuple types.
+         * so the order corresponds with serialized tuple types.
          * See RDB_serialize_type().
          */
         for (i = 0; i < impltyp->def.tuple.attrc; i++) {
@@ -517,14 +490,6 @@ RDB_obj_irep(RDB_object *valp, size_t *lenp)
     default:
         return valp->val.bin.datap;
     }
-}
-
-RDB_bool
-RDB_irep_is_string(const RDB_type *typ)
-{
-    if (typ == &RDB_STRING)
-        return RDB_TRUE;
-    return (RDB_bool) (typ->kind == RDB_TP_SCALAR && typ->def.scalar.arep == &RDB_STRING);
 }
 
 static int

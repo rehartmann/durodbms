@@ -130,46 +130,41 @@ RDB_update_pg_sql(RDB_environment *envp, const char *command,
 }
 
 int
-RDB_pg_literal(RDB_environment *envp, RDB_object *dstp, const RDB_object *srcp,
+RDB_pg_string_literal(RDB_environment *envp, RDB_object *dstp, const char *src,
         RDB_exec_context *ecp)
 {
     int ret;
-    int is_float;
-    RDB_object str;
-    RDB_type *typ = RDB_obj_type(srcp);
-
-    if (typ == &RDB_STRING) {
-        char *estr = PQescapeLiteral(envp->env.pgconn, RDB_obj_string(srcp),
-                strlen(RDB_obj_string(srcp)));
-        if (estr == NULL) {
-            RDB_raise_system(PQerrorMessage(envp->env.pgconn), ecp);
-            return RDB_ERROR;
-        }
-        ret = RDB_string_to_obj(dstp, estr, ecp);
-        PQfreemem(estr);
-        return ret;
+    char *estr = PQescapeLiteral(envp->env.pgconn, src, strlen(src));
+    if (estr == NULL) {
+        RDB_raise_system(PQerrorMessage(envp->env.pgconn), ecp);
+        return RDB_ERROR;
     }
-    is_float = typ == &RDB_FLOAT;
-    RDB_init_obj(&str);
+    ret = RDB_string_to_obj(dstp, estr, ecp);
+    PQfreemem(estr);
+    return ret;
+}
 
-    if (RDB_obj_to_string(&str, srcp, ecp) != RDB_OK)
-         goto error;
-    if (RDB_string_to_obj(dstp, "", ecp) != RDB_OK)
-         goto error;
-    if (is_float) {
-         if (RDB_append_string(dstp, "CAST (", ecp) != RDB_OK)
-             return RDB_ERROR;
-     }
-     if (RDB_append_string(dstp, RDB_obj_string(&str), ecp) != RDB_OK)
-         return RDB_ERROR;
-     if (is_float) {
-         if (RDB_append_string(dstp, " AS DOUBLE PRECISION)", ecp) != RDB_OK)
-             goto error;
-     }
-     RDB_destroy_obj(&str, ecp);
-     return RDB_OK;
+int
+RDB_pg_binary_literal(RDB_environment *envp, RDB_object *dstp, const void *src,
+        size_t srclen, RDB_exec_context *ecp)
+{
+    size_t tolen;
+    unsigned char *ebin = PQescapeByteaConn(envp->env.pgconn, src, srclen, &tolen);
+    if (ebin == NULL) {
+        RDB_raise_system(PQerrorMessage(envp->env.pgconn), ecp);
+        return RDB_ERROR;
+    }
+    if (RDB_string_to_obj(dstp, "E'\\", ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(dstp, (char *) ebin, ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_char(dstp, '\'', ecp) != RDB_OK)
+        goto error;
+
+    PQfreemem(ebin);
+    return RDB_OK;
 
 error:
-     RDB_destroy_obj(&str, ecp);
-     return RDB_ERROR;
+    PQfreemem(ebin);
+    return RDB_ERROR;
 }

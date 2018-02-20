@@ -148,7 +148,7 @@ RDB_delete_real(RDB_object *tbp, RDB_expression *condp,
             if (repcondp == NULL)
                 return (RDB_int) RDB_ERROR;
         }
-        if (condp == NULL || RDB_scalar_sql_convertible(repcondp,
+        if (condp == NULL || RDB_nontable_sql_convertible(repcondp,
                 &RDB_get_tuple_attr_type, tpltyp)) {
             cnt = sql_delete(tbp, repcondp, ecp, txp);
             if (repcondp != NULL)

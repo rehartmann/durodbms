@@ -1337,7 +1337,7 @@ updv_sql_convertible(int updc, const RDB_attr_update updv[],
 {
     int i;
     for (i = 0; i < updc; i++) {
-        if (!RDB_scalar_sql_convertible(updv[i].exp, getfnp, getarg))
+        if (!RDB_nontable_sql_convertible(updv[i].exp, getfnp, getarg))
             return RDB_FALSE;
     }
     return RDB_TRUE;
@@ -1378,7 +1378,7 @@ RDB_update_real(RDB_object *tbp, RDB_expression *condp,
                 return (RDB_int) RDB_ERROR;
             }
         }
-        if ((condp == NULL || RDB_scalar_sql_convertible(repcondp,
+        if ((condp == NULL || RDB_nontable_sql_convertible(repcondp,
                 &RDB_get_tuple_attr_type, tbp->typ->def.basetyp))
                 && updv_sql_convertible(updc, repupdv,
                         &RDB_get_tuple_attr_type, tbp->typ->def.basetyp)) {
