@@ -60,18 +60,23 @@ check_contains(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     ret = RDB_table_contains(tbp, &tpl, ecp, txp, &b);    
     if (ret != RDB_OK) {
-        return RDB_ERROR;
+        goto error;
     }
     assert(b);
 
     RDB_tuple_set_float(&tpl, "SUM_SALARY", 4100, ecp);
     ret = RDB_table_contains(tbp, &tpl, ecp, txp, &b);    
     if (ret != RDB_OK) {
-        return RDB_ERROR;
+        goto error;
     }
     assert(!b);
 
+    RDB_destroy_obj(&tpl, ecp);
     return RDB_OK;
+
+error:
+    RDB_destroy_obj(&tpl, ecp);
+    return RDB_ERROR;
 }
 
 int
@@ -208,6 +213,10 @@ main(int argc, char *argv[])
     RDB_exec_context ec;
     
     RDB_init_exec_context(&ec);
+    if (RDB_init_builtin(&ec) != RDB_OK) {
+        fputs("FATAL: cannot initialize\n", stderr);
+        return 2;
+    }
     dsp = RDB_open_env(argc <= 1 ? "dbenv" : argv[1], RDB_RECOVER, &ec);
     if (dsp == NULL) {
         fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));

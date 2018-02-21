@@ -218,7 +218,12 @@ main(int argc, char *argv[])
     RDB_exec_context ec;
     
     RDB_init_exec_context(&ec);
-    envp = RDB_open_env("dbenv", RDB_RECOVER, &ec);
+    if (RDB_init_builtin(&ec) != RDB_OK) {
+        fputs("FATAL: cannot initialize\n", stderr);
+        return 2;
+    }
+
+    envp = RDB_open_env(argc <= 1 ? "dbenv" : argv[1], RDB_RECOVER, &ec);
     if (envp == NULL) {
         fprintf(stderr, "Error: %s\n",
                 RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));

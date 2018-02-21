@@ -1143,6 +1143,10 @@ qr_dups(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_bool *resp)
         *resp = RDB_FALSE;
         return RDB_OK;
     }
+    if (!qrp->nested && qrp->val.stored.tbp == NULL) {
+        *resp = RDB_FALSE;
+        return RDB_OK;
+    }
     return expr_dups(qrp->exp, ecp, resp);
 }
 
@@ -1150,12 +1154,6 @@ int
 RDB_duprem(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_bool rd;
-
-    /*
-     * SQL queries use DISTINCT and cannot return duplicates
-     */
-    if (txp != NULL && RDB_env_queries(txp->envp))
-        return RDB_OK;
 
     if (qr_dups(qrp, ecp, &rd) != RDB_OK)
         return RDB_ERROR;

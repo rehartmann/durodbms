@@ -20,7 +20,7 @@ print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     }
     
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
-        printf("EMP#: %d\n", (int) RDB_tuple_get_int(tplp, "EMP#"));
+        printf("EMP_NO: %d\n", (int) RDB_tuple_get_int(tplp, "EMP_NO"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
         printf("SAL: %f\n", (double) RDB_tuple_get_float(tplp, "SAL"));
     }
@@ -60,7 +60,7 @@ test_rename(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    /* Creating EMPS1 RENAME (SALARY AS SAL, EMPNO AS EMP#) */
+    /* Creating EMPS1 RENAME (SALARY AS SAL, EMPNO AS EMP_NO) */
 
     exp = RDB_ro_op("rename", ecp);
     if (exp == NULL) {
@@ -96,7 +96,7 @@ test_rename(RDB_database *dbp, RDB_exec_context *ecp)
     	return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
-    argp = RDB_string_to_expr("EMP#", ecp);
+    argp = RDB_string_to_expr("EMP_NO", ecp);
     if (argp == NULL) {
     	RDB_del_expr(exp, ecp);
     	RDB_rollback(ecp, &tx);
@@ -114,7 +114,7 @@ test_rename(RDB_database *dbp, RDB_exec_context *ecp)
     ret = print_table(vtbp, ecp, &tx);
 
     RDB_init_obj(&tpl);
-    ret = RDB_tuple_set_int(&tpl, "EMP#", 1, ecp);
+    ret = RDB_tuple_set_int(&tpl, "EMP_NO", 1, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_string(&tpl, "NAME", "Smith", ecp);
