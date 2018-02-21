@@ -62,15 +62,16 @@ RDB_pg_begin_tx(RDB_environment *envp,
         RDB_rec_transaction *parent_rtxp, RDB_exec_context *ecp)
 {
     PGresult *res;
-    RDB_pg_tx *tx = RDB_alloc(sizeof(RDB_pg_tx), ecp);
-    if (tx == NULL)
-        return NULL;
-    tx->envp = envp;
-    tx->savepoint_id = -1;
+    RDB_pg_tx *tx;
 
     if (parent_rtxp != NULL) {
         return nested_begin_tx(envp, parent_rtxp, ecp);
     }
+    tx = RDB_alloc(sizeof(RDB_pg_tx), ecp);
+    if (tx == NULL)
+        return NULL;
+    tx->envp = envp;
+    tx->savepoint_id = -1;
 
     res = PQexec(envp->env.pgconn, "BEGIN");
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
