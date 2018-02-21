@@ -1,6 +1,4 @@
 #include <rel/rdb.h>
-#include <bdbrec/bdbenv.h>
-#include <db.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -83,17 +81,17 @@ test_assign_select(RDB_database *dbp, RDB_exec_context *ecp)
 }
 
 int
-main(void)
+main(int argc, char *argv[])
 {
     RDB_environment *envp;
     RDB_database *dbp;
     RDB_exec_context ec;
     
     RDB_init_exec_context(&ec);
-    envp = RDB_open_env("dbenv", RDB_RECOVER, &ec);
+    envp = RDB_open_env(argc <= 1 ? "dbenv" : argv[1], RDB_RECOVER, &ec);
     assert(envp != NULL);
 
-    RDB_bdb_env(envp)->set_errfile(RDB_bdb_env(envp), stderr);
+    RDB_env_set_errfile(envp, stderr);
 
     dbp = RDB_get_db_from_env("TEST", envp, &ec);
     assert(dbp != NULL);

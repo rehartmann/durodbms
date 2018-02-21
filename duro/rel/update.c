@@ -1285,11 +1285,11 @@ sql_update(RDB_object *tbp, RDB_expression *condp,
 
     RDB_init_obj(&command);
     RDB_init_obj(&sqlexp);
-    if (RDB_string_to_obj(&command, "UPDATE ", ecp) != RDB_OK)
+    if (RDB_string_to_obj(&command, "UPDATE \"", ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(&command, RDB_table_name(tbp), ecp) != RDB_OK)
         goto error;
-    if (RDB_append_string(&command, " SET ", ecp) != RDB_OK)
+    if (RDB_append_string(&command, "\" SET ", ecp) != RDB_OK)
         goto error;
     for (i = 0; i < updc; i++) {
         if (RDB_append_string(&command, "d_", ecp) != RDB_OK)

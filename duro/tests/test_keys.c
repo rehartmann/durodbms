@@ -1,5 +1,4 @@
 #include <rel/rdb.h>
-#include <db.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -75,14 +74,14 @@ test_keys2(RDB_database *dbp, RDB_exec_context *ecp)
 }
 
 int
-main(void)
+main(int argc, char *argv[])
 {
     RDB_environment *envp;
     RDB_database *dbp;
     int ret;
     RDB_exec_context ec;
     
-    envp = RDB_open_env("dbenv", RDB_RECOVER, &ec);
+    envp = RDB_open_env(argc <= 1 ? "dbenv" : argv[1], RDB_RECOVER, &ec);
     if (envp == NULL) {
         fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         return 1;

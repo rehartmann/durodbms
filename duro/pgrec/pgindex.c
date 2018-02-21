@@ -52,11 +52,11 @@ RDB_create_pg_index(RDB_recmap *rmp, const char *name, const char *filename,
     }
     if (RDB_append_string(&command, name, ecp) != RDB_OK)
         goto error;
-    if (RDB_append_string(&command, " ON ", ecp) != RDB_OK)
+    if (RDB_append_string(&command, " ON \"", ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(&command, rmp->namp, ecp) != RDB_OK)
         goto error;
-    if (RDB_append_char(&command, '(', ecp) != RDB_OK)
+    if (RDB_append_string(&command, "\"(", ecp) != RDB_OK)
         goto error;
     for (int i = 0; i < fieldc; i++) {
         if (RDB_append_string(&command, "d_", ecp) != RDB_OK)

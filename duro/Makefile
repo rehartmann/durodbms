@@ -4,6 +4,8 @@ all_pg:
 	scons postgresql=true
 test:
 	scons test
+test_pg:
+	scons test postgresql=true
 testbins:
 	scons testbins
 apidocs:

@@ -134,7 +134,8 @@ RDB_sql_convertible(RDB_expression *exp)
 {
     if (exp->kind == RDB_EX_VAR
             || (exp->kind == RDB_EX_TBP
-                && RDB_table_is_persistent(exp->def.tbref.tbp)))
+                && RDB_table_is_persistent(exp->def.tbref.tbp)
+                && exp->def.tbref.tbp->val.tbp->stp != NULL))
         return RDB_TRUE;
     if (exp->kind != RDB_EX_RO_OP)
         return RDB_FALSE;
@@ -801,7 +802,11 @@ RDB_expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
             return RDB_ERROR;
         return RDB_append_string(sql, exp->def.varname, ecp);
     case RDB_EX_TBP:
-        return RDB_string_to_obj(sql, RDB_table_name(exp->def.tbref.tbp), ecp);
+        if (RDB_string_to_obj(sql, "\"", ecp) != RDB_OK)
+            return RDB_ERROR;
+        if (RDB_append_string(sql, RDB_table_name(exp->def.tbref.tbp), ecp) != RDB_OK)
+            return RDB_ERROR;
+        return RDB_append_char(sql, '"', ecp);
     case RDB_EX_RO_OP:
         if (strcmp(exp->def.op.name, "project") == 0) {
             return project_to_sql(sql, exp, envp, ecp);

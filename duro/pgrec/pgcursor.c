@@ -53,9 +53,11 @@ RDB_pg_recmap_cursor(RDB_recmap *rmp, RDB_bool wr,
 
     RDB_init_obj(&query);
 
-    if (RDB_string_to_obj(&query, "SELECT * FROM ", ecp) != RDB_OK)
+    if (RDB_string_to_obj(&query, "SELECT * FROM \"", ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(&query, rmp->namp, ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_char(&query, '"', ecp) != RDB_OK)
         goto error;
     curp = RDB_pg_query_cursor(rmp->envp, RDB_obj_string(&query), wr, rtxp, ecp);
     if (curp == NULL)
@@ -388,11 +390,11 @@ RDB_pg_cursor_delete(RDB_cursor *curp, RDB_exec_context *ecp)
     PGresult *res;
 
     RDB_init_obj(&command);
-    if (RDB_string_to_obj(&command, "DELETE FROM ", ecp) != RDB_OK)
+    if (RDB_string_to_obj(&command, "DELETE FROM \"", ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(&command, curp->recmapp->namp, ecp) != RDB_OK)
         goto error;
-    if (RDB_append_string(&command, " WHERE CURRENT OF c", ecp) != RDB_OK)
+    if (RDB_append_string(&command, "\" WHERE CURRENT OF c", ecp) != RDB_OK)
         goto error;
     sprintf(numbuf, "%u", curp->cur.pg.id);
     if (RDB_append_string(&command, numbuf, ecp) != RDB_OK)

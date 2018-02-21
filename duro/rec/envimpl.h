@@ -28,6 +28,7 @@ typedef struct RDB_environment {
         PGconn *pgconn;
 #endif
     } env;
+    FILE *errfile;
 
     /* Functions implementing environment close and recmap functions */
     int (*close_fn)(struct RDB_environment *, RDB_exec_context *);
@@ -53,6 +54,7 @@ typedef struct RDB_environment {
     int (*close_index_fn)(RDB_index *, RDB_exec_context *);
     int (*delete_index_fn)(RDB_index *, RDB_environment *, RDB_rec_transaction *,
             RDB_exec_context *);
+    void (*set_errfile_fn)(RDB_environment *, FILE *);
 
     /* Function which is invoked by RDB_close_env() */
     void (*cleanup_fn)(struct RDB_environment *);

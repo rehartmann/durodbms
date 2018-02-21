@@ -16,6 +16,12 @@
 #include <stdlib.h>
 #include <errno.h>
 
+static void
+bdb_set_errfile(RDB_environment *envp, FILE *file)
+{
+    envp->env.envp->set_errfile(envp->env.envp, file);
+}
+
 static int
 open_env(const char *path, RDB_environment **envpp, int bdb_flags)
 {
@@ -38,6 +44,7 @@ open_env(const char *path, RDB_environment **envpp, int bdb_flags)
     envp->create_index_fn = &RDB_create_bdb_index;
     envp->close_index_fn = &RDB_close_bdb_index;
     envp->delete_index_fn = &RDB_delete_bdb_index;
+    envp->set_errfile_fn = bdb_set_errfile;
 
     envp->cleanup_fn = NULL;
     envp->xdata = NULL;

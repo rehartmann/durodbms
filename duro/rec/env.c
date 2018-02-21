@@ -112,6 +112,12 @@ RDB_env_set_trace(RDB_environment *envp, unsigned level)
     envp->trace = level;
 }
 
+void
+RDB_env_set_errfile(RDB_environment *envp, FILE *file)
+{
+    (*envp->set_errfile_fn)(envp, file);
+}
+
 /*@}*/
 
 void

@@ -1154,15 +1154,19 @@ open_indexes(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     tbp->val.tbp->stp->indexv = indexv;
 
     /* Open secondary indexes */
-    for (i = 0; i < indexc; i++) {
-        char *p = strchr(indexv[i].name, '$');
-        if (p == NULL || strcmp (p, "$0") != 0) {
-            ret = RDB_open_tbindex(tbp, &indexv[i], dbrootp->envp, ecp,
-                    txp);
-            if (ret != RDB_OK)
-                return RDB_ERROR;
-        } else {
-            indexv[i].idxp = NULL;
+    for (i = 0; i < tbp->val.tbp->stp->indexc; i++) {
+        tbp->val.tbp->stp->indexv[i].idxp = NULL;
+    }
+
+    if (!RDB_env_queries(dbrootp->envp)) {
+        for (i = 0; i < indexc; i++) {
+            char *p = strchr(indexv[i].name, '$');
+            if (p == NULL || strcmp (p, "$0") != 0) {
+                ret = RDB_open_tbindex(tbp, &indexv[i], dbrootp->envp, ecp,
+                        txp);
+                if (ret != RDB_OK)
+                    return RDB_ERROR;
+            }
         }
     }
 

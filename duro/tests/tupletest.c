@@ -1,4 +1,4 @@
-/* $Id$ */
+/* Test tuple functions */
 
 #include <rel/rdb.h>
 #include <stdio.h>

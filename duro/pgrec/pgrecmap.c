@@ -59,11 +59,11 @@ RDB_create_pg_recmap(const char *name, const char *filename,
         return NULL;
 
     RDB_init_obj(&command);
-    if (RDB_string_to_obj(&command, "CREATE TABLE ", ecp) != RDB_OK)
+    if (RDB_string_to_obj(&command, "CREATE TABLE \"", ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(&command, name, ecp) != RDB_OK)
         goto error;
-    if (RDB_append_char(&command, '(', ecp) != RDB_OK)
+    if (RDB_append_string(&command, "\"(", ecp) != RDB_OK)
         goto error;
 
     for (i = 0; i < fieldc; i++) {
@@ -159,7 +159,7 @@ RDB_open_pg_recmap(const char *name, const char *filename,
         PQclear(res);
         return NULL;
     }
-    resval = PQgetvalue(res, 0, 0);
+    resval = PQgetvalue(res, 0, 0); /* !! use binary */
     if (resval[0] == 'f') {
         PQclear(res);
         RDB_raise_not_found(name, ecp);
@@ -290,13 +290,13 @@ insert_pg_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp,
     if (formatv == NULL)
         goto error;
 
-    if (RDB_string_to_obj(&command, "INSERT INTO ", ecp) != RDB_OK) {
+    if (RDB_string_to_obj(&command, "INSERT INTO \"", ecp) != RDB_OK) {
         goto error;
     }
     if (RDB_append_string(&command, rmp->namp, ecp) != RDB_OK) {
         goto error;
     }
-    if (RDB_append_string(&command, " VALUES(", ecp) != RDB_OK) {
+    if (RDB_append_string(&command, "\" VALUES(", ecp) != RDB_OK) {
         goto error;
     }
     for (i = 0; i < rmp->fieldcount; i++) {
@@ -441,11 +441,11 @@ RDB_get_pg_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
         if (RDB_append_string(&command, "*", ecp) != RDB_OK)
             goto error;
     }
-    if (RDB_append_string(&command, " FROM ", ecp) != RDB_OK)
+    if (RDB_append_string(&command, " FROM \"", ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(&command, rmp->namp, ecp) != RDB_OK)
         goto error;
-    if (RDB_append_string(&command, " WHERE ", ecp) != RDB_OK)
+    if (RDB_append_string(&command, "\" WHERE ", ecp) != RDB_OK)
         goto error;
 
     for (i = 0; i < rmp->keyfieldcount; i++) {
@@ -550,11 +550,11 @@ RDB_contains_pg_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp
     if (formatv == NULL)
         goto error;
 
-    if (RDB_string_to_obj(&command, "SELECT EXISTS(SELECT 1 FROM ", ecp) != RDB_OK)
+    if (RDB_string_to_obj(&command, "SELECT EXISTS(SELECT 1 FROM \"", ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(&command, rmp->namp, ecp) != RDB_OK)
         goto error;
-    if (RDB_append_string(&command, " WHERE ", ecp) != RDB_OK)
+    if (RDB_append_string(&command, "\" WHERE ", ecp) != RDB_OK)
         goto error;
 
     for (i = 0; i < rmp->fieldcount; i++) {

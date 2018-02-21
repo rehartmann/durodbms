@@ -1,8 +1,7 @@
 #include <rel/rdb.h>
-#include <bdbrec/bdbenv.h>
-#include <db.h>
 
 #include <stdio.h>
+#include <string.h>
 #include <assert.h>
 
 int
@@ -210,14 +209,24 @@ error:
 int
 main(void)
 {
+    char *storage;
     RDB_environment *envp;
     RDB_database *dbp;
     int ret;
     RDB_exec_context ec;
 
     RDB_init_exec_context(&ec);
+    if (RDB_init_builtin(&ec) != RDB_OK) {
+        fputs("FATAL: cannot initialize\n", stderr);
+        return 2;
+    }
     printf("Opening environment\n");
-    envp = RDB_create_env("dbenv", &ec);
+    storage = getenv("DURO_STORAGE");
+    if (storage != NULL && strcmp(storage, "POSTGRESQL") == 0) {
+        envp = RDB_open_env("postgresql:///testdb", 0, &ec);
+    } else {
+        envp = RDB_create_env("dbenv", &ec);
+    }
     if (envp == NULL) {
         fprintf(stderr, "Error: %s\n",
                 RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
@@ -225,7 +234,7 @@ main(void)
         return 1;
     }
 
-    RDB_bdb_env(envp)->set_errfile(RDB_bdb_env(envp), stderr);
+    RDB_env_set_errfile(envp, stderr);
 
     printf("Creating DB\n");
     dbp = RDB_create_db_from_env("TEST", envp, &ec);
@@ -253,7 +262,7 @@ main(void)
     printf ("Closing environment\n");
     ret = RDB_close_env(envp, &ec);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", db_strerror(ret));
+        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 2;
     }

@@ -1,5 +1,4 @@
 #include <rel/rdb.h>
-#include <db.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -97,7 +96,7 @@ test_join(RDB_database *dbp, RDB_exec_context *ecp)
 }
 
 int
-main(void)
+main(int argc, char *argv[])
 {
     RDB_environment *dsp;
     RDB_database *dbp;
@@ -105,7 +104,12 @@ main(void)
     RDB_exec_context ec;
     
     RDB_init_exec_context(&ec);
-    dsp = RDB_open_env("dbenv", RDB_RECOVER, &ec);
+    if (RDB_init_builtin(&ec) != RDB_OK) {
+        fputs("FATAL: cannot initialize\n", stderr);
+        return 2;
+    }
+
+    dsp = RDB_open_env(argc <= 1 ? "dbenv" : argv[1], RDB_RECOVER, &ec);
     if (dsp == NULL) {
         fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         return 1;

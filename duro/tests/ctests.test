@@ -6,8 +6,15 @@ package require tcltest 2.2
 eval ::tcltest::configure $argv
 namespace import ::tcltest::*
 
-set SETUP {catch {removeDirectory dbenv}; makeDirectory dbenv; cd [configure -tmpdir]; \
-    exec [configure -testdir]/prepare}
+if {[info exists env(DURO_STORAGE)] && ($env(DURO_STORAGE) == "POSTGRESQL")} {
+    set SETUP {catch {exec dropdb testdb}; exec createdb testdb; cd [configure -tmpdir]; \
+        exec [configure -testdir]/prepare}
+    set dbenv postgresql:///testdb
+} else {
+    set SETUP {catch {removeDirectory dbenv}; makeDirectory dbenv; cd [configure -tmpdir]; \
+        exec [configure -testdir]/prepare}
+    set dbenv dbenv
+}
 
 test map {hashmap} -body {
     exec [configure -testdir]/maptest
@@ -19,13 +26,13 @@ test tuple {tuples} -body {
 B -> 4711}
 
 test lstables {list all tables} -setup $SETUP -body {
-    exec [configure -testdir]/lstables -e dbenv -d TEST | sort
+    exec [configure -testdir]/lstables -e $dbenv -d TEST | sort
 } -result {depts
 EMPS1
 EMPS2}
 
 test where {WHERE operator}  -setup $SETUP -body {
-    exec [configure -testdir]/test_select
+    exec [configure -testdir]/test_select $dbenv
 } -result {EMPNO: 1
 NAME: Smith
 SALARY: 4000.000000
@@ -37,21 +44,21 @@ NAME: Smith
 SALARY: 4000.000000}
 
 test union {UNION operator}  -setup $SETUP -body {
-    exec [configure -testdir]/test_union
+    exec [configure -testdir]/test_union $dbenv
 }
 
 test minus {MINUS operator}  -setup $SETUP -body {
-    exec [configure -testdir]/test_minus
+    exec [configure -testdir]/test_minus $dbenv
 } -result {EMPNO: 2
 NAME: Jones}
 
 test intersect {INTERSECT operator}  -setup $SETUP -body {
-    exec [configure -testdir]/test_intersect
+    exec [configure -testdir]/test_intersect $dbenv
 } -result {EMPNO: 1
 NAME: Smith}
 
 test extend {EXTEND operator}  -setup $SETUP -body {
-    exec [configure -testdir]/test_extend
+    exec [configure -testdir]/test_extend $dbenv
 } -result {EMPNO: 1
 NAME: Smith
 SALARY: 4000.000000
@@ -64,16 +71,16 @@ SALARY_AFTER_TAX: 0.000000
 NAME_LEN: 5}
 
 test join {JOIN operator} -setup $SETUP -body {
-    exec [configure -testdir]/test_join >@ stdout
+    exec [configure -testdir]/test_join $dbenv >@ stdout
 }
 
 test ra {relational algebra} -setup $SETUP -body {
-    exec [configure -testdir]/test_ra
+    exec [configure -testdir]/test_ra $dbenv
 } -result {NAME: Smith}
 
 test view {views} -setup $SETUP -body {
-    exec [configure -testdir]/test_create_view
-    exec [configure -testdir]/test_print_view
+    exec [configure -testdir]/test_create_view $dbenv
+    exec [configure -testdir]/test_print_view $dbenv
 } -result {Table SALARIES
 Table EMPS1H
 EMPNO: 2
@@ -95,11 +102,11 @@ DEPARTMENT: 2
 MAX_SALARY: 4100.000000}
 
 test keys {keys} -setup $SETUP -body {
-    exec [configure -testdir]/test_keys
+    exec [configure -testdir]/test_keys $dbenv
 }
 
 test project {project} -setup $SETUP -body {
-    exec [configure -testdir]/test_project
+    exec [configure -testdir]/test_project $dbenv
 } -result {SALARY: 4000.000000
 EMPNO: 1
 NAME: Smith
@@ -107,7 +114,7 @@ EMPNO: 3
 NAME: Clarke}
 
 test summarize {SUMMARIZE PER operator} -setup $SETUP -body {
-   exec [configure -testdir]/test_summarize
+   exec [configure -testdir]/test_summarize $dbenv
 } -result {DEPTNO: 1
 COUNT_EMPS: 1
 SUM_SALARY: 4000.000000
@@ -118,7 +125,7 @@ SUM_SALARY: 8100.000000
 AVG_SALARY: 4050.000000}
 
 test rename {RENAME operator} -setup $SETUP -body {
-    exec [configure -testdir]/test_rename
+    exec [configure -testdir]/test_rename $dbenv
 } -result {EMP#: 2
 NAME: Jones
 SAL: 4100.000000
@@ -127,23 +134,23 @@ NAME: Smith
 SAL: 4000.000000}
 
 test regexp {} -setup $SETUP -body {
-    exec [configure -testdir]/test_regexp
+    exec [configure -testdir]/test_regexp $dbenv
 } -result {EMPNO: 2
 NAME: Jones
 SALARY: 4100.000000}
 
 test aggregate {aggregate operators} -setup $SETUP -body {
-    exec [configure -testdir]/test_aggregate
+    exec [configure -testdir]/test_aggregate $dbenv
 }
 
 test srupdate {complex update} -setup $SETUP -body {
-    exec [configure -testdir]/test_srupdate
+    exec [configure -testdir]/test_srupdate $dbenv
 } -result {NO=0, O_NO=2, COUNT=1
 NO=1, O_NO=1, COUNT=1
 NO=2, O_NO=0, COUNT=1}
 
 test insert {insert} -setup $SETUP -body {
-    exec [configure -testdir]/test_insert
+    exec [configure -testdir]/test_insert $dbenv
 } -result {EMPNO: 1
 NAME: Smith
 SALARY: 4000.000000
@@ -158,53 +165,53 @@ SALARY: 4000.000000
 DEPTNO: 2}
 
 test update_delete {update and delete} -setup $SETUP -body {
-    exec [configure -testdir]/test_lupdate
-    exec [configure -testdir]/test_update
-    exec [configure -testdir]/test_delete
+    exec [configure -testdir]/test_lupdate $dbenv
+    exec [configure -testdir]/test_update $dbenv
+    exec [configure -testdir]/test_delete $dbenv
 } -result {EMPNO: 3
 NAME: Jones
 SALARY: 4600.000000}
 
 test null {nullary table} -setup $SETUP -body {
-    exec [configure -testdir]/test_null
+    exec [configure -testdir]/test_null $dbenv
 }
 
 test binary {type BINARY} -setup $SETUP -body {
-    exec [configure -testdir]/test_binary
+    exec [configure -testdir]/test_binary $dbenv
 } -result {ABCDEFGH
 9
 9}
 
 test tinyint {user-defined type TINYINT} -setup $SETUP -body {
-    exec [configure -testdir]/test_deftype
-    exec [configure -testdir]/test_utypetable
+    exec [configure -testdir]/test_deftype $dbenv
+    exec [configure -testdir]/test_utypetable $dbenv
     return {}
 }
 
 test point {user-defined type POINT} -setup $SETUP -body {
-    exec [configure -testdir]/test_defpointtype
-    exec [configure -testdir]/test_pointtable
+    exec [configure -testdir]/test_defpointtype $dbenv
+    exec [configure -testdir]/test_pointtable $dbenv
 } -result {X=1.000000, Y=2.000000
 X=1.000000, Y=2.000000}
 
 test 2db {two databases} -setup $SETUP -body {
-    exec [configure -testdir]/test_2db
+    exec [configure -testdir]/test_2db $dbenv
 }
 
 test op {user-defined operators} -setup $SETUP -body {
-    exec [configure -testdir]/test_defop
-    exec [configure -testdir]/test_callop
-    exec [configure -testdir]/test_print_opview
-    exec [configure -testdir]/test_dropop
+    exec [configure -testdir]/test_defop $dbenv
+    exec [configure -testdir]/test_callop $dbenv
+    exec [configure -testdir]/test_print_opview $dbenv
+    exec [configure -testdir]/test_dropop $dbenv
     return {}
 }
 
 test relation_op {operator RELATION} -setup $SETUP -body {
-    exec [configure -testdir]/test_relation_op
+    exec [configure -testdir]/test_relation_op $dbenv
 }
 
 test assign_where {insert into WHERE using RDB_multi_assign} -setup $SETUP -body {
-    exec [configure -testdir]/test_assign_where
+    exec [configure -testdir]/test_assign_where $dbenv
 } -result {EMPNO: 1
 NAME: Smith
 SALARY: 4000.000000
@@ -213,7 +220,7 @@ NAME: Miller
 SALARY: 5000.000000}
 
 test interp {interpreter} -setup $SETUP -body {
-    exec [configure -testdir]/test_interp
+    exec [configure -testdir]/test_interp $dbenv
 } -result {Test
 2} 
 

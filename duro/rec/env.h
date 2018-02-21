@@ -7,6 +7,7 @@
  */
 
 #include <gen/types.h>
+#include <stdio.h>
 
 enum {
     RDB_RECOVER = 1
@@ -49,5 +50,8 @@ RDB_errcode_to_error(int, RDB_exec_context *);
 
 RDB_bool
 RDB_env_queries(const RDB_environment *);
+
+void
+RDB_env_set_errfile(RDB_environment *, FILE *);
 
 #endif

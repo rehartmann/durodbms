@@ -155,8 +155,14 @@ main(int argc, char *argv[])
     int ret;
     RDB_exec_context ec;
     RDB_bool all = RDB_FALSE;
+    /* DB_ENV *bdbenv; */
 
     RDB_init_exec_context(&ec);
+    if (RDB_init_builtin(&ec) != RDB_OK) {
+        fputs("FATAL: cannot initialize\n", stderr);
+        return 2;
+    }
+
     ret = getargs(&ec, &argc, &argv, &envp, &dbp);
     if (ret != RDB_OK) {
         fprintf(stderr, "lstables: %s\n",
@@ -171,7 +177,7 @@ main(int argc, char *argv[])
         return 1;
     }
 
-    RDB_bdb_env(envp)->set_errfile(RDB_bdb_env(envp), stderr);
+    RDB_env_set_errfile(envp, stderr);
 
     if (argc == 1 && strcmp(argv[0], "-a") == 0)
         all = RDB_TRUE;

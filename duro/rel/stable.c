@@ -779,15 +779,23 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
         tbp->val.tbp->stp->est_cardinality = 100;
     }
 
-    /* Open secondary indexes */
     for (i = 0; i < tbp->val.tbp->stp->indexc; i++) {
-        char *p = strchr(tbp->val.tbp->stp->indexv[i].name, '$');
-        if (p == NULL || strcmp (p, "$0") != 0) {
-            ret = RDB_open_tbindex(tbp, &tbp->val.tbp->stp->indexv[i], envp, ecp, txp);
-            if (ret != RDB_OK)
-                goto error;
-        } else {
-            tbp->val.tbp->stp->indexv[i].idxp = NULL;
+        tbp->val.tbp->stp->indexv[i].idxp = NULL;
+    }
+
+    /*
+     * Don' open indexes if the storage engine supports queries
+     * because then it's up the storage engine to use the indexes
+     */
+    if (envp == NULL || !RDB_env_queries(envp)) {
+        /* Open secondary indexes */
+        for (i = 0; i < tbp->val.tbp->stp->indexc; i++) {
+            char *p = strchr(tbp->val.tbp->stp->indexv[i].name, '$');
+            if (p == NULL || strcmp (p, "$0") != 0) {
+                ret = RDB_open_tbindex(tbp, &tbp->val.tbp->stp->indexv[i], envp, ecp, txp);
+                if (ret != RDB_OK)
+                    goto error;
+            }
         }
     }
 

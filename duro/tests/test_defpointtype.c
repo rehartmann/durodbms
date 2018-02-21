@@ -1,7 +1,5 @@
 #include <rel/rdb.h>
 #include <rel/typeimpl.h>
-#include <bdbrec/bdbenv.h>
-#include <db.h>
 
 #include <tests/point.h>
 #include <stdlib.h>
@@ -126,21 +124,21 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
 }
 
 int
-main(void)
+main(int argc, char *argv[])
 {
     RDB_environment *envp;
     RDB_database *dbp;
     int ret;
     RDB_exec_context ec;
 
-    envp = RDB_open_env("dbenv", RDB_RECOVER, &ec);
+    envp = RDB_open_env(argc <= 1 ? "dbenv" : argv[1], RDB_RECOVER, &ec);
     if (envp == NULL) {
         fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 1;
     }
 
-    RDB_bdb_env(envp)->set_errfile(RDB_bdb_env(envp), stderr);
+    RDB_env_set_errfile(envp, stderr);
 
     RDB_init_exec_context(&ec);
     dbp = RDB_get_db_from_env("TEST", envp, &ec);

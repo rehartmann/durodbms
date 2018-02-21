@@ -80,9 +80,11 @@ sql_delete(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
 
     RDB_init_obj(&command);
     RDB_init_obj(&where);
-    if (RDB_string_to_obj(&command, "DELETE FROM ", ecp) != RDB_OK)
+    if (RDB_string_to_obj(&command, "DELETE FROM \"", ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(&command, RDB_table_name(tbp), ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_char(&command, '"', ecp) != RDB_OK)
         goto error;
     if (condp != NULL) {
         if (RDB_append_string(&command, " WHERE ", ecp) != RDB_OK)

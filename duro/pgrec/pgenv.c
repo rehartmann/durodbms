@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2018 Rene Hartmann.
  * See the file COPYING for redistribution information.
@@ -15,10 +16,16 @@
 
 #include <string.h>
 
+static void
+pg_set_errfile(RDB_environment *envp, FILE *file)
+{
+    envp->errfile = file;
+}
+
 RDB_environment *
 RDB_pg_open_env(const char *path, RDB_exec_context *ecp)
 {
-    RDB_environment *envp = malloc(sizeof (RDB_environment));
+    RDB_environment *envp = calloc(1, sizeof (RDB_environment));
     if (envp == NULL) {
         RDB_raise_no_memory(ecp);
         return NULL;
@@ -36,6 +43,7 @@ RDB_pg_open_env(const char *path, RDB_exec_context *ecp)
     envp->create_index_fn = &RDB_create_pg_index;
     envp->close_index_fn = &RDB_close_pg_index;
     envp->delete_index_fn = &RDB_delete_pg_index;
+    envp->set_errfile_fn = &pg_set_errfile;
 
     envp->cleanup_fn = NULL;
     envp->xdata = NULL;
@@ -90,6 +98,8 @@ RDB_pgresult_to_error(const RDB_environment *envp, const PGresult *res,
         RDB_raise_invalid_argument(errmsg, ecp);
     } else if (strcmp(sqlstate, "23505") == 0) {
         RDB_raise_key_violation(errmsg, ecp);
+    } else if (strcmp(sqlstate, "25P01") == 0) {
+        RDB_raise_no_running_tx(ecp);
     } else if (strncmp(sqlstate, "23", 2) == 0) {
         RDB_raise_predicate_violation(errmsg, ecp);
     } else if (strcmp(sqlstate, "42804") == 0) {
