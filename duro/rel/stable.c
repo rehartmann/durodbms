@@ -784,8 +784,8 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
     }
 
     /*
-     * Don' open indexes if the storage engine supports queries
-     * because then it's up the storage engine to use the indexes
+     * Don't open indexes if the storage engine supports queries
+     * because then it's up to the storage engine to use the indexes
      */
     if (envp == NULL || !RDB_env_queries(envp)) {
         /* Open secondary indexes */
