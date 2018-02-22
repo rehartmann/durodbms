@@ -403,11 +403,13 @@ extend_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
             return RDB_ERROR;
         }
 
-        if (RDB_append_string(sql, " AS d_", ecp) != RDB_OK)
+        if (RDB_append_string(sql, " AS \"", ecp) != RDB_OK)
             return RDB_ERROR;
 
         argexp = argexp->nextp;
         if (RDB_append_string(sql, RDB_obj_string(RDB_expr_obj(argexp)), ecp) != RDB_OK)
+            return RDB_ERROR;
+        if (RDB_append_char(sql, '"', ecp) != RDB_OK)
             return RDB_ERROR;
 
         argexp = argexp->nextp;

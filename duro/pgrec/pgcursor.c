@@ -203,15 +203,31 @@ int
 RDB_pg_cursor_get_by_name(RDB_cursor *curp, const char *attrname, void **datapp,
         size_t *lenp, int flags, RDB_exec_context *ecp)
 {
+    RDB_object colname;
     int colnum;
     if (curp->cur.pg.current_row == NULL) {
         RDB_raise_not_found("", ecp);
         return RDB_ERROR;
     }
 
-    colnum = PQfnumber(curp->cur.pg.current_row, attrname);
+    RDB_init_obj(&colname);
+    if (RDB_string_to_obj(&colname, "\"", ecp) != RDB_OK) {
+        RDB_destroy_obj(&colname, ecp);
+        return RDB_ERROR;
+    }
+    if (RDB_append_string(&colname, attrname, ecp) != RDB_OK) {
+        RDB_destroy_obj(&colname, ecp);
+        return RDB_ERROR;
+    }
+    if (RDB_append_char(&colname, '"', ecp) != RDB_OK) {
+        RDB_destroy_obj(&colname, ecp);
+        return RDB_ERROR;
+    }
+    colnum = PQfnumber(curp->cur.pg.current_row, RDB_obj_string(&colname));
+    RDB_destroy_obj(&colname, ecp);
     if (colnum == -1) {
         RDB_raise_not_found(attrname, ecp);
+        return RDB_ERROR;
     }
     return pg_cursor_get(curp, colnum, datapp, lenp, flags, ecp);
 }

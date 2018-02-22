@@ -79,7 +79,10 @@ test_update1(RDB_database *dbp, RDB_exec_context *ecp)
     upd.exp = exp;
 
     ret = RDB_update(tbp, NULL, 1, &upd, ecp, &tx);
-    assert(ret != RDB_ERROR);
+    if (ret == RDB_ERROR) {
+       puts(RDB_type_name(RDB_obj_type(RDB_get_err(ecp))));
+       assert(0);
+    }
 
     assert(RDB_commit(ecp, &tx) == RDB_OK);
 }

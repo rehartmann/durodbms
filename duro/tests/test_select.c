@@ -78,7 +78,10 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
     assert(vtbp != NULL);
 
     RDB_init_obj(&tpl);
-    assert(RDB_extract_tuple(vtbp, ecp, &tx, &tpl) == RDB_OK);
+    if (RDB_extract_tuple(vtbp, ecp, &tx, &tpl) != RDB_OK) {
+        puts(RDB_type_name(RDB_obj_type(RDB_get_err(ecp))));
+        assert(0);
+    }
     printf("EMPNO: %d\n", (int)RDB_tuple_get_int(&tpl, "EMPNO"));
     printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
     printf("SALARY: %f\n", (double)RDB_tuple_get_float(&tpl, "SALARY"));
