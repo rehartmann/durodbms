@@ -126,10 +126,10 @@ AVG_SALARY: 4050.000000}
 
 test rename {RENAME operator} -setup $SETUP -body {
     exec [configure -testdir]/test_rename $dbenv
-} -result {EMP_NO: 2
+} -result {EMP#: 2
 NAME: Jones
 SAL: 4100.000000
-EMP_NO: 1
+EMP#: 1
 NAME: Smith
 SAL: 4000.000000}
 

@@ -67,11 +67,11 @@ RDB_create_pg_recmap(const char *name, const char *filename,
         goto error;
 
     for (i = 0; i < fieldc; i++) {
-        if (RDB_append_string(&command, "d_", ecp) != RDB_OK)
+        if (RDB_append_char(&command, '"', ecp) != RDB_OK)
             goto error;
         if (RDB_append_string(&command, fieldinfov[i].attrname, ecp) != RDB_OK)
             goto error;
-        if (RDB_append_char(&command, ' ', ecp) != RDB_OK)
+        if (RDB_append_string(&command, "\" ", ecp) != RDB_OK)
             goto error;
         if (RDB_FTYPE_CHAR & fieldinfov[i].flags) {
             if (fieldinfov[i].len != RDB_VARIABLE_LEN) {
@@ -106,9 +106,11 @@ RDB_create_pg_recmap(const char *name, const char *filename,
         if (RDB_append_string(&command, ", PRIMARY KEY(", ecp) != RDB_OK)
             goto error;
         for (i = 0; i < keyfieldc; i++) {
-            if (RDB_append_string(&command, "d_", ecp) != RDB_OK)
+            if (RDB_append_char(&command, '"', ecp) != RDB_OK)
                 goto error;
             if (RDB_append_string(&command, fieldinfov[i].attrname, ecp) != RDB_OK)
+                goto error;
+            if (RDB_append_char(&command, '"', ecp) != RDB_OK)
                 goto error;
             if (i < keyfieldc - 1) {
                 if (RDB_append_char(&command, ',', ecp) != RDB_OK)
@@ -403,7 +405,7 @@ RDB_get_pg_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
     static union num *numres = NULL;
     int i;
     RDB_object command;
-    char numbuf[14];
+    char numbuf[16];
     int *lenv = NULL;
     void **valuev = NULL;
     int *formatv = NULL;
@@ -426,12 +428,14 @@ RDB_get_pg_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
     if (RDB_string_to_obj(&command, "SELECT ", ecp) != RDB_OK)
         goto error;
     for (i = 0; i < fieldc; i++) {
-        if (RDB_append_string(&command, "d_", ecp) != RDB_OK)
+        if (RDB_append_char(&command, '"', ecp) != RDB_OK)
             goto error;
         if (RDB_append_string(&command,
                 rmp->fieldinfos[retfieldv[i].no].attrname, ecp) != RDB_OK) {
             goto error;
         }
+        if (RDB_append_char(&command, '"', ecp) != RDB_OK)
+            goto error;
         if (i < fieldc - 1) {
             if (RDB_append_char(&command, ',', ecp) != RDB_OK)
                 goto error;
@@ -449,11 +453,11 @@ RDB_get_pg_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
         goto error;
 
     for (i = 0; i < rmp->keyfieldcount; i++) {
-        if (RDB_append_string(&command, "d_", ecp))
+        if (RDB_append_char(&command, '"', ecp))
             goto error;
         if (RDB_append_string(&command, rmp->fieldinfos[i].attrname, ecp))
             goto error;
-        sprintf(numbuf, "=$%d", i + 1);
+        sprintf(numbuf, "\"=$%d", i + 1);
         if (RDB_append_string(&command, numbuf, ecp) != RDB_OK)
             goto error;
         if (i < rmp->keyfieldcount - 1) {
@@ -527,7 +531,7 @@ RDB_contains_pg_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp
         RDB_exec_context *ecp)
 {
     RDB_object command;
-    char parambuf[14];
+    char parambuf[16];
     PGresult *res = NULL;
     int *lenv = NULL;
     void **valuev = NULL;
@@ -558,14 +562,14 @@ RDB_contains_pg_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp
         goto error;
 
     for (i = 0; i < rmp->fieldcount; i++) {
-        if (RDB_append_string(&command, "d_", ecp) != RDB_OK) {
+        if (RDB_append_char(&command, '"', ecp) != RDB_OK) {
             goto error;
         }
         if (RDB_append_string(&command, rmp->fieldinfos[i].attrname, ecp) != RDB_OK) {
             goto error;
         }
 
-        sprintf(parambuf, "=$%d", i + 1);
+        sprintf(parambuf, "\"=$%d", i + 1);
         if (RDB_append_string(&command, parambuf, ecp) != RDB_OK) {
             goto error;
         }

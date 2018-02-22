@@ -1292,11 +1292,11 @@ sql_update(RDB_object *tbp, RDB_expression *condp,
     if (RDB_append_string(&command, "\" SET ", ecp) != RDB_OK)
         goto error;
     for (i = 0; i < updc; i++) {
-        if (RDB_append_string(&command, "d_", ecp) != RDB_OK)
+        if (RDB_append_char(&command, '"', ecp) != RDB_OK)
             goto error;
         if (RDB_append_string(&command, updv[i].name, ecp) != RDB_OK)
             goto error;
-        if (RDB_append_string(&command, " = ", ecp) != RDB_OK)
+        if (RDB_append_string(&command, "\" = ", ecp) != RDB_OK)
             goto error;
         if (RDB_expr_to_sql(&sqlexp, updv[i].exp, RDB_db_env(RDB_tx_db(txp)), ecp) != RDB_OK)
             goto error;

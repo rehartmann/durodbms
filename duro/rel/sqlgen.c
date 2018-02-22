@@ -249,9 +249,11 @@ project_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
             RDB_raise_invalid_argument("invalid project argument", ecp);
             return RDB_ERROR;
         }
-        if (RDB_append_string(sql, "d_", ecp) != RDB_OK)
+        if (RDB_append_char(sql, '"', ecp) != RDB_OK)
             return RDB_ERROR;
         if (RDB_append_string(sql, RDB_obj_string(attrobjp), ecp) != RDB_OK)
+            return RDB_ERROR;
+        if (RDB_append_char(sql, '"', ecp) != RDB_OK)
             return RDB_ERROR;
         if (i < argcount - 1) {
             if (RDB_append_char(sql, ',', ecp) != RDB_OK)
@@ -314,15 +316,19 @@ rename_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp, RDB_e
     for (i = 0; i < attrc; i++) {
         char *toname;
 
-        if (RDB_append_string(sql, "d_", ecp) != RDB_OK)
+        if (RDB_append_char(sql, '"', ecp) != RDB_OK)
             return RDB_ERROR;
         if (RDB_append_string(sql, attrs[i].name, ecp) != RDB_OK)
             return RDB_ERROR;
+        if (RDB_append_char(sql, '"', ecp) != RDB_OK)
+            return RDB_ERROR;
         toname = find_renaming(&exp->def.op.args, attrs[i].name);
         if (toname != NULL) {
-            if (RDB_append_string(sql, " AS d_", ecp) != RDB_OK)
+            if (RDB_append_string(sql, " AS \"", ecp) != RDB_OK)
                 return RDB_ERROR;
             if (RDB_append_string(sql, toname, ecp) != RDB_OK)
+                return RDB_ERROR;
+            if (RDB_append_char(sql, '"', ecp) != RDB_OK)
                 return RDB_ERROR;
         }
         if (i < attrc - 1) {
@@ -357,9 +363,11 @@ add_select_attrs(RDB_object *sql, RDB_expression *exp,
         }
     }
     for (i = 0; i < attrc; i++) {
-        if (RDB_append_string(sql, "d_", ecp) != RDB_OK)
+        if (RDB_append_char(sql, '"', ecp) != RDB_OK)
             return RDB_ERROR;
         if (RDB_append_string(sql, attrs[i].name, ecp) != RDB_OK)
+            return RDB_ERROR;
+        if (RDB_append_char(sql, '"', ecp) != RDB_OK)
             return RDB_ERROR;
         if (i < attrc - 1) {
             if (RDB_append_char(sql, ',', ecp) != RDB_OK)
@@ -460,9 +468,11 @@ join_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
             return RDB_ERROR;
         }
         for (i = 0; i < attrc; i++) {
-            if (RDB_append_string(sql, "d_", ecp) != RDB_OK)
+            if (RDB_append_char(sql, '"', ecp) != RDB_OK)
                 return RDB_ERROR;
             if (RDB_append_string(sql, attrs[i].name, ecp) != RDB_OK)
+                return RDB_ERROR;
+            if (RDB_append_char(sql, '"', ecp) != RDB_OK)
                 return RDB_ERROR;
             if (i < attrc - 1) {
                 if (RDB_append_char(sql, ',', ecp) != RDB_OK)
@@ -798,9 +808,11 @@ RDB_expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
     switch (exp->kind)
     {
     case RDB_EX_VAR:
-        if (RDB_string_to_obj(sql, "d_", ecp) != RDB_OK)
+        if (RDB_string_to_obj(sql, "\"", ecp) != RDB_OK)
             return RDB_ERROR;
-        return RDB_append_string(sql, exp->def.varname, ecp);
+        if (RDB_append_string(sql, exp->def.varname, ecp) != RDB_OK)
+            return RDB_ERROR;
+        return RDB_append_char(sql, '"', ecp);
     case RDB_EX_TBP:
         if (RDB_string_to_obj(sql, "\"", ecp) != RDB_OK)
             return RDB_ERROR;

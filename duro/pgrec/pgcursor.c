@@ -203,24 +203,13 @@ int
 RDB_pg_cursor_get_by_name(RDB_cursor *curp, const char *attrname, void **datapp,
         size_t *lenp, int flags, RDB_exec_context *ecp)
 {
-    RDB_object colname;
     int colnum;
     if (curp->cur.pg.current_row == NULL) {
         RDB_raise_not_found("", ecp);
         return RDB_ERROR;
     }
 
-    RDB_init_obj(&colname);
-    if (RDB_string_to_obj(&colname, "d_", ecp) != RDB_OK) {
-        RDB_destroy_obj(&colname, ecp);
-        return RDB_ERROR;
-    }
-    if (RDB_append_string(&colname, attrname, ecp) != RDB_OK) {
-        RDB_destroy_obj(&colname, ecp);
-        return RDB_ERROR;
-    }
-    colnum = PQfnumber(curp->cur.pg.current_row, RDB_obj_string(&colname));
-    RDB_destroy_obj(&colname, ecp);
+    colnum = PQfnumber(curp->cur.pg.current_row, attrname);
     if (colnum == -1) {
         RDB_raise_not_found(attrname, ecp);
     }
@@ -320,13 +309,13 @@ RDB_pg_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[],
         goto error;
 
     for (i = 0; i < fieldc; i++) {
-        if (RDB_append_string(&command, "d_", ecp))
+        if (RDB_append_char(&command, '"', ecp))
             goto error;
         if (RDB_append_string(&command,
                 curp->recmapp->fieldinfos[fields[i].no].attrname, ecp)) {
             goto error;
         }
-        sprintf(numbuf, "=$%u", i + 1);
+        sprintf(numbuf, "\"=$%u", i + 1);
         if (RDB_append_string(&command, numbuf, ecp) != RDB_OK)
             goto error;
         if (i < fieldc - 1) {
