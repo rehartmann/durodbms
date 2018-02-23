@@ -27,13 +27,14 @@ RDB_recmap *
 RDB_create_recmap(const char *name, const char *filename,
         RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[], int keyfieldc,
         const RDB_compare_field cmpv[], int flags,
+        int uniquec, const RDB_string_vec *uniquev,
         RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     if (envp == NULL)
         return RDB_create_bdb_recmap(name, filename, NULL, fieldc, fieldinfov,
-            keyfieldc, cmpv, flags, rtxp, ecp);
+            keyfieldc, cmpv, flags, uniquec, uniquev, rtxp, ecp);
     return (*envp->create_recmap_fn)(name, filename, envp, fieldc, fieldinfov,
-            keyfieldc, cmpv, flags, rtxp, ecp);
+            keyfieldc, cmpv, flags, uniquec, uniquev, rtxp, ecp);
 }
 
 /* Open a recmap. For a description of the arguments, see RDB_create_recmap(). */

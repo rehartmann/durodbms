@@ -107,6 +107,7 @@ RDB_recmap *
 RDB_create_bdb_recmap(const char *name, const char *filename,
         RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[],
         int keyfieldc, const RDB_compare_field cmpv[], int flags,
+        int uniquec, const RDB_string_vec *uniquev,
         RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     RDB_recmap *rmp;

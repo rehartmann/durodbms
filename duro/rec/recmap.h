@@ -7,6 +7,7 @@
  */
 
 #include <gen/types.h>
+#include <obj/object.h>
 #include <stdlib.h>
 
 typedef struct RDB_recmap RDB_recmap;
@@ -61,8 +62,9 @@ typedef struct {
 RDB_recmap *
 RDB_create_recmap(const char *, const char *,
         RDB_environment *, int, const RDB_field_info[], int,
-        const RDB_compare_field[], int, RDB_rec_transaction *,
-        RDB_exec_context *);
+        const RDB_compare_field[], int,
+        int uniquec, const RDB_string_vec *uniquev,
+        RDB_rec_transaction *, RDB_exec_context *);
 
 RDB_recmap *
 RDB_open_recmap(const char *, const char *,

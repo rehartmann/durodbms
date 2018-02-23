@@ -48,6 +48,7 @@ RDB_recmap *
 RDB_create_pg_recmap(const char *name, const char *filename,
         RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[], int keyfieldc,
         const RDB_compare_field cmpv[], int flags,
+        int uniquec, const RDB_string_vec *uniquev,
         RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     RDB_object command;
@@ -122,6 +123,27 @@ RDB_create_pg_recmap(const char *name, const char *filename,
             goto error;
         }
     }
+    for (i = 0; i < uniquec; i++) {
+        int j;
+        if (RDB_append_string(&command, ", UNIQUE(", ecp) != RDB_OK)
+            goto error;
+        for (j = 0; j < uniquev[i].strc; j++) {
+            if (RDB_append_char(&command, '"', ecp) != RDB_OK)
+                goto error;
+            if (RDB_append_string(&command, uniquev[i].strv[j], ecp) != RDB_OK)
+                goto error;
+            if (RDB_append_char(&command, '"', ecp) != RDB_OK)
+                goto error;
+            if (j < uniquev[i].strc - 1) {
+                if (RDB_append_char(&command, ',', ecp) != RDB_OK)
+                    goto error;
+            }
+        }
+        if (RDB_append_string(&command, ") DEFERRABLE INITIALLY IMMEDIATE", ecp)
+                != RDB_OK) {
+            goto error;
+        }
+    }
     if (fieldc == 0) {
         if (RDB_append_string(&command, "\"$dummy\" INTEGER NOT NULL DEFAULT 0 PRIMARY KEY", ecp) != RDB_OK)
             goto error;
@@ -155,28 +177,25 @@ RDB_open_pg_recmap(const char *name, const char *filename,
        int keyfieldc, RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     PGresult *res;
-    char *resval;
+    int resval;
 
     /* Check if the table exists */
     res = PQexecParams(envp->env.pgconn,
             "SELECT EXISTS(SELECT tablename FROM pg_tables WHERE tablename=$1)",
-            1, NULL, &name, NULL, NULL, 0);
-    if (PQresultStatus(res) != PGRES_TUPLES_OK)
-    {
+            1, NULL, &name, NULL, NULL, 1);
+    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         RDB_pgresult_to_error(envp, res, ecp);
         PQclear(res);
         return NULL;
     }
-    resval = PQgetvalue(res, 0, 0); /* !! use binary */
-    if (resval[0] == 'f') {
-        PQclear(res);
+    resval = *PQgetvalue(res, 0, 0);
+    PQclear(res);
+    if (!resval) {
         RDB_raise_not_found(name, ecp);
         return NULL;
     }
-    PQclear(res);
 
-    return new_pg_recmap(name, envp, fieldc, fieldinfov, keyfieldc,
-            0, ecp);
+    return new_pg_recmap(name, envp, fieldc, fieldinfov, keyfieldc, 0, ecp);
 }
 
 int

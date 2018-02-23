@@ -547,9 +547,15 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
         tbp->val.tbp->stp->indexc = 0;
     }
 
-    ret = keys_to_indexes(tbp, ecp, txp);
-    if (ret != RDB_OK)
-        goto error;
+    /*
+     * Convert keys to indexes if SQL is not used for storage,
+     * otherwise constraints are created (see below)
+     */
+    if (txp == NULL || !RDB_env_queries(envp)) {
+        ret = keys_to_indexes(tbp, ecp, txp);
+        if (ret != RDB_OK)
+            goto error;
+    }
 
     ret = table_field_infos(tbp, &finfov, ascv, cmpv, ecp);
     if (ret != RDB_OK)
@@ -601,6 +607,7 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
             RDB_table_is_persistent(tbp) ? RDB_DATAFILE : NULL,
             RDB_table_is_persistent(tbp) ? envp : NULL,
             attrc, finfov, piattrc, cmpv, flags,
+            tbp->val.tbp->keyc - 1, tbp->val.tbp->keyv + 1,
             txp != NULL ? txp->tx : NULL, ecp);
     if (tbp->val.tbp->stp->recmapp == NULL) {
         RDB_handle_err(ecp, txp);
