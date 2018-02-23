@@ -501,7 +501,6 @@ irep_to_bin(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
         /* If there is no nullbyte and the type is STRING, append it */
         int no_nullbyte = (RDB_irep_is_string(typ) && datap != NULL
                 && memchr(datap, '\0', len) == NULL);
-        valp->val.bin.len = len;
         if (no_nullbyte)
             ++valp->val.bin.len;
         valp->val.bin.datap = RDB_alloc(valp->val.bin.len, ecp);
@@ -512,6 +511,15 @@ irep_to_bin(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
             memcpy(valp->val.bin.datap, datap, len);
             if (no_nullbyte)
                 ((char *) valp->val.bin.datap)[len] = '\0';
+        }
+    } else {
+        if (RDB_irep_is_string(typ)) {
+            /* String is empty - make it a single zero-byte */
+            valp->val.bin.len = 1;
+            valp->val.bin.datap = RDB_alloc(1, ecp);
+            if (valp->val.bin.datap == NULL)
+                return RDB_ERROR;
+            ((char *)valp->val.bin.datap)[0] = '\0';
         }
     }
     return RDB_OK;

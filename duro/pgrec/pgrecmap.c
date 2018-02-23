@@ -117,7 +117,13 @@ RDB_create_pg_recmap(const char *name, const char *filename,
                     goto error;
             }
         }
-        if (RDB_append_char(&command, ')', ecp) != RDB_OK)
+        if (RDB_append_string(&command, ") DEFERRABLE INITIALLY IMMEDIATE", ecp)
+                != RDB_OK) {
+            goto error;
+        }
+    }
+    if (fieldc == 0) {
+        if (RDB_append_string(&command, "\"$dummy\" INTEGER NOT NULL DEFAULT 0 PRIMARY KEY", ecp) != RDB_OK)
             goto error;
     }
     if (RDB_append_char(&command, ')', ecp) != RDB_OK)
@@ -190,9 +196,11 @@ RDB_delete_pg_recmap(RDB_recmap *rmp, RDB_rec_transaction *rtxp, RDB_exec_contex
     PGresult *res;
 
     RDB_init_obj(&command);
-    if (RDB_string_to_obj(&command, "DROP TABLE ", ecp) != RDB_OK)
+    if (RDB_string_to_obj(&command, "DROP TABLE \"", ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(&command, rmp->namp, ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_char(&command, '"', ecp) != RDB_OK)
         goto error;
 
     res = PQexec(rmp->envp->env.pgconn, RDB_obj_string(&command));
@@ -298,26 +306,35 @@ insert_pg_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp,
     if (RDB_append_string(&command, rmp->namp, ecp) != RDB_OK) {
         goto error;
     }
-    if (RDB_append_string(&command, "\" VALUES(", ecp) != RDB_OK) {
+    if (RDB_append_char(&command, '"', ecp) != RDB_OK) {
         goto error;
     }
-    for (i = 0; i < rmp->fieldcount; i++) {
-        sprintf(parambuf, "$%d", i + 1);
-        if (RDB_append_string(&command, parambuf, ecp) != RDB_OK) {
+    if (rmp->fieldcount > 0) {
+        if (RDB_append_string(&command, " VALUES(", ecp) != RDB_OK) {
             goto error;
         }
-        if ( i < rmp->fieldcount - 1) {
-            if (RDB_append_char(&command, ',', ecp) != RDB_OK) {
+        for (i = 0; i < rmp->fieldcount; i++) {
+            sprintf(parambuf, "$%d", i + 1);
+            if (RDB_append_string(&command, parambuf, ecp) != RDB_OK) {
                 goto error;
             }
+            if ( i < rmp->fieldcount - 1) {
+                if (RDB_append_char(&command, ',', ecp) != RDB_OK) {
+                    goto error;
+                }
+            }
+            lenv[i] = (int) flds[i].len;
+            valuev[i] = RDB_field_to_pg(&flds[i], &rmp->fieldinfos[i], &formatv[i], ecp);
+            if (valuev[i] == NULL)
+                goto error;
         }
-        lenv[i] = (int) flds[i].len;
-        valuev[i] = RDB_field_to_pg(&flds[i], &rmp->fieldinfos[i], &formatv[i], ecp);
-        if (valuev[i] == NULL)
+        if (RDB_append_char(&command, ')', ecp) != RDB_OK) {
             goto error;
-    }
-    if (RDB_append_char(&command, ')', ecp) != RDB_OK) {
-        goto error;
+        }
+    } else {
+        if (RDB_append_string(&command, " DEFAULT VALUES", ecp) != RDB_OK) {
+            goto error;
+        }
     }
 
     res = PQexecParams(rmp->envp->env.pgconn, RDB_obj_string(&command),
@@ -582,6 +599,11 @@ RDB_contains_pg_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp
         valuev[i] = RDB_field_to_pg(&flds[i], &rmp->fieldinfos[i], &formatv[i], ecp);
         if (valuev[i] == NULL)
             goto error;
+    }
+    if (rmp->fieldcount == 0) {
+        if (RDB_append_string(&command, "\"$dummy\"=0", ecp) != RDB_OK) {
+            goto error;
+        }
     }
     if (RDB_append_char(&command, ')', ecp) != RDB_OK)
         goto error;

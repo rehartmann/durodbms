@@ -757,6 +757,8 @@ obj_to_sql(RDB_object *sql, RDB_object *srcp, RDB_type *typ, RDB_environment *en
             RDB_destroy_obj(&str, ecp);
             return RDB_append_string(sql, " AS DOUBLE PRECISION)", ecp);
         }
+    case RDB_OB_BOOL:
+        return RDB_string_to_obj(sql, RDB_obj_bool(srcp) ? "TRUE" : "FALSE", ecp);
     case RDB_OB_BIN:
         if (RDB_irep_is_string(RDB_obj_type(srcp))) {
             return RDB_pg_string_literal(envp, sql, RDB_obj_string(srcp), ecp);

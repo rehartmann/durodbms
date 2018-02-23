@@ -39,6 +39,7 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     ret = RDB_define_type("TINYINT", 1, &pr, constraintp, initexp, 0,
             ecp, &tx);
     RDB_del_expr(constraintp, ecp);
+    RDB_del_expr(initexp, ecp);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
         return ret;

@@ -1206,6 +1206,20 @@ cleanup:
 }
 
 static RDB_bool
+update_refers(RDB_object *tbp, int updc, const RDB_attr_update updv[],
+        RDB_exec_context *ecp)
+{
+    /* Check if one of the expressions refers to the table itself */
+    int i;
+    for (i = 0; i < updc; i++) {
+        if (RDB_expr_refers(updv[i].exp, tbp))
+            return RDB_TRUE;
+    }
+
+    return RDB_FALSE;
+}
+
+static RDB_bool
 upd_complex(RDB_object *tbp, int updc, const RDB_attr_update updv[],
         RDB_exec_context *ecp)
 {
@@ -1222,14 +1236,7 @@ upd_complex(RDB_object *tbp, int updc, const RDB_attr_update updv[],
         }
     }
 
-    /* Check if one of the expressions refers to the table itself */
-
-    for (i = 0; i < updc; i++) {
-        if (RDB_expr_refers(updv[i].exp, tbp))
-            return RDB_TRUE;
-    }
-
-    return RDB_FALSE;
+    return update_refers(tbp, updc, updv, ecp);
 }
 
 RDB_attr_update *upd_replace_varnames(int updc, const RDB_attr_update updv[],
@@ -1363,7 +1370,8 @@ RDB_update_real(RDB_object *tbp, RDB_expression *condp,
     }
 
 #ifdef POSTGRESQL
-    if (txp != NULL && RDB_env_queries(txp->envp)) {
+    if (RDB_table_is_persistent(tbp) && txp != NULL && RDB_env_queries(txp->envp)
+            && !update_refers(tbp, updc, updv, ecp)) {
         RDB_int cnt;
         RDB_expression *repcondp = NULL;
         RDB_attr_update *repupdv = upd_replace_varnames(updc, updv,
@@ -1394,9 +1402,8 @@ RDB_update_real(RDB_object *tbp, RDB_expression *condp,
     }
 #endif
 
-    if ((txp == NULL || !RDB_env_queries(txp->envp))
-            && (upd_complex(tbp, updc, updv, ecp)
-            || (condp != NULL && RDB_expr_refers(condp, tbp))))
+    if (upd_complex(tbp, updc, updv, ecp)
+            || (condp != NULL && RDB_expr_refers(condp, tbp)))
         return update_stored_complex(tbp, condp, updc, updv, getfn, getarg,
                 ecp, txp);
     return update_stored_simple(tbp, condp, updc, updv, getfn, getarg,

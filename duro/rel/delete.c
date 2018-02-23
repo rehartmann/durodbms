@@ -141,7 +141,7 @@ RDB_delete_real(RDB_object *tbp, RDB_expression *condp,
     }
 
 #ifdef POSTGRESQL
-    if (txp != NULL && RDB_env_queries(txp->envp)) {
+    if (RDB_table_is_persistent(tbp) && txp != NULL && RDB_env_queries(txp->envp)) {
         RDB_int cnt;
         RDB_expression *repcondp = NULL;
 

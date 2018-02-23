@@ -317,11 +317,11 @@ RDB_pg_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[],
     if (formatv == NULL)
         goto error;
 
-    if (RDB_string_to_obj(&command, "UPDATE ", ecp) != RDB_OK)
+    if (RDB_string_to_obj(&command, "UPDATE \"", ecp) != RDB_OK)
         goto error;
     if (RDB_append_string(&command, curp->recmapp->namp, ecp) != RDB_OK)
         goto error;
-    if (RDB_append_string(&command, " SET ", ecp) != RDB_OK)
+    if (RDB_append_string(&command, "\" SET ", ecp) != RDB_OK)
         goto error;
 
     for (i = 0; i < fieldc; i++) {

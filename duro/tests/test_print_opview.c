@@ -12,6 +12,7 @@ print_deptsx_view(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object *tmpvtbp;
     RDB_object *tplp;
     RDB_object array;
+    RDB_seq_item seqit;
     int ret;
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
@@ -27,7 +28,9 @@ print_deptsx_view(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_obj(&array);
 
-    ret = RDB_table_to_array(&array, tmpvtbp, 0, NULL, 0, ecp, &tx);
+    seqit.attrname = "DEPTNO";
+    seqit.asc = RDB_FALSE;
+    ret = RDB_table_to_array(&array, tmpvtbp, 1, &seqit, 0, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
     }

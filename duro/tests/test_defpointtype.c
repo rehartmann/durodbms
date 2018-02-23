@@ -118,6 +118,10 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
      * Implement type
      */
     ret = RDB_implement_type("point", NULL, sizeof(i_point), ecp, &tx);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "%s\n", RDB_type_name(RDB_obj_type(RDB_get_err(ecp))));
+        assert(RDB_FALSE);
+    }
     assert(ret == RDB_OK);
 
     assert(RDB_commit(ecp, &tx) == RDB_OK);
