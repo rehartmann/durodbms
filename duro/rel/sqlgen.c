@@ -77,7 +77,8 @@ RDB_nontable_sql_convertible(RDB_expression *exp, RDB_gettypefn *getfnp, void *g
                 || strcmp(exp->def.op.name, "%") == 0
                 || strcmp(exp->def.op.name, "power") == 0
                 || strcmp(exp->def.op.name, "atan2") == 0
-                || strcmp(exp->def.op.name, "||") == 0) {
+                || strcmp(exp->def.op.name, "||") == 0
+                || strcmp(exp->def.op.name, "regex_like") == 0) {
             return (RDB_bool) (RDB_expr_list_length(&exp->def.op.args) == 2
                     && explist_user_types(&exp->def.op.args, getfnp, getarg)
                     && explist_scalar_sql_convertible(&exp->def.op.args, getfnp, getarg));
@@ -90,7 +91,6 @@ RDB_nontable_sql_convertible(RDB_expression *exp, RDB_gettypefn *getfnp, void *g
                 || strcmp(exp->def.op.name, "atan") == 0
                 || strcmp(exp->def.op.name, "log") == 0
                 || strcmp(exp->def.op.name, "ln") == 0
-                || strcmp(exp->def.op.name, "power") == 0
                 || strcmp(exp->def.op.name, "exp") == 0
                 || strcmp(exp->def.op.name, "strlen") == 0
                 || strcmp(exp->def.op.name, "strlen_b") == 0
@@ -562,8 +562,13 @@ infix_binop_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
 
     if (RDB_append_char(sql, ' ', ecp) != RDB_OK)
         goto error;
-    if (RDB_append_string(sql, exp->def.op.name, ecp) != RDB_OK)
-        goto error;
+    if (strcmp(exp->def.op.name, "regex_like") == 0) {
+        if (RDB_append_char(sql, '~', ecp) != RDB_OK)
+            goto error;
+    } else {
+        if (RDB_append_string(sql, exp->def.op.name, ecp) != RDB_OK)
+            goto error;
+    }
     if (RDB_append_char(sql, ' ', ecp) != RDB_OK)
         goto error;
 
@@ -857,7 +862,8 @@ RDB_expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
                 || strcmp(exp->def.op.name, "/") == 0
                 || strcmp(exp->def.op.name, "%") == 0
                 || strcmp(exp->def.op.name, "*") == 0
-                || strcmp(exp->def.op.name, "||") == 0) {
+                || strcmp(exp->def.op.name, "||") == 0
+                || strcmp(exp->def.op.name, "regex_like") == 0) {
             return infix_binop_to_sql(sql, exp, envp, ecp);
         }
         if (strcmp(exp->def.op.name, "not") == 0) {

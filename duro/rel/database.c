@@ -1218,6 +1218,16 @@ RDB_create_table_from_type(const char *name, RDB_type *reltyp,
             return NULL;
         }
     }
+    for (i = 0; i < default_attrc; i++) {
+        if (default_attrv[i].defaultp != NULL
+                && RDB_expr_is_serial(default_attrv[i].defaultp)) {
+            RDB_attr *defattr = RDB_tuple_type_attr(reltyp->def.basetyp, default_attrv[i].name);
+            if (defattr == NULL || defattr->typ != &RDB_INTEGER) {
+                RDB_raise_invalid_argument("invalid serial()", ecp);
+                return NULL;
+            }
+        }
+    }
 
     /* name may only be NULL if table is transient */
     if ((name == NULL)) {

@@ -1961,6 +1961,15 @@ test serial {system-generated attribute values} -setup $SETUP -cleanup $CLEANUP 
         end for;
         drop var r;
         commit;
+
+        begin tx;
+        try
+            var r2 real relation {no string, name string} key {no} default {no serial()};
+            io.put_line('table creation with invalid default succeeded.');
+        catch err invalid_argument_error;
+            ;
+        end try;
+        rollback;
     }
 } -result {insert caught
 1 Abc
