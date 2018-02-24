@@ -25,6 +25,8 @@
  * is a Berkeley DB database environment directory.
  * To create a new empty environment, simply pass an empty directory
  * to RDB_open_env.
+ * If DuroDBMS has been built with PostgreSQL support, \a path can be
+ * a PostgreSQL URI.
  *
  * @param path  pathname of the direcory where the data is stored.
  * @param flags can be zero or RDB_RECOVER. If it is RDB_RECOVER,

@@ -428,13 +428,22 @@ no db> connect('dbenv');
 no db>
 </pre>
 
-<p>A DuroDBMS database environment is implemented using
+<p>By default, a DuroDBMS database environment is implemented using
 a Berkeley DB database environment.
 The Berkeley DB command line utilities can be used for
 tasks like backup, recovery etc.   
 
-<p>If Duro D/T has been built with PostgreSQL support, a PostgreSQL URI can be passed to connect().
-PostgreSQL support is currently experimental.
+<p>If DuroDBMS has been built with PostgreSQL support,
+a PostgreSQL database can be used as a database environment
+by passing a PostgreSQL URI to connect(), e.g.:
+
+<pre>
+no db> connect('postgresql:///mydb');
+no db>
+</pre>
+
+<p>Creating a PostgreSQL database using Duro D/T is not supported.
+This has to be done using one of the PostgreSQL utilities, e.g. <code>createdb</code>.
 
 <p>After a database environment was created and/or connected to, a
 database can be created using the built-in
