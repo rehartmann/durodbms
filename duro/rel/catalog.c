@@ -2326,6 +2326,7 @@ RDB_cat_get_rtable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
     } else {
         recmapname = RDB_table_name(tbp);
     }
+    tbp->val.tbp->default_map = defvalmap;
     if (recmapname != NULL) {
         ret = RDB_open_stored_table(tbp, txp->envp, recmapname, ecp, txp);
         if (ret != RDB_OK) {
@@ -2335,8 +2336,6 @@ RDB_cat_get_rtable(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
 
     if (add_table(tbp, ecp, txp) != RDB_OK)
         goto error;
-
-    tbp->val.tbp->default_map = defvalmap;
 
     RDB_destroy_obj(&arr, ecp);
 

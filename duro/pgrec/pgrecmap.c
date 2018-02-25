@@ -74,30 +74,35 @@ RDB_create_pg_recmap(const char *name, const char *filename,
             goto error;
         if (RDB_append_string(&command, "\" ", ecp) != RDB_OK)
             goto error;
-        if (RDB_FTYPE_CHAR & fieldinfov[i].flags) {
-            if (fieldinfov[i].len != RDB_VARIABLE_LEN) {
-                RDB_raise_invalid_argument("fixed-size character types are not supported", ecp);
-                goto error;
-            }
-            if (RDB_append_string(&command, "text", ecp) != RDB_OK)
+        if (RDB_FTYPE_SERIAL & fieldinfov[i].flags) {
+            if (RDB_append_string(&command, "serial", ecp) != RDB_OK)
                 goto error;
         } else {
-            if (fieldinfov[i].len == sizeof(RDB_int) && (RDB_FTYPE_INTEGER & fieldinfov[i].flags)) {
-                if (RDB_append_string(&command, "integer", ecp) != RDB_OK)
+            if (RDB_FTYPE_CHAR & fieldinfov[i].flags) {
+                if (fieldinfov[i].len != RDB_VARIABLE_LEN) {
+                    RDB_raise_invalid_argument("fixed-size character types are not supported", ecp);
                     goto error;
-            } else if (fieldinfov[i].len == sizeof(RDB_float) && (RDB_FTYPE_FLOAT & fieldinfov[i].flags)) {
-                if (RDB_append_string(&command, "double precision", ecp) != RDB_OK)
-                    goto error;
-            } else if (RDB_FTYPE_BOOLEAN & fieldinfov[i].flags) {
-                if (RDB_append_string(&command, "boolean", ecp) != RDB_OK)
+                }
+                if (RDB_append_string(&command, "text", ecp) != RDB_OK)
                     goto error;
             } else {
-                if (RDB_append_string(&command, "bytea", ecp) != RDB_OK)
-                    goto error;
+                if (fieldinfov[i].len == sizeof(RDB_int) && (RDB_FTYPE_INTEGER & fieldinfov[i].flags)) {
+                    if (RDB_append_string(&command, "integer", ecp) != RDB_OK)
+                        goto error;
+                } else if (fieldinfov[i].len == sizeof(RDB_float) && (RDB_FTYPE_FLOAT & fieldinfov[i].flags)) {
+                    if (RDB_append_string(&command, "double precision", ecp) != RDB_OK)
+                        goto error;
+                } else if (RDB_FTYPE_BOOLEAN & fieldinfov[i].flags) {
+                    if (RDB_append_string(&command, "boolean", ecp) != RDB_OK)
+                        goto error;
+                } else {
+                    if (RDB_append_string(&command, "bytea", ecp) != RDB_OK)
+                        goto error;
+                }
             }
+            if (RDB_append_string(&command, " NOT NULL", ecp) != RDB_OK)
+                goto error;
         }
-        if (RDB_append_string(&command, " NOT NULL", ecp) != RDB_OK)
-            goto error;
         if (i < fieldc - 1) {
             if (RDB_append_char(&command, ',', ecp) != RDB_OK)
                 goto error;
@@ -303,6 +308,7 @@ insert_pg_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp,
     int *lenv = NULL;
     void **valuev = NULL;
     int *formatv = NULL;
+    int valuec = 0;
 
     RDB_init_obj(&command);
 
@@ -333,19 +339,28 @@ insert_pg_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp,
             goto error;
         }
         for (i = 0; i < rmp->fieldcount; i++) {
-            sprintf(parambuf, "$%d", i + 1);
-            if (RDB_append_string(&command, parambuf, ecp) != RDB_OK) {
-                goto error;
+            if (RDB_FTYPE_SERIAL & rmp->fieldinfos[i].flags) {
+                if (RDB_append_string(&command, "DEFAULT", ecp) != RDB_OK) {
+                    goto error;
+                }
+            } else {
+                sprintf(parambuf, "$%d", valuec + 1);
+                if (RDB_append_string(&command, parambuf, ecp) != RDB_OK) {
+                    goto error;
+                }
             }
             if ( i < rmp->fieldcount - 1) {
                 if (RDB_append_char(&command, ',', ecp) != RDB_OK) {
                     goto error;
                 }
             }
-            lenv[i] = (int) flds[i].len;
-            valuev[i] = RDB_field_to_pg(&flds[i], &rmp->fieldinfos[i], &formatv[i], ecp);
-            if (valuev[i] == NULL)
-                goto error;
+            if (!(RDB_FTYPE_SERIAL & rmp->fieldinfos[i].flags)) {
+                lenv[valuec] = (int) flds[i].len;
+                valuev[valuec] = RDB_field_to_pg(&flds[i], &rmp->fieldinfos[i], &formatv[valuec], ecp);
+                if (valuev[valuec] == NULL)
+                    goto error;
+                valuec++;
+            }
         }
         if (RDB_append_char(&command, ')', ecp) != RDB_OK) {
             goto error;
@@ -357,7 +372,7 @@ insert_pg_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp,
     }
 
     res = PQexecParams(rmp->envp->env.pgconn, RDB_obj_string(&command),
-            rmp->fieldcount, NULL, (const char * const *) valuev, lenv,
+            valuec, NULL, (const char * const *) valuev, lenv,
             formatv, 0);
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {

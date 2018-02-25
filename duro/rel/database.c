@@ -1614,8 +1614,10 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
                 return RDB_ERROR;
         }
 
-        if (delete_sequences(tbp, ecp, txp) != RDB_OK)
-            return RDB_ERROR;
+        if (!RDB_env_queries(txp->envp)) {
+            if (delete_sequences(tbp, ecp, txp) != RDB_OK)
+                return RDB_ERROR;
+        }
 
         /*
          * Delete recmap, if any
@@ -1722,7 +1724,7 @@ RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         }
 
         /* Rename sequences */
-        if (tbp->val.tbp->default_map != NULL) {
+        if (!RDB_env_queries(txp->envp) && tbp->val.tbp->default_map != NULL) {
             RDB_attr_default *entryp;
             RDB_hashmap_iter hiter;
             void *valp;

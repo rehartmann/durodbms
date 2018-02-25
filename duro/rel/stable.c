@@ -16,7 +16,6 @@
 #include <obj/objinternal.h>
 #include <gen/strfns.h>
 #include <gen/hashmapit.h>
-#include <db.h>
 #include <string.h>
 
 void
@@ -423,6 +422,7 @@ table_field_infos(RDB_object *tbp, RDB_field_info **finfovp, const RDB_bool ascv
     di = piattrc;
     for (i = 0; i < attrc; i++) {
         RDB_int fno;
+        RDB_attr_default *defaultp;
 
         if (pindexp != NULL) {
             /*
@@ -468,6 +468,13 @@ table_field_infos(RDB_object *tbp, RDB_field_info **finfovp, const RDB_bool ascv
         (*finfovp)[fno].len = replen(heading[i].typ);
         (*finfovp)[fno].attrname = heading[i].name;
         (*finfovp)[fno].flags = RDB_type_field_flags(heading[i].typ);
+        if (tbp->val.tbp->default_map != NULL) {
+            defaultp = RDB_hashmap_get(tbp->val.tbp->default_map,
+                    (*finfovp)[fno].attrname);
+            if (defaultp != NULL && RDB_expr_is_serial(defaultp->exp)) {
+                (*finfovp)[fno].flags |= RDB_FTYPE_SERIAL;
+            }
+        }
     }
     return RDB_OK;
 }
