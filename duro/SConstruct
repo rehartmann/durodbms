@@ -269,7 +269,7 @@ test_scripts = Split('tests/aggr.test tests/constraints.test tests/convert.test 
 durodt_test_scripts = Glob('tests/durodt/*.test') + ['tests/durodt/scalar.td', 'tests/durodt/all.tcl']
 
 test = env.Command('tests/passed', [libduro, libdurotcl, testbins, durodt],
-        'tclsh tests/all.tcl -verbose "{pass error}"')
+        'tclsh tests/all.tcl -verbose "{pass error}" -postgresql ' + postgresql)
 
 env.Alias('test', test)
 

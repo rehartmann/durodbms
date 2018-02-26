@@ -5,7 +5,7 @@
 
 #include "duro.h"
 #include <string.h>
-#include <bdbrec/bdbenv.h>
+#include <rec/env.h>
 
 int
 Duro_tcl_close_env(TclState *statep, RDB_environment *envp, Tcl_HashEntry *entryp)
@@ -15,7 +15,6 @@ Duro_tcl_close_env(TclState *statep, RDB_environment *envp, Tcl_HashEntry *entry
     table_entry *tbep;
     FILE *errfp;
     RDB_transaction *txp;
-    DB_ENV *bdb_envp = RDB_bdb_env(envp);
 
     Tcl_DeleteHashEntry(entryp);
 
@@ -50,7 +49,7 @@ Duro_tcl_close_env(TclState *statep, RDB_environment *envp, Tcl_HashEntry *entry
         }
     }
 
-    bdb_envp->get_errfile(bdb_envp, &errfp);
+    errfp = RDB_env_get_errfile(envp);
     ret = RDB_close_env(envp, &statep->ec);
     if (errfp != NULL) {
         fclose(errfp);
@@ -144,13 +143,7 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
         envp = Tcl_GetHashValue(entryp);
         ret = Duro_tcl_close_env(statep, envp, entryp);
         if (ret != RDB_OK) {
-            Tcl_AppendResult(interp, "database error: ", db_strerror(ret),
-                    (char *) NULL);
-            /* If it is a POSIX error, set errorCode */
-            if (strerror(ret) != NULL) {
-                Tcl_SetErrno(ret);
-                Tcl_PosixError(interp);
-            }
+            Duro_dberror(interp, RDB_get_err(statep->current_ecp), NULL);
             return TCL_ERROR;
         }      
         return TCL_OK;
@@ -209,7 +202,6 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
         return TCL_OK;
     }
     if (strcmp(argv[1], "seterrfile") == 0) {
-        DB_ENV *bdb_envp;
         FILE *fp;
 
         if (argc != 4) {
@@ -235,8 +227,7 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
             }
             return TCL_ERROR;
         }
-        bdb_envp = RDB_bdb_env(envp);
-        bdb_envp->set_errfile(bdb_envp, fp);
+        RDB_env_set_errfile(envp, fp);
         return TCL_OK;
     }
     Tcl_AppendResult(interp, "Bad option: ", argv[1], NULL);

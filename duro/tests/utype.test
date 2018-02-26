@@ -13,7 +13,7 @@ namespace import ::tcltest::*
 source [file dirname [info script]]/setup.tcl
 
 test utype {user-defined types} -setup $SETUP -body {
-    set dbenv [duro::env create $::tcltest::temporaryDirectory/dbenv]
+    set dbenv [duro::env open $dbenvname]
 
     makeFile {} errors
     duro::env seterrfile $dbenv $::tcltest::temporaryDirectory/errors
@@ -162,7 +162,7 @@ test utype {user-defined types} -setup $SETUP -body {
     duro::env close $dbenv
     
     # Reopen DB environment
-    set dbenv [duro::env open [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
     
     set tx [duro::begin $dbenv TEST]
     

@@ -2,8 +2,6 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
-# $Id$
-
 package require tcltest 2.2
 eval ::tcltest::configure $argv
 namespace import ::tcltest::*
@@ -11,7 +9,7 @@ namespace import ::tcltest::*
 source [file dirname [info script]]/setup.tcl
 
 test deedum {TABLE_DEE and TABLE_DUM} -setup $SETUP -body {
-    set dbenv [duro::env create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
 
     # Create Database
     duro::db create $dbenv TEST

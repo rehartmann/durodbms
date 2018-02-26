@@ -13,7 +13,7 @@ namespace import ::tcltest::*
 source [file dirname [info script]]/setup.tcl
 
 test db2 {two databases} -setup $SETUP -body {
-    set dbenv [duro::env create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
     
     # Create Databases
     duro::db create $dbenv TEST1
@@ -35,7 +35,7 @@ test db2 {two databases} -setup $SETUP -body {
     duro::env close $dbenv
 
     # Reopen DB environment
-    set dbenv [duro::env open [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
     
     set tx [duro::begin $dbenv TEST1]
 

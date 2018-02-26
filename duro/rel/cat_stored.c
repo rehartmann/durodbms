@@ -245,6 +245,7 @@ RDB_cat_get_indexes(const char *tablename, RDB_dbroot *dbrootp,
 
             indexp->unique = RDB_tuple_get_bool(tplp, "unique");
             indexp->ordered = RDB_tuple_get_bool(tplp, "ordered");
+            indexp->idxp = NULL;
         }
     }
     ret = indexc;

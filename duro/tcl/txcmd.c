@@ -45,7 +45,7 @@ Duro_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[]
         envp = Tcl_GetHashValue(entryp);
 
         /* Get database */
-        dbp = RDB_get_db_from_env(argv[2], envp, statep->current_ecp);
+        dbp = RDB_get_db_from_env(argv[2], envp, statep->current_ecp, NULL);
         if (dbp == NULL) { 
             Duro_dberror(interp, RDB_get_err(statep->current_ecp), NULL);
             return TCL_ERROR;

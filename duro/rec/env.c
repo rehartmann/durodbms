@@ -118,6 +118,12 @@ RDB_env_set_errfile(RDB_environment *envp, FILE *file)
     (*envp->set_errfile_fn)(envp, file);
 }
 
+FILE *
+RDB_env_get_errfile(const RDB_environment *envp)
+{
+    return (*envp->get_errfile_fn)(envp);
+}
+
 /*@}*/
 
 void

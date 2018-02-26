@@ -337,7 +337,7 @@ Duro_get_db(Duro_interp *interp, RDB_exec_context *ecp)
         return NULL;
     }
 
-    return RDB_get_db_from_env(dbname, interp->envp, ecp);
+    return RDB_get_db_from_env(dbname, interp->envp, ecp, NULL);
 }
 
 /*

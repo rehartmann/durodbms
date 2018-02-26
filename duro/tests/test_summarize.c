@@ -224,7 +224,7 @@ main(int argc, char *argv[])
         return 1;
     }
 
-    dbp = RDB_get_db_from_env("TEST", dsp, &ec);
+    dbp = RDB_get_db_from_env("TEST", dsp, &ec, NULL);
     if (dbp == NULL) {
         fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);

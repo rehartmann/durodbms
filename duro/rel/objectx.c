@@ -122,7 +122,7 @@ RDB_obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
 
 static int
 len_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap,
-        RDB_exec_context *ecp)
+        size_t dlen, RDB_exec_context *ecp)
 {
     int ret;
     size_t len;
@@ -133,8 +133,13 @@ len_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap,
         memcpy(&len, bp, sizeof len);
         llen = sizeof (size_t);
         bp += sizeof (size_t);
+        dlen -= sizeof (size_t);
     } else {
         len = (size_t) typ->ireplen;
+    }
+    if (len > dlen) {
+        RDB_raise_internal("invalid length", ecp);
+        return RDB_ERROR;
     }
 
     ret = RDB_irep_to_obj(valp, typ, bp, len, ecp);
@@ -145,7 +150,7 @@ len_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap,
 
 static int
 irep_to_tuple(RDB_object *tplp, RDB_type *typ, const void *datap,
-        RDB_exec_context *ecp)
+        size_t dlen, RDB_exec_context *ecp)
 {
     int i;
     int ret;
@@ -161,17 +166,18 @@ irep_to_tuple(RDB_object *tplp, RDB_type *typ, const void *datap,
      */
     for (i = 0; i < typ->def.tuple.attrc; i++) {
         RDB_object obj;
-        size_t l;
+        int l;
         int attridx = RDB_next_attr_sorted(typ, lastname);
 
         RDB_init_obj(&obj);
-        l = len_irep_to_obj(&obj, typ->def.tuple.attrv[attridx].typ, bp, ecp);
+        l = len_irep_to_obj(&obj, typ->def.tuple.attrv[attridx].typ, bp, dlen, ecp);
         if (l < 0) {
             RDB_destroy_obj(&obj, ecp);
             return l;
         }
         bp += l;
         len += l;
+        dlen -= l;
         ret = RDB_tuple_set(tplp, typ->def.tuple.attrv[attridx].name, &obj, ecp);
         RDB_destroy_obj(&obj, ecp);
         if (ret != RDB_OK)
@@ -207,7 +213,7 @@ irep_to_table(RDB_object *tbp, RDB_type *typ, const void *datap, size_t len,
     while (len > 0) {
         int l;
 
-        l = irep_to_tuple(&tpl, typ->def.basetyp, bp, ecp);
+        l = irep_to_tuple(&tpl, typ->def.basetyp, bp, len, ecp);
         if (l < 0) {
             RDB_destroy_obj(&tpl, ecp);
             return l;
@@ -226,12 +232,13 @@ irep_to_table(RDB_object *tbp, RDB_type *typ, const void *datap, size_t len,
 }
 
 static int
-irep_to_array(RDB_object *arrp, RDB_type *typ, const void *datap, size_t len,
+irep_to_array(RDB_object *arrp, RDB_type *typ, const void *datap, size_t dlen,
         RDB_exec_context *ecp)
 {
     int ret;
     int i;
     RDB_object tpl;
+    size_t len;
     int arrlen = 0;
     RDB_byte *bp = (RDB_byte *) datap;
 
@@ -240,11 +247,12 @@ irep_to_array(RDB_object *arrp, RDB_type *typ, const void *datap, size_t len,
 
     RDB_init_obj(&tpl);
 
+    len = dlen;
     /* Determine array size */
     while (len > 0) {
         int l;
 
-        l = len_irep_to_obj(&tpl, typ->def.basetyp, bp, ecp);
+        l = len_irep_to_obj(&tpl, typ->def.basetyp, bp, len, ecp);
         if (l < 0) {
             RDB_destroy_obj(&tpl, ecp);
             return l;
@@ -260,9 +268,14 @@ irep_to_array(RDB_object *arrp, RDB_type *typ, const void *datap, size_t len,
         return RDB_ERROR;
     }
 
+    len = dlen;
     bp = (RDB_byte *)datap;
     for (i = 0; i < arrlen; i++) {
-        int l = len_irep_to_obj(&tpl, typ->def.basetyp, bp, ecp);
+        int l = len_irep_to_obj(&tpl, typ->def.basetyp, bp, len, ecp);
+        if (l < 0) {
+            RDB_destroy_obj(&tpl, ecp);
+            return l;
+        }
 
         ret = RDB_array_set(arrp, i, &tpl, ecp);
         if (ret != RDB_OK) {
@@ -270,6 +283,7 @@ irep_to_array(RDB_object *arrp, RDB_type *typ, const void *datap, size_t len,
             return RDB_ERROR;
         }
         bp += l;
+        len -= l;
     }
 
     RDB_destroy_obj(&tpl, ecp);
@@ -603,7 +617,7 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
         break;
     case RDB_OB_TUPLE:
         ret = irep_to_tuple(valp, RDB_type_is_dummy(typ) ? valp->impl_typ : typ,
-                datap, ecp);
+                datap, len, ecp);
         if (ret > 0)
             ret = RDB_OK;
         return ret;

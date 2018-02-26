@@ -535,7 +535,7 @@ table_add_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    dbp = RDB_get_db_from_env(dbname, RDB_db_env(RDB_tx_db(txp)), statep->current_ecp);
+    dbp = RDB_get_db_from_env(dbname, RDB_db_env(RDB_tx_db(txp)), statep->current_ecp, txp);
     if (dbp == NULL) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;

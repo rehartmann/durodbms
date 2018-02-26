@@ -43,7 +43,7 @@ getargs(RDB_exec_context *ecp, int *argcp, char **argvp[],
         if (*envpp == NULL)
             return RDB_ERROR;
         if (dbnamp != NULL) {
-            *dbpp = RDB_get_db_from_env(dbnamp, *envpp, ecp);
+            *dbpp = RDB_get_db_from_env(dbnamp, *envpp, ecp, NULL);
             if (*dbpp == NULL) {
                 RDB_close_env(*envpp, ecp);
                 return RDB_ERROR;

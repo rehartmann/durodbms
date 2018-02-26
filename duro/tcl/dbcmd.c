@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2005 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -59,7 +59,7 @@ db_drop_cmd(TclState *statep, Tcl_Interp *interp, int argc, CONST char *argv[])
     }
     envp = Tcl_GetHashValue(entryp);
 
-    dbp = RDB_get_db_from_env(argv[3], envp, statep->current_ecp);
+    dbp = RDB_get_db_from_env(argv[3], envp, statep->current_ecp, NULL);
     if (dbp == NULL) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), NULL);
         return TCL_ERROR;

@@ -2,7 +2,6 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
-# $Id$
 #
 # Test update
 #
@@ -14,7 +13,7 @@ namespace import ::tcltest::*
 source [file dirname [info script]]/setup.tcl
 
 test update_keyindex {update real tables using key} -setup $SETUP -body {
-    set dbenv [duro::env create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
 
     # Create Database
     duro::db create $dbenv TEST
@@ -48,7 +47,7 @@ test update_keyindex {update real tables using key} -setup $SETUP -body {
 }
 
 test update_oindex {update real tables using ordered index} -setup $SETUP -body {
-    set dbenv [duro::env create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
 
     # Create Database
     duro::db create $dbenv TEST

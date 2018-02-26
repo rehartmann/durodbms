@@ -2171,7 +2171,8 @@ add_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         RDB_object *tp = RDB_array_get(&arr, (RDB_int) i, ecp);
         if (tp == NULL)
             goto error;
-        dbp = RDB_get_db_from_env(RDB_tuple_get_string(tp, "dbname"), txp->dbp->dbrootp->envp, ecp);
+        dbp = RDB_get_db_from_env(RDB_tuple_get_string(tp, "dbname"), txp->dbp->dbrootp->envp,
+                ecp, txp);
         if (dbp == NULL)
             goto error;
         if (RDB_assoc_table_db(tbp, dbp, ecp) != RDB_OK)

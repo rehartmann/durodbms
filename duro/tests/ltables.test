@@ -2,7 +2,6 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
-# $Id$
 #
 # Test create, insert, update, contains with local real table
 #
@@ -14,7 +13,7 @@ namespace import ::tcltest::*
 source [file dirname [info script]]/setup.tcl
 
 test ltables {transient tables} -setup $SETUP -body {
-    set dbenv [duro::env create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
 
     # Create Database
     duro::db create $dbenv TEST

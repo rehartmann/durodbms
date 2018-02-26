@@ -54,4 +54,7 @@ RDB_env_queries(const RDB_environment *);
 void
 RDB_env_set_errfile(RDB_environment *, FILE *);
 
+FILE *
+RDB_env_get_errfile(const RDB_environment *);
+
 #endif

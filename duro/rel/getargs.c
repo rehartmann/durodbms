@@ -32,7 +32,7 @@ RDB_getargs(int *argcp, char **argvp[], RDB_environment **envpp, RDB_database **
         if (ret != RDB_OK)
             return ret;
         if (dbnamp != NULL) {
-            ret = RDB_get_db_from_env(dbnamp, *envpp, dbpp);
+            ret = RDB_get_db_from_env(dbnamp, *envpp, dbpp, NULL);
             if (ret != RDB_OK) {
                 RDB_close_env(*envpp);
                 return ret;

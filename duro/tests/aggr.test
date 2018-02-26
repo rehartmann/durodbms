@@ -13,7 +13,7 @@ namespace import ::tcltest::*
 source [file dirname [info script]]/setup.tcl
 
 test aggregate {real tables} -setup $SETUP -body {
-    set dbenv [duro::env create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
 	
     # Create Database
     duro::db create $dbenv TEST

@@ -9,7 +9,16 @@ set ::SETUP {
 
     source $scriptdir/testutil.tcl
 
-    # Create DB environment dir, ensure it's empty
-    removeDirectory dbenv
-    makeDirectory dbenv
+    if {[info exists env(DURO_STORAGE)] && $env(DURO_STORAGE) == "POSTGRESQL"} {
+        catch {exec dropdb testdb}
+        exec createdb testdb
+        set dbenvname postgresql:///testdb
+    } else {
+    	# Create DB environment dir, ensure it's empty
+    	removeDirectory dbenv
+    	makeDirectory dbenv
+    	set dbenv [duro::env create [configure -tmpdir]/dbenv]
+    	duro::env close $dbenv
+    	set dbenvname [configure -tmpdir]/dbenv
+    }
 }

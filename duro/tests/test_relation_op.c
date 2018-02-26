@@ -57,7 +57,7 @@ main(int argc, char *argv[])
 
     RDB_env_set_errfile(envp, stderr);
 
-    dbp = RDB_get_db_from_env("TEST", envp, &ec);
+    dbp = RDB_get_db_from_env("TEST", envp, &ec, NULL);
     assert(dbp != NULL);
 
     test_relation(dbp, &ec);

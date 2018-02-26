@@ -2,7 +2,6 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
-# $Id$
 #
 # Test rollback
 #
@@ -14,7 +13,7 @@ namespace import ::tcltest::*
 source [file dirname [info script]]/setup.tcl
 
 test rollback {rollback} -setup $SETUP -body {
-    set dbenv [duro::env create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
 
     # Create Database
     duro::db create $dbenv TEST
@@ -43,7 +42,7 @@ test rollback {rollback} -setup $SETUP -body {
 
     duro::env close $dbenv
     
-    set dbenv [duro::env open [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
     
     set tx [duro::begin $dbenv TEST]
     
@@ -57,7 +56,7 @@ test rollback {rollback} -setup $SETUP -body {
 }
 
 test droptables_rollback {drop table and rollback} -setup $SETUP -body {
-    set dbenv [duro::env create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
 
     # Create Database
     duro::db create $dbenv TEST
@@ -79,7 +78,7 @@ test droptables_rollback {drop table and rollback} -setup $SETUP -body {
     # Close DB environment
     duro::env close $dbenv
 
-    set dbenv [duro::env open [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
 
     set tx [duro::begin $dbenv TEST]
 

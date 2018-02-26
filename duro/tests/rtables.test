@@ -2,7 +2,6 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
-# $Id$
 #
 # Test create, insert, update with several kinds of real tables
 #
@@ -14,7 +13,7 @@ namespace import ::tcltest::*
 source [file dirname [info script]]/setup.tcl
 
 test rtables {real tables} -setup $SETUP -body {
-    set dbenv [duro::env create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
 
     # Create Database
     duro::db create $dbenv TEST
@@ -140,7 +139,7 @@ test rtables {real tables} -setup $SETUP -body {
     duro::env close $dbenv
     
     # Reopen DB environment
-    set dbenv [duro::env open [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
     
     set tx [duro::begin $dbenv TEST]
     
@@ -354,7 +353,7 @@ test rtables {real tables} -setup $SETUP -body {
 }
 
 test droptables {create and drop tables} -setup $SETUP -body {
-    set dbenv [duro::env create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
 
     # Create Database
     duro::db create $dbenv TEST

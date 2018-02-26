@@ -353,7 +353,7 @@ RDB_pg_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[],
 
     res = PQexecParams(curp->envp->env.pgconn, RDB_obj_string(&command),
             fieldc, NULL, (const char * const *) valuev, lenv,
-            formatv, 0);
+            formatv, 1);
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
         RDB_pgresult_to_error(curp->envp, res, ecp);

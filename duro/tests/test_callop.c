@@ -139,7 +139,7 @@ main(int argc, char *argv[])
     }
 
     RDB_env_set_errfile(envp, stderr);
-    dbp = RDB_get_db_from_env("TEST", envp, &ec);
+    dbp = RDB_get_db_from_env("TEST", envp, &ec, NULL);
     if (dbp == NULL) {
         RDB_destroy_exec_context(&ec);
         return 1;

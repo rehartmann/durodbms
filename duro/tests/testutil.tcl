@@ -1,8 +1,4 @@
 #
-# $Id$
-#
-
-#
 # Compare tuples
 # (Works only with built-in attribute types)
 #

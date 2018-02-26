@@ -2,7 +2,6 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
-# $Id$
 #
 # Test non-unique (user) indexes
 #
@@ -14,7 +13,7 @@ namespace import ::tcltest::*
 source [file dirname [info script]]/setup.tcl
 
 test index {indexes} -setup $SETUP -body {
-    set dbenv [duro::env create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
 
     # Create Database
     duro::db create $dbenv TEST
@@ -107,7 +106,7 @@ test index {indexes} -setup $SETUP -body {
 
     duro::env close $dbenv
     
-    set dbenv [duro::env open [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
     
     set tx [duro::begin $dbenv TEST]
     
@@ -180,7 +179,7 @@ test index {indexes} -setup $SETUP -body {
     
     duro::env close $dbenv
     
-    set dbenv [duro::env open [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
     
     set tx [duro::begin $dbenv TEST]
     

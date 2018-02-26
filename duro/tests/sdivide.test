@@ -2,7 +2,6 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
-# $Id$
 #
 # Test for DIVIDEBY PER
 # (Test case taken from an example in: C. Date, An Introduction to Database Systems,
@@ -16,7 +15,7 @@ namespace import ::tcltest::*
 source [file dirname [info script]]/setup.tcl
 
 test sdivide {DIVIDE BY PER} -setup $SETUP -body {
-    set dbenv [duro::env create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
 
     # Create Database
     duro::db create $dbenv TEST
@@ -67,7 +66,7 @@ test sdivide {DIVIDE BY PER} -setup $SETUP -body {
     duro::env close $dbenv
     
     # Reopen DB environment
-    set dbenv [duro::env open [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
 
     set tx [duro::begin $dbenv TEST]
     

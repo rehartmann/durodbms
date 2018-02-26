@@ -200,7 +200,8 @@ RDB_create_db_from_env(const char *, RDB_environment *,
         RDB_exec_context *);
 
 RDB_database *
-RDB_get_db_from_env(const char *, RDB_environment *, RDB_exec_context *);
+RDB_get_db_from_env(const char *, RDB_environment *, RDB_exec_context *,
+        RDB_transaction *);
 
 int
 RDB_drop_db(RDB_database *, RDB_exec_context *);

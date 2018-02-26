@@ -88,7 +88,7 @@ main(int argc, char *argv[])
     }
 
     RDB_init_exec_context(&ec);
-    dbp = RDB_get_db_from_env("TEST", envp, &ec);
+    dbp = RDB_get_db_from_env("TEST", envp, &ec, NULL);
     if (dbp == NULL) {
         fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         return 1;

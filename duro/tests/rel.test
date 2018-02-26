@@ -2,7 +2,6 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
-# $Id$
 #
 # Test tables with relation-valued attribute, GROUP and UNGROUP.
 #
@@ -14,7 +13,7 @@ eval ::tcltest::configure $argv
 namespace import ::tcltest::*
 
 test rel {relation-valued attributes} -setup $SETUP -body {
-    set dbenv [duro::env create [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
 
     # Create Database
     duro::db create $dbenv TEST
@@ -68,7 +67,7 @@ test rel {relation-valued attributes} -setup $SETUP -body {
     duro::env close $dbenv
 
     # Reopen DB environment
-    set dbenv [duro::env open [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $dbenvname]
     
     set tx [duro::begin $dbenv TEST]
     

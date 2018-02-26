@@ -17,9 +17,24 @@
 #include <string.h>
 
 static void
+write_notice(void *arg, const char *message)
+{
+    fputs(message, (FILE *)arg);
+    fputs("\n", (FILE *)arg);
+}
+
+static void
 pg_set_errfile(RDB_environment *envp, FILE *file)
 {
     envp->errfile = file;
+    PQsetNoticeProcessor(envp->env.pgconn,
+        &write_notice, file);
+}
+
+static FILE *
+pg_get_errfile(const RDB_environment *envp)
+{
+    return envp->errfile;
 }
 
 RDB_environment *
@@ -44,6 +59,7 @@ RDB_pg_open_env(const char *path, RDB_exec_context *ecp)
     envp->close_index_fn = &RDB_close_pg_index;
     envp->delete_index_fn = &RDB_delete_pg_index;
     envp->set_errfile_fn = &pg_set_errfile;
+    envp->get_errfile_fn = &pg_get_errfile;
 
     envp->cleanup_fn = NULL;
     envp->xdata = NULL;
@@ -168,7 +184,7 @@ RDB_pg_binary_literal(RDB_environment *envp, RDB_object *dstp, const void *src,
         goto error;
     if (RDB_append_string(dstp, (char *) ebin, ecp) != RDB_OK)
         goto error;
-    if (RDB_append_char(dstp, '\'', ecp) != RDB_OK)
+    if (RDB_append_string(dstp, "'::bytea", ecp) != RDB_OK)
         goto error;
 
     PQfreemem(ebin);

@@ -445,11 +445,11 @@ error:
 }
 
 static RDB_database *
-get_db(const char *name, RDB_dbroot *dbrootp, RDB_exec_context *ecp)
+get_db(const char *name, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     RDB_database *dbp = NULL;
     RDB_transaction tx;
-    int ret;
 
     /* Search the DB list for the database */
     for (dbp = dbrootp->first_dbp; dbp != NULL; dbp = dbp->nextdbp) {
@@ -471,19 +471,22 @@ get_db(const char *name, RDB_dbroot *dbrootp, RDB_exec_context *ecp)
         goto error;
     dbp->dbrootp = dbrootp;
 
-    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
-    if (ret != RDB_OK) {
+    if (txp == NULL) {
+        if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK) {
+            goto error;
+        }
+    }
+
+    if (RDB_cat_db_exists(name, dbrootp, ecp, txp != NULL ? txp : &tx) != RDB_OK) {
+        if (txp == NULL)
+            RDB_rollback(ecp, &tx);
         goto error;
     }
 
-    if (RDB_cat_db_exists(name, dbrootp, ecp, &tx) != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        goto error;
+    if (txp == NULL) {
+        if (RDB_commit(ecp, &tx) != RDB_OK)
+            return NULL;
     }
-
-    ret = RDB_commit(ecp, &tx);
-    if (ret != RDB_OK)
-        return NULL;
 
     /* Insert database into list */
     dbp->nextdbp = dbrootp->first_dbp;
@@ -630,6 +633,7 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp,
 RDB_get_db_from_env obtains a pointer to the database with name
 <var>name</var> in the environment specified by <var>envp</var>.
 If an error occurs, an error value is left in *<var>ecp</var>.
+<var>txp</var> may be NULL.
 
 @returns
 
@@ -650,14 +654,14 @@ The call may also fail for a @ref system-errors "system error".
 */
 RDB_database *
 RDB_get_db_from_env(const char *name, RDB_environment *envp,
-                    RDB_exec_context *ecp)
+                    RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get dbroot from env */
     RDB_dbroot *dbrootp = get_dbroot(envp, ecp);
     if (dbrootp == NULL)
         return NULL;
 
-    return get_db(name, dbrootp, ecp);
+    return get_db(name, dbrootp, ecp, txp);
 }
 
 static RDB_object *

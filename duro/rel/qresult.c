@@ -554,7 +554,8 @@ do_group(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
                 /* Try to read tuple of the materialized table */
                 ret = RDB_get_fields(qrp->matp->val.tbp->stp->recmapp, keyfv,
                         1, NULL, &gfield, ecp);
-                RDB_handle_err(ecp, txp);
+                if (ret != RDB_OK)
+                    RDB_handle_err(ecp, txp);
             } else {
                 RDB_raise_not_found("", ecp);
                 ret = RDB_ERROR;
@@ -854,7 +855,7 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
                 RDB_destroy_obj(&sql, ecp);
                 return RDB_ERROR;
             }
-            if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
+            if (RDB_env_trace(txp->envp) > 0) {
                 fprintf(stderr, "SQL generated: %s\n", RDB_obj_string(&sql));
             }
             curp = RDB_pg_query_cursor(txp->envp, RDB_obj_string(&sql), RDB_FALSE,
