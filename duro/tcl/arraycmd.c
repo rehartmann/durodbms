@@ -1,7 +1,5 @@
 /*
- * $Id$
- *
- * Copyright (C) 2003, 2004 René Hartmann.
+ * Copyright (C) 2003, 2004 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -80,7 +78,7 @@ array_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     entryp = Tcl_CreateHashEntry(&statep->arrays, handle, &new);
     Tcl_SetHashValue(entryp, (ClientData)arrayp);
 
-    Tcl_SetStringObj(Tcl_GetObjResult(interp), handle, -1);
+    Tcl_SetResult(interp, handle, TCL_VOLATILE);
     return TCL_OK;
 }
 

@@ -1,7 +1,5 @@
 /*
- * $Id$
- *
- * Copyright (C) 2004-2005 Ren� Hartmann.
+ * Copyright (C) 2004-2005 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -82,7 +80,7 @@ Duro_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[]
     entryp = Tcl_CreateHashEntry(&statep->txs, handle, &new);
     Tcl_SetHashValue(entryp, (ClientData)txp);
         
-    Tcl_SetStringObj(Tcl_GetObjResult(interp), handle, -1);
+    Tcl_SetResult(interp, handle, TCL_VOLATILE);
 
     /*
      * Attach interpreter to the transaction to make it the interpreter

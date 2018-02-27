@@ -13,10 +13,12 @@ if {$::tcl_platform(platform) == "windows"} {
     set ::env(LD_LIBRARY_PATH) $dir/../..
 }
 
-set pgidx [lsearch $argv -postgresql]
-set targv [lreplace $argv $pgidx [expr $pgidx+1]]
+set pgargidx [lsearch $argv -postgresql]
+set targv [lreplace $argv $pgargidx [expr $pgargidx+1]]
 
 ::tcltest::configure -testdir $dir
 ::tcltest::configure -tmpdir [::tcltest::configure -testdir]
 eval ::tcltest::configure $targv
+set env(DURO_STORAGE) ""
 ::tcltest::runAllTests
+
