@@ -12,24 +12,11 @@ namespace import ::tcltest::*
 
 set testdir [::tcltest::configure -testdir]
 
-set ::SETUP {
-    removeDirectory dbenv
-    makeDirectory dbenv
-    cd $::tcltest::temporaryDirectory
-    exec $testdir/../../dli/durodt << {
-        create_env('dbenv');
-        create_db('D');
-    }
-}
-
-set ::CLEANUP {
-    removeDirectory dbenv
-}
+source $testdir/setup.tcl
 
 test insert_delete {creating table, insert, delete} \
             -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;
@@ -38,7 +25,11 @@ test insert_delete {creating table, insert, delete} \
 
         disconnect();
 
-        connect('dbenv', false);
+        if os.getenv('DURO_STORAGE')='POSTGRESQL' then
+            connect('postgresql:///testdb');
+        else
+            connect('dbenv');
+        end if;
         current_db := 'D';
 
         begin tx;
@@ -156,7 +147,11 @@ test insert_delete {creating table, insert, delete} \
         commit;
 
         -- connect() without preceding disconnect()
-        connect('dbenv', true);
+        if os.getenv('DURO_STORAGE')='POSTGRESQL' then
+            connect('postgresql:///testdb');
+        else
+            connect('dbenv', true);
+        end if;
 
         var hs init 'a';
         begin tx;
@@ -192,8 +187,7 @@ empty
 }
 
 test update {creating table and updating tuples} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt  -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;
@@ -251,8 +245,7 @@ Uno
 }
 
 test in {IN operator} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt  -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;
@@ -293,8 +286,7 @@ FALSE
 }
 
 test for_in_drop {DROP in FOR .. IN} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt  -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;
@@ -315,8 +307,7 @@ test for_in_drop {DROP in FOR .. IN} -setup $SETUP -cleanup $CLEANUP -body {
 }
 
 test invalid_type {invalid (scalar) type for table} -setup $SETUP -cleanup $CLEANUP -match glob -body {
-    exec $testdir/../../dli/durodt << {
-	    connect('dbenv');
+    exec $testdir/../../dli/durodt  -e $dbenvname << {
     	current_db := 'D';
 
 	    begin transaction;
@@ -325,8 +316,7 @@ test invalid_type {invalid (scalar) type for table} -setup $SETUP -cleanup $CLEA
 }  -returnCodes {1} -result {*type_mismatch_error*}
 
 test extend {EXTEND} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt  -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;
@@ -401,8 +391,7 @@ xx
 }
 
 test project {project} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt  -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;
@@ -474,8 +463,7 @@ test project {project} -setup $SETUP -cleanup $CLEANUP -body {
 }
 
 test join_extend {Natural JOIN/EXTEND}  -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt  -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;
@@ -534,8 +522,7 @@ test join_extend {Natural JOIN/EXTEND}  -setup $SETUP -cleanup $CLEANUP -body {
 }
 
 test join_rename_index {JOIN with index}  -setup $SETUP -cleanup $CLEANUP -match glob -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt  -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -576,8 +563,7 @@ test join_rename_index {JOIN with index}  -setup $SETUP -cleanup $CLEANUP -match
 
 test join_rename_nuindex {JOIN with rename and non-unique index}  -setup $SETUP \
         -cleanup $CLEANUP -match glob -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt  -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -615,8 +601,7 @@ test join_rename_nuindex {JOIN with rename and non-unique index}  -setup $SETUP 
 }
 
 test union {UNION and D_UNION} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt  -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;
@@ -669,8 +654,7 @@ duplicate tuple caught
 }
 
 test where {WHERE virtual table} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt  -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;
@@ -748,8 +732,7 @@ test where {WHERE virtual table} -setup $SETUP -cleanup $CLEANUP -body {
 }
 
 test ra {relational algebra} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt  -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;
@@ -849,18 +832,18 @@ y
 }
 
 test virtual_assign {assignment to virtual tables} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt -e dbenv -d D << {
+    exec $testdir/../../dli/durodt -e $dbenvname -d D << {
         begin tx;
         var emp real rel{emp_id int, dept_id int, name string} key {emp_id};
         commit;
     }
-    exec $testdir/../../dli/durodt -e dbenv -d D << {
+    exec $testdir/../../dli/durodt -e $dbenvname -d D << {
         begin tx;
         var empd1 virtual emp where dept_id = 1;
         insert empd1 tup {emp_id 1, dept_id 1, name 'Smith'};
         commit;
     }
-    exec $testdir/../../dli/durodt -e dbenv -d D << {
+    exec $testdir/../../dli/durodt -e $dbenvname -d D << {
         begin tx;
 
         insert empd1 tup {emp_id 2, dept_id 1, name 'Jones'};
@@ -885,8 +868,7 @@ Jones
 }
 
 test tupleattr {tuple-valued attributes} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -896,8 +878,7 @@ test tupleattr {tuple-valued attributes} -setup $SETUP -cleanup $CLEANUP -body {
         commit;
     }
     # Test with new interpreter instance
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -916,8 +897,7 @@ one
 }
 
 test updop {user defined update operators} -setup $SETUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;
@@ -946,8 +926,7 @@ test updop {user defined update operators} -setup $SETUP -body {
 }
 
 test roop {user defined read-only operators} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;
@@ -969,8 +948,7 @@ test roop {user defined read-only operators} -setup $SETUP -cleanup $CLEANUP -bo
 } 
 
 test zero_attrs {Tables with zero attributes} -setup $SETUP -body {
-    exec $testdir/../../dli/durodt << {        
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;
@@ -980,7 +958,11 @@ test zero_attrs {Tables with zero attributes} -setup $SETUP -body {
         disconnect();
 
         -- Connect again and read virtual table
-        connect('dbenv');
+        if os.getenv('DURO_STORAGE')='POSTGRESQL' then
+            connect('postgresql:///testdb');
+        else
+            connect('dbenv');
+        end if;
         current_db:='D';
         begin tx;
         io.put(ev); io.put_line('');
@@ -990,8 +972,7 @@ test zero_attrs {Tables with zero attributes} -setup $SETUP -body {
 }
 
 test logic {Logic operators} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;
@@ -1109,8 +1090,7 @@ test logic {Logic operators} -setup $SETUP -cleanup $CLEANUP -body {
 }
 
 test aggregate {Aggregate operators} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;
@@ -1134,8 +1114,7 @@ TRUE
 }
 
 test summarize {SUMMARIZE} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;
@@ -1196,8 +1175,7 @@ test summarize {SUMMARIZE} -setup $SETUP -cleanup $CLEANUP -body {
 }
 
 test relrel {table with relation attribute} -setup $SETUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;
@@ -1217,8 +1195,7 @@ yo
 }
 
 test index {creating index} -setup $SETUP -cleanup $CLEANUP -match glob -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -1259,8 +1236,7 @@ test index {creating index} -setup $SETUP -cleanup $CLEANUP -match glob -body {
 }
 
 test real_default {public real table with default values} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -1325,7 +1301,7 @@ r4: invalid_argument_error caught
 }
 
 test dbconstraint {db/table constraints 1} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin transaction;
 
@@ -1362,7 +1338,7 @@ caught in_use_error
 }
 
 test dbconstraint2 {db/table constraints 2} -setup $SETUP -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin transaction;
         var r2 real rel {no int} key {no};
@@ -1373,7 +1349,7 @@ test dbconstraint2 {db/table constraints 2} -setup $SETUP -body {
     }
     # Check for bug which caused the constraint to be still in memory
     # after DROP CONSTRAINT when constraints_read was false
-    exec $testdir/../../dli/durodt -e dbenv -d D << {
+    exec $testdir/../../dli/durodt -e $dbenvname -d D << {
         drop constraint cr2;
         
         begin tx;
@@ -1384,7 +1360,7 @@ test dbconstraint2 {db/table constraints 2} -setup $SETUP -body {
 
 # Test referential constraint, including optimization and EXPLAIN <assignment>
 test refconstraint {referential constraint} -setup $SETUP -cleanup $CLEANUP -body {
-    puts -nonewline [exec $testdir/../../dli/durodt -e dbenv -d D << {
+    puts -nonewline [exec $testdir/../../dli/durodt -e $dbenvname -d D << {
         begin tx;
         var customers real rel {cust_id int, name string} key {cust_id};
         var orders real rel {order_id int, cust_id int, info string}
@@ -1436,7 +1412,7 @@ test refconstraint {referential constraint} -setup $SETUP -cleanup $CLEANUP -bod
     #
     # Check optimization
     #
-    set checks [exec $testdir/../../dli/durodt -e dbenv -d D << {
+    set checks [exec $testdir/../../dli/durodt -e $dbenvname -d D << {
         begin tx;
         explain insert orders tup{order_id 2, cust_id 2};
         commit;
@@ -1445,7 +1421,7 @@ test refconstraint {referential constraint} -setup $SETUP -cleanup $CLEANUP -bod
         puts "insert check #1 refers to orders: $checks"
     }
 
-    set checks [exec $testdir/../../dli/durodt -e dbenv -d D << {
+    set checks [exec $testdir/../../dli/durodt -e $dbenvname -d D << {
         begin tx;
         explain insert customers tup{cust_id 2, name 'John'};
         commit;
@@ -1455,7 +1431,7 @@ test refconstraint {referential constraint} -setup $SETUP -cleanup $CLEANUP -bod
         puts "insert check #2 refers to orders or customers: $checks"
     }    
 
-    set checks [exec $testdir/../../dli/durodt -e dbenv -d D << {
+    set checks [exec $testdir/../../dli/durodt -e $dbenvname -d D << {
         begin tx;
         explain delete orders where order_id=1;
         commit;
@@ -1465,7 +1441,7 @@ test refconstraint {referential constraint} -setup $SETUP -cleanup $CLEANUP -bod
         puts "delete check #1 refers to orders or customers: $checks"
     }    
 
-    set checks [exec $testdir/../../dli/durodt -e dbenv -d D << {
+    set checks [exec $testdir/../../dli/durodt -e $dbenvname -d D << {
         begin tx;
         explain delete customers where cust_id=1;
         commit;
@@ -1474,7 +1450,7 @@ test refconstraint {referential constraint} -setup $SETUP -cleanup $CLEANUP -bod
         puts "delete check #2 does not use primary index of customers"
     }
 
-    set checks [exec $testdir/../../dli/durodt -e dbenv -d D << {
+    set checks [exec $testdir/../../dli/durodt -e $dbenvname -d D << {
         begin tx;
         explain update orders where order_id=1 {info := 'yo'};
         commit;
@@ -1484,7 +1460,7 @@ test refconstraint {referential constraint} -setup $SETUP -cleanup $CLEANUP -bod
         puts "update check #1 refers to orders or customers: $checks"
     }    
 
-    set checks [exec $testdir/../../dli/durodt -e dbenv -d D << {
+    set checks [exec $testdir/../../dli/durodt -e $dbenvname -d D << {
         begin tx;
         explain update customers where cust_id=1 {name := 'Karlheiz'};
         commit;
@@ -1502,7 +1478,7 @@ delete from customers caught
 }
 
 test trconstraint {Transition constraint} -setup $SETUP -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin transaction;
 
@@ -1526,7 +1502,7 @@ test trconstraint {Transition constraint} -setup $SETUP -body {
 }
 
 test matching_index {MINUS, INTERSECT, SEMIJOIN, SEMIMINUS with index on table #2} -setup $SETUP -cleanup $CLEANUP -match glob -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin transaction;
 
@@ -1582,7 +1558,7 @@ test matching_index {MINUS, INTERSECT, SEMIJOIN, SEMIMINUS with index on table #
 
 test index_reopen {creating and filling a table with an index and accessing it after closing and reopening the connection} \
  -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -1599,7 +1575,11 @@ test index_reopen {creating and filling a table with an index and accessing it a
 
         disconnect();
 
-        connect('dbenv');
+        if os.getenv('DURO_STORAGE')='POSTGRESQL' then
+            connect('postgresql:///testdb');
+        else
+            connect('dbenv');
+        end if;
         current_db := 'D';
 
         begin tx;
@@ -1614,7 +1594,7 @@ test index_reopen {creating and filling a table with an index and accessing it a
 }
 
 test utypetable {table with attribute of user-defined type} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin transaction;
 
@@ -1658,10 +1638,9 @@ caught in_use_error
 }
 
 test implicit_tx {implicit transactions} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         implicit_tx := true;
 
-        connect('dbenv');
         current_db := 'D';
 
         var r real relation {c string, n int, d float, s string}
@@ -1683,8 +1662,7 @@ Vanad
 }
 
 test rollback_r1 {rollback after real table creation} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -1727,8 +1705,7 @@ invalid_argument_error caught (2)
 
 test rollback_r2 {rollback after real table creation followed by re-creating the tables} \
         -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -1758,8 +1735,7 @@ truly relational
 }
 
 test rollback_v1 {rollback after virtual table creation} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -1806,8 +1782,7 @@ invalid_argument_error caught (2)
 
 test rollback_v2 {rollback after real table creation followed by re-creating the tables} \
         -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -1841,8 +1816,7 @@ truly relational
 }
 
 test rollback_p1 {rollback after virtual table creation} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -1883,8 +1857,7 @@ invalid argument or not found (2)
 }
 
 test double_rtable {creating a table with the same name twice} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -1918,8 +1891,7 @@ test double_rtable {creating a table with the same name twice} -setup $SETUP -cl
 }
 
 test drop_nested_tx {dropping table in nested transaction} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -1937,8 +1909,7 @@ test drop_nested_tx {dropping table in nested transaction} -setup $SETUP -cleanu
 }
 
 test serial {system-generated attribute values} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -1977,8 +1948,7 @@ test serial {system-generated attribute values} -setup $SETUP -cleanup $CLEANUP 
 }
 
 test rename_real {rename table} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -1996,8 +1966,7 @@ test rename_real {rename table} -setup $SETUP -cleanup $CLEANUP -body {
 }
 
 test rename_real_syskey {rename table with system key} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -2005,16 +1974,14 @@ test rename_real_syskey {rename table with system key} -setup $SETUP -cleanup $C
         insert r1 tup{};
         commit;
     }
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
         rename var r1 as r2;
         commit;
     }
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -2033,8 +2000,7 @@ test rename_real_syskey {rename table with system key} -setup $SETUP -cleanup $C
 }
 
 test array_attr {table with array-valued attribute} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -2052,8 +2018,7 @@ test array_attr {table with array-valued attribute} -setup $SETUP -cleanup $CLEA
         var vr virtual r where if length(names) > 2 then names[2] = 'Lithium' else false; 
         commit;
     }
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -2091,8 +2056,7 @@ Beryllium
 
 test same_op {operator definition with same_heading_as and same_type_as} \
              -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -2112,8 +2076,7 @@ test same_op {operator definition with same_heading_as and same_type_as} \
 }
 
 test 2dbs {2 databases} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         create_db('D2');
         current_db := 'D';
         begin tx;
@@ -2121,7 +2084,11 @@ test 2dbs {2 databases} -setup $SETUP -cleanup $CLEANUP -body {
         commit;
         disconnect();
         
-        connect('dbenv');
+        if os.getenv('DURO_STORAGE')='POSTGRESQL' then
+            connect('postgresql:///testdb');
+        else
+            connect('dbenv');
+        end if;
         current_db := 'D';
         begin tx;
         io.put_line((tuple from r).s);
@@ -2140,8 +2107,7 @@ test 2dbs {2 databases} -setup $SETUP -cleanup $CLEANUP -body {
 }
 
 test datetime_table {table with datetime attribute} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin tx;
         var dr real rel {n int, d datetime} key {n};
@@ -2169,8 +2135,7 @@ test datetime_table {table with datetime attribute} -setup $SETUP -cleanup $CLEA
 }
 
 test nested_rollback {nested transactions rolled back} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin tx;
         var r real rel {n int, s string} key {n};
@@ -2188,8 +2153,7 @@ test nested_rollback {nested transactions rolled back} -setup $SETUP -cleanup $C
 }
 
 test equality {table equality} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin tx;
 

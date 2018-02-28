@@ -436,10 +436,100 @@ RDB_update_pg_rec(RDB_recmap *rmp, RDB_field keyv[],
 }
 
 int
-RDB_delete_pg_rec(RDB_recmap *rmp, RDB_field keyv[], RDB_rec_transaction *rtxp,
+RDB_delete_pg_rec(RDB_recmap *rmp, int fieldc, RDB_field fieldv[], RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
 {
-    RDB_raise_not_supported("RDB_delete_pg_rec", ecp);
+    RDB_object command;
+    int i;
+    char parambuf[14];
+    PGresult *res = NULL;
+    int *lenv = NULL;
+    void **valuev = NULL;
+    int *formatv = NULL;
+    RDB_int cnt;
+
+    RDB_init_obj(&command);
+
+    lenv = RDB_alloc(fieldc * sizeof(int), ecp);
+    if (lenv == NULL)
+        goto error;
+    valuev = RDB_alloc(fieldc * sizeof(void*), ecp);
+    if (valuev == NULL)
+        goto error;
+    for (i = 0; i < fieldc; i++) {
+        valuev[i] = NULL;
+    }
+    formatv = RDB_alloc(fieldc * sizeof(int), ecp);
+    if (formatv == NULL)
+        goto error;
+
+    if (RDB_string_to_obj(&command, "DELETE FROM \"", ecp) != RDB_OK) {
+        goto error;
+    }
+    if (RDB_append_string(&command, rmp->namp, ecp) != RDB_OK) {
+        goto error;
+    }
+    if (RDB_append_char(&command, '"', ecp) != RDB_OK) {
+        goto error;
+    }
+    if (fieldc > 0) {
+        if (RDB_append_string(&command, " WHERE ", ecp) != RDB_OK) {
+            goto error;
+        }
+        for (i = 0; i < fieldc; i++) {
+            if (RDB_append_string(&command, rmp->fieldinfos[i].attrname, ecp) != RDB_OK) {
+                goto error;
+            }
+            sprintf(parambuf, "=$%d", i + 1);
+            if (RDB_append_string(&command, parambuf, ecp) != RDB_OK) {
+                goto error;
+            }
+            if (i < fieldc - 1) {
+                if (RDB_append_string(&command, " AND ", ecp) != RDB_OK) {
+                    goto error;
+                }
+            }
+            lenv[i] = (int) fieldv[i].len;
+            valuev[i] = RDB_field_to_pg(&fieldv[i], &rmp->fieldinfos[i], &formatv[i], ecp);
+            if (valuev[i] == NULL)
+                goto error;
+        }
+    }
+
+    res = PQexecParams(rmp->envp->env.pgconn, RDB_obj_string(&command),
+            fieldc, NULL, (const char * const *) valuev, lenv,
+            formatv, 0);
+    if (PQresultStatus(res) != PGRES_COMMAND_OK)
+    {
+        RDB_pgresult_to_error(rmp->envp, res, ecp);
+        cnt = (RDB_int) RDB_ERROR;
+    } else {
+        cnt = (RDB_int) atoi(PQcmdTuples(res));
+    }
+    PQclear(res);
+
+    RDB_free(lenv);
+    for (i = 0; i < fieldc; i++) {
+        RDB_free(valuev[i]);
+    }
+    RDB_free(formatv);
+    RDB_free(valuev);
+    RDB_destroy_obj(&command, ecp);
+    return cnt;
+
+error:
+    if (lenv != NULL)
+        RDB_free(lenv);
+    if (formatv != NULL)
+        RDB_free(formatv);
+    if (valuev != NULL) {
+        for (i = 0; i < fieldc; i++) {
+            if (valuev[i] != NULL)
+                RDB_free(valuev[i]);
+        }
+        RDB_free(valuev);
+    }
+    RDB_destroy_obj(&command, ecp);
     return RDB_ERROR;
 }
 

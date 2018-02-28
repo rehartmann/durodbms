@@ -12,19 +12,7 @@ namespace import ::tcltest::*
 
 set testdir [::tcltest::configure -testdir]
 
-set ::DBSETUP {
-    removeDirectory dbenv
-    makeDirectory dbenv
-    cd $::tcltest::temporaryDirectory
-    exec $testdir/../../dli/durodt << {
-        CREATE_ENV('dbenv');
-        CREATE_DB('D');
-    }
-}
-
-set ::CLEANUP {
-    removeDirectory dbenv
-}
+source $testdir/setup.tcl
 
 test arraysel {array selectors and index_of} -body {
     exec $testdir/../../dli/durodt << {
@@ -147,10 +135,9 @@ test ptarray {array from private table} -body {
 3
 }
 
-test ops {operators with array arguments} -setup $DBSETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        CONNECT('dbenv');
-        CURRENT_DB := 'D';
+test ops {operators with array arguments} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
+        current_db := 'D';
 
         begin transaction;
 
@@ -186,10 +173,9 @@ test ops {operators with array arguments} -setup $DBSETUP -cleanup $CLEANUP -bod
 3
 }
 
-test retops {operator returning array} -setup $DBSETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        CONNECT('dbenv');
-        CURRENT_DB := 'D';
+test retops {operator returning array} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
+        current_db := 'D';
 
         begin transaction;
 
@@ -219,10 +205,9 @@ test retops {operator returning array} -setup $DBSETUP -cleanup $CLEANUP -body {
 5
 }
 
-test array_utype {type with array-valued component} -setup $DBSETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        CONNECT('dbenv');
-        CURRENT_DB := 'D';
+test array_utype {type with array-valued component} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
+        current_db := 'D';
 
         begin transaction;
         

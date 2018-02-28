@@ -12,19 +12,7 @@ namespace import ::tcltest::*
 
 set testdir [::tcltest::configure -testdir]
 
-set ::SETUP {
-    removeDirectory dbenv
-    makeDirectory dbenv
-    cd $::tcltest::temporaryDirectory
-    exec $testdir/../../dli/durodt << {
-        CREATE_ENV('dbenv');
-        CREATE_DB('D');
-    }
-}
-
-set ::CLEANUP {
-    removeDirectory dbenv
-}
+source $testdir/setup.tcl
 
 test declvar {declaring variable} -body {
     exec $testdir/../../dli/durodt << {
@@ -39,8 +27,7 @@ test declvar {declaring variable} -body {
 
 test ro_op {readonly operator} \
             -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;
@@ -71,8 +58,7 @@ calling rop() with t2 failed.
 
 test upd_op {readonly operator} \
             -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;

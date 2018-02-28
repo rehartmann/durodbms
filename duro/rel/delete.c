@@ -46,7 +46,7 @@ delete_by_uindex(RDB_object *tbp, RDB_object *objpv[], RDB_tbindex *indexp,
 
     RDB_cmp_ecp = ecp;
     if (indexp->idxp == NULL) {
-        ret = RDB_delete_rec(tbp->val.tbp->stp->recmapp, fv,
+        ret = RDB_delete_rec(tbp->val.tbp->stp->recmapp, keylen, fv,
                 RDB_table_is_persistent(tbp) ? txp->tx : NULL, ecp);
     } else {
         ret = RDB_index_delete_rec(indexp->idxp, fv,
@@ -476,6 +476,55 @@ RDB_delete_where_index(RDB_expression *texp, RDB_expression *condp,
     return delete_where_nuindex(texp, condp, getfn, getarg, ecp, txp);
 }
 
+static RDB_int
+sql_delete_tuple(RDB_object *tbp, RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    int i;
+    RDB_int cnt;
+    RDB_type *tuptyp = tbp->typ->def.basetyp;
+    int attrcount = tuptyp->def.tuple.attrc;
+    RDB_field *fvp = RDB_alloc(sizeof(RDB_field) * attrcount, ecp);
+    if (fvp == NULL) {
+        return (RDB_int) RDB_ERROR;
+    }
+
+    for (i = 0; i < attrcount; i++) {
+        int *fnop = RDB_field_no(tbp->val.tbp->stp, tuptyp->def.tuple.attrv[i].name);
+        RDB_object *valp = RDB_tuple_get(tplp, tuptyp->def.tuple.attrv[i].name);
+        RDB_type *attrtyp = tuptyp->def.tuple.attrv[i].typ;
+
+        /* If there is no value, check if there is a default */
+        if (valp == NULL) {
+            RDB_raise_invalid_argument("missing value", ecp);
+            goto error;
+        }
+
+        /* Typecheck */
+        if (!RDB_obj_matches_type(valp, attrtyp)) {
+            RDB_raise_type_mismatch(
+                    "tuple attribute type does not match table attribute type",
+                    ecp);
+            goto error;
+        }
+
+        /* Set type information for storage */
+        valp->store_typ = attrtyp;
+
+        if (RDB_obj_to_field(&fvp[*fnop], valp, ecp) != RDB_OK) {
+            goto error;
+        }
+    }
+
+    cnt = RDB_delete_rec(tbp->val.tbp->stp->recmapp, attrcount, fvp, txp->tx, ecp);
+    RDB_free(fvp);
+    return cnt;
+
+error:
+    RDB_free(fvp);
+    return RDB_ERROR;
+}
+
 RDB_int
 RDB_delete_real_tuple(RDB_object *tbp, RDB_object *tplp, int flags, RDB_exec_context *ecp,
         RDB_transaction *txp)
@@ -501,6 +550,15 @@ RDB_delete_real_tuple(RDB_object *tbp, RDB_object *tplp, int flags, RDB_exec_con
             }
             return (RDB_int) 0;
         }
+    }
+
+    if (txp != NULL && RDB_env_queries(txp->envp)) {
+        RDB_int cnt = sql_delete_tuple(tbp, tplp, ecp, txp);
+        if (cnt == 0 && (RDB_INCLUDED & flags)) {
+            RDB_raise_not_found("tuple not found", ecp);
+            return (RDB_int) RDB_ERROR;
+        }
+        return cnt;
     }
 
     /* Check if the table contains the tuple */

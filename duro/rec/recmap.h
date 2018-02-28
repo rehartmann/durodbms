@@ -86,7 +86,7 @@ RDB_update_rec(RDB_recmap *, RDB_field[],
                int, const RDB_field[], RDB_rec_transaction *, RDB_exec_context *);
 
 int
-RDB_delete_rec(RDB_recmap *, RDB_field[], RDB_rec_transaction *, RDB_exec_context *);
+RDB_delete_rec(RDB_recmap *, int, RDB_field[], RDB_rec_transaction *, RDB_exec_context *);
 
 int
 RDB_get_fields(RDB_recmap *, RDB_field[], int,

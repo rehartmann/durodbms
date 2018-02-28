@@ -12,23 +12,10 @@ namespace import ::tcltest::*
 
 set testdir [::tcltest::configure -testdir]
 
-set ::SETUP {
-    removeDirectory dbenv
-    makeDirectory dbenv
-    cd $::tcltest::temporaryDirectory
-    exec $testdir/../../dli/durodt << {
-        create_env('dbenv');
-        create_db('D');
-    }
-}
-
-set ::CLEANUP {
-    removeDirectory dbenv
-}
+source $testdir/setup.tcl
 
 test subtypes {Subtypes} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin tx;
 
@@ -333,8 +320,7 @@ TRUE
 }
 
 test returntype {Return type conflict} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin tx;
 
@@ -375,8 +361,7 @@ test returntype {Return type conflict} -setup $SETUP -cleanup $CLEANUP -body {
 
 test subtypes_rel_array_rep {Subtypes with relation and array representations} \
         -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin tx;
 
@@ -417,15 +402,13 @@ foo bar
 }
 
 test droptypes {Drop types} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin tx;
         type t1 union;
         commit;
     }
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin tx;
         
@@ -454,8 +437,7 @@ test droptypes {Drop types} -setup $SETUP -cleanup $CLEANUP -body {
 } -result {}
 
 test multiple {Multiple inheritance} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin tx;
 
@@ -528,8 +510,7 @@ FALSE
 }
 
 test noprops {Type without properties} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin tx;
 

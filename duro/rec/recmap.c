@@ -85,14 +85,16 @@ RDB_update_rec(RDB_recmap *rmp, RDB_field keyv[],
 }
 
 /*
- * Delete from a recmap the record whose key values are given by keyv.
- * keyv[..].no is ignored.
+ * Delete from a recmap the record whose values are given by fieldv.
+ * It is implementation-dependent if only delete by key fields or only value
+ * fields may be passed.
+ * fieldv[..].no is ignored.
  */
 int
-RDB_delete_rec(RDB_recmap *rmp, RDB_field keyv[], RDB_rec_transaction *rtxp,
+RDB_delete_rec(RDB_recmap *rmp, int fieldc, RDB_field fieldv[], RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
 {
-    return (*rmp->delete_rec_fn)(rmp, keyv, rtxp, ecp);
+    return (*rmp->delete_rec_fn)(rmp, fieldc, fieldv, rtxp, ecp);
 }
 
 /*

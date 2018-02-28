@@ -12,21 +12,7 @@ namespace import ::tcltest::*
 
 set testdir [::tcltest::configure -testdir]
 
-makeDirectory dbenv
-
-set ::SETUP {
-    removeDirectory dbenv
-    makeDirectory dbenv
-    cd $::tcltest::temporaryDirectory
-    exec $testdir/../../dli/durodt << {
-        create_env('dbenv');
-        create_db('D');
-    }
-}
-
-set ::CLEANUP {
-    removeDirectory dbenv
-}
+source $testdir/setup.tcl
 
 test scalar_builtin {built-in scalar definitions and operators} -body {
     exec $testdir/../../dli/durodt $testdir/scalar.td
@@ -134,8 +120,7 @@ Do
 }
 
 test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin tx;
         type t
@@ -154,7 +139,7 @@ test deftype {user-defined types} -setup $SETUP -cleanup $CLEANUP -body {
         end try;
         commit;
     }
-    exec $testdir/../../dli/durodt -e dbenv -d D << {
+    exec $testdir/../../dli/durodt -e $dbenvname -d D << {
         begin tx;
         -- Test declaration w/ incomplete types
         try
@@ -328,8 +313,7 @@ type constraint violation caught
 }
 
 test deftype_oldsyntax {user-defined types with old possrep syntax} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin tx;
         type t1
@@ -365,8 +349,7 @@ test deftype_oldsyntax {user-defined types with old possrep syntax} -setup $SETU
 }
 
 test deftypemr {user-defined type with multiple possreps} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin tx;
 		type fixed2
@@ -407,7 +390,7 @@ test deftypemr {user-defined type with multiple possreps} -setup $SETUP -cleanup
         var f2 init fixed2r(1.00);
         var f3 init fixed2i(100);
     }
-    exec $testdir/../../dli/durodt -e dbenv -d D << {
+    exec $testdir/../../dli/durodt -e $dbenvname -d D << {
         var f1 fixed2;
         var f2 init fixed2r(1.23);
         var f3 init fixed2i(321);
@@ -463,8 +446,7 @@ test deftypemr {user-defined type with multiple possreps} -setup $SETUP -cleanup
 }
 
 test deftypemri {user-defined type with multiple possreps and incomplete implementation} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin tx;
 		type fixed2
@@ -512,8 +494,7 @@ declaration with unimplemented type caught
 }
 
 test deftypemarr {user-defined type with multiple possreps and array component} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -604,8 +585,7 @@ one
 }
 
 test deftypearr {system implemented user-defined type with array component} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -647,8 +627,7 @@ one
 }
 
 test deftypearr2 {system implemented user-defined type with array and scalar component} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -690,8 +669,7 @@ one
 }
 
 test deftypecmp {user-defined type with comparison operator} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         var cmp_invoked init false;
         begin tx;
@@ -870,7 +848,7 @@ Ronnie Relational
 }
 
 test defroop {read-only user-defined operators} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt -e dbenv -d D << {
+    exec $testdir/../../dli/durodt -e $dbenvname -d D << {
         operator testop() returns string;
             var a integer;
             var b integer init 1;
@@ -982,7 +960,7 @@ test defroop {read-only user-defined operators} -setup $SETUP -cleanup $CLEANUP 
 }
 
 test defupdop {user-defined update operators} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin transaction;
 
@@ -1058,13 +1036,13 @@ invalid updates caught
 }
 
 test typeinf {type inference} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         operator zero() returns int;
             return 0;
         end operator;
     }
-    exec $testdir/../../dli/durodt -e dbenv << {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         var i same_type_as(zero());
         var j init zero();
@@ -1074,7 +1052,7 @@ test typeinf {type inference} -setup $SETUP -cleanup $CLEANUP -body {
 }
 
 test trycatch {TRY .. CATCH} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
         begin transaction;
 
@@ -1099,7 +1077,7 @@ test trycatch {TRY .. CATCH} -setup $SETUP -cleanup $CLEANUP -body {
 test getenv {GETENV operator} -setup $SETUP -cleanup $CLEANUP -body {
     set ::env(TEST) DUROTEST
 
-    exec $testdir/../../dli/durodt -e dbenv << {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         io.put_line(os.getenv('TEST'));
     }
 } -result {DUROTEST
@@ -1274,7 +1252,7 @@ test datetime {datetime type} -body {
 }
 
 test const {constants} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         const ic 24;
 
         io.put_line(cast_as_string(ic));
@@ -1292,7 +1270,6 @@ test const {constants} -setup $SETUP -cleanup $CLEANUP -body {
             ;
         end try;
 
-        connect('dbenv');
         current_db := 'D';
         begin tx;
 
@@ -1357,7 +1334,7 @@ test limits {arithmetic overflow} -body {
 
 test versionroop {read-only operators with version names} -setup $SETUP \
         -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt -e dbenv -d D << {
+    exec $testdir/../../dli/durodt -e $dbenvname -d D << {
         operator append1(n integer) returns string version i;
             return cast_as_string(n) || '1';
         end operator;
@@ -1401,7 +1378,7 @@ x1
 
 test versionupdop {update operators with version names} -setup $SETUP \
         -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt -e dbenv -d D << {
+    exec $testdir/../../dli/durodt -e $dbenvname -d D << {
         operator append1(s1 string, s2 string) updates { s1 } version s;
             s1 := s1 || s2;
         end operator;

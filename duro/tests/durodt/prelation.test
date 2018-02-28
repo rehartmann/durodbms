@@ -12,23 +12,10 @@ namespace import ::tcltest::*
 
 set testdir [::tcltest::configure -testdir]
 
-set ::SETUP {
-    removeDirectory dbenv
-    makeDirectory dbenv
-    cd $::tcltest::temporaryDirectory
-    exec $testdir/../../dli/durodt << {
-        create_env('dbenv');
-        create_db('D');
-    }
-}
-
-set ::CLEANUP {
-    removeDirectory dbenv
-}
+source $testdir/setup.tcl
 
 test create {creating and populating public table} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;
@@ -55,9 +42,13 @@ test create {creating and populating public table} -setup $SETUP -cleanup $CLEAN
         -- Must reconnect before accessing p again
         commit;
         disconnect();
-
-        connect('dbenv');
+        if os.getenv('DURO_STORAGE')='POSTGRESQL' then
+            connect('postgresql:///testdb');
+        else
+            connect('dbenv');
+        end if;
         current_db:='D';
+
         begin tx;
 
         map p r1;
@@ -156,8 +147,7 @@ name error caught
 }
 
 test create_allkey {creating public table that is implicitly all-key} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;
@@ -173,8 +163,7 @@ test create_allkey {creating public table that is implicitly all-key} -setup $SE
 }
 
 test rollback {rollback after accessing public} -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin transaction;

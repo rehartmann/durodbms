@@ -39,7 +39,7 @@ RDB_update_pg_rec(RDB_recmap *, RDB_field[],
                int, const RDB_field[], RDB_rec_transaction *, RDB_exec_context *);
 
 int
-RDB_delete_pg_rec(RDB_recmap *, RDB_field[], RDB_rec_transaction *, RDB_exec_context *);
+RDB_delete_pg_rec(RDB_recmap *, int, RDB_field[], RDB_rec_transaction *, RDB_exec_context *);
 
 int
 RDB_get_pg_fields(RDB_recmap *, RDB_field[],

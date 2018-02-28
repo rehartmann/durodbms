@@ -46,7 +46,7 @@ typedef struct RDB_recmap {
             RDB_exec_context *);
     int (*update_rec_fn)(RDB_recmap *, RDB_field[],
                    int, const RDB_field[], RDB_rec_transaction *, RDB_exec_context *);
-    int (*delete_rec_fn)(RDB_recmap *, RDB_field[], RDB_rec_transaction *,
+    int (*delete_rec_fn)(RDB_recmap *, int, RDB_field[], RDB_rec_transaction *,
             RDB_exec_context *);
     int (*get_fields_fn)(RDB_recmap *, RDB_field[],
                int, RDB_rec_transaction *, RDB_field[], RDB_exec_context *);

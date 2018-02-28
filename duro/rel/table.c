@@ -1031,7 +1031,7 @@ RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,
                 (RDB_bool) ((RDB_ORDERED & flags) != 0), RDB_table_name(tbp),
                 ecp, txp);
         if (ret != RDB_OK)
-            goto error;
+            return RDB_ERROR;
     }
 
     if (RDB_TB_CHECK & tbp->val.tbp->flags) {
@@ -1044,7 +1044,8 @@ RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,
      * it will be created later from the catalog when the stored table is created
      */
     if (tbp->val.tbp->stp != NULL) {
-        tbp->val.tbp->stp->indexv = RDB_realloc(tbp->val.tbp->stp->indexv,
+        tbp->val.tbp->stp->indexv = RDB_realloc(
+                tbp->val.tbp->stp->indexc > 0 ? tbp->val.tbp->stp->indexv : NULL,
                 (tbp->val.tbp->stp->indexc + 1) * sizeof (RDB_tbindex), ecp);
         if (tbp->val.tbp->stp->indexv == NULL) {
             return RDB_ERROR;
@@ -1088,10 +1089,15 @@ RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,
 error:
     if (tbp->val.tbp->stp != NULL) {
         /* Remove index entry */
-        void *ivp = RDB_realloc(tbp->val.tbp->stp->indexv,
-                (--tbp->val.tbp->stp->indexc) * sizeof (RDB_tbindex), ecp);
-        if (ivp != NULL)
-            tbp->val.tbp->stp->indexv = ivp;
+        if (tbp->val.tbp->stp->indexc == 1) {
+            RDB_free(tbp->val.tbp->stp->indexv);
+            tbp->val.tbp->stp->indexc = 0;
+        } else {
+            void *ivp = RDB_realloc(tbp->val.tbp->stp->indexv,
+                    (--tbp->val.tbp->stp->indexc) * sizeof (RDB_tbindex), ecp);
+            if (ivp != NULL)
+                tbp->val.tbp->stp->indexv = ivp;
+        }
     }
     return RDB_ERROR;
 }
@@ -1158,7 +1164,8 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
             /* Index not found, so reread indexes */
             for (i = 0; i < tbp->val.tbp->stp->indexc; i++)
                 RDB_free_tbindex(&tbp->val.tbp->stp->indexv[i]);
-            RDB_free(tbp->val.tbp->stp->indexv);
+            if (tbp->val.tbp->stp->indexc > 0)
+                RDB_free(tbp->val.tbp->stp->indexv);
             ret = RDB_cat_get_indexes(tbp->val.tbp->name, txp->dbp->dbrootp, ecp, txp,
                     &tbp->val.tbp->stp->indexv);
             if (ret == RDB_ERROR)
@@ -1205,11 +1212,15 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
             tbp->val.tbp->stp->indexv[i] = tbp->val.tbp->stp->indexv[i + 1];
         }
 
-        p = RDB_realloc(tbp->val.tbp->stp->indexv,
-                sizeof(RDB_tbindex) * tbp->val.tbp->stp->indexc, ecp);
-        if (p == NULL)
-            goto error;
-        tbp->val.tbp->stp->indexv = p;
+        if (tbp->val.tbp->stp->indexc == 0) {
+            RDB_free(tbp->val.tbp->stp->indexv);
+        } else {
+            p = RDB_realloc(tbp->val.tbp->stp->indexv,
+                    sizeof(RDB_tbindex) * tbp->val.tbp->stp->indexc, ecp);
+            if (p == NULL)
+                goto error;
+            tbp->val.tbp->stp->indexv = p;
+        }
     }
 
     RDB_destroy_obj(&tbname, ecp);

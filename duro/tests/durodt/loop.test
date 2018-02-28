@@ -2,7 +2,6 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
-# $Id$
 #
 # Test scalar definitions and operations
 #
@@ -13,22 +12,10 @@ namespace import ::tcltest::*
 
 set testdir [::tcltest::configure -testdir]
 
-set ::DBSETUP {
-    removeDirectory dbenv
-    makeDirectory dbenv
-    cd $::tcltest::temporaryDirectory
-    exec $testdir/../../dli/durodt << {
-        CREATE_ENV('dbenv');
-        CREATE_DB('D');
-    }
-}
+source $testdir/setup.tcl
 
-set ::CLEANUP {
-    removeDirectory dbenv
-}
-
-test for {FOR} -setup $DBSETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
+test for {FOR} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         var i INTEGER;
     
         for i := 1 to 3;
@@ -52,8 +39,8 @@ test for {FOR} -setup $DBSETUP -cleanup $CLEANUP -body {
 1
 }
 
-test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
+test leave {FOR, WHILE, LEAVE} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         CURRENT_DB := 'D';
         begin transaction;
 
@@ -130,8 +117,8 @@ test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -cleanup $CLEANUP -body {
 dropping FOR variable: error caught
 }
 
-test leave_op {Unmatched LEAVE in operator} -setup $DBSETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
+test leave_op {Unmatched LEAVE in operator} -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         CURRENT_DB := 'D';
         begin tx;
 

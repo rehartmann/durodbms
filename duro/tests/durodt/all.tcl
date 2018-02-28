@@ -19,6 +19,4 @@ set targv [lreplace $argv $pgargidx [expr $pgargidx+1]]
 ::tcltest::configure -testdir $dir
 ::tcltest::configure -tmpdir [::tcltest::configure -testdir]
 eval ::tcltest::configure $targv
-set env(DURO_STORAGE) ""
 ::tcltest::runAllTests
-

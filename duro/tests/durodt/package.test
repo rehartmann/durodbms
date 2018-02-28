@@ -12,24 +12,11 @@ namespace import ::tcltest::*
 
 set testdir [::tcltest::configure -testdir]
 
-set ::SETUP {
-    removeDirectory dbenv
-    makeDirectory dbenv
-    cd $::tcltest::temporaryDirectory
-    exec $testdir/../../dli/durodt << {
-        create_env('dbenv');
-        create_db('D');
-    }
-}
-
-set ::CLEANUP {
-    removeDirectory dbenv
-}
+source $testdir/setup.tcl
 
 test package {Packages} \
         -setup $SETUP -cleanup $CLEANUP -body {
-    puts -nonewline [exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    puts -nonewline [exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -101,8 +88,7 @@ test package {Packages} \
 
         commit;
     }]
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;
@@ -298,8 +284,7 @@ foo 76
 
 test pkgdrop {Drop package} \
         -setup $SETUP -cleanup $CLEANUP -body {
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
+    exec $testdir/../../dli/durodt -e $dbenvname << {
         current_db := 'D';
 
         begin tx;

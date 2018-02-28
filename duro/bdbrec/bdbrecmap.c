@@ -687,12 +687,16 @@ cleanup:
 }
 
 int
-RDB_delete_bdb_rec(RDB_recmap *rmp, RDB_field keyv[], RDB_rec_transaction *rtxp,
+RDB_delete_bdb_rec(RDB_recmap *rmp, int fieldc, RDB_field keyv[], RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
 {
     DBT key;
     int ret;
 
+    if (fieldc != rmp->keyfieldcount) {
+        RDB_raise_not_supported("only key fields are supported", ecp);
+        return RDB_ERROR;
+    }
     ret = key_to_DBT(rmp, keyv, &key);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp);

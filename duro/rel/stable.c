@@ -746,7 +746,8 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
         return RDB_ERROR;
     }
 
-    if (RDB_table_is_persistent(tbp) && RDB_table_is_user(tbp)) {
+    if (RDB_table_is_persistent(tbp) && RDB_table_is_user(tbp)
+            && envp != NULL && !RDB_env_queries(envp)) {
         /* Get indexes from catalog */
         tbp->val.tbp->stp->indexc = RDB_cat_get_indexes(RDB_table_name(tbp), txp->dbp->dbrootp,
                 ecp, txp, &tbp->val.tbp->stp->indexv);
