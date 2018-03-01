@@ -446,7 +446,6 @@ RDB_delete_pg_rec(RDB_recmap *rmp, int fieldc, RDB_field fieldv[], RDB_rec_trans
     int *lenv = NULL;
     void **valuev = NULL;
     int *formatv = NULL;
-    RDB_int cnt;
 
     RDB_init_obj(&command);
 
@@ -502,9 +501,7 @@ RDB_delete_pg_rec(RDB_recmap *rmp, int fieldc, RDB_field fieldv[], RDB_rec_trans
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
         RDB_pgresult_to_error(rmp->envp, res, ecp);
-        cnt = (RDB_int) RDB_ERROR;
-    } else {
-        cnt = (RDB_int) atoi(PQcmdTuples(res));
+        goto error;
     }
     PQclear(res);
 
@@ -515,7 +512,7 @@ RDB_delete_pg_rec(RDB_recmap *rmp, int fieldc, RDB_field fieldv[], RDB_rec_trans
     RDB_free(formatv);
     RDB_free(valuev);
     RDB_destroy_obj(&command, ecp);
-    return cnt;
+    return RDB_OK;
 
 error:
     if (lenv != NULL)
@@ -641,6 +638,7 @@ RDB_get_pg_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
             retfieldv[i].datap = &numres[i].i;
         } else if (RDB_FTYPE_FLOAT & rmp->fieldinfos[retfieldv[i].no].flags) {
             RDB_ntoh(&numres[i], retfieldv[i].datap, sizeof(RDB_float));
+            retfieldv[i].datap = &numres[i];
         }
     }
 

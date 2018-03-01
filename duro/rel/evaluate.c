@@ -55,7 +55,7 @@ opt_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
 
     /* Resolve relation-valued attributes */
     optexp = RDB_optimize_expr(nexp != NULL ? nexp : exp, 0, NULL, NULL,
-            ecp, txp);
+            txp != NULL ? !RDB_env_queries(txp->envp) : RDB_TRUE, ecp, txp);
     if (nexp != NULL)
         RDB_del_expr(nexp, ecp);
     if (optexp == NULL) {

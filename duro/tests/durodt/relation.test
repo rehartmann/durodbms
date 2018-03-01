@@ -210,14 +210,19 @@ test update {creating table and updating tuples} -setup $SETUP -cleanup $CLEANUP
         update r { k := k + 1 };
         io.put_line((tuple from r where k = 2).v);
         io.put_line((tuple from r where k = 3).v);
+        
+        commit;
 
+        begin tx;
         -- Update that would violate the key constraint
         try
             update r { k := 1 };
         catch err key_violation_error;
             io.put_line('key violation caught');
         end try;
+        rollback;
 
+        begin tx;
         -- Try with variable
         var hk init 1;
         try
@@ -225,7 +230,9 @@ test update {creating table and updating tuples} -setup $SETUP -cleanup $CLEANUP
         catch err key_violation_error;
             io.put_line('key violation caught');
         end try;
+        rollback;
 
+        begin tx;
         -- Update combining both tuples into one
         const cv 'Uno';
         update r { k := 1, v := cv };
@@ -1194,10 +1201,26 @@ test relrel {table with relation attribute} -setup $SETUP -body {
 yo
 }
 
-test index {creating index} -setup $SETUP -cleanup $CLEANUP -match glob -body {
-    exec $testdir/../../dli/durodt -e $dbenvname << {
-        current_db := 'D';
+if {$dbenvname == "dbenv"} {
+    set expected {*INDEX r_ad_ai*
+*INDEX r_ad_ai*
+36
+37
+38
+39
+}
+} else {
+    set expected {*
+*
+36
+37
+38
+39
+}
+}
 
+test create_index {creating index} -setup $SETUP -cleanup $CLEANUP -match glob -body {
+    exec $testdir/../../dli/durodt -e $dbenvname -d D << {
         begin tx;
         var r real relation {ai int, ad float, ac string} key {ai};
         commit;
@@ -1227,13 +1250,7 @@ test index {creating index} -setup $SETUP -cleanup $CLEANUP -match glob -body {
         drop index r_ad_ai;
         commit;
     }
-} -result {*INDEX r_ad_ai*
-*INDEX r_ad_ai*
-36
-37
-38
-39
-}
+} -result $expected
 
 test real_default {public real table with default values} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt -e $dbenvname << {

@@ -1219,15 +1219,29 @@ update_refers(RDB_object *tbp, int updc, const RDB_attr_update updv[],
     return RDB_FALSE;
 }
 
+#ifdef POSTGRESQL
+static RDB_bool
+is_key_to_const(RDB_object *tbp, int updc, const RDB_attr_update updv[],
+        RDB_exec_context *ecp)
+{
+    int i;
+
+    /* Check if a key attribute is updated */
+    for (i = 0; i < updc; i++) {
+        if (is_keyattr(updv[i].name, tbp, ecp)
+                && RDB_expr_is_const(updv[i].exp)) {
+            return RDB_TRUE;
+        }
+    }
+    return RDB_FALSE;
+}
+#endif
+
 static RDB_bool
 upd_complex(RDB_object *tbp, int updc, const RDB_attr_update updv[],
         RDB_exec_context *ecp)
 {
     int i;
-
-    /*
-     * If a key is updated, the simple update method cannot be used
-     */
 
     /* Check if a key attribute is updated */
     for (i = 0; i < updc; i++) {
@@ -1371,7 +1385,8 @@ RDB_update_real(RDB_object *tbp, RDB_expression *condp,
 
 #ifdef POSTGRESQL
     if (RDB_table_is_persistent(tbp) && txp != NULL && RDB_env_queries(txp->envp)
-            && !update_refers(tbp, updc, updv, ecp)) {
+            && !update_refers(tbp, updc, updv, ecp)
+            && !is_key_to_const(tbp, updc, updv, ecp)) {
         RDB_int cnt;
         RDB_expression *repcondp = NULL;
         RDB_attr_update *repupdv = upd_replace_varnames(updc, updv,
@@ -1403,9 +1418,13 @@ RDB_update_real(RDB_object *tbp, RDB_expression *condp,
 #endif
 
     if (upd_complex(tbp, updc, updv, ecp)
-            || (condp != NULL && RDB_expr_refers(condp, tbp)))
+            || (condp != NULL && RDB_expr_refers(condp, tbp))) {
+        /*
+         * If e.g. a key is updated, the simple update method cannot be used
+         */
         return update_stored_complex(tbp, condp, updc, updv, getfn, getarg,
                 ecp, txp);
+    }
     return update_stored_simple(tbp, condp, updc, updv, getfn, getarg,
             ecp, txp);
 }

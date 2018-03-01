@@ -1910,7 +1910,7 @@ RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
     if (RDB_expr_type(tbp->val.tbp->exp, NULL, NULL, NULL, ecp, txp) == NULL)
         return NULL;
     return RDB_optimize_expr(tbp->val.tbp->exp, seqitc, seqitv, NULL,
-            ecp, txp);
+            txp != NULL ? !RDB_env_queries(txp->envp) : RDB_TRUE, ecp, txp);
 }
 
 static void
@@ -2004,7 +2004,8 @@ mutate_select(RDB_expression *exp, int seqitc, const RDB_seq_item seqitv[],
 
 RDB_expression *
 RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
-        RDB_expression *empty_exp, RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_expression *empty_exp, RDB_bool cost_optimize,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_expression *nexp;
     RDB_expression *optexp;
@@ -2039,11 +2040,7 @@ RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
         }
     }
 
-    if (dbp != NULL && RDB_env_queries(RDB_db_env(dbp))) {
-        /* Optimization has to be performed by the storage engine */
-        nexp->optimized = RDB_TRUE;
-        optexp = nexp;
-    } else {
+    if (cost_optimize) {
         /*
          * Try to find cheapest table
          */
@@ -2054,6 +2051,10 @@ RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
         if (optexp != nexp) {
             RDB_del_expr(nexp, ecp);
         }
+    } else {
+        /* Optimization has to be performed by the storage engine */
+        nexp->optimized = RDB_TRUE;
+        optexp = nexp;
     }
 
     return optexp;

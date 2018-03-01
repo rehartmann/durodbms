@@ -18,5 +18,7 @@ set targv [lreplace $argv $pgargidx [expr $pgargidx+1]]
 
 ::tcltest::configure -testdir $dir
 ::tcltest::configure -tmpdir [::tcltest::configure -testdir]
+lappend targv -skip {join_rename_index join_rename_nuindex join_rename_nuindex
+        matching_index}
 eval ::tcltest::configure $targv
 ::tcltest::runAllTests

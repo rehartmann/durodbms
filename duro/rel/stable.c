@@ -554,15 +554,9 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
         tbp->val.tbp->stp->indexc = 0;
     }
 
-    /*
-     * Convert keys to indexes if SQL is not used for storage,
-     * otherwise constraints are created (see below)
-     */
-    if (txp == NULL || !RDB_env_queries(envp)) {
-        ret = keys_to_indexes(tbp, ecp, txp);
-        if (ret != RDB_OK)
-            goto error;
-    }
+    ret = keys_to_indexes(tbp, ecp, txp);
+    if (ret != RDB_OK)
+        goto error;
 
     ret = table_field_infos(tbp, &finfov, ascv, cmpv, ecp);
     if (ret != RDB_OK)
@@ -622,7 +616,7 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
     }
 
     /* Create non-primary indexes */
-    if (tbp->val.tbp->stp->indexc > 1) {
+    if (tbp->val.tbp->stp->indexc > 1 && (envp == NULL || !RDB_env_queries(envp))) {
         ret = create_indexes(tbp, envp, ecp, txp);
         if (ret != RDB_OK)
             goto error;
@@ -718,7 +712,7 @@ error:
  * tbp        the table
  * envp       the database environment
  * rmname     the recmap name
- * indexc/indexv the indexes
+ * env        the database environment
  * txp        the transaction under which the operation is performed
  */
 int
@@ -746,8 +740,7 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
         return RDB_ERROR;
     }
 
-    if (RDB_table_is_persistent(tbp) && RDB_table_is_user(tbp)
-            && envp != NULL && !RDB_env_queries(envp)) {
+    if (RDB_table_is_persistent(tbp) && RDB_table_is_user(tbp)) {
         /* Get indexes from catalog */
         tbp->val.tbp->stp->indexc = RDB_cat_get_indexes(RDB_table_name(tbp), txp->dbp->dbrootp,
                 ecp, txp, &tbp->val.tbp->stp->indexv);

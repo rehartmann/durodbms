@@ -801,7 +801,7 @@ RDB_apply_constraints_i(int ninsc, const RDB_ma_insert ninsv[],
             }
 
             opt_check_exp = RDB_optimize_expr(res_check_exp, 0, NULL,
-                    empty_tbexp, ecp, txp);
+                    empty_tbexp, RDB_TRUE, ecp, txp);
             RDB_del_expr(res_check_exp, ecp);
             if (opt_check_exp == NULL) {
                 return RDB_ERROR;

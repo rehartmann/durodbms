@@ -104,6 +104,29 @@ int
 RDB_delete_pg_index(RDB_index *ixp, RDB_environment *envp, RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
 {
-    RDB_raise_not_supported("RDB_delete_pg_index", ecp);
+    RDB_object command;
+    PGresult *res;
+
+    RDB_init_obj(&command);
+    if (RDB_string_to_obj(&command, "DROP INDEX ", ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&command, ixp->namp, ecp) != RDB_OK)
+        goto error;
+
+    res = PQexec(envp->env.pgconn, RDB_obj_string(&command));
+    if (PQresultStatus(res) != PGRES_COMMAND_OK)
+    {
+        RDB_pgresult_to_error(envp, res, ecp);
+        PQclear(res);
+        goto error;
+    }
+    PQclear(res);
+    RDB_destroy_obj(&command, ecp);
+    RDB_free(ixp->namp);
+    RDB_free(ixp);
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&command, ecp);
     return RDB_ERROR;
 }

@@ -2507,7 +2507,8 @@ exec_explain(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp)
     }
 
     /* Optimize */
-    optexp = RDB_optimize_expr(resexp, seqitc, seqitv, NULL, ecp, txp);
+    optexp = RDB_optimize_expr(resexp, seqitc, seqitv, NULL,
+            txp != NULL ? !RDB_env_queries(interp->envp) : RDB_TRUE, ecp, txp);
     if (optexp == NULL) {
         ret = RDB_ERROR;
         goto cleanup;

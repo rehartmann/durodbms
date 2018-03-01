@@ -552,7 +552,7 @@ RDB_delete_real_tuple(RDB_object *tbp, RDB_object *tplp, int flags, RDB_exec_con
         }
     }
 
-    if (txp != NULL && RDB_env_queries(txp->envp)) {
+    if (RDB_table_is_persistent(tbp) && txp != NULL && RDB_env_queries(txp->envp)) {
         RDB_int cnt = sql_delete_tuple(tbp, tplp, ecp, txp);
         if (cnt == 0 && (RDB_INCLUDED & flags)) {
             RDB_raise_not_found("tuple not found", ecp);

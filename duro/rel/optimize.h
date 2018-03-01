@@ -18,7 +18,7 @@ RDB_index_sorts(struct RDB_tbindex *indexp, int seqitc,
 
 RDB_expression *
 RDB_optimize_expr(RDB_expression *, int, const RDB_seq_item[],
-        RDB_expression *, RDB_exec_context *, RDB_transaction *);
+        RDB_expression *, RDB_bool, RDB_exec_context *, RDB_transaction *);
 
 RDB_expression *
 RDB_optimize(RDB_object *, int, const RDB_seq_item[],

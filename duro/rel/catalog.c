@@ -1531,7 +1531,7 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
             return RDB_ERROR;
     }
 
-    if (!create && (dbrootp->rtables_tbp->val.tbp->stp->indexc == -1)) {
+    if (!create && (dbrootp->rtables_tbp->val.tbp->stp->indexc <= 0)) {
         /*
          * Read indexes from the catalog 
          */

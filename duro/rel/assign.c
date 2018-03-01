@@ -1066,7 +1066,8 @@ do_update(const RDB_ma_update *updp,
     RDB_add_arg(exp, tbexp);
     RDB_add_arg(exp, updp->condp);
 
-    nexp = RDB_optimize_expr(exp, 0, NULL, NULL, ecp, txp);
+    nexp = RDB_optimize_expr(exp, 0, NULL, NULL,
+            txp != NULL ? !RDB_env_queries(txp->envp) : RDB_TRUE, ecp, txp);
     exp->def.op.args.firstp = NULL;
     RDB_del_expr(exp, ecp);
     RDB_del_expr(tbexp, ecp);
@@ -1138,7 +1139,8 @@ do_delete(const RDB_ma_delete *delp,
     RDB_add_arg(exp, tbexp);
     RDB_add_arg(exp, delp->condp);
 
-    nexp = RDB_optimize_expr(exp, 0, NULL, NULL, ecp, txp);
+    nexp = RDB_optimize_expr(exp, 0, NULL, NULL,
+            txp != NULL ? !RDB_env_queries(txp->envp) : RDB_TRUE, ecp, txp);
     if (nexp == NULL)
         return RDB_ERROR;
 
