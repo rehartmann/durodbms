@@ -13,8 +13,14 @@
 
 #include <sys/stat.h>
 #include <errno.h>
-#include <unistd.h>
 #include <stdio.h>
+
+#ifdef _WIN32
+#include <io.h>
+#define isatty _isatty
+#else
+#include <unistd.h>
+#endif
 
 typedef struct yy_buffer_state *YY_BUFFER_STATE;
 

@@ -19,10 +19,13 @@
 #include "exparse.h"
 #include <ctype.h>
 #include <math.h>
-#include <unistd.h>
 
 #ifdef _WIN32
 #define isfinite _finite
+#include <io.h>
+#define isatty _isatty
+#else
+#include <unistd.h>
 #endif
 
 enum {

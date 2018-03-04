@@ -33,9 +33,12 @@ RDB_DATA_CORRUPTED_ERROR
 RDB_RUN_RECOVERY_ERROR 
 RDB_SYSTEM_ERROR
 RDB_IN_USE_ERROR
+RDB_CONNECTION_ERROR
 RDB_db_env
 RDB_create_db_from_env
 RDB_get_db_from_env
+RDB_env_get_errfile
+RDB_env_set_errfile
 RDB_drop_db
 RDB_create_table
 RDB_create_table_from_type

@@ -23,7 +23,7 @@ set targv [lreplace $argv $pgargidx [expr $pgargidx+1]]
 ::tcltest::configure -testdir $dir
 ::tcltest::configure -tmpdir [::tcltest::configure -testdir]
 eval ::tcltest::configure $targv
-set env(DURO_STORAGE) {}
+set env(DURO_STORAGE) BDB
 ::tcltest::runAllTests
 if {[lindex $argv [expr $pgargidx+1]]=="true"} {
     # Run tests with PostgreSQL as storage engine
