@@ -49,7 +49,7 @@ for more information on <cite>TTM</cite> and Tutorial D.
 
 <pre>
 durodt
-Duro D/T library version 1.2
+Duro D/T library version 1.3
 Implicit transactions enabled.
 no db>
 </pre>
@@ -109,6 +109,14 @@ as some other variable. Example:
 no db> var k same_type_as(i);
 no db>
 </pre>
+
+<p>Automatic conversion to lowercase is not performed if backtick-quoting is used:
+
+<pre>
+no db> var `MyVar` int;
+</pre>
+
+<p>Backtick-quoting also has to be used if an identifier would conflict with a keyword.
 
 <p>Variables can be explicity destroyed. This is usually not necessary for transient variables,
 but is supported for all user-declared variables:

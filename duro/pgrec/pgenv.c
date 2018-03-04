@@ -143,6 +143,9 @@ RDB_update_pg_sql(RDB_environment *envp, const char *command,
     PGresult *res;
     RDB_int ret;
 
+    if (RDB_env_trace(envp) > 0) {
+        fprintf(stderr, "Sending SQL: %s\n", command);
+    }
     res = PQexec(envp->env.pgconn, command);
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {

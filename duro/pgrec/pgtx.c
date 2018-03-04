@@ -12,7 +12,11 @@
 
 #include <libpq-fe.h>
 
-unsigned next_savepoint_id = 0;
+static unsigned next_savepoint_id = 0;
+
+static const char SQL_BEGIN_TX[] = "BEGIN";
+static const char SQL_COMMIT[] = "COMMIT";
+static const char SQL_ROLLBACK[] = "ROLLBACK";
 
 typedef struct {
     RDB_environment *envp;
@@ -39,6 +43,9 @@ nested_begin_tx(RDB_environment *envp,
     if (RDB_append_string(&command, idbuf, ecp) != RDB_OK)
         goto error;
 
+    if (RDB_env_trace(envp) > 0) {
+        fprintf(stderr, "Sending SQL: %s\n", RDB_obj_string(&command));
+    }
     res = PQexec(tx->envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
         RDB_pgresult_to_error(envp, res, ecp);
@@ -73,7 +80,10 @@ RDB_pg_begin_tx(RDB_environment *envp,
     tx->envp = envp;
     tx->savepoint_id = -1;
 
-    res = PQexec(envp->env.pgconn, "BEGIN");
+    if (RDB_env_trace(tx->envp) > 0) {
+        fprintf(stderr, "Sending SQL: %s\n", SQL_BEGIN_TX);
+    }
+    res = PQexec(envp->env.pgconn, SQL_BEGIN_TX);
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
         RDB_pgresult_to_error(envp, res, ecp);
         PQclear(res);
@@ -99,6 +109,9 @@ nested_commit(RDB_pg_tx *tx, RDB_exec_context *ecp)
     if (RDB_append_string(&command, idbuf, ecp) != RDB_OK)
         goto error;
 
+    if (RDB_env_trace(tx->envp) > 0) {
+        fprintf(stderr, "Sending SQL: %s\n", RDB_obj_string(&command));
+    }
     res = PQexec(tx->envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
         RDB_pgresult_to_error(tx->envp, res, ecp);
@@ -127,7 +140,10 @@ RDB_pg_commit(RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
         return nested_commit(tx, ecp);
     }
 
-    res = PQexec(tx->envp->env.pgconn, "COMMIT");
+    if (RDB_env_trace(tx->envp) > 0) {
+        fprintf(stderr, "Sending SQL: %s\n", SQL_COMMIT);
+    }
+    res = PQexec(tx->envp->env.pgconn, SQL_COMMIT);
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
         RDB_pgresult_to_error(tx->envp, res, ecp);
@@ -155,6 +171,9 @@ nested_abort(RDB_pg_tx *tx, RDB_exec_context *ecp)
     if (RDB_append_string(&command, idbuf, ecp) != RDB_OK)
         goto error;
 
+    if (RDB_env_trace(tx->envp) > 0) {
+        fprintf(stderr, "Sending SQL: %s\n", RDB_obj_string(&command));
+    }
     res = PQexec(tx->envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
         RDB_pgresult_to_error(tx->envp, res, ecp);
@@ -183,7 +202,10 @@ RDB_pg_abort(RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
         return nested_abort(tx, ecp);
     }
 
-    res = PQexec(tx->envp->env.pgconn, "ROLLBACK");
+    if (RDB_env_trace(tx->envp) > 0) {
+        fprintf(stderr, "Sending SQL: %s\n", SQL_ROLLBACK);
+    }
+    res = PQexec(tx->envp->env.pgconn, SQL_ROLLBACK);
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
         RDB_pgresult_to_error(tx->envp, res, ecp);

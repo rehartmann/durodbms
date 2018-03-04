@@ -156,6 +156,9 @@ RDB_create_pg_recmap(const char *name, const char *filename,
     if (RDB_append_char(&command, ')', ecp) != RDB_OK)
         goto error;
 
+    if (RDB_env_trace(envp) > 0) {
+        fprintf(stderr, "Sending SQL: %s\n", RDB_obj_string(&command));
+    }
     res = PQexec(envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
@@ -227,6 +230,9 @@ RDB_delete_pg_recmap(RDB_recmap *rmp, RDB_rec_transaction *rtxp, RDB_exec_contex
     if (RDB_append_char(&command, '"', ecp) != RDB_OK)
         goto error;
 
+    if (RDB_env_trace(rmp->envp) > 0) {
+        fprintf(stderr, "Sending SQL: %s\n", RDB_obj_string(&command));
+    }
     res = PQexec(rmp->envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
@@ -371,6 +377,9 @@ insert_pg_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp,
         }
     }
 
+    if (RDB_env_trace(rmp->envp) > 0) {
+        fprintf(stderr, "Sending SQL: %s\n", RDB_obj_string(&command));
+    }
     res = PQexecParams(rmp->envp->env.pgconn, RDB_obj_string(&command),
             valuec, NULL, (const char * const *) valuev, lenv,
             formatv, 0);
@@ -495,6 +504,9 @@ RDB_delete_pg_rec(RDB_recmap *rmp, int fieldc, RDB_field fieldv[], RDB_rec_trans
         }
     }
 
+    if (RDB_env_trace(rmp->envp) > 0) {
+        fprintf(stderr, "Sending SQL: %s\n", RDB_obj_string(&command));
+    }
     res = PQexecParams(rmp->envp->env.pgconn, RDB_obj_string(&command),
             fieldc, NULL, (const char * const *) valuev, lenv,
             formatv, 0);
@@ -609,6 +621,9 @@ RDB_get_pg_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
     }
     if (res != NULL)
         PQclear(res);
+    if (RDB_env_trace(rmp->envp) > 0) {
+        fprintf(stderr, "Sending SQL: %s\n", RDB_obj_string(&command));
+    }
     res = PQexecParams(rmp->envp->env.pgconn, RDB_obj_string(&command),
             rmp->keyfieldcount, NULL, (const char * const *) valuev, lenv,
             formatv, 1);
@@ -729,6 +744,9 @@ RDB_contains_pg_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp
     }
     if (RDB_append_char(&command, ')', ecp) != RDB_OK)
         goto error;
+    if (RDB_env_trace(rmp->envp) > 0) {
+        fprintf(stderr, "Sending SQL: %s\n", RDB_obj_string(&command));
+    }
     res = PQexecParams(rmp->envp->env.pgconn, RDB_obj_string(&command),
             rmp->fieldcount, NULL, (const char * const *) valuev, lenv,
             formatv, 1);

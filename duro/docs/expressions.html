@@ -159,8 +159,10 @@ binary = "X'"{hex_digit hex_digit}"'"
 </pre>
 
 <pre id="id">
-id = letter{letter | digit | '_' | '#'}["'"].
-
+id = letter{letter | digit | '_' | '#'}["'"]
+     | "`"letter{letter | digit | '_' | '#'}["'"]"`".
+</pre>
+<pre>
 
 
 

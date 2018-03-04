@@ -73,6 +73,9 @@ RDB_create_pg_index(RDB_recmap *rmp, const char *name, const char *filename,
     if (RDB_append_char(&command, ')', ecp) != RDB_OK)
         goto error;
 
+    if (RDB_env_trace(envp) > 0) {
+        fprintf(stderr, "Sending SQL: %s\n", RDB_obj_string(&command));
+    }
     res = PQexec(envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
@@ -113,6 +116,9 @@ RDB_delete_pg_index(RDB_index *ixp, RDB_environment *envp, RDB_rec_transaction *
     if (RDB_append_string(&command, ixp->namp, ecp) != RDB_OK)
         goto error;
 
+    if (RDB_env_trace(envp) > 0) {
+        fprintf(stderr, "Sending SQL: %s\n", RDB_obj_string(&command));
+    }
     res = PQexec(envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {

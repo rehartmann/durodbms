@@ -855,9 +855,6 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
                 RDB_destroy_obj(&sql, ecp);
                 return RDB_ERROR;
             }
-            if (RDB_env_trace(txp->envp) > 0) {
-                fprintf(stderr, "SQL generated: %s\n", RDB_obj_string(&sql));
-            }
             curp = RDB_pg_query_cursor(txp->envp, RDB_obj_string(&sql), RDB_FALSE,
                     txp->tx, ecp);
             RDB_destroy_obj(&sql, ecp);

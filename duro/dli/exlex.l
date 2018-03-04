@@ -581,9 +581,20 @@ PACKAGE {
     return TOK_ID;
 }
 
+`[a-zA-Z][a-zA-Z0-9_#]*\'?` {
+    yytext[(strlen(yytext) - 1)] = '\0';
+
+    yylval = RDB_new_parse_expr(RDB_var_ref(yytext + 1, RDB_parse_ecp),
+    		whitecommp, RDB_parse_ecp);
+    whitecommp = NULL;
+    if (yylval == NULL)
+        yyterminate();
+    return TOK_ID;
+}
+
 \'([^']|\\\\|\\n|\\r|\\t)*\' {
     /*
-     * Unescaped string - remove trailing 's
+     * Unescaped string - remove trailing '
      */
     yytext[(strlen(yytext) - 1)] = '\0';
     yylval = RDB_new_parse_expr(RDB_string_to_expr(yytext + 1, RDB_parse_ecp),

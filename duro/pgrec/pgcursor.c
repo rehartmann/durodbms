@@ -97,6 +97,9 @@ RDB_pg_query_cursor(RDB_environment *envp, const char *query, RDB_bool wr,
     if (RDB_append_string(&command, query, ecp) != RDB_OK)
         goto error;
 
+    if (RDB_env_trace(envp) > 0) {
+        fprintf(stderr, "Sending SQL: %s\n", RDB_obj_string(&command));
+    }
     res = PQexec(envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
@@ -131,6 +134,9 @@ RDB_destroy_pg_cursor(RDB_cursor *curp, RDB_exec_context *ecp)
     if (RDB_append_string(&command, idbuf, ecp) != RDB_OK)
         goto error;
 
+    if (RDB_env_trace(curp->envp) > 0) {
+        fprintf(stderr, "Sending SQL: %s\n", RDB_obj_string(&command));
+    }
     res = PQexec(curp->envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
@@ -248,6 +254,9 @@ exec_fetch(RDB_cursor *curp, const char *curcmd, RDB_exec_context *ecp)
     if (RDB_append_string(&command, idbuf, ecp) != RDB_OK)
         goto error;
 
+    if (RDB_env_trace(curp->envp) > 0) {
+        fprintf(stderr, "Sending SQL: %s\n", RDB_obj_string(&command));
+    }
     if (curp->cur.pg.current_row != NULL)
         PQclear(curp->cur.pg.current_row);
     curp->cur.pg.current_row = PQexecParams(curp->envp->env.pgconn,
@@ -351,6 +360,9 @@ RDB_pg_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[],
     if (RDB_append_string(&command, numbuf, ecp) != RDB_OK)
         goto error;
 
+    if (RDB_env_trace(curp->envp) > 0) {
+        fprintf(stderr, "Sending SQL: %s\n", RDB_obj_string(&command));
+    }
     res = PQexecParams(curp->envp->env.pgconn, RDB_obj_string(&command),
             fieldc, NULL, (const char * const *) valuev, lenv,
             formatv, 1);
@@ -405,6 +417,9 @@ RDB_pg_cursor_delete(RDB_cursor *curp, RDB_exec_context *ecp)
     if (RDB_append_string(&command, numbuf, ecp) != RDB_OK)
         goto error;
 
+    if (RDB_env_trace(curp->envp) > 0) {
+        fprintf(stderr, "Sending SQL: %s\n", RDB_obj_string(&command));
+    }
     res = PQexec(curp->envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {

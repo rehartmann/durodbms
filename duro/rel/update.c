@@ -1337,9 +1337,6 @@ sql_update(RDB_object *tbp, RDB_expression *condp,
         if (RDB_append_string(&command, RDB_obj_string(&sqlexp), ecp) != RDB_OK)
             goto error;
     }
-    if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
-        fprintf(stderr, "SQL generated for update: %s\n", RDB_obj_string(&command));
-    }
     ret = RDB_update_pg_sql(RDB_db_env(RDB_tx_db(txp)), RDB_obj_string(&command),
             txp->tx, ecp);
     RDB_destroy_obj(&sqlexp, ecp);
