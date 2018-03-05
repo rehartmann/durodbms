@@ -203,6 +203,36 @@ and must match the @a format argument.
 
 The formatted output string.
 
+<hr>
+
+<h3 id="op_lower">OPERATOR lower</h3>
+
+OPERATOR lower (s string) RETURNS string;
+
+<h4>Description</h4>
+
+Returns the string @a s, converted to lowercase.
+Functionality is currently restricted as tolower() is used for conversion.
+
+<h4>Return value</h4>
+
+The string, converted to lowercase.
+
+<hr>
+
+<h3 id="op_upper">OPERATOR upper</h3>
+
+OPERATOR upper (s string) RETURNS string;
+
+<h4>Description</h4>
+
+Returns the string @a s, converted to uppercase.
+Functionality is currently restricted as toupper() is used for conversion.
+
+<h4>Return value</h4>
+
+The string, converted to uppercase.
+
 @page arithmetic Built-in arithmetic operators
 
 <h3 id="op_plus">OPERATOR +</h3>
@@ -742,6 +772,36 @@ op_regex_like(int argc, RDB_object *argv[], RDB_operator *op,
             (regexec(&reg, argv[0]->val.bin.datap, 0, NULL, 0) == 0));
     regfree(&reg);
 
+    return RDB_OK;
+}
+
+static int
+op_lower(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    char *dstp;
+
+    if (RDB_string_to_obj(retvalp, RDB_obj_string(argv[0]), ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    for (dstp = retvalp->val.bin.datap; *dstp != '\0'; dstp++) {
+        *dstp = tolower(*dstp);
+    }
+    return RDB_OK;
+}
+
+static int
+op_upper(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    char *dstp;
+
+    if (RDB_string_to_obj(retvalp, RDB_obj_string(argv[0]), ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    for (dstp = retvalp->val.bin.datap; *dstp != '\0'; dstp++) {
+        *dstp = toupper(*dstp);
+    }
     return RDB_OK;
 }
 
@@ -1419,6 +1479,12 @@ RDB_add_builtin_scalar_ro_ops(RDB_op_map *opmap, RDB_exec_context *ecp)
     paramtv[0] = &RDB_STRING;
     paramtv[1] = &RDB_STRING;
     if (RDB_put_ro_op(opmap, "||", 2, paramtv, &RDB_STRING, &op_concat, ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    if (RDB_put_ro_op(opmap, "lower", 1, paramtv, &RDB_STRING, &op_lower, ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    if (RDB_put_ro_op(opmap, "upper", 1, paramtv, &RDB_STRING, &op_upper, ecp) != RDB_OK)
         return RDB_ERROR;
 
     paramtv[0] = &RDB_STRING;

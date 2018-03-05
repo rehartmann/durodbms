@@ -1422,4 +1422,13 @@ test versionupdop {update operators with version names} -setup $SETUP \
 1
 }
 
+test upperlower {upper() and lower()} -body {
+    exec $testdir/../../dli/durodt << {
+        io.put_line(lower('testTEST'));
+        io.put_line(upper('testTEST'));
+    }
+} -result {testtest
+TESTTEST
+}
+
 cleanupTests

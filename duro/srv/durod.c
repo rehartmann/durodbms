@@ -14,14 +14,15 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <signal.h>
 
 #define DEFAULT_PORT 8888
 
-RDB_environment *envp = NULL;
 RDB_exec_context ec;
 Duro_interp interp;
 
-const char *split_get(const char *path, char **exp)
+static const char *
+split_get(const char *path, char **exp)
 {
     unsigned int dbnamelen;
     char *dbname;
@@ -175,13 +176,22 @@ respond(void *cls, struct MHD_Connection *connection,
        const char *url,
        const char *method, const char *version,
        const char *upload_data,
-       size_t *upload_data_size, void **con_cls)
+       size_t *upload_data_size, void **ptr)
 {
+    static int aptr;
     const char *dbname;
     char *expstr;
     struct MHD_Response *response;
     RDB_object json;
     int ret;
+
+    if (strcmp(method, MHD_HTTP_METHOD_GET) != 0) {
+        return MHD_NO;
+    }
+    if (&aptr != *ptr) {
+        *ptr = &aptr;
+        return MHD_YES;
+    }
 
     dbname = split_get(url, &expstr);
     if (dbname == NULL) {
@@ -212,13 +222,17 @@ respond(void *cls, struct MHD_Connection *connection,
     ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
 
+    /*
+     * The data is freed by MHD so set the pointer to NULL
+     * so that RDB_destroy_obj() doesn't free it
+     */
     json.val.bin.datap = NULL;
     json.val.bin.len = 0;
     RDB_destroy_obj(&json, &ec);
     return ret;
 }
 
-char *
+static char *
 read_args(int argc, char *argv[], int *port)
 {
     char *envname = NULL;
@@ -237,10 +251,39 @@ read_args(int argc, char *argv[], int *port)
     return envname;
 }
 
-void
+static void
 print_usage(void)
 {
     fputs("Usage: durod -e envdir [-p port]\n", stderr);
+}
+
+static void
+sig(int signal)
+{}
+
+static void
+handle_signals()
+{
+    struct sigaction sigact;
+
+    sigact.sa_handler = SIG_IGN;
+    sigact.sa_flags = SA_RESTART;
+    if (sigaction(SIGPIPE, &sigact, NULL) != 0) {
+        fprintf(stderr, "Failed to install SIGPIPE handler: %s\n", strerror(errno));
+        exit(2);
+    }
+    sigact.sa_handler = &sig;
+    sigact.sa_flags = SA_RESTART;
+    if (sigaction(SIGINT, &sigact, NULL) != 0) {
+        fprintf(stderr, "Failed to install SIGINT handler: %s\n", strerror(errno));
+        exit(2);
+    }
+    sigact.sa_handler = &sig;
+    sigact.sa_flags = SA_RESTART;
+    if (sigaction(SIGTERM, &sigact, NULL) != 0) {
+        fprintf(stderr, "Failed to install SIGTERM handler: %s\n", strerror(errno));
+        exit(2);
+    }
 }
 
 int
@@ -248,14 +291,18 @@ main(int argc, char *argv[])
 {
     struct MHD_Daemon *daemon;
     char *envname;
+    RDB_environment *envp = NULL;
     int port;
+    sigset_t oldmask, newmask;
 
     envname = read_args(argc, argv, &port);
     if (envname == NULL) {
-        fputs("No environment specified.\n", stderr);
+        fputs("No database environment specified.\n", stderr);
         print_usage();
         return 1;
     }
+
+    handle_signals();
 
     RDB_init_exec_context(&ec);
 
@@ -278,14 +325,30 @@ main(int argc, char *argv[])
         goto error;
     }
 
-    daemon = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, port, NULL, NULL,
-            &respond, NULL, MHD_OPTION_END);
-    if (daemon == NULL) {
-        fputs("Starting server failed.\n", stderr);
+    /* Block SIGINT and SIGTERM */
+    sigemptyset(&newmask);
+    sigaddset(&newmask, SIGQUIT);
+    sigaddset(&newmask, SIGTERM);
+    if (sigprocmask(SIG_BLOCK, &newmask, &oldmask) != 0) {
+        fputs("sigprocmask(SIG_BLOCK) failed\n", stderr);
         goto error;
     }
 
-    getchar();
+    daemon = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, port, NULL, NULL,
+            &respond, NULL, MHD_OPTION_END);
+    if (daemon == NULL) {
+        fputs("Starting HTTP server failed.\n", stderr);
+        goto error;
+    }
+
+    /* Restore signal mask */
+    if (sigprocmask(SIG_SETMASK, &oldmask, 0) != 0) {
+        fputs("sigprocmask(SIG_SETMASK) failed\n", stderr);
+        goto error;
+    }
+    pause();
+
+    puts("Stopping server...");
 
     MHD_stop_daemon(daemon);
 

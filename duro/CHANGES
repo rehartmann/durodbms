@@ -1,6 +1,14 @@
 Summary of Changes to DuroDBMS
 
-- Added a REST server and Java client support for accessing a database using HTTP/REST.
+DuroDBMS 1.3
+
+- Added functions lower(), upper()
+
+- Added backtick quoting of identifiers
+
+- Added PostgreSQL support
+
+- Added REST server srv/durod and Java client support for accessing a database using HTTP/REST.
 
 DuroDBMS 1.2
 

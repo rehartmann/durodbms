@@ -94,6 +94,8 @@ RDB_nontable_sql_convertible(RDB_expression *exp, RDB_gettypefn *getfnp, void *g
                 || strcmp(exp->def.op.name, "exp") == 0
                 || strcmp(exp->def.op.name, "strlen") == 0
                 || strcmp(exp->def.op.name, "strlen_b") == 0
+                || strcmp(exp->def.op.name, "lower") == 0
+                || strcmp(exp->def.op.name, "upper") == 0
                 || strcmp(exp->def.op.name, "cast_as_integer") == 0
                 || strcmp(exp->def.op.name, "cast_as_float") == 0
                 || strcmp(exp->def.op.name, "cast_as_string") == 0)
@@ -886,7 +888,9 @@ RDB_expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
                 || strcmp(exp->def.op.name, "ln") == 0
                 || strcmp(exp->def.op.name, "power") == 0
                 || strcmp(exp->def.op.name, "exp") == 0
-                || strcmp(exp->def.op.name, "strlen") == 0) {
+                || strcmp(exp->def.op.name, "strlen") == 0
+                || strcmp(exp->def.op.name, "lower") == 0
+                || strcmp(exp->def.op.name, "upper") == 0) {
             return op_inv_to_sql(sql, exp, envp, ecp);
         }
         if (strcmp(exp->def.op.name, "cast_as_integer") == 0
