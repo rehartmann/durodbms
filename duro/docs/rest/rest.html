@@ -1,0 +1,50 @@
+<html>
+<head>
+<title>DuroDBMS REST server</title>
+<link rel="stylesheet" href="../style.css">
+<body>
+
+<h1>DuroDBMS REST server</h1>
+
+<h2>Introduction</h2>
+
+<p>The DuroDBMS REST server <code>durod</code> is a simple HTTP server which supports reading
+data from a DuroDBMS database in JSON format.
+
+<h2>Starting and stopping</h2>
+
+<p>To start the server, use:
+
+<pre>
+durod -e dbenv [-p port]
+</pre>
+
+<p>where <code>dbenv</code> is the database environment. The default port is 8888. 
+
+<p>To stop the server, use Control-C or send a SIGTERM signal using <code>kill</code>.
+
+<h2>Acessing the data</h2>
+
+<p>After the server has been started, data can be read from an URI like the following:
+
+<pre>
+http://host[:port]/database/query
+</pre>
+
+where database is the name of a database and query is a Duro D/T query.
+
+<h2>Accessing data using Java</h2>
+
+<p>Example code:
+
+<pre>
+import java.net.URL;
+import net.sf.duro.DSession;
+
+DSession session = DSession.createSession(new URL("http", "localhost", 8888, "/D"));
+Object result = session.evaluate("t");
+</pre>
+
+<p>This will read the content of the table <em>t</em> from database <em>D</em>.
+
+</html>

@@ -9,7 +9,6 @@
 #include <rel/rdb.h>
 #include <obj/json.h>
 #include <dli/iinterp.h>
-#include <db.h>
 #include <sys/types.h>
 #include <string.h>
 #include <stdio.h>

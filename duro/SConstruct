@@ -345,6 +345,9 @@ if os.path.exists(str(fcgi_durodt[0])):
 if os.path.exists(str(libjduro[0])):
     env.Install(installdir + '/lib', jdurolibs)
 
+if os.path.exists(str(durod[0])):
+    env.Install(installdir + '/bin', durod)
+
 def mkIndex(env, target, source):
     import os
     open('tmp.tcl', 'w').write('pkg_mkIndex ' + installdir + '/lib ' + libdurotcl[0].path + ' util.tcl')

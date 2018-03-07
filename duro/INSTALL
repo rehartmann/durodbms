@@ -48,3 +48,5 @@ This will install DuroDBMS in /usr/duro.1.2.
 To build the REST server, type:
 
 scons srv/durod
+
+Building durod requires libmicrohttpd.
