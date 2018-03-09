@@ -12,7 +12,7 @@ import subprocess
 
 bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.6.1')
 
-release = 'pre1.3'
+release = '1.3'
 
 env = Environment(ENV = os.environ, tools = ['default', 'textfile'], JAVACLASSPATH = '../jduro/lib/javax.json.jar')
 

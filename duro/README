@@ -23,7 +23,7 @@ When DuroDBMS is installed, the Tcl interface is installed as a package in
 the 'lib' subdirectory. The simplest way to make it available to application
 scripts is to add this subdirectory to TCLLIBPATH, e.g.:
 
-    TCLLIBPATH=/usr/local/durodbms.1.2/lib
+    TCLLIBPATH=/usr/local/durodbms.1.3/lib
     export TCLLIBPATH
 
 Building the REST server required libmicrohttpd.

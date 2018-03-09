@@ -139,4 +139,7 @@ RDB_obj_impl_type(const RDB_object *);
 RDB_bool
 RDB_irep_is_string(const RDB_type *);
 
+RDB_bool
+RDB_expr_op_is_noarg(const RDB_expression *);
+
 #endif /* OBJINTERNAL_H_ */

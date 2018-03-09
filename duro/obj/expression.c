@@ -680,12 +680,6 @@ RDB_expr_is_op(const RDB_expression *exp, const char *name)
     return (exp->kind == RDB_EX_RO_OP) && (strcmp(exp->def.op.name, name) == 0);
 }
 
-RDB_bool
-RDB_expr_op_is_noarg(const RDB_expression *exp)
-{
-    return (RDB_bool) (exp->def.op.args.firstp == NULL);
-}
-
 /**
  * Return RDB_TRUE if *<var>op</var> is a table reference,
  * otherwise RDB_FALSE
@@ -697,6 +691,16 @@ RDB_expr_is_table_ref(const RDB_expression *exp)
 }
 
 /*@}*/
+
+/*
+ * Return RDB_TRUE if *<var>exp</var> is an operatore invocation with no arguments
+ * given by name <var>name</var>, otherwise RDB_FALSE.
+ */
+RDB_bool
+RDB_expr_op_is_noarg(const RDB_expression *exp)
+{
+    return (RDB_bool) (exp->def.op.args.firstp == NULL);
+}
 
 int
 RDB_drop_expr_children(RDB_expression *exp, RDB_exec_context *ecp)

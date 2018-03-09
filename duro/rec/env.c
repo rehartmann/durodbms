@@ -35,8 +35,6 @@
  * @return On success, a pointer to the environment is returned.
  * On failure, NULL is returned and an error value is stored in *ecp.
  *
- * @par Errors:
- * See the documentation of the Berkeley DB function DB_ENV->open for details.
  */
 RDB_environment *
 RDB_open_env(const char *path, int flags, RDB_exec_context *ecp)
@@ -112,12 +110,18 @@ RDB_env_set_trace(RDB_environment *envp, unsigned level)
     envp->trace = level;
 }
 
+/**
+ * Set error output stream.
+ */
 void
 RDB_env_set_errfile(RDB_environment *envp, FILE *file)
 {
     (*envp->set_errfile_fn)(envp, file);
 }
 
+/**
+ * Get error output stream.
+ */
 FILE *
 RDB_env_get_errfile(const RDB_environment *envp)
 {

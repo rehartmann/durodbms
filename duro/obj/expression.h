@@ -76,9 +76,6 @@ RDB_expr_var_name(const RDB_expression *);
 RDB_bool
 RDB_expr_is_op(const RDB_expression *, const char *);
 
-RDB_bool
-RDB_expr_op_is_noarg(const RDB_expression *);
-
 RDB_expression *
 RDB_eq(RDB_expression *, RDB_expression *, RDB_exec_context *);
 
