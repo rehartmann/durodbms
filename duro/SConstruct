@@ -331,6 +331,7 @@ env.Install(installdir + '/include/rel', rel_hdrs)
 env.Install(installdir + '/include/dli', dli_hdrs)
 env.Install(installdir + '/docs', durodocs)
 env.Install(installdir + '/docs/durodt', 'docs/durodt/tut.html')
+env.Install(installdir + '/docs/rest', 'docs/rest/rest.html')
 # 'scons install' does not rebuild api docs
 env.Command(installdir + '/docs/api/html', [], Copy("$TARGET", 'docs/api/html'))
 env.Command(installdir + '/docs/javadoc', [], Copy("$TARGET", 'docs/javadoc'))
@@ -403,6 +404,7 @@ if env.has_key('TAR'):
     env.Tar('src.tar', durotclsrc)
     env.Tar('src.tar', durodocs)
     env.Tar('src.tar', 'docs/durodt/tut.html')
+    env.Tar('src.tar', 'docs/rest/rest.html')
     env.Tar('src.tar', durotcldocs)
     env.Tar('src.tar', 'docs/api/html')
     env.Tar('src.tar', 'docs/javadoc')
@@ -434,10 +436,12 @@ if env.has_key('TAR'):
     # Don't use env.Tar because relative paths starting with '..'
     # would become absolute paths
     env.Command(disttar,
-        ['src.tar'] + Glob('../jduro/src/net/sf/duro/*.java'),
+        ['src.tar'] + Glob('../jduro/src/net/sf/duro/*.java')
+                + Glob('../jduro/src/net/sf/duro/rest/*.java'),
         'cd ..; mv duro/src.tar duro/' + disttar
                 + ' && tar -f duro/' + disttar
                 + ' --append jduro/src/net/sf/duro/*.java'
+                + ' jduro/src/net/sf/duro/rest/*.java'
                 + ' jduro/tests/net/sf/duro/tests/*.java' + ' jduro/examples/*.java'
                 + ' --transform \'s,^,durodbms-' + release + '/,S\''
                 + ' && gzip -f duro/' + disttar)
