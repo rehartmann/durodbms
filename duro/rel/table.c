@@ -897,8 +897,13 @@ RDB_set_defvals(RDB_object *tbp, int attrc, const RDB_attr attrv[],
 
     for (i = 0; i < attrc; i++) {
         if (attrv[i].defaultp != NULL) {
+            RDB_bool is_serial = RDB_expr_is_serial(attrv[i].defaultp);
+            if (is_serial && !RDB_table_is_persistent(tbp)) {
+                RDB_raise_not_supported("serial() is not supported for transient tables", ecp);
+                goto error;
+            }
             if (attrv[i].defaultp->kind != RDB_EX_OBJ
-                    && !RDB_expr_is_serial(attrv[i].defaultp)) {
+                    && !is_serial) {
                 RDB_raise_invalid_argument("invalid default", ecp);
                 goto error;
             }
