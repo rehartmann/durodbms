@@ -110,10 +110,11 @@ no db> var k same_type_as(i);
 no db>
 </pre>
 
-<p>Automatic conversion to lowercase is not performed if backtick-quoting is used:
+<p>Automatic conversion to lowercase does not take place if backtick-quoting is used:
 
 <pre>
 no db> var `MyVar` int;
+no db>
 </pre>
 
 <p>Backtick-quoting also has to be used if an identifier would conflict with a keyword.

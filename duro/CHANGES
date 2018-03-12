@@ -10,6 +10,8 @@ DuroDBMS 1.3
 
 - Added REST server srv/durod and Java client support for accessing a database using HTTP/REST.
 
+- RDB_create_recmap() etc. return errors using an RDB_exec_context.
+
 DuroDBMS 1.2
 
 - Added a limited form of subtyping. Only dummy types can be supertypes.
