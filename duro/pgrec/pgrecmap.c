@@ -59,6 +59,13 @@ RDB_create_pg_recmap(const char *name, const char *filename,
     if (rmp == NULL)
         return NULL;
 
+    if (cmpv != NULL) {
+        RDB_raise_not_supported("cmpv", ecp);
+    }
+    if (RDB_ORDERED & flags) {
+        RDB_raise_not_supported("RDB_ORDERED", ecp);
+    }
+
     RDB_init_obj(&command);
     if (RDB_string_to_obj(&command, "CREATE TABLE \"", ecp) != RDB_OK)
         goto error;
