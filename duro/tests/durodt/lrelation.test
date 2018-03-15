@@ -433,4 +433,31 @@ test bigtable_explain {Big local table and EXPLAIN} -match glob -body {
 200
 }
 
+test multikey {multiple keys} -body {
+    exec $testdir/../../dli/durodt << {
+        var p private relation {n int, s string, t string}
+                key {n} key {s};
+        insert p tup { n 1, s 'yo', t 'yo' };
+        try
+            insert p tup { n 1, s 'yoyo', t 'yoyo' };
+        catch err key_violation_error;
+            io.put_line('key_violation #1 caught');
+        end try;
+        try
+            insert p tup { n 2, s 'yo', t 'yoyo' };
+        catch err key_violation_error;
+            io.put_line('key_violation #2 caught');
+        end try;
+        insert p tup { n 2, s 'yoyo', t 'yo' };
+
+        var a array tuple{n int, s string, t string};
+        load a from p order(s desc);
+        io.put(a = array(tup { n 2, s 'yoyo', t 'yo' }, tup { n 1, s 'yo', t 'yo' }));
+        io.put_line(''); 
+    }
+} -result {key_violation #1 caught
+key_violation #2 caught
+TRUE
+}
+
 cleanupTests

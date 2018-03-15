@@ -35,6 +35,7 @@ typedef struct RDB_recmap {
     int vardatafieldcount; /* # of variable-length nonkey fields */
 
     /* For sorted recmaps */
+    int cmpc;
     RDB_compare_field *cmpv;
 
     /* RDB_TRUE if duplicate keys are allowed */

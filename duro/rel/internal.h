@@ -468,4 +468,7 @@ RDB_get_supertype_of_subtype(RDB_type *, const char *);
 int
 RDB_type_field_flags(const RDB_type *);
 
+void
+RDB_type_to_compare(RDB_compare_field *, RDB_type *);
+
 #endif

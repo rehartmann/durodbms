@@ -55,6 +55,7 @@ typedef struct {
 } RDB_field_descriptor;
 
 typedef struct {
+    int fno;
     RDB_field_compare_func *comparep;
     void *arg;
     RDB_bool asc;
@@ -63,8 +64,8 @@ typedef struct {
 RDB_recmap *
 RDB_create_recmap(const char *, const char *,
         RDB_environment *, int, const RDB_field_info[], int,
-        const RDB_compare_field[], int,
-        int uniquec, const RDB_string_vec *uniquev,
+        int, const RDB_compare_field[], int,
+        int, const RDB_string_vec *,
         RDB_rec_transaction *, RDB_exec_context *);
 
 RDB_recmap *

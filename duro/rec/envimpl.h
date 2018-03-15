@@ -34,7 +34,7 @@ typedef struct RDB_environment {
     int (*close_fn)(struct RDB_environment *, RDB_exec_context *);
     RDB_recmap *(*create_recmap_fn)(const char *, const char *,
             RDB_environment *, int, const RDB_field_info[], int,
-            const RDB_compare_field[], int,
+            int, const RDB_compare_field[], int,
             int, const RDB_string_vec *,
             RDB_rec_transaction *, RDB_exec_context *);
     RDB_recmap *(*open_recmap_fn)(const char *, const char *,

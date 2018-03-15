@@ -1065,14 +1065,14 @@ provide_systable(const char *name, int attrc, RDB_attr heading[],
 
     if (create) {
         ret = RDB_create_stored_table(*tbpp, txp->envp,
-                NULL, ecp, txp);
+                0, NULL, ecp, txp);
     } else {
         ret = RDB_open_stored_table(*tbpp, txp->envp, name, ecp, txp);
         if (ret == RDB_ERROR
                 && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR
                 && create_if_not_exists) {
             ret = RDB_create_stored_table(*tbpp, txp->envp,
-                    NULL, ecp, txp);
+                    0, NULL, ecp, txp);
         }
     }
     if (ret != RDB_OK) {

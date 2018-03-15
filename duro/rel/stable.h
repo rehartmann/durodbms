@@ -32,7 +32,7 @@ RDB_provide_stored_table(RDB_object *, RDB_bool,
 
 int
 RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
-        const RDB_bool ascv[], RDB_exec_context *, RDB_transaction *);
+        int, const RDB_compare_field[], RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp, const char *,

@@ -1256,6 +1256,18 @@ RDB_table_iterator(RDB_object *tbp,
     return qrp;
 }
 
+static int
+strvec_find(const char *str, const RDB_string_vec *strvec)
+{
+    int i;
+
+    for (i = 0; i < strvec->strc; i++) {
+        if (strcmp(strvec->strv[i], str) == 0)
+            return i;
+    }
+    return -1;
+}
+
 /*
  * Creates a qresult which sorts a table.
  */
@@ -1264,41 +1276,24 @@ RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
         RDB_transaction *txp, int seqitc, const RDB_seq_item seqitv[])
 {
     RDB_string_vec key;
-    RDB_bool *ascv = NULL;
     int ret;
     int i;
     RDB_qresult *tmpqrp;
     RDB_object tpl;
     RDB_type *typ = NULL;
     RDB_object *matp = NULL;
+    RDB_compare_field *cmpv = NULL;
     RDB_qresult *qrp = RDB_alloc(sizeof (RDB_qresult), ecp);
     if (qrp == NULL) {
         return RDB_ERROR;
-    }
-
-    key.strc = seqitc;
-    key.strv = RDB_alloc(sizeof (char *) * seqitc, ecp);
-    if (key.strv == NULL) {
-        goto error;
-    }
-
-    ascv = RDB_alloc(sizeof (RDB_bool) * seqitc, ecp);
-    if (ascv == NULL) {
-        RDB_raise_no_memory(ecp);
-        goto error;
     }
 
     qrp->nested = RDB_FALSE;
     qrp->val.stored.tbp = NULL;
     qrp->endreached = RDB_FALSE;
 
-    for (i = 0; i < seqitc; i++) {
-        key.strv[i] = seqitv[i].attrname;
-        ascv[i] = seqitv[i].asc;
-    }
-
     /*
-     * Create a sorted RDB_table
+     * Create a sorted all-key table
      */
 
     typ = RDB_expr_type(texp, NULL, NULL, NULL, ecp, txp);
@@ -1308,6 +1303,15 @@ RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
     if (typ == NULL)
         goto error;
 
+    key.strc = RDB_base_type(typ)->def.tuple.attrc;
+    key.strv = RDB_alloc(sizeof (char *) * RDB_base_type(typ)->def.tuple.attrc, ecp);
+    if (key.strv == NULL) {
+        goto error;
+    }
+    for (i = 0; i < key.strc; i++) {
+        key.strv[i] = RDB_base_type(typ)->def.tuple.attrv[i].name;
+    }
+
     matp = RDB_new_rtable(NULL, RDB_FALSE,
             typ, 1, &key, 0, NULL, RDB_TRUE, ecp);
     if (matp == NULL) {
@@ -1315,8 +1319,20 @@ RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
         goto error;
     }
 
-    if (RDB_create_stored_table(matp,
-            txp!= NULL ? txp->dbp->dbrootp->envp : NULL, ascv, ecp, txp) != RDB_OK)
+    cmpv = RDB_alloc(seqitc * sizeof(RDB_compare_field), ecp);
+    if (cmpv == NULL)
+        goto error;
+    for (i = 0; i < seqitc; i++) {
+        RDB_type *attrtyp;
+
+        cmpv[i].fno = strvec_find(seqitv[i].attrname, &key);
+        attrtyp = RDB_base_type(typ)->def.tuple.attrv[cmpv[i].fno].typ;
+        RDB_type_to_compare(&cmpv[i], attrtyp);
+        cmpv[i].asc = seqitv[i].asc;
+    }
+
+    if (RDB_create_stored_table(matp, txp != NULL ? txp->dbp->dbrootp->envp : NULL,
+            seqitc, cmpv, ecp, txp) != RDB_OK)
         goto error;
 
     /*
@@ -1359,7 +1375,7 @@ RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
     qrp->matp = matp;
 
     RDB_free(key.strv);
-    RDB_free(ascv);
+    RDB_free(cmpv);
 
     *qrpp = qrp;
     return RDB_OK;
@@ -1367,8 +1383,8 @@ RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
 error:
     if (key.strv != NULL)
         RDB_free(key.strv);
-    if (ascv != NULL)
-        RDB_free(ascv);
+    if (cmpv != NULL)
+        RDB_free(cmpv);
     if (matp != NULL)
         RDB_drop_table(matp, ecp, NULL);
     RDB_free(qrp);

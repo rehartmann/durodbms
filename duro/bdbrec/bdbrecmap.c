@@ -70,18 +70,18 @@ static int
 compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p, size_t *locp)
 {
     int i;
+    int res;
     RDB_recmap *rmp = (RDB_recmap *) dbp->app_private;
 
-    for (i = 0; i < rmp->keyfieldcount; i++) {
+    for (i = 0; i < rmp->cmpc; i++) {
         int offs1, offs2;
         size_t len1, len2;
         void *data1p, *data2p;
-        int res;
 
-        offs1 = RDB_get_field(rmp, i, dbt1p->data, dbt1p->size, &len1, NULL);
+        offs1 = RDB_get_field(rmp, rmp->cmpv[i].fno, dbt1p->data, dbt1p->size, &len1, NULL);
         if (offs1 < 0)
             return offs1;
-        offs2 = RDB_get_field(rmp, i, dbt2p->data, dbt2p->size, &len2, NULL);
+        offs2 = RDB_get_field(rmp, rmp->cmpv[i].fno, dbt2p->data, dbt2p->size, &len2, NULL);
         if (offs2 < 0)
             return offs2;
         data1p = ((RDB_byte *) dbt1p->data) + offs1;
@@ -99,21 +99,26 @@ compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p, size_t *locp)
             return res;
         }
     }
-    /* All fields equal */
-    return 0;
+    if (rmp->cmpc == rmp->fieldcount)
+        return 0;
+
+    res = memcmp(dbt1p->data, dbt2p->data, dbt1p->size <= dbt2p->size ? dbt1p->size : dbt2p->size);
+    if (res != 0)
+        return res;
+
+    return abs(dbt1p->size - dbt2p->size);
 }
 
 RDB_recmap *
 RDB_create_bdb_recmap(const char *name, const char *filename,
         RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[],
-        int keyfieldc, const RDB_compare_field cmpv[], int flags,
-        int uniquec, const RDB_string_vec *uniquev,
+        int keyfieldc, int cmpc, const RDB_compare_field cmpv[], int flags,
+        int keyc, const RDB_string_vec *keyv,
         RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     RDB_recmap *rmp;
     int i;
     int ret;
-    RDB_bool all_cmpfn = RDB_TRUE;
 
     /* Allocate and initialize RDB_recmap structure */
 
@@ -123,25 +128,23 @@ RDB_create_bdb_recmap(const char *name, const char *filename,
         return NULL;
     }
 
-    if (cmpv != NULL) {
-        rmp->cmpv = malloc(sizeof (RDB_compare_field) * keyfieldc);
+    if (cmpc > 0) {
+        rmp->cmpc = cmpc;
+        rmp->cmpv = malloc(sizeof (RDB_compare_field) * cmpc);
         if (rmp->cmpv == NULL) {
             ret = ENOMEM;
             goto error;
         }
-        for (i = 0; i < keyfieldc; i++) {
+        for (i = 0; i < cmpc; i++) {
+            rmp->cmpv[i].fno = cmpv[i].fno;
             rmp->cmpv[i].comparep = cmpv[i].comparep;
             rmp->cmpv[i].arg = cmpv[i].arg;
             rmp->cmpv[i].asc = cmpv[i].asc;
-            if (cmpv[i].comparep == NULL)
-                all_cmpfn = RDB_FALSE;
         }
 
-        if (all_cmpfn) {
-            /* Set comparison function */
-            rmp->dbp->app_private = rmp;
-            rmp->dbp->set_bt_compare(rmp->dbp, &compare_key);
-        }
+        /* Set comparison function */
+        rmp->dbp->app_private = rmp;
+        rmp->dbp->set_bt_compare(rmp->dbp, &compare_key);
     }
 
     if (!(RDB_UNIQUE & flags)) {

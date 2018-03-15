@@ -47,24 +47,32 @@ new_pg_recmap(const char *name, RDB_environment *envp,
 RDB_recmap *
 RDB_create_pg_recmap(const char *name, const char *filename,
         RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[], int keyfieldc,
-        const RDB_compare_field cmpv[], int flags,
-        int uniquec, const RDB_string_vec *uniquev,
+        int cmpc, const RDB_compare_field cmpv[], int flags,
+        int keyc, const RDB_string_vec *keyv,
         RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     RDB_object command;
     int i;
     PGresult *res = NULL;
-    RDB_recmap *rmp = new_pg_recmap(name, envp, fieldc, fieldinfov, keyfieldc,
-            flags, ecp);
-    if (rmp == NULL)
-        return NULL;
+    RDB_recmap *rmp;
 
-    if (cmpv != NULL) {
+    if (cmpc != 0) {
         RDB_raise_not_supported("cmpv", ecp);
+        return NULL;
     }
     if (RDB_ORDERED & flags) {
         RDB_raise_not_supported("RDB_ORDERED", ecp);
+        return NULL;
     }
+    if (!(RDB_UNIQUE & flags)) {
+        RDB_raise_not_supported("RDB_UNIQUE is required", ecp);
+        return NULL;
+    }
+
+    rmp = new_pg_recmap(name, envp, fieldc, fieldinfov, keyfieldc,
+            flags, ecp);
+    if (rmp == NULL)
+        return NULL;
 
     RDB_init_obj(&command);
     if (RDB_string_to_obj(&command, "CREATE TABLE \"", ecp) != RDB_OK)
@@ -135,18 +143,18 @@ RDB_create_pg_recmap(const char *name, const char *filename,
             goto error;
         }
     }
-    for (i = 0; i < uniquec; i++) {
+    for (i = 0; i < keyc; i++) {
         int j;
         if (RDB_append_string(&command, ", UNIQUE(", ecp) != RDB_OK)
             goto error;
-        for (j = 0; j < uniquev[i].strc; j++) {
+        for (j = 0; j < keyv[i].strc; j++) {
             if (RDB_append_char(&command, '"', ecp) != RDB_OK)
                 goto error;
-            if (RDB_append_string(&command, uniquev[i].strv[j], ecp) != RDB_OK)
+            if (RDB_append_string(&command, keyv[i].strv[j], ecp) != RDB_OK)
                 goto error;
             if (RDB_append_char(&command, '"', ecp) != RDB_OK)
                 goto error;
-            if (j < uniquev[i].strc - 1) {
+            if (j < keyv[i].strc - 1) {
                 if (RDB_append_char(&command, ',', ecp) != RDB_OK)
                     goto error;
             }

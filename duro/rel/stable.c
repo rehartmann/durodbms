@@ -152,6 +152,17 @@ compare_field(const void *data1p, size_t len1, const void *data2p, size_t len2,
     return ret;
 }
 
+void
+RDB_type_to_compare(RDB_compare_field *dst, RDB_type *typ)
+{
+    if (typ->compare_op != NULL) {
+        dst->comparep = &compare_field;
+        dst->arg = typ;
+    } else {
+        dst->comparep = NULL;
+    }
+}
+
 static RDB_compare_field *
 cmpvec(RDB_object *tbp, RDB_tbindex *indexp, RDB_exec_context *ecp)
 {
@@ -162,13 +173,7 @@ cmpvec(RDB_object *tbp, RDB_tbindex *indexp, RDB_exec_context *ecp)
     for (i = 0; i < indexp->attrc; i++) {
         RDB_type *attrtyp = RDB_type_attr_type(tbp->typ,
                 indexp->attrv[i].attrname);
-
-        if (attrtyp->compare_op != NULL) {
-            cmpv[i].comparep = &compare_field;
-            cmpv[i].arg = attrtyp;
-        } else {
-            cmpv[i].comparep = NULL;
-        }
+        RDB_type_to_compare(&cmpv[i], attrtyp);
         cmpv[i].asc = indexp->attrv[i].asc;
     }
     return cmpv;
@@ -386,8 +391,7 @@ RDB_type_field_flags(const RDB_type *typ)
 }
 
 static int
-table_field_infos(RDB_object *tbp, RDB_field_info **finfovp, const RDB_bool ascv[],
-         RDB_compare_field *cmpv, RDB_exec_context *ecp)
+table_field_infos(RDB_object *tbp, RDB_field_info **finfovp, RDB_exec_context *ecp)
 {
     int ret;
     int i, j, di;
@@ -446,16 +450,6 @@ table_field_infos(RDB_object *tbp, RDB_field_info **finfovp, const RDB_bool ascv
         /* If it's not found in the key, give it a non-key field number */
         if (fno == -1)
             fno = di++;
-        else if (ascv != NULL) {
-            /* Set comparison field */
-            if (heading[i].typ->compare_op != NULL) {
-                cmpv[fno].comparep = &compare_field;
-                cmpv[fno].arg = heading[i].typ;
-            } else {
-                cmpv[fno].comparep = NULL;
-            }
-            cmpv[fno].asc = ascv[fno];
-        }
 
         /* Put the field number into the attrmap */
         ret = RDB_put_field_no(tbp->val.tbp->stp,
@@ -504,7 +498,7 @@ str_equals(const void *e1p, const void *e2p, void *arg)
  */
 int
 RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
-        const RDB_bool ascv[], RDB_exec_context *ecp, RDB_transaction *txp)
+        int cmpc, const RDB_compare_field cmpv[], RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     int flags;
@@ -512,7 +506,6 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
     RDB_attrmap_entry *entryp;
     RDB_field_info *finfov = NULL;
     char *rmname = NULL;
-    RDB_compare_field *cmpv = NULL;
     int attrc = tbp->typ->def.basetyp->def.tuple.attrc;
     int piattrc = tbp->val.tbp->keyv[0].strc;
 
@@ -535,14 +528,6 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
             &str_equals);
     tbp->val.tbp->stp->est_cardinality = 0;
 
-    /* Allocate comparison vector, if needed */
-    if (ascv != NULL) {
-        cmpv = RDB_alloc(sizeof (RDB_compare_field) * piattrc, ecp);
-        if (cmpv == NULL) {
-            goto error;
-        }
-    }
-
     if (RDB_table_is_persistent(tbp) && RDB_table_is_user(tbp)) {
         /* Get indexes from catalog */
         tbp->val.tbp->stp->indexc = RDB_cat_get_indexes(RDB_table_name(tbp), txp->dbp->dbrootp,
@@ -558,7 +543,7 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
     if (ret != RDB_OK)
         goto error;
 
-    ret = table_field_infos(tbp, &finfov, ascv, cmpv, ecp);
+    ret = table_field_infos(tbp, &finfov, ecp);
     if (ret != RDB_OK)
         goto error;
 
@@ -593,11 +578,9 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
      * Use a sorted recmap for local tables, so the order of the tuples
      * is always the same if the table is stored as an attribute in a table.
      */
-    flags = 0;
-    if (ascv != NULL || !RDB_table_is_persistent(tbp))
+    flags = RDB_UNIQUE;
+    if (cmpv != NULL || !RDB_table_is_persistent(tbp))
         flags |= RDB_ORDERED;
-    if (ascv == NULL)
-        flags |= RDB_UNIQUE;
 
     if (RDB_table_is_persistent(tbp) && RDB_env_trace(envp)) {
         fprintf(stderr, "Creating physical storage for table %s\n",
@@ -607,7 +590,7 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
             (rmname == NULL ? RDB_table_name(tbp) : rmname) : NULL,
             RDB_table_is_persistent(tbp) ? RDB_DATAFILE : NULL,
             RDB_table_is_persistent(tbp) ? envp : NULL,
-            attrc, finfov, piattrc, cmpv, flags,
+            attrc, finfov, piattrc, cmpc, cmpv, flags,
             tbp->val.tbp->keyc - 1, tbp->val.tbp->keyv + 1,
             txp != NULL ? txp->tx : NULL, ecp);
     if (tbp->val.tbp->stp->recmapp == NULL) {
@@ -623,7 +606,6 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
     }
 
     RDB_free(finfov);
-    RDB_free(cmpv);
     RDB_free(rmname);
     return RDB_OK;
 
@@ -632,7 +614,6 @@ error:
     if (finfov != NULL) {
         RDB_free(finfov);
     }
-    RDB_free(cmpv);
     RDB_free(rmname);
 
     RDB_init_hashtable_iter(&hiter, &tbp->val.tbp->stp->attrmap);
@@ -691,7 +672,7 @@ RDB_provide_stored_table(RDB_object *tbp, RDB_bool create, RDB_exec_context *ecp
 
     if (create) {
         if (RDB_create_stored_table(tbp, txp != NULL ? txp->envp : NULL,
-                NULL, ecp, txp) != RDB_OK) {
+                0, NULL, ecp, txp) != RDB_OK) {
             goto error;
         }
     }
@@ -754,7 +735,7 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
     RDB_init_hashtable(&tbp->val.tbp->stp->attrmap, RDB_DFL_MAP_CAPACITY, &hash_str,
             &str_equals);
 
-    ret = table_field_infos(tbp, &finfov, NULL, NULL, ecp);
+    ret = table_field_infos(tbp, &finfov, ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
