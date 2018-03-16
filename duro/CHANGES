@@ -1,5 +1,9 @@
 Summary of Changes to DuroDBMS
 
+DuroDBMS 1.4
+
+- lower() and upper() convert multibyte characters
+
 DuroDBMS 1.3
 
 - Added functions lower(), upper()

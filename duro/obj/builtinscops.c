@@ -21,6 +21,8 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <wctype.h>
 
 #ifdef _WIN32
 #define isfinite _finite
@@ -697,8 +699,12 @@ op_concat(int argc, RDB_object *argv[], RDB_operator *op,
 
     if (retvalp->kind == RDB_OB_INITIAL) {
         /* Turn *retvalp into a string */
+        void *datap = RDB_alloc(dstsize, ecp);
+        if (datap == NULL) {
+            return RDB_ERROR;
+        }
         RDB_set_obj_type(retvalp, &RDB_STRING);
-        retvalp->val.bin.datap = RDB_alloc(dstsize, ecp);
+        retvalp->val.bin.datap = datap;
         if (retvalp->val.bin.datap == NULL) {
             return RDB_ERROR;
         }
@@ -779,30 +785,119 @@ static int
 op_lower(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
-    char *dstp;
-
-    if (RDB_string_to_obj(retvalp, RDB_obj_string(argv[0]), ecp) != RDB_OK)
-        return RDB_ERROR;
-
-    for (dstp = retvalp->val.bin.datap; *dstp != '\0'; dstp++) {
-        *dstp = tolower(*dstp);
+    int i;
+    size_t dstlen;
+    wchar_t *wchars = NULL;
+    char *src = RDB_obj_string(argv[0]);
+    size_t wlen = mbstowcs(NULL, src, 0) + 1;
+    if (wlen == (size_t) -1) {
+        RDB_raise_invalid_argument("invalid multibyte sequence", ecp);
+        goto error;
     }
+
+    wchars = RDB_alloc(wlen * sizeof(wchar_t), ecp);
+    if (wchars == NULL)
+        goto error;
+
+    mbstowcs(wchars, src, wlen);
+    for (i = 0; i < wlen; i++) {
+        wchars[i] = towlower(wchars[i]);
+    }
+
+    dstlen = wcstombs(NULL, wchars, 0) + 1;
+
+    if (retvalp->kind == RDB_OB_INITIAL) {
+        /* Turn *retvalp into a string */
+        void *datap = RDB_alloc(dstlen, ecp);
+        if (datap == NULL) {
+            goto error;
+        }
+        RDB_set_obj_type(retvalp, &RDB_STRING);
+        retvalp->val.bin.datap = datap;
+        if (retvalp->val.bin.datap == NULL) {
+            goto error;
+        }
+        retvalp->val.bin.len = dstlen;
+    } else if (retvalp->typ == &RDB_STRING) {
+        /* Grow string if necessary */
+        if (retvalp->val.bin.len < dstlen) {
+            void *datap = RDB_realloc(retvalp->val.bin.datap, dstlen, ecp);
+            if (datap == NULL) {
+                goto error;
+            }
+            retvalp->val.bin.datap = datap;
+        }
+    } else {
+        RDB_raise_type_mismatch("invalid return type", ecp);
+        return RDB_ERROR;
+    }
+
+    wcstombs(retvalp->val.bin.datap, wchars, dstlen);
+
+    RDB_free(wchars);
     return RDB_OK;
+
+error:
+    RDB_free(wchars);
+    return RDB_ERROR;
 }
 
 static int
 op_upper(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
-    char *dstp;
-
-    if (RDB_string_to_obj(retvalp, RDB_obj_string(argv[0]), ecp) != RDB_OK)
-        return RDB_ERROR;
-
-    for (dstp = retvalp->val.bin.datap; *dstp != '\0'; dstp++) {
-        *dstp = toupper(*dstp);
+    int i;
+    size_t dstlen;
+    wchar_t *wchars = NULL;
+    char *src = RDB_obj_string(argv[0]);
+    size_t wlen = mbstowcs(NULL, src, 0) + 1;
+    if (wlen == (size_t) -1) {
+        RDB_raise_invalid_argument("invalid multibyte sequence", ecp);
+        goto error;
     }
+
+    wchars = RDB_alloc(wlen * sizeof(wchar_t), ecp);
+    if (wchars == NULL)
+        goto error;
+
+    mbstowcs(wchars, src, wlen);
+    for (i = 0; i < wlen; i++) {
+        wchars[i] = towupper(wchars[i]);
+    }
+
+    dstlen = wcstombs(NULL, wchars, 0) + 1;
+
+    if (retvalp->kind == RDB_OB_INITIAL) {
+        /* Turn *retvalp into a string */
+        void *datap = RDB_alloc(dstlen, ecp);
+        if (datap == NULL) {
+            goto error;
+        }
+        RDB_set_obj_type(retvalp, &RDB_STRING);
+        retvalp->val.bin.datap = datap;
+        retvalp->val.bin.len = dstlen;
+    } else if (retvalp->typ == &RDB_STRING) {
+        /* Grow string if necessary */
+        if (retvalp->val.bin.len < dstlen) {
+            void *datap = RDB_realloc(retvalp->val.bin.datap, dstlen, ecp);
+            if (datap == NULL) {
+                goto error;
+            }
+            retvalp->val.bin.datap = datap;
+        }
+    } else {
+        RDB_raise_type_mismatch("invalid return type", ecp);
+        return RDB_ERROR;
+    }
+
+    wcstombs(retvalp->val.bin.datap, wchars, dstlen);
+
+    RDB_free(wchars);
     return RDB_OK;
+
+error:
+    RDB_free(wchars);
+    return RDB_ERROR;
 }
 
 static int
