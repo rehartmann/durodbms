@@ -56,7 +56,7 @@ size_t
 RDB_get_vflen(RDB_byte *, size_t, int, int);
 
 int
-RDB_get_field(RDB_recmap *, int, void *, size_t,
+RDB_get_field(RDB_recmap *, int, const void *, size_t,
         size_t *, int *);
 
 int
@@ -74,5 +74,12 @@ RDB_fields_to_DBT(RDB_recmap *, int, const RDB_field[],
 int
 RDB_update_DBT_rec(RDB_recmap *, DBT *, DBT *,
         int, const RDB_field[], DB_TXN *);
+
+int
+RDB_fields_to_mem(RDB_recmap *, int, const RDB_field[], void **, size_t *);
+
+int
+RDB_get_mem_fields(RDB_recmap *, void *, size_t,
+        void *, size_t, int fieldc, RDB_field[]);
 
 #endif /* BDBREC_BDBRECMAP_H_ */

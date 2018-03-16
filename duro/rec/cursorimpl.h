@@ -9,6 +9,7 @@
 #include "cursor.h"
 
 #include <db.h>
+#include <treerec/tree.h>
 
 #ifdef POSTGRESQL
 #include <libpq-fe.h>
@@ -30,6 +31,10 @@ typedef struct RDB_cursor {
             PGresult *current_row;
         } pg;
 #endif
+        struct {
+            RDB_binary_tree *treep;
+            RDB_tree_node *nodep;
+        } tree;
     } cur;
     RDB_recmap *recmapp;
     RDB_environment *envp;

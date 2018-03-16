@@ -15,7 +15,8 @@
  * Allocate and initialize a RDB_cursor structure.
  */
 static RDB_cursor *
-new_cursor(RDB_recmap *rmp, RDB_rec_transaction *rtxp, RDB_index *idxp)
+new_bdb_cursor(RDB_recmap *rmp, RDB_rec_transaction *rtxp, RDB_index *idxp,
+        RDB_exec_context *ecp)
 {
     RDB_cursor *curp = malloc(sizeof(RDB_cursor));
     if (curp == NULL)
@@ -50,13 +51,12 @@ RDB_bdb_recmap_cursor(RDB_recmap *rmp, RDB_bool wr,
      */
 
     int ret;
-    RDB_cursor *curp = new_cursor(rmp, rtxp, NULL);
+    RDB_cursor *curp = new_bdb_cursor(rmp, rtxp, NULL, ecp);
     
     if (curp == NULL) {
-        RDB_raise_no_memory(ecp);
         return NULL;
     }
-    ret = rmp->dbp->cursor(rmp->dbp, (DB_TXN *) rtxp, &curp->cur.bdb.cursorp, 0);
+    ret = rmp->impl.dbp->cursor(rmp->impl.dbp, (DB_TXN *) rtxp, &curp->cur.bdb.cursorp, 0);
     if (ret != 0) {
         free(curp);
         RDB_errcode_to_error(ret, ecp);
@@ -71,10 +71,9 @@ RDB_bdb_index_cursor(RDB_index *idxp, RDB_bool wr,
                   RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     int ret;
-    RDB_cursor *curp = new_cursor(idxp->rmp, rtxp, idxp);
+    RDB_cursor *curp = new_bdb_cursor(idxp->rmp, rtxp, idxp, ecp);
 
     if (curp == NULL) {
-        RDB_raise_no_memory(ecp);
         return NULL;
     }
     ret = idxp->dbp->cursor(idxp->dbp, (DB_TXN *) rtxp, &curp->cur.bdb.cursorp, 0);
@@ -96,7 +95,7 @@ RDB_destroy_bdb_cursor(RDB_cursor *curp, RDB_exec_context *ecp)
     free(curp->cur.bdb.current_data.data);
 
     ret = curp->cur.bdb.cursorp->close(curp->cur.bdb.cursorp);
-    free(curp);
+    RDB_free(curp);
     if (ret != 0) {
         RDB_errcode_to_error(ret, ecp);
         return RDB_ERROR;
@@ -112,13 +111,13 @@ RDB_bdb_cursor_get(RDB_cursor *curp, int fno, void **datapp, size_t *lenp,
     int offs;
 
     if (fno < curp->recmapp->keyfieldcount) {
-        databp = ((RDB_byte *)curp->cur.bdb.current_key.data);
+        databp = (RDB_byte *)curp->cur.bdb.current_key.data;
         offs = RDB_get_field(curp->recmapp, fno,
-                curp->cur.bdb.current_key.data, curp->cur.bdb.current_key.size, lenp, NULL);
+                databp, curp->cur.bdb.current_key.size, lenp, NULL);
     } else {
-        databp = ((RDB_byte *)curp->cur.bdb.current_data.data);
+        databp = (RDB_byte *)curp->cur.bdb.current_data.data;
         offs = RDB_get_field(curp->recmapp, fno,
-                curp->cur.bdb.current_data.data, curp->cur.bdb.current_data.size, lenp, NULL);
+                databp, curp->cur.bdb.current_data.size, lenp, NULL);
     }
     if (offs < 0) {
         RDB_errcode_to_error(offs, ecp);

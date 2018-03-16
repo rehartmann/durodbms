@@ -12,6 +12,7 @@
 #include <obj/object.h>
 #include <obj/excontext.h>
 #include <bdbrec/bdbrecmap.h>
+#include <treerec/treerecmap.h>
 
 /*
  * Create a recmap with the <var>name</var> specified by name in the DB environment
@@ -206,9 +207,9 @@ RDB_new_recmap(const char *namp, const char *filenamp,
     return rmp;
 
 error:
-    free(rmp->namp);
-    free(rmp->filenamp);
-    free(rmp->fieldinfos);
-    free(rmp);
+    RDB_free(rmp->namp);
+    RDB_free(rmp->filenamp);
+    RDB_free(rmp->fieldinfos);
+    RDB_free(rmp);
     return NULL;
 }

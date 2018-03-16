@@ -11,6 +11,7 @@
 #include "recmap.h"
 #include "env.h"
 #include "db.h"
+#include <treerec/tree.h>
 
 typedef struct RDB_cursor RDB_cursor;
 typedef struct RDB_exec_context RDB_exec_context;
@@ -18,7 +19,10 @@ typedef struct RDB_exec_context RDB_exec_context;
 typedef struct RDB_recmap {
     /* internal */
     RDB_environment *envp;
-    DB *dbp;
+    union {
+        DB *dbp;
+        RDB_binary_tree *treep;
+    } impl;
     char *namp;
     char *filenamp;
     int fieldcount; /* # of fields total */

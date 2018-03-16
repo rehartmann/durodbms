@@ -46,7 +46,7 @@ new_recmap(const char *namp, const char *filenamp,
     rmp->recmap_est_size_fn = &RDB_bdb_recmap_est_size;
     rmp->cursor_fn = &RDB_bdb_recmap_cursor;
 
-    ret = db_create(&rmp->dbp, envp != NULL ? envp->env.envp : NULL, 0);
+    ret = db_create(&rmp->impl.dbp, envp != NULL ? envp->env.envp : NULL, 0);
     if (ret != 0) {
         RDB_errcode_to_error(ret, ecp);
         goto error;
@@ -143,33 +143,33 @@ RDB_create_bdb_recmap(const char *name, const char *filename,
         }
 
         /* Set comparison function */
-        rmp->dbp->app_private = rmp;
-        rmp->dbp->set_bt_compare(rmp->dbp, &compare_key);
+        rmp->impl.dbp->app_private = rmp;
+        rmp->impl.dbp->set_bt_compare(rmp->impl.dbp, &compare_key);
     }
 
     if (!(RDB_UNIQUE & flags)) {
         /* Allow duplicate keys */
-        rmp->dbp->set_flags(rmp->dbp, DB_DUPSORT);
+        rmp->impl.dbp->set_flags(rmp->impl.dbp, DB_DUPSORT);
     }
 
     if (envp == NULL) {
-        ret = rmp->dbp->set_alloc(rmp->dbp, malloc, realloc, free);
+        ret = rmp->impl.dbp->set_alloc(rmp->impl.dbp, malloc, realloc, free);
         if (ret != 0) {
             goto error;
         }
     }
 
     /* Suppress error output */
-    rmp->dbp->set_errfile(rmp->dbp, NULL);
+    rmp->impl.dbp->set_errfile(rmp->impl.dbp, NULL);
 
     /* Create BDB database */
-    ret = rmp->dbp->open(rmp->dbp, (DB_TXN *) rtxp, filename, name,
+    ret = rmp->impl.dbp->open(rmp->impl.dbp, (DB_TXN *) rtxp, filename, name,
             RDB_ORDERED & flags ? DB_BTREE : DB_HASH,
             DB_CREATE | DB_EXCL, 0664);
     if (ret == EEXIST && envp != NULL) {
         /* BDB database exists - remove it and try again */
         envp->env.envp->dbremove(envp->env.envp, (DB_TXN *) rtxp, filename, name, 0);
-        ret = rmp->dbp->open(rmp->dbp, (DB_TXN *) rtxp, filename, name,
+        ret = rmp->impl.dbp->open(rmp->impl.dbp, (DB_TXN *) rtxp, filename, name,
                 RDB_ORDERED & flags ? DB_BTREE : DB_HASH,
                 DB_CREATE | DB_EXCL, 0664);
     }
@@ -199,14 +199,14 @@ RDB_open_bdb_recmap(const char *name, const char *filename,
     }
 
     if (envp == NULL) {
-        ret = rmp->dbp->set_alloc(rmp->dbp, malloc, realloc, free);
+        ret = rmp->impl.dbp->set_alloc(rmp->impl.dbp, malloc, realloc, free);
         if (ret != 0) {
             goto error;
         }
     }
 
     /* Open database */
-    ret = rmp->dbp->open(rmp->dbp, (DB_TXN *) rtxp, filename, name, DB_UNKNOWN,
+    ret = rmp->impl.dbp->open(rmp->impl.dbp, (DB_TXN *) rtxp, filename, name, DB_UNKNOWN,
             0, 0664);
     if (ret != 0) {
         goto error;
@@ -222,7 +222,7 @@ RDB_close_recmap(rmp, ecp);
 int
 RDB_close_bdb_recmap(RDB_recmap *rmp, RDB_exec_context *ecp)
 {
-    int ret = rmp->dbp->close(rmp->dbp, 0);
+    int ret = rmp->impl.dbp->close(rmp->impl.dbp, 0);
     free(rmp->namp);
     free(rmp->filenamp);
     free(rmp->fieldinfos);
@@ -239,7 +239,7 @@ int
 RDB_delete_bdb_recmap(RDB_recmap *rmp, RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     /* The DB handle must be closed before calling DB_ENV->dbremove() */
-    int ret = rmp->dbp->close(rmp->dbp, DB_NOSYNC);
+    int ret = rmp->impl.dbp->close(rmp->impl.dbp, DB_NOSYNC);
     if (ret != 0)
         goto cleanup;
 
@@ -292,7 +292,7 @@ RDB_get_vflen(RDB_byte *databp, size_t len, int vfcnt, int vpos)
  *              var-len field table
  */
 int
-RDB_get_field(RDB_recmap *rmp, int fno, void *datap, size_t len, size_t *lenp,
+RDB_get_field(RDB_recmap *rmp, int fno, const void *datap, size_t len, size_t *lenp,
               int *vposp)
 {
     int i, vpos;
@@ -398,8 +398,8 @@ set_len(RDB_byte *databp, size_t len)
 }
 
 int
-RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
-                   DBT *dbtp)
+RDB_fields_to_mem(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
+        void **datap, size_t *sizep)
 {
     RDB_byte *databp;
     int vfldc;
@@ -408,32 +408,30 @@ RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
     int offs;
     int i;
     int ret;
-    int *fno = NULL;	/* fixed field no in DBT -> field no */
-    int *vfno = NULL;	/* var field no in DBT -> field no */
-
-    memset(dbtp, 0, sizeof(DBT));
+    int *fno = NULL;    /* fixed field no in DBT -> field no */
+    int *vfno = NULL;   /* var field no in DBT -> field no */
 
     /* calculate key and data length, and # of variable size fields */
-    dbtp->size = 0;
+    *sizep = 0;
     vfldc = 0;
     for (i = 0; i < fldc; i++) {
-        dbtp->size += fldv[i].len;
+        *sizep += fldv[i].len;
         if (rmp->fieldinfos[fldv[i].no].len == RDB_VARIABLE_LEN) {
             /* RECLEN_SIZE bytes extra for length */
-            dbtp->size += RECLEN_SIZE;
+            *sizep += RECLEN_SIZE;
 
             vfldc++;
         }
     }
 
-    if (dbtp->size > 0) {  
-        dbtp->data = malloc(dbtp->size);
-        if (dbtp->data == NULL) {
+    if (*sizep > 0) {
+        *datap = malloc(*sizep);
+        if (*datap == NULL) {
             ret = ENOMEM;
             goto error;
         }
     } else {
-        dbtp->data = NULL;
+        *datap = NULL;
     }
     if (fldc - vfldc > 0) {
         fno = malloc((fldc - vfldc) * sizeof(int));
@@ -464,7 +462,7 @@ RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
      */
 
     offs = 0;
-    databp = dbtp->data;
+    databp = *datap;
 
     /* fixed-length fields */
     for (i = 0; i < fldc - vfldc; i++) {
@@ -479,7 +477,7 @@ RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
         offs += fldv[fn].len;
 
         /* field length */
-        set_len(&databp[dbtp->size - vfldc * RECLEN_SIZE + i * RECLEN_SIZE],
+        set_len(&databp[*sizep - vfldc * RECLEN_SIZE + i * RECLEN_SIZE],
                 fldv[fn].len);
     }
 
@@ -488,11 +486,28 @@ RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
     return RDB_OK;
     
 error:
-    free(dbtp->data);
+    free(*datap);
     free(fno);
     free(vfno);
 
     return ret;
+}
+
+
+int
+RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
+                   DBT *dbtp)
+{
+    int ret;
+    size_t size;
+
+    memset(dbtp, 0, sizeof(DBT));
+
+    ret = RDB_fields_to_mem(rmp, fldc, fldv, &dbtp->data, &size);
+    if (ret != RDB_OK)
+        return ret;
+    dbtp->size = size;
+    return RDB_OK;
 }
 
 /*
@@ -544,7 +559,7 @@ RDB_insert_bdb_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp,
         return RDB_ERROR;
     }
 
-    ret = rmp->dbp->put(rmp->dbp, (DB_TXN *) rtxp, &key, &data,
+    ret = rmp->impl.dbp->put(rmp->impl.dbp, (DB_TXN *) rtxp, &key, &data,
             rmp->dup_keys ? 0 : DB_NOOVERWRITE);
     if (ret == EINVAL) {
         /* Assume duplicate secondary index */
@@ -617,7 +632,7 @@ RDB_update_DBT_rec(RDB_recmap *rmp, DBT *keyp, DBT *datap,
     for (i = 0; i < fieldc; i++) {
         if (fieldv[i].no < rmp->keyfieldcount) {
             /* Key is to be modified, so delete record first */
-            ret = rmp->dbp->del(rmp->dbp, txid, keyp, 0);
+            ret = rmp->impl.dbp->del(rmp->impl.dbp, txid, keyp, 0);
             if (ret != 0) {
                 return ret;
             }
@@ -639,7 +654,7 @@ RDB_update_DBT_rec(RDB_recmap *rmp, DBT *keyp, DBT *datap,
     }
 
     /* Write record back */
-    ret = rmp->dbp->put(rmp->dbp, txid, keyp, datap,
+    ret = rmp->impl.dbp->put(rmp->impl.dbp, txid, keyp, datap,
             del ? DB_NOOVERWRITE : 0);
     if (ret == EINVAL) {
         /* Assume duplicate secondary index */
@@ -647,7 +662,7 @@ RDB_update_DBT_rec(RDB_recmap *rmp, DBT *keyp, DBT *datap,
     }
     if (ret == DB_KEYEXIST) {
         /* Possible key violation - check if the record already exists */
-        ret = rmp->dbp->get(rmp->dbp, txid, keyp, datap, DB_GET_BOTH);
+        ret = rmp->impl.dbp->get(rmp->impl.dbp, txid, keyp, datap, DB_GET_BOTH);
         if (ret == 0)
             return RDB_ELEMENT_EXISTS;
         if (ret == DB_NOTFOUND)
@@ -672,7 +687,7 @@ RDB_update_bdb_rec(RDB_recmap *rmp, RDB_field keyv[],
     memset(&data, 0, sizeof (data));
     data.flags = DB_DBT_REALLOC;
 
-    ret = rmp->dbp->get(rmp->dbp, (DB_TXN *) rtxp, &key, &data, 0);
+    ret = rmp->impl.dbp->get(rmp->impl.dbp, (DB_TXN *) rtxp, &key, &data, 0);
     if (ret != 0)
         goto cleanup;
 
@@ -706,7 +721,7 @@ RDB_delete_bdb_rec(RDB_recmap *rmp, int fieldc, RDB_field keyv[], RDB_rec_transa
         return RDB_ERROR;
     }
 
-    ret = rmp->dbp->del(rmp->dbp, (DB_TXN *) rtxp, &key, 0);
+    ret = rmp->impl.dbp->del(rmp->impl.dbp, (DB_TXN *) rtxp, &key, 0);
     free(key.data);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp);
@@ -716,8 +731,8 @@ RDB_delete_bdb_rec(RDB_recmap *rmp, int fieldc, RDB_field keyv[], RDB_rec_transa
 }
 
 int
-RDB_get_DBT_fields(RDB_recmap *rmp, const DBT *keyp, const DBT *datap, int fieldc,
-           RDB_field retfieldv[])
+RDB_get_mem_fields(RDB_recmap *rmp, void *key, size_t keylen,
+        void *value, size_t valuelen, int fieldc, RDB_field retfieldv[])
 {
     int i;
 
@@ -726,20 +741,28 @@ RDB_get_DBT_fields(RDB_recmap *rmp, const DBT *keyp, const DBT *datap, int field
 
         if (retfieldv[i].no < rmp->keyfieldcount) {
             offs = RDB_get_field(rmp, retfieldv[i].no,
-                    keyp->data, keyp->size, &retfieldv[i].len, NULL);
+                    key, keylen, &retfieldv[i].len, NULL);
             if (offs < 0)
                 return offs;
-            retfieldv[i].datap = ((RDB_byte *)keyp->data) + offs;
+            retfieldv[i].datap = ((RDB_byte *)key) + offs;
         } else {
             offs = RDB_get_field(rmp, retfieldv[i].no,
-                    datap->data, datap->size, &retfieldv[i].len, NULL);
+                    value, valuelen, &retfieldv[i].len, NULL);
             if (offs < 0)
                 return offs;
-            retfieldv[i].datap = ((RDB_byte *)datap->data) + offs;
+            retfieldv[i].datap = ((RDB_byte *)value) + offs;
         }
     }
 
     return RDB_OK;
+}
+
+int
+RDB_get_DBT_fields(RDB_recmap *rmp, const DBT *keyp, const DBT *datap, int fieldc,
+           RDB_field retfieldv[])
+{
+    return RDB_get_mem_fields(rmp, keyp->data, keyp->size, datap->data, datap->size,
+            fieldc, retfieldv);
 }
 
 int
@@ -757,7 +780,7 @@ RDB_get_bdb_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
 
     memset(&data, 0, sizeof (data));
 
-    ret = rmp->dbp->get(rmp->dbp, (DB_TXN *) rtxp, &key, &data, 0);
+    ret = rmp->impl.dbp->get(rmp->impl.dbp, (DB_TXN *) rtxp, &key, &data, 0);
     if (ret != 0) {
         free(key.data);
         RDB_errcode_to_error(ret, ecp);
@@ -794,7 +817,7 @@ RDB_contains_bdb_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtx
     key.flags = DB_DBT_REALLOC;
     data.flags = DB_DBT_REALLOC;
 
-    ret = rmp->dbp->get(rmp->dbp, (DB_TXN *) rtxp, &key, &data, DB_GET_BOTH);
+    ret = rmp->impl.dbp->get(rmp->impl.dbp, (DB_TXN *) rtxp, &key, &data, DB_GET_BOTH);
     free(key.data);
     free(data.data);
     if (ret != RDB_OK) {
@@ -809,7 +832,7 @@ RDB_bdb_recmap_est_size(RDB_recmap *rmp, RDB_rec_transaction *rtxp, unsigned *sz
         RDB_exec_context *ecp)
 {
     DBTYPE dbtype;
-    int ret = rmp->dbp->get_type(rmp->dbp, &dbtype);
+    int ret = rmp->impl.dbp->get_type(rmp->impl.dbp, &dbtype);
     if (ret != 0) {
         RDB_errcode_to_error(ret, ecp);
         return RDB_ERROR;
@@ -818,7 +841,7 @@ RDB_bdb_recmap_est_size(RDB_recmap *rmp, RDB_rec_transaction *rtxp, unsigned *sz
     if (dbtype == DB_BTREE) {
         DB_BTREE_STAT *btstatp;
 
-        ret = rmp->dbp->stat(rmp->dbp, (DB_TXN *) rtxp, &btstatp, DB_FAST_STAT);
+        ret = rmp->impl.dbp->stat(rmp->impl.dbp, (DB_TXN *) rtxp, &btstatp, DB_FAST_STAT);
         if (ret != 0) {
             RDB_errcode_to_error(ret, ecp);
             return RDB_ERROR;
@@ -830,7 +853,7 @@ RDB_bdb_recmap_est_size(RDB_recmap *rmp, RDB_rec_transaction *rtxp, unsigned *sz
         /* Hashtable */
         DB_HASH_STAT *hstatp;
 
-        ret = rmp->dbp->stat(rmp->dbp, (DB_TXN *) rtxp, &hstatp, DB_FAST_STAT);
+        ret = rmp->impl.dbp->stat(rmp->impl.dbp, (DB_TXN *) rtxp, &hstatp, DB_FAST_STAT);
         if (ret != 0) {
             RDB_errcode_to_error(ret, ecp);
             return RDB_ERROR;
