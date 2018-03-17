@@ -26,7 +26,7 @@ scripts is to add this subdirectory to TCLLIBPATH, e.g.:
     TCLLIBPATH=/usr/local/durodbms.1.3/lib
     export TCLLIBPATH
 
-Building the REST server required libmicrohttpd.
+Building the REST server requires libmicrohttpd.
 
 The Java REST client uses the Java API for JSON processing.
 
@@ -44,7 +44,7 @@ rhartmann@users.sourceforge.net.
 -----
 
 This file is part of DuroDBMS, a relational management system.
-Copyright (C) 2003-2009, 2011-2016 Rene Hartmann.
+Copyright (C) 2003-2009, 2011-2018 Rene Hartmann.
 
 See the file COPYING for redistribution information.
 

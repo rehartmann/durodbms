@@ -249,7 +249,6 @@ RDB_create_bdb_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     ixp->dbp->app_private = ixp;
 
     /* Associate the index DB with the recmap DB */
-    ixp->dbp->set_errfile(ixp->dbp, stderr);
     ret = ixp->dbp->associate(rmp->impl.dbp, (DB_TXN *) rtxp, ixp->dbp, make_skey, DB_CREATE);
     if (ret != 0) {
         RDB_errcode_to_error(ret, ecp);

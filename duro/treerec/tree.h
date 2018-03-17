@@ -13,12 +13,12 @@
 typedef struct RDB_exec_context RDB_exec_context;
 
 typedef int RDB_comparison_func (const void *d1, size_t size1,
-        const void *d2, size_t size2, void *arg);
+        const void *d2, size_t size2, void *comparison_arg);
 
 typedef struct RDB_binary_tree {
     struct tree_node *root;
     RDB_comparison_func *comparison_fp;
-    void *arg;
+    void *comparison_arg;
 } RDB_binary_tree;
 
 struct tree_node_header {

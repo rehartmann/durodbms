@@ -20,7 +20,7 @@ RDB_tree_create(RDB_comparison_func *cmpfp, void *arg, RDB_exec_context *ecp)
 
     treep->root = NULL;
     treep->comparison_fp = cmpfp;
-    treep->arg = arg;
+    treep->comparison_arg = arg;
     return treep;
 }
 
@@ -51,7 +51,7 @@ compare_key(const RDB_binary_tree *treep, const struct tree_node *nodep,
 
     if (treep->comparison_fp != NULL) {
         return (*treep->comparison_fp)(nodep->data, nodep->header.keylen,
-                key, keylen, treep->arg);
+                key, keylen, treep->comparison_arg);
     }
     res = memcmp(nodep->data, key, nodep->header.keylen <= keylen ?
             nodep->header.keylen : keylen);
