@@ -82,4 +82,8 @@ int
 RDB_get_mem_fields(RDB_recmap *, void *, size_t,
         void *, size_t, int fieldc, RDB_field[]);
 
+int
+RDB_set_field_mem(RDB_recmap *, void **, size_t *,
+        const RDB_field *, int);
+
 #endif /* BDBREC_BDBRECMAP_H_ */

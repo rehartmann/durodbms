@@ -71,13 +71,13 @@ RDB_tree_cursor_get(RDB_cursor *curp, int fno, void **datapp, size_t *lenp,
     }
 
     if (fno < curp->recmapp->keyfieldcount) {
-        databp = curp->cur.tree.nodep->data;
+        databp = curp->cur.tree.nodep->key;
         offs = RDB_get_field(curp->recmapp, fno,
-                databp, curp->cur.tree.nodep->header.keylen, lenp, NULL);
+                databp, curp->cur.tree.nodep->keylen, lenp, NULL);
     } else {
-        databp = curp->cur.tree.nodep->data + curp->cur.tree.nodep->header.keylen;
+        databp = curp->cur.tree.nodep->value;
         offs = RDB_get_field(curp->recmapp, fno,
-                databp, curp->cur.tree.nodep->header.valuelen, lenp, NULL);
+                databp, curp->cur.tree.nodep->valuelen, lenp, NULL);
     }
     if (offs < 0) {
         RDB_errcode_to_error(offs, ecp);
@@ -91,15 +91,44 @@ int
 RDB_tree_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[],
         RDB_exec_context *ecp)
 {
-    RDB_raise_not_supported("", ecp);
-    return RDB_ERROR;
+    int i;
+    int ret;
+
+    if (curp->cur.tree.nodep == NULL) {
+        RDB_raise_not_found("invalid cursor", ecp);
+        return RDB_ERROR;
+    }
+
+    /*
+    if (curp->secondary)
+    */
+
+    for (i = 0; i < fieldc; i++) {
+        if (fields[i].no < curp->recmapp->keyfieldcount) {
+            RDB_raise_invalid_argument("Modifiying the key is not supported", ecp);
+            return RDB_ERROR;
+        }
+        ret = RDB_set_field_mem(curp->recmapp, &curp->cur.tree.nodep->value,
+                &curp->cur.tree.nodep->valuelen, &fields[i],
+                curp->recmapp->vardatafieldcount);
+        if (ret != RDB_OK) {
+            RDB_errcode_to_error(ret, ecp);
+            return RDB_ERROR;
+        }
+    }
+
+    return RDB_OK;
 }
 
 int
 RDB_tree_cursor_delete(RDB_cursor *curp, RDB_exec_context *ecp)
 {
-    RDB_raise_not_supported("", ecp);
-    return RDB_ERROR;
+    RDB_tree_node *nodep = curp->cur.tree.nodep;
+    int ret = RDB_tree_cursor_next(curp, 0, ecp);
+    if (ret != RDB_OK)
+        return RDB_ERROR;
+
+    return RDB_tree_delete_node(curp->cur.tree.treep, nodep, ecp);
 }
 
 /*
@@ -114,8 +143,8 @@ RDB_tree_cursor_first(RDB_cursor *curp, RDB_exec_context *ecp)
         RDB_raise_not_found("", ecp);
         return RDB_ERROR;
     }
-    while (nodep->header.left != NULL)
-        nodep = nodep->header.left;
+    while (nodep->left != NULL)
+        nodep = nodep->left;
     curp->cur.tree.nodep = nodep;
     return RDB_OK;
 }
@@ -128,14 +157,14 @@ RDB_tree_cursor_next(RDB_cursor *curp, int flags, RDB_exec_context *ecp)
         RDB_raise_invalid_argument("cursor position undefined", ecp);
         return RDB_ERROR;
     }
-    if (nodep->header.right != NULL) {
-        curp->cur.tree.nodep = nodep->header.right;
+    if (nodep->right != NULL) {
+        curp->cur.tree.nodep = nodep->right;
         return RDB_OK;
     }
-    while (nodep->header.parent != NULL && nodep != nodep->header.parent->header.left) {
-        nodep = nodep->header.parent;
+    while (nodep->parent != NULL && nodep != nodep->parent->left) {
+        nodep = nodep->parent;
     }
-    curp->cur.tree.nodep = nodep->header.parent;
+    curp->cur.tree.nodep = nodep->parent;
     if (curp->cur.tree.nodep != NULL)
         return RDB_OK;
     RDB_raise_not_found("", ecp);
@@ -150,14 +179,14 @@ RDB_tree_cursor_prev(RDB_cursor *curp, RDB_exec_context *ecp)
         RDB_raise_invalid_argument("cursor position undefined", ecp);
         return RDB_ERROR;
     }
-    if (nodep->header.right != NULL) {
-        curp->cur.tree.nodep = nodep->header.left;
+    if (nodep->right != NULL) {
+        curp->cur.tree.nodep = nodep->left;
         return RDB_OK;
     }
-    while (nodep->header.parent != NULL && nodep != nodep->header.parent->header.right) {
-        nodep = nodep->header.parent;
+    while (nodep->parent != NULL && nodep != nodep->parent->right) {
+        nodep = nodep->parent;
     }
-    curp->cur.tree.nodep = nodep->header.parent;
+    curp->cur.tree.nodep = nodep->parent;
     if (curp->cur.tree.nodep != NULL)
         return RDB_OK;
     RDB_raise_not_found("", ecp);

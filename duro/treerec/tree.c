@@ -11,8 +11,17 @@
 
 #include <string.h>
 
+static void
+del_node(RDB_tree_node *nodep) {
+    if (nodep->keylen > 0)
+        free(nodep->key);
+    if (nodep->valuelen > 0)
+        free(nodep->value);
+    RDB_free(nodep);
+}
+
 RDB_binary_tree *
-RDB_tree_create(RDB_comparison_func *cmpfp, void *arg, RDB_exec_context *ecp)
+RDB_create_tree(RDB_comparison_func *cmpfp, void *arg, RDB_exec_context *ecp)
 {
     RDB_binary_tree *treep = RDB_alloc(sizeof(RDB_binary_tree), ecp);
     if (treep == NULL)
@@ -25,17 +34,17 @@ RDB_tree_create(RDB_comparison_func *cmpfp, void *arg, RDB_exec_context *ecp)
 }
 
 static void
-delete_subtree(struct tree_node *nodep)
+delete_subtree(RDB_tree_node *nodep)
 {
-    if (nodep->header.left != NULL)
-        delete_subtree(nodep->header.left);
-    if (nodep->header.right != NULL)
-        delete_subtree(nodep->header.right);
-    RDB_free(nodep);
+    if (nodep->left != NULL)
+        delete_subtree(nodep->left);
+    if (nodep->right != NULL)
+        delete_subtree(nodep->right);
+    del_node(nodep);
 }
 
 void
-RDB_tree_delete(RDB_binary_tree *treep)
+RDB_drop_tree(RDB_binary_tree *treep)
 {
     if (treep->root != NULL) {
         delete_subtree(treep->root);
@@ -44,67 +53,153 @@ RDB_tree_delete(RDB_binary_tree *treep)
 }
 
 static int
-compare_key(const RDB_binary_tree *treep, const struct tree_node *nodep,
+compare_key(const RDB_binary_tree *treep, const RDB_tree_node *nodep,
         const void *key, size_t keylen)
 {
     int res;
 
     if (treep->comparison_fp != NULL) {
-        return (*treep->comparison_fp)(nodep->data, nodep->header.keylen,
+        return (*treep->comparison_fp)(nodep->key, nodep->keylen,
                 key, keylen, treep->comparison_arg);
     }
-    res = memcmp(nodep->data, key, nodep->header.keylen <= keylen ?
-            nodep->header.keylen : keylen);
+    res = memcmp(nodep->key, key, nodep->keylen <= keylen ?
+            nodep->keylen : keylen);
     if (res != 0)
         return res;
 
-    return abs(nodep->header.keylen - keylen);
+    return abs(nodep->keylen - keylen);
 }
 
 RDB_tree_node *
-RDB_tree_find(const RDB_binary_tree *treep, void *key, size_t keylen)
+RDB_tree_find(const RDB_binary_tree *treep, const void *key, size_t keylen)
 {
-    struct tree_node *nodep = treep->root;
+    RDB_tree_node *nodep = treep->root;
     while (nodep != NULL) {
         int cmpres = compare_key(treep, nodep, key, keylen);
         if (cmpres == 0)
             return nodep;
         if (cmpres < 0)
-            nodep = nodep->header.left;
+            nodep = nodep->left;
         else
-            nodep = nodep->header.right;
+            nodep = nodep->right;
     }
     return NULL;
 }
 
 void *
-RDB_tree_get(const RDB_binary_tree *treep, void *key, size_t keylen,
+RDB_tree_get(const RDB_binary_tree *treep, const void *key, size_t keylen,
         size_t *valuelenp)
 {
-    struct tree_node *nodep = RDB_tree_find(treep, key, keylen);
+    RDB_tree_node *nodep = RDB_tree_find(treep, key, keylen);
     if (nodep == NULL)
         return NULL;
-    *valuelenp = nodep->header.valuelen;
-    return &nodep->data[keylen];
+    *valuelenp = nodep->valuelen;
+    return &nodep->value;
 }
 
-static struct tree_node *
-create_node(struct tree_node *parentp, void *key, size_t keylen,
+int
+RDB_tree_delete(RDB_binary_tree *treep, const void *key, size_t keylen,
+        RDB_exec_context *ecp)
+{
+    RDB_tree_node *nodep = RDB_tree_find(treep, key, keylen);
+    if (nodep == NULL) {
+        RDB_raise_not_found("", ecp);
+        return RDB_ERROR;
+    }
+    return RDB_tree_delete_node(treep, nodep, ecp);
+}
+
+int
+RDB_tree_delete_node(RDB_binary_tree *treep, RDB_tree_node *nodep,
+        RDB_exec_context *ecp)
+{
+    RDB_tree_node *xnodep;
+
+    if (nodep->right == NULL) {
+        if (nodep->left == NULL) {
+            /* Node to delete has no children */
+            if (nodep->parent == NULL) {
+                treep->root = NULL;
+            } else if (nodep->parent->left == nodep) {
+                nodep->parent->left = NULL;
+            } else {
+                nodep->parent->right = NULL;
+            }
+        } else {
+            /* Node has only left child */
+            if (nodep->parent == NULL) {
+                treep->root = nodep->left;
+                nodep->left->parent = NULL;
+            } else {
+                if (nodep->parent->right == nodep) {
+                    nodep->parent->right = nodep->left;
+                } else {
+                    nodep->parent->left = nodep->left;
+                }
+                nodep->left->parent = nodep->parent;
+            }
+        }
+        del_node(nodep);
+        return RDB_OK;
+    }
+    if (nodep->left == NULL) {
+        /* Node has only right child */
+        if (nodep->parent == NULL) {
+            treep->root = nodep->right;
+            nodep->right->parent = NULL;
+        } else {
+            if (nodep->parent->right == nodep) {
+                nodep->parent->right = nodep->right;
+            } else {
+                nodep->parent->left = nodep->right;
+            }
+            nodep->right->parent = nodep->parent;
+        }
+        del_node(nodep);
+        return RDB_OK;
+    }
+    /* Node to delete has two children */
+
+    for (xnodep = nodep->right; xnodep->left != NULL; xnodep = xnodep->left);
+
+    /* Remove xnodep */
+    if (xnodep->parent->left == xnodep) {
+        xnodep->parent->left = xnodep->right;
+    } else {
+        xnodep->parent->right = xnodep->right;
+    }
+
+    /* Replace data of nodep with xnodep and delete xnodep */
+    if (nodep->keylen > 0)
+        free(nodep->key);
+    nodep->keylen = xnodep->keylen;
+    nodep->key = xnodep->key;
+    if (nodep->valuelen > 0)
+        free(nodep->value);
+    nodep->valuelen = xnodep->valuelen;
+    nodep->value = xnodep->value;
+    RDB_free(xnodep);
+    return RDB_OK;
+}
+
+static RDB_tree_node *
+create_node(RDB_tree_node *parentp, void *key, size_t keylen,
         void *val, size_t vallen, RDB_exec_context *ecp)
 {
-    struct tree_node *nodep = RDB_alloc(sizeof(struct tree_node_header)
-            + keylen + vallen, ecp);
+    RDB_tree_node *nodep = RDB_alloc(sizeof(RDB_tree_node), ecp);
     if (nodep == NULL) {
         return NULL;
     }
-    nodep->header.left = NULL;
-    nodep->header.right = NULL;
-    nodep->header.parent = parentp;
-    nodep->header.balance = 0;
-    nodep->header.keylen = keylen;
-    nodep->header.valuelen = vallen;
-    memcpy(&nodep->data, key, keylen);
-    memcpy(&nodep->data[keylen], val, vallen);
+    nodep->left = NULL;
+    nodep->right = NULL;
+    nodep->parent = parentp;
+    nodep->balance = 0;
+    nodep->keylen = keylen;
+    if (keylen > 0)
+        nodep->key = key;
+    nodep->valuelen = vallen;
+    if (vallen > 0)
+        nodep->value = val;
     return nodep;
 }
 
@@ -112,7 +207,7 @@ int
 RDB_tree_insert(RDB_binary_tree *treep, void *key, size_t keylen,
         void *val, size_t vallen, RDB_exec_context *ecp)
 {
-    struct tree_node *nodep;
+    RDB_tree_node *nodep;
 
     if (treep->root == NULL) {
         treep->root = create_node(NULL, key, keylen, val, vallen, ecp);
@@ -126,17 +221,17 @@ RDB_tree_insert(RDB_binary_tree *treep, void *key, size_t keylen,
             return RDB_ERROR;
         }
         if (cmpres < 0) {
-            if (nodep->header.left == NULL) {
-                nodep->header.left = create_node(nodep, key, keylen, val, vallen, ecp);
-                return nodep->header.left != NULL ? RDB_OK : RDB_ERROR;
+            if (nodep->left == NULL) {
+                nodep->left = create_node(nodep, key, keylen, val, vallen, ecp);
+                return nodep->left != NULL ? RDB_OK : RDB_ERROR;
             }
-            nodep = nodep->header.left;
+            nodep = nodep->left;
         } else {
-            if (nodep->header.right == NULL) {
-                nodep->header.right = create_node(nodep, key, keylen, val, vallen, ecp);
-                return nodep->header.right != NULL ? RDB_OK : RDB_ERROR;
+            if (nodep->right == NULL) {
+                nodep->right = create_node(nodep, key, keylen, val, vallen, ecp);
+                return nodep->right != NULL ? RDB_OK : RDB_ERROR;
             }
-            nodep = nodep->header.right;
+            nodep = nodep->right;
         }
     }
 }

@@ -128,8 +128,8 @@ RDB_create_bdb_recmap(const char *name, const char *filename,
         return NULL;
     }
 
+    rmp->cmpc = cmpc;
     if (cmpc > 0) {
-        rmp->cmpc = cmpc;
         rmp->cmpv = malloc(sizeof (RDB_compare_field) * cmpc);
         if (rmp->cmpv == NULL) {
             ret = ENOMEM;
@@ -579,14 +579,15 @@ RDB_insert_bdb_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp,
 }
 
 int
-RDB_set_field(RDB_recmap *recmapp, DBT *recpartp, const RDB_field *fieldp, 
-               int varfieldc)
+RDB_set_field_mem(RDB_recmap *recmapp, void **datap, size_t *sizep,
+        const RDB_field *fieldp, int varfieldc)
 {
     size_t oldlen;
     int vpos;
-    RDB_byte *databp = (RDB_byte *) recpartp->data;
+    void *ndata;
+    RDB_byte *databp = (RDB_byte *) *datap;
     int offs = RDB_get_field(recmapp, fieldp->no,
-                    recpartp->data, recpartp->size, &oldlen, &vpos);
+                    *datap, *sizep, &oldlen, &vpos);
     if (offs < 0)
         return offs;
 
@@ -599,24 +600,39 @@ RDB_set_field(RDB_recmap *recmapp, DBT *recpartp, const RDB_field *fieldp,
         if (fieldp->len < oldlen)
             memmove(databp + offs + fieldp->len,
                 databp + offs + oldlen,
-                recpartp->size - offs - oldlen);
+                *sizep - offs - oldlen);
 
         /* change memory block size */
-        recpartp->data = realloc(recpartp->data,
-                                 recpartp->size + fieldp->len - oldlen);
-        databp = (RDB_byte *) recpartp->data;
+        ndata = realloc(*datap, *sizep + fieldp->len - oldlen);
+        if (ndata == NULL)
+            return ENOMEM;
+        *datap = ndata;
+        databp = (RDB_byte *) *datap;
 
         /* If the field grows, move the data following the field after realloc */
         if (fieldp->len > oldlen)
             memmove(databp + offs + fieldp->len,
                     databp + offs + oldlen,
-                    recpartp->size - offs - oldlen);
-        recpartp->size = recpartp->size + fieldp->len - oldlen;
-        set_len(&databp[recpartp->size - varfieldc * RECLEN_SIZE
+                    *sizep - offs - oldlen);
+        *sizep = *sizep + fieldp->len - oldlen;
+        set_len(&databp[*sizep - varfieldc * RECLEN_SIZE
                         + vpos * RECLEN_SIZE], fieldp->len);
     }
     /* copy data into field */
     (*(fieldp->copyfp))(databp + offs, fieldp->datap, fieldp->len);
+    return RDB_OK;
+}
+
+int
+RDB_set_field(RDB_recmap *recmapp, DBT *recpartp, const RDB_field *fieldp,
+               int varfieldc)
+{
+    size_t size = recpartp->size;
+    int ret = RDB_set_field_mem(recmapp, &recpartp->data, &size, fieldp,
+            varfieldc);
+    if (ret != RDB_OK)
+        return ret;
+    recpartp->size = size;
     return RDB_OK;
 }
 
