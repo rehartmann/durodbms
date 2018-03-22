@@ -22,7 +22,7 @@
 #include <time.h>
 
 enum {
-    STR_BUF_INC = 16
+    STR_BUF_INC = 64
 };
 
 /**@defgroup generic Scalar and generic functions

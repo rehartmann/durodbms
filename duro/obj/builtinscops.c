@@ -214,7 +214,6 @@ OPERATOR lower (s string) RETURNS string;
 <h4>Description</h4>
 
 Returns the string @a s, converted to lowercase.
-Functionality is currently restricted as tolower() is used for conversion.
 
 <h4>Return value</h4>
 
@@ -229,7 +228,6 @@ OPERATOR upper (s string) RETURNS string;
 <h4>Description</h4>
 
 Returns the string @a s, converted to uppercase.
-Functionality is currently restricted as toupper() is used for conversion.
 
 <h4>Return value</h4>
 
