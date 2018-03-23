@@ -15,6 +15,7 @@
 
 typedef struct RDB_cursor RDB_cursor;
 typedef struct RDB_exec_context RDB_exec_context;
+typedef struct RDB_index RDB_index;
 
 typedef struct RDB_recmap {
     /* internal */
@@ -60,6 +61,10 @@ typedef struct RDB_recmap {
     int (*recmap_est_size_fn)(RDB_recmap *, RDB_rec_transaction *, unsigned *,
             RDB_exec_context *);
     RDB_cursor * (*cursor_fn)(RDB_recmap *, RDB_bool, RDB_rec_transaction *,
+            RDB_exec_context *);
+    RDB_index *(*create_index_fn)(RDB_recmap *, const char *, const char *,
+            RDB_environment *, int, const RDB_field_descriptor[],
+            const RDB_compare_field[], int, RDB_rec_transaction *,
             RDB_exec_context *);
 } RDB_recmap;
 

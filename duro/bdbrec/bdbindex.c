@@ -174,6 +174,9 @@ new_index(RDB_recmap *rmp, const char *name, const char *filename,
     if (!(RDB_UNIQUE & flags))
         ixp->dbp->set_flags(ixp->dbp, DB_DUPSORT);
 
+    ixp->close_index_fn = &RDB_close_bdb_index;
+    ixp->delete_index_fn = &RDB_delete_bdb_index;
+
     return ixp;
 
 error:

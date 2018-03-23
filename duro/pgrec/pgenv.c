@@ -12,7 +12,6 @@
 #include "pgenv.h"
 #include "pgrecmap.h"
 #include "pgtx.h"
-#include "pgindex.h"
 
 #include <string.h>
 
@@ -55,9 +54,6 @@ RDB_pg_open_env(const char *path, RDB_exec_context *ecp)
     envp->commit_fn = &RDB_pg_commit;
     envp->abort_fn = &RDB_pg_abort;
     envp->tx_id_fn = &RDB_pg_tx_id;
-    envp->create_index_fn = &RDB_create_pg_index;
-    envp->close_index_fn = &RDB_close_pg_index;
-    envp->delete_index_fn = &RDB_delete_pg_index;
     envp->set_errfile_fn = &pg_set_errfile;
     envp->get_errfile_fn = &pg_get_errfile;
 

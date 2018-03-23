@@ -9,6 +9,7 @@
 #include "pgcursor.h"
 #include "pgenv.h"
 #include "pgtx.h"
+#include "pgindex.h"
 #include <rec/recmapimpl.h>
 #include <rec/envimpl.h>
 #include <rec/dbdefs.h>
@@ -39,6 +40,7 @@ new_pg_recmap(const char *name, RDB_environment *envp,
     rmp->contains_rec_fn = &RDB_contains_pg_rec;
     rmp->recmap_est_size_fn = &RDB_pg_recmap_est_size;
     rmp->cursor_fn = &RDB_pg_recmap_cursor;
+    rmp->create_index_fn = &RDB_create_pg_index;
 
     rmp->fieldcount = fieldc;
     return rmp;

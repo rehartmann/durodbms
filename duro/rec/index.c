@@ -15,11 +15,7 @@ RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
         const RDB_compare_field cmpv[], int flags, RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
 {
-    if (envp == NULL) {
-        return RDB_create_bdb_index(rmp, namp, filenamp, NULL, fieldc, fieldv,
-                cmpv, flags, rtxp, ecp);
-    }
-    return (*envp->create_index_fn)(rmp, namp, filenamp, envp, fieldc, fieldv,
+    return (*rmp->create_index_fn)(rmp, namp, filenamp, envp, fieldc, fieldv,
             cmpv, flags, rtxp, ecp);
 }
 
@@ -43,7 +39,7 @@ RDB_close_index(RDB_index *ixp, RDB_exec_context *ecp)
     if (ixp->rmp->envp == NULL) {
         return RDB_close_bdb_index(ixp, ecp);
     }
-    return (*ixp->rmp->envp->close_index_fn)(ixp, ecp);
+    return (*ixp->close_index_fn)(ixp, ecp);
 }
 
 RDB_bool
@@ -60,7 +56,7 @@ int
 RDB_delete_index(RDB_index *ixp, RDB_environment *envp, RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
 {
-    return (*envp->delete_index_fn)(ixp, envp, rtxp, ecp);
+    return (*ixp->delete_index_fn)(ixp, envp, rtxp, ecp);
 }
 
 int

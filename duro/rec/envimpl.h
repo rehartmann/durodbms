@@ -49,13 +49,6 @@ typedef struct RDB_environment {
     int (*commit_fn)(RDB_rec_transaction *, RDB_exec_context *);
     int (*abort_fn)(RDB_rec_transaction *, RDB_exec_context *);
     int (*tx_id_fn)(RDB_rec_transaction *);
-    RDB_index *(*create_index_fn)(RDB_recmap *, const char *, const char *,
-            RDB_environment *, int, const RDB_field_descriptor[],
-            const RDB_compare_field[], int, RDB_rec_transaction *,
-            RDB_exec_context *);
-    int (*close_index_fn)(RDB_index *, RDB_exec_context *);
-    int (*delete_index_fn)(RDB_index *, RDB_environment *, RDB_rec_transaction *,
-            RDB_exec_context *);
     void (*set_errfile_fn)(RDB_environment *, FILE *);
     FILE *(*get_errfile_fn)(const RDB_environment *);
 

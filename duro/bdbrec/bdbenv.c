@@ -11,7 +11,6 @@
 #include <obj/excontext.h>
 #include <bdbrec/bdbsequence.h>
 #include <bdbrec/bdbtx.h>
-#include <bdbrec/bdbindex.h>
 
 #include <stdlib.h>
 #include <errno.h>
@@ -49,9 +48,6 @@ open_env(const char *path, RDB_environment **envpp, int bdb_flags)
     envp->commit_fn = &RDB_bdb_commit;
     envp->abort_fn = &RDB_bdb_abort;
     envp->tx_id_fn = &RDB_bdb_tx_id;
-    envp->create_index_fn = &RDB_create_bdb_index;
-    envp->close_index_fn = &RDB_close_bdb_index;
-    envp->delete_index_fn = &RDB_delete_bdb_index;
     envp->set_errfile_fn = &bdb_set_errfile;
     envp->get_errfile_fn = &bdb_get_errfile;
 

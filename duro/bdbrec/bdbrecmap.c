@@ -12,6 +12,7 @@
 #include <obj/excontext.h>
 #include <gen/strfns.h>
 #include <bdbrec/bdbcursor.h>
+#include <bdbrec/bdbindex.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -45,6 +46,7 @@ new_recmap(const char *namp, const char *filenamp,
     rmp->contains_rec_fn = &RDB_contains_bdb_rec;
     rmp->recmap_est_size_fn = &RDB_bdb_recmap_est_size;
     rmp->cursor_fn = &RDB_bdb_recmap_cursor;
+    rmp->create_index_fn = &RDB_create_bdb_index;
 
     ret = db_create(&rmp->impl.dbp, envp != NULL ? envp->env.envp : NULL, 0);
     if (ret != 0) {

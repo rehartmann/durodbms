@@ -21,6 +21,10 @@ typedef struct RDB_index {
     int *fieldv;
     /* For ordered indexes */
     RDB_compare_field *cmpv;
+
+    int (*close_index_fn)(RDB_index *, RDB_exec_context *);
+    int (*delete_index_fn)(RDB_index *, RDB_environment *, RDB_rec_transaction *,
+            RDB_exec_context *);
 } RDB_index;
 
 #endif /* REC_INDEXIMPL_H_ */
