@@ -460,7 +460,7 @@ RDB_fields_to_mem(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
     }
 
     /*
-     * Fill DBT
+     * Fill destination buffer
      */
 
     offs = 0;

@@ -22,7 +22,10 @@ typedef struct RDB_recmap {
     RDB_environment *envp;
     union {
         DB *dbp;
-        RDB_binary_tree *treep;
+        struct {
+            RDB_binary_tree *treep;
+            RDB_index *indexes;
+        } tree;
     } impl;
     char *namp;
     char *filenamp;

@@ -224,7 +224,7 @@ RDB_create_tbindex(RDB_object *tbp, RDB_tbindex *indexp, RDB_environment *envp,
     indexp->idxp = RDB_create_index(tbp->val.tbp->stp->recmapp,
                   RDB_table_is_persistent(tbp) ? indexp->name : NULL,
                   RDB_table_is_persistent(tbp) ? RDB_DATAFILE : NULL,
-                  envp, indexp->attrc, fieldv, cmpv, flags,
+                  txp != NULL ? envp : NULL, indexp->attrc, fieldv, cmpv, flags,
                   txp != NULL ? txp->tx : NULL, ecp);
     if (indexp->idxp == NULL) {
         RDB_handle_err(ecp, txp);
@@ -869,7 +869,7 @@ RDB_delete_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp,
                 if (ret != RDB_OK)
                     return ret;
             } else {
-                ret = RDB_delete_index(stp->indexv[i].idxp, NULL, NULL, ecp);
+                ret = RDB_delete_index(stp->indexv[i].idxp, NULL, ecp);
             }
         }
     }

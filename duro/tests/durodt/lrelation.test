@@ -62,6 +62,13 @@ test private {creating private table and inserting tuples} -body {
 
         drop var pr1;
 
+        try
+        	io.put((tuple from pr1).i); io.put_line('');
+        	io.put_line('could access pr1 after DROP');
+        catch err name_error;
+            ;
+        end try;
+
         -- Private table without KEY
         var pr3 private rel {n int, m int};
         insert pr3 tup {n 1, m 1};

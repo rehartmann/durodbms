@@ -11,6 +11,7 @@
 #include <stdlib.h>
 
 typedef struct RDB_exec_context RDB_exec_context;
+typedef struct RDB_index RDB_index;
 
 typedef int RDB_comparison_func (const void *d1, size_t size1,
         const void *d2, size_t size2, void *comparison_arg);
@@ -44,7 +45,7 @@ RDB_tree_get(const RDB_binary_tree *, const void *, size_t, size_t *);
 RDB_tree_node *
 RDB_tree_find(const RDB_binary_tree *, const void *, size_t);
 
-int
+RDB_tree_node *
 RDB_tree_insert(RDB_binary_tree *, void *, size_t,
         void *, size_t, RDB_exec_context *);
 

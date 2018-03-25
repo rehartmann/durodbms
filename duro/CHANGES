@@ -4,6 +4,12 @@ DuroDBMS 1.4
 
 - lower() and upper() convert multibyte characters
 
+- Fixed bug that caused memory leaks when dropping local variables
+
+- Fixed bug that made the interpreter crash when trying to access dropped local variables
+
+- Fixed creation of local tables with multiple keys when an environment is open
+
 DuroDBMS 1.3
 
 - Added functions lower(), upper()

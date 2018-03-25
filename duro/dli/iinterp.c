@@ -665,6 +665,9 @@ Duro_lookup_sym(const char *name, Duro_interp *interp, int *flagsp,
     if (entryp != NULL) {
         if (flagsp != NULL)
             *flagsp = entryp->flags;
+        if (entryp->varp == NULL) {
+            RDB_raise_name(name, ecp);
+        }
         return entryp->varp;
     }
 

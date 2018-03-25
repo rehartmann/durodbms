@@ -518,7 +518,7 @@ split_by_index(RDB_expression *texp, RDB_tbindex *indexp,
     for (i = 0; i < indexp->attrc && all_eq; i++) {
         RDB_expression *startexp;
 
-        if (indexp->idxp != NULL && RDB_index_is_ordered(indexp->idxp)) {
+        if (indexp->idxp != NULL && indexp->ordered) {
             RDB_expression *stpexp = NULL;
 
             /* Indexes with inverse order are not supported yet */
@@ -593,7 +593,7 @@ split_by_index(RDB_expression *texp, RDB_tbindex *indexp,
         }
     }
 
-    if (objpc > 0) {
+    if (objpc > 0 && ixexp != NULL) {
         if (texp->def.op.args.firstp->kind == RDB_EX_TBP) {
             objpv = RDB_index_objpv(indexp, ixexp, texp->def.op.args.firstp->def.tbref.tbp->typ,
                     objpc, RDB_TRUE, ecp);
@@ -862,7 +862,7 @@ mutate_where(RDB_expression *texp, RDB_expression **tbpv, int cap,
                 && tbpv[i]->def.tbref.indexp != NULL)
         {
             RDB_tbindex *indexp = tbpv[i]->def.tbref.indexp;
-            if ((indexp->idxp != NULL && RDB_index_is_ordered(indexp->idxp))
+            if ((indexp->idxp != NULL && indexp->ordered)
                     || expr_covers_index(exp, indexp)) {
                 if (split_by_index(nexp, indexp, ecp, txp) != RDB_OK)
                     return RDB_ERROR;
@@ -871,7 +871,7 @@ mutate_where(RDB_expression *texp, RDB_expression **tbpv, int cap,
                 && tbpv[i]->def.op.args.firstp->kind == RDB_EX_TBP
                 && tbpv[i]->def.op.args.firstp->def.tbref.indexp != NULL) {
             RDB_tbindex *indexp = tbpv[i]->def.op.args.firstp->def.tbref.indexp;
-            if ((indexp->idxp != NULL && RDB_index_is_ordered(indexp->idxp))
+            if ((indexp->idxp != NULL && indexp->ordered)
                     || expr_covers_index(exp, indexp)) {
                 if (split_by_index(nexp, indexp, ecp, txp) != RDB_OK)
                     return RDB_ERROR;

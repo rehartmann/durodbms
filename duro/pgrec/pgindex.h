@@ -30,7 +30,7 @@ RDB_close_pg_index(RDB_index *, RDB_exec_context *);
 
 /* Delete an index. */
 int
-RDB_delete_pg_index(RDB_index *, RDB_environment *, RDB_rec_transaction *,
+RDB_delete_pg_index(RDB_index *, RDB_rec_transaction *,
         RDB_exec_context *);
 
 #endif

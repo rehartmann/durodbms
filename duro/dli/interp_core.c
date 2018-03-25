@@ -208,11 +208,13 @@ Duro_exec_vardrop(const RDB_parse_node *nodep, Duro_interp *interp,
         if (varentryp != NULL && varentryp->varp != NULL
                 && !(DURO_VAR_CONST & varentryp->flags)) {
             RDB_object *varp = varentryp->varp;
+            int flags = varentryp->flags;
+
             if (Duro_varmap_put(&interp->root_varmap, varname, NULL,
                     DURO_VAR_CONST, ecp) != RDB_OK) {
                 goto error;
             }
-            if (!(DURO_VAR_FREE & varentryp->flags))
+            if (!(DURO_VAR_FREE & flags))
                 return RDB_OK;
             return del_local_var(varp, ecp);
         }

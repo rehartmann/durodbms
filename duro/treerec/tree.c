@@ -94,7 +94,7 @@ RDB_tree_get(const RDB_binary_tree *treep, const void *key, size_t keylen,
     if (nodep == NULL)
         return NULL;
     *valuelenp = nodep->valuelen;
-    return &nodep->value;
+    return nodep->value;
 }
 
 int
@@ -203,7 +203,7 @@ create_node(RDB_tree_node *parentp, void *key, size_t keylen,
     return nodep;
 }
 
-int
+RDB_tree_node *
 RDB_tree_insert(RDB_binary_tree *treep, void *key, size_t keylen,
         void *val, size_t vallen, RDB_exec_context *ecp)
 {
@@ -211,25 +211,25 @@ RDB_tree_insert(RDB_binary_tree *treep, void *key, size_t keylen,
 
     if (treep->root == NULL) {
         treep->root = create_node(NULL, key, keylen, val, vallen, ecp);
-        return treep->root != NULL ? RDB_OK : RDB_ERROR;
+        return treep->root;
     }
     nodep = treep->root;
     for(;;) {
         int cmpres = compare_key(treep, nodep, key, keylen);
         if (cmpres == 0) {
             RDB_raise_key_violation("", ecp);
-            return RDB_ERROR;
+            return NULL;
         }
         if (cmpres < 0) {
             if (nodep->left == NULL) {
                 nodep->left = create_node(nodep, key, keylen, val, vallen, ecp);
-                return nodep->left != NULL ? RDB_OK : RDB_ERROR;
+                return nodep->left;
             }
             nodep = nodep->left;
         } else {
             if (nodep->right == NULL) {
                 nodep->right = create_node(nodep, key, keylen, val, vallen, ecp);
-                return nodep->right != NULL ? RDB_OK : RDB_ERROR;
+                return nodep->right;
             }
             nodep = nodep->right;
         }

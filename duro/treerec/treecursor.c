@@ -41,7 +41,7 @@ RDB_cursor *
 RDB_tree_recmap_cursor(RDB_recmap *rmp, RDB_bool wr,
         RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
-    RDB_cursor *curp = new_tree_cursor(rmp, rmp->impl.treep, ecp);
+    RDB_cursor *curp = new_tree_cursor(rmp, rmp->impl.tree.treep, ecp);
     
     if (curp == NULL) {
         RDB_raise_no_memory(ecp);

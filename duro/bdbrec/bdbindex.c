@@ -141,7 +141,7 @@ new_index(RDB_recmap *rmp, const char *name, const char *filename,
         ixp->fieldv[i] = fieldv[i];
     ixp->cmpv = 0;
 
-    ret = db_create(&ixp->dbp, envp != NULL ? envp->env.envp : NULL, 0);
+    ret = db_create(&ixp->impl.dbp, envp != NULL ? envp->env.envp : NULL, 0);
     if (ret != 0) {
         goto error;
     }
@@ -166,16 +166,19 @@ new_index(RDB_recmap *rmp, const char *name, const char *filename,
          * set B-tree comparison function
          */
         if (all_cmpfn) {
-            ixp->dbp->app_private = ixp;
-            ixp->dbp->set_bt_compare(ixp->dbp, &compare_key);
+            ixp->impl.dbp->app_private = ixp;
+            ixp->impl.dbp->set_bt_compare(ixp->impl.dbp, &compare_key);
         }
     }
 
     if (!(RDB_UNIQUE & flags))
-        ixp->dbp->set_flags(ixp->dbp, DB_DUPSORT);
+        ixp->impl.dbp->set_flags(ixp->impl.dbp, DB_DUPSORT);
 
     ixp->close_index_fn = &RDB_close_bdb_index;
     ixp->delete_index_fn = &RDB_delete_bdb_index;
+    ixp->index_is_ordered_fn = &RDB_bdb_index_is_ordered;
+    ixp->index_delete_rec_fn = &RDB_bdb_index_delete_rec;
+    ixp->index_get_fields_fn = &RDB_bdb_index_get_fields;
 
     return ixp;
 
@@ -241,7 +244,7 @@ RDB_create_bdb_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     if (ixp == NULL)
         return NULL;
 
-    ret = ixp->dbp->open(ixp->dbp, (DB_TXN *) rtxp, filenamp, namp,
+    ret = ixp->impl.dbp->open(ixp->impl.dbp, (DB_TXN *) rtxp, filenamp, namp,
             RDB_ORDERED & flags ? DB_BTREE : DB_HASH, DB_CREATE, 0664);
     if (ret != 0) {
         RDB_errcode_to_error(ret, ecp);
@@ -249,10 +252,10 @@ RDB_create_bdb_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     }
 
     /* Attach index to BDB database (for the callback) */
-    ixp->dbp->app_private = ixp;
+    ixp->impl.dbp->app_private = ixp;
 
     /* Associate the index DB with the recmap DB */
-    ret = ixp->dbp->associate(rmp->impl.dbp, (DB_TXN *) rtxp, ixp->dbp, make_skey, DB_CREATE);
+    ret = ixp->impl.dbp->associate(rmp->impl.dbp, (DB_TXN *) rtxp, ixp->impl.dbp, make_skey, DB_CREATE);
     if (ret != 0) {
         RDB_errcode_to_error(ret, ecp);
         goto error;
@@ -261,7 +264,7 @@ RDB_create_bdb_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     return ixp;
 
 error:
-    RDB_delete_bdb_index(ixp, envp, rtxp, ecp);
+    RDB_delete_bdb_index(ixp, rtxp, ecp);
     return NULL;
 }
 
@@ -276,17 +279,17 @@ RDB_open_bdb_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     if (ixp == NULL)
         return NULL;
 
-    ret = ixp->dbp->open(ixp->dbp, (DB_TXN *) rtxp, filenamp, namp, DB_UNKNOWN, 0, 0664);
+    ret = ixp->impl.dbp->open(ixp->impl.dbp, (DB_TXN *) rtxp, filenamp, namp, DB_UNKNOWN, 0, 0664);
     if (ret != 0) {
         RDB_errcode_to_error(ret, ecp);
         goto error;
     }
 
     /* attach index to BDB database (for the callback) */
-    ixp->dbp->app_private = ixp;
+    ixp->impl.dbp->app_private = ixp;
 
     /* associate the index DB with the recmap DB */
-    ret = ixp->dbp->associate(rmp->impl.dbp, (DB_TXN *) rtxp, ixp->dbp, make_skey, 0);
+    ret = ixp->impl.dbp->associate(rmp->impl.dbp, (DB_TXN *) rtxp, ixp->impl.dbp, make_skey, 0);
     if (ret != 0) {
         RDB_errcode_to_error(ret, ecp);
         goto error;
@@ -302,7 +305,7 @@ error:
 int
 RDB_close_bdb_index(RDB_index *ixp, RDB_exec_context *ecp)
 {
-    int ret = ixp->dbp->close(ixp->dbp, 0);
+    int ret = ixp->impl.dbp->close(ixp->impl.dbp, 0);
     free(ixp->namp);
     free(ixp->filenamp);
     free(ixp->fieldv);
@@ -316,28 +319,28 @@ RDB_close_bdb_index(RDB_index *ixp, RDB_exec_context *ecp)
 }
 
 RDB_bool
-RDB_bdb_index_is_ordered(RDB_index *ixp)
+RDB_bdb_index_is_ordered(const RDB_index *ixp)
 {
     DBTYPE t;
 
-    ixp->dbp->get_type(ixp->dbp, &t);
+    ixp->impl.dbp->get_type(ixp->impl.dbp, &t);
     return (RDB_bool) (t == DB_BTREE);
 }
 
 /* Delete an index. */
 int
-RDB_delete_bdb_index(RDB_index *ixp, RDB_environment *envp, RDB_rec_transaction *rtxp,
+RDB_delete_bdb_index(RDB_index *ixp, RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
 {
-    int ret = ixp->dbp->close(ixp->dbp, 0);
+    int ret = ixp->impl.dbp->close(ixp->impl.dbp, 0);
     if (ret != 0) {
         RDB_errcode_to_error(ret, ecp);
         goto cleanup;
     }
 
     if (ixp->namp != NULL)
-        ret = envp->env.envp->dbremove(envp->env.envp, (DB_TXN *) rtxp,
-                ixp->filenamp, ixp->namp, 0);
+        ret = ixp->rmp->envp->env.envp->dbremove(ixp->rmp->envp->env.envp,
+                (DB_TXN *) rtxp, ixp->filenamp, ixp->namp, 0);
 
 cleanup:
     free(ixp->namp);
@@ -372,7 +375,7 @@ RDB_bdb_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc,
     memset(&data, 0, sizeof (DBT));
 
     /* Get primary key and data */
-    ret = ixp->dbp->pget(ixp->dbp, (DB_TXN *) rtxp, &key, &pkey, &data, 0);
+    ret = ixp->impl.dbp->pget(ixp->impl.dbp, (DB_TXN *) rtxp, &key, &pkey, &data, 0);
     if (ret != 0) {
         RDB_errcode_to_error(ret, ecp);
         return RDB_ERROR;
@@ -421,7 +424,7 @@ RDB_bdb_index_delete_rec(RDB_index *ixp, RDB_field keyv[], RDB_rec_transaction *
     }
 
     /* Delete record */
-    ret = ixp->dbp->del(ixp->dbp, (DB_TXN *) rtxp, &key, 0);
+    ret = ixp->impl.dbp->del(ixp->impl.dbp, (DB_TXN *) rtxp, &key, 0);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp);
         return RDB_ERROR;

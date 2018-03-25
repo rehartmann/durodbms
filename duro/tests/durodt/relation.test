@@ -169,6 +169,13 @@ test insert_delete {creating table, insert, delete} \
         io.put(count(r3)); io.put_line(' tuple');
         delete r3;
         io.put_line(if is_empty(r3) then 'empty' else 'not empty');
+        
+        /* Create local table with multiple keys in the context of an environment */
+        var p private relation { n int, m int } key { n } key { m };
+        insert p tuple { n 1, m 1 };
+        io.put((tuple from p where m = 1).n);
+        io.put_line('');
+        drop var p;
     }
 } -result {type mismatch caught - empty relation
 type mismatch caught - tuple with too many attributes
@@ -184,6 +191,7 @@ element_exists_error
 2 tuples
 1 tuple
 empty
+1
 }
 
 test update {creating table and updating tuples} -setup $SETUP -cleanup $CLEANUP -body {

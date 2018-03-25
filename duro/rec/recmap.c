@@ -17,7 +17,8 @@
 /*
  * Create a recmap with the <var>name</var> specified by name in the DB environment
  * pointed to by envp in the file specified by filename.
- * If filename is NULL, a transient recmap is created.
+ * If envp is NULL, or if the environment is a Berkeley DB environment and filename is NULL,
+ * a transient recmap is created.
  * The recmap will have fieldc fields, the length of field i
  * is given by fieldlenv[i].
  * The first keyfcnt fields constitute the primary index.
@@ -32,13 +33,16 @@ RDB_create_recmap(const char *name, const char *filename,
         RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     if (envp == NULL)
-        return RDB_create_bdb_recmap(name, filename, NULL, fieldc, fieldinfov,
+        return RDB_create_bdb_recmap(NULL, NULL, NULL, fieldc, fieldinfov,
             keyfieldc, cmpc, cmpv, flags, keyc, keyv, rtxp, ecp);
     return (*envp->create_recmap_fn)(name, filename, envp, fieldc, fieldinfov,
             keyfieldc, cmpc, cmpv, flags, keyc, keyv, rtxp, ecp);
 }
 
-/* Open a recmap. For a description of the arguments, see RDB_create_recmap(). */
+/*
+ * Open a recmap. For a description of the arguments, see RDB_create_recmap().
+ * envp may not be NULL.
+ */
 RDB_recmap *
 RDB_open_recmap(const char *name, const char *filename,
        RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[], int keyfieldc,

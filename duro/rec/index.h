@@ -31,11 +31,11 @@ int
 RDB_close_index(RDB_index *, RDB_exec_context *);
 
 RDB_bool
-RDB_index_is_ordered(RDB_index *);
+RDB_index_is_ordered(const RDB_index *);
 
 /* Delete an index. */
 int
-RDB_delete_index(RDB_index *, RDB_environment *, RDB_rec_transaction *,
+RDB_delete_index(RDB_index *, RDB_rec_transaction *,
         RDB_exec_context *);
 
 int

@@ -85,7 +85,7 @@ del_storage(RDB_transaction *txp, RDB_exec_context *ecp)
     for (ixlinkp = txp->delixp;
         (ixlinkp != NULL) && (ret == RDB_OK);
         ixlinkp = ixlinkp->nextp) {
-        ret = RDB_delete_index(ixlinkp->ixp, txp->envp, NULL, ecp);
+        ret = RDB_delete_index(ixlinkp->ixp, NULL, ecp);
         /* If the index was not found, ignore it */
         if (ret != RDB_OK
                 && RDB_obj_type(RDB_get_err(ecp)) == &RDB_RESOURCE_NOT_FOUND_ERROR) {

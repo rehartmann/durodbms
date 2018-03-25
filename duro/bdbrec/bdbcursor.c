@@ -76,7 +76,7 @@ RDB_bdb_index_cursor(RDB_index *idxp, RDB_bool wr,
     if (curp == NULL) {
         return NULL;
     }
-    ret = idxp->dbp->cursor(idxp->dbp, (DB_TXN *) rtxp, &curp->cur.bdb.cursorp, 0);
+    ret = idxp->impl.dbp->cursor(idxp->impl.dbp, (DB_TXN *) rtxp, &curp->cur.bdb.cursorp, 0);
     if (ret != 0) {
         free(curp);
         RDB_errcode_to_error(ret, ecp);

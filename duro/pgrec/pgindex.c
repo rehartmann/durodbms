@@ -14,6 +14,12 @@
 
 #include <libpq-fe.h>
 
+static RDB_bool
+pg_index_is_ordered(const RDB_index *ixp)
+{
+    return RDB_FALSE;
+}
+
 static RDB_index *
 new_min_index(const char *name, RDB_recmap *rmp, RDB_exec_context *ecp)
 {
@@ -30,6 +36,7 @@ new_min_index(const char *name, RDB_recmap *rmp, RDB_exec_context *ecp)
     }
     ixp->close_index_fn = &RDB_close_pg_index;
     ixp->delete_index_fn = &RDB_delete_pg_index;
+    ixp->index_is_ordered_fn = &pg_index_is_ordered;
     return ixp;
 }
 
@@ -106,7 +113,7 @@ RDB_close_pg_index(RDB_index *ixp, RDB_exec_context *ecp)
 
 /* Delete an index. */
 int
-RDB_delete_pg_index(RDB_index *ixp, RDB_environment *envp, RDB_rec_transaction *rtxp,
+RDB_delete_pg_index(RDB_index *ixp, RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
 {
     RDB_object command;
@@ -118,13 +125,13 @@ RDB_delete_pg_index(RDB_index *ixp, RDB_environment *envp, RDB_rec_transaction *
     if (RDB_append_string(&command, ixp->namp, ecp) != RDB_OK)
         goto error;
 
-    if (RDB_env_trace(envp) > 0) {
+    if (RDB_env_trace(ixp->rmp->envp) > 0) {
         fprintf(stderr, "Sending SQL: %s\n", RDB_obj_string(&command));
     }
-    res = PQexec(envp->env.pgconn, RDB_obj_string(&command));
+    res = PQexec(ixp->rmp->envp->env.pgconn, RDB_obj_string(&command));
     if (PQresultStatus(res) != PGRES_COMMAND_OK)
     {
-        RDB_pgresult_to_error(envp, res, ecp);
+        RDB_pgresult_to_error(ixp->rmp->envp, res, ecp);
         PQclear(res);
         goto error;
     }
