@@ -40,12 +40,6 @@ RDB_close_index(RDB_index *ixp, RDB_exec_context *ecp)
     return (*ixp->close_index_fn)(ixp, ecp);
 }
 
-RDB_bool
-RDB_index_is_ordered(const RDB_index *ixp)
-{
-    return (*ixp->index_is_ordered_fn)(ixp);
-}
-
 /* Delete an index. */
 int
 RDB_delete_index(RDB_index *ixp, RDB_rec_transaction *rtxp,

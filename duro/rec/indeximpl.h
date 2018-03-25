@@ -32,7 +32,6 @@ typedef struct RDB_index {
     int (*close_index_fn)(RDB_index *, RDB_exec_context *);
     int (*delete_index_fn)(RDB_index *, RDB_rec_transaction *,
             RDB_exec_context *);
-    RDB_bool (*index_is_ordered_fn)(const RDB_index *);
     int (*index_get_fields_fn)(RDB_index *, RDB_field[], int, RDB_rec_transaction *,
                RDB_field[], RDB_exec_context *);
     int (*index_delete_rec_fn)(RDB_index *, RDB_field[], RDB_rec_transaction *,

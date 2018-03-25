@@ -30,9 +30,6 @@ RDB_open_index(RDB_recmap *, const char *, const char *,
 int
 RDB_close_index(RDB_index *, RDB_exec_context *);
 
-RDB_bool
-RDB_index_is_ordered(const RDB_index *);
-
 /* Delete an index. */
 int
 RDB_delete_index(RDB_index *, RDB_rec_transaction *,

@@ -34,9 +34,6 @@ RDB_open_tree_index(RDB_recmap *, const char *namp, const char *filenamp,
 int
 RDB_close_tree_index(RDB_index *, RDB_exec_context *);
 
-RDB_bool
-RDB_tree_index_is_ordered(const RDB_index *);
-
 /* Delete an index. */
 int
 RDB_delete_tree_index(RDB_index *, RDB_rec_transaction *,

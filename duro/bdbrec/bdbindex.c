@@ -176,7 +176,6 @@ new_index(RDB_recmap *rmp, const char *name, const char *filename,
 
     ixp->close_index_fn = &RDB_close_bdb_index;
     ixp->delete_index_fn = &RDB_delete_bdb_index;
-    ixp->index_is_ordered_fn = &RDB_bdb_index_is_ordered;
     ixp->index_delete_rec_fn = &RDB_bdb_index_delete_rec;
     ixp->index_get_fields_fn = &RDB_bdb_index_get_fields;
 
@@ -316,15 +315,6 @@ RDB_close_bdb_index(RDB_index *ixp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     return RDB_OK;
-}
-
-RDB_bool
-RDB_bdb_index_is_ordered(const RDB_index *ixp)
-{
-    DBTYPE t;
-
-    ixp->impl.dbp->get_type(ixp->impl.dbp, &t);
-    return (RDB_bool) (t == DB_BTREE);
 }
 
 /* Delete an index. */

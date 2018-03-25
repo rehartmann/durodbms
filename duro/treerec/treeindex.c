@@ -162,7 +162,6 @@ new_tree_index(RDB_recmap *rmp,
 
     ixp->close_index_fn = &RDB_close_tree_index;
     ixp->delete_index_fn = &RDB_delete_tree_index;
-    ixp->index_is_ordered_fn = &RDB_tree_index_is_ordered;
     ixp->index_delete_rec_fn = &RDB_tree_index_delete_rec;
     ixp->index_get_fields_fn = &RDB_tree_index_get_fields;
 
@@ -208,12 +207,6 @@ error:
     if (ixp != NULL)
         RDB_delete_tree_index(ixp, rtxp, ecp);
     return NULL;
-}
-
-RDB_bool
-RDB_tree_index_is_ordered(const RDB_index *ixp)
-{
-    return RDB_TRUE;
 }
 
 /* Delete an index. */

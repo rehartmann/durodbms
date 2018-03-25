@@ -22,7 +22,7 @@ RDB_index_sorts(struct RDB_tbindex *indexp, int seqitc,
 {
     int i;
 
-    if (indexp->idxp == NULL || !RDB_index_is_ordered(indexp->idxp)
+    if (indexp->idxp == NULL || !indexp->ordered
             || indexp->attrc < seqitc)
         return RDB_FALSE;
 
@@ -769,7 +769,7 @@ table_cost(const RDB_expression *exp)
             return 1;
         if (indexp->unique)
             return 2;
-        if (!RDB_index_is_ordered(indexp->idxp))
+        if (!indexp->ordered)
             return 3;
         return 4;
     }
@@ -781,7 +781,7 @@ table_cost(const RDB_expression *exp)
                 return table_cost(exp->def.op.args.firstp);
             if (indexp->unique)
                 return table_cost(exp->def.op.args.firstp) * 2;
-            if (!RDB_index_is_ordered(indexp->idxp))
+            if (!indexp->ordered)
                 return table_cost(exp->def.op.args.firstp) * 3;
             return table_cost(exp->def.op.args.firstp) * 4;
         }

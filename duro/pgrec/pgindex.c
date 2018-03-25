@@ -14,12 +14,6 @@
 
 #include <libpq-fe.h>
 
-static RDB_bool
-pg_index_is_ordered(const RDB_index *ixp)
-{
-    return RDB_FALSE;
-}
-
 static RDB_index *
 new_min_index(const char *name, RDB_recmap *rmp, RDB_exec_context *ecp)
 {
@@ -36,7 +30,6 @@ new_min_index(const char *name, RDB_recmap *rmp, RDB_exec_context *ecp)
     }
     ixp->close_index_fn = &RDB_close_pg_index;
     ixp->delete_index_fn = &RDB_delete_pg_index;
-    ixp->index_is_ordered_fn = &pg_index_is_ordered;
     return ixp;
 }
 
