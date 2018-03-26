@@ -236,9 +236,7 @@ RDB_tree_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc,
 {
     size_t keylen;
     void *key;
-    size_t valuelen;
-    void *value;
-    RDB_tree_node *nodep;
+    RDB_tree_node *nodep, *snodep;
     int ret;
     int i;
 
@@ -255,14 +253,14 @@ RDB_tree_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc,
         return RDB_ERROR;
     }
 
-    value = RDB_tree_get(ixp->impl.tree.treep, key, keylen, &valuelen);
-    if (value == NULL) {
+    nodep = RDB_tree_find(ixp->impl.tree.treep, key, keylen);
+    if (nodep == NULL) {
         RDB_raise_not_found("", ecp);
         free(key);
         return RDB_ERROR;
     }
 
-    nodep = *(RDB_tree_node**)value;
+    snodep = *(RDB_tree_node**)nodep->value;
 
     /* Get field values */
     for (i = 0; i < fieldc; i++) {
@@ -270,17 +268,17 @@ RDB_tree_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc,
         int fno = retfieldv[i].no;
 
         if (fno < ixp->rmp->keyfieldcount) {
-            offs = RDB_get_field(ixp->rmp, fno, nodep->key, nodep->keylen,
+            offs = RDB_get_field(ixp->rmp, fno, snodep->key, snodep->keylen,
                     &retfieldv[i].len, NULL);
             if (offs < 0)
                 return offs;
-            retfieldv[i].datap = ((RDB_byte *)nodep->key) + offs;
+            retfieldv[i].datap = ((RDB_byte *)snodep->key) + offs;
         } else {
             offs = RDB_get_field(ixp->rmp, fno,
-                    nodep->value, nodep->valuelen, &retfieldv[i].len, NULL);
+                    snodep->value, snodep->valuelen, &retfieldv[i].len, NULL);
             if (offs < 0)
                 return offs;
-            retfieldv[i].datap = ((RDB_byte *)nodep->value) + offs;
+            retfieldv[i].datap = ((RDB_byte *)snodep->value) + offs;
         }
     }
     free(key);
@@ -293,8 +291,7 @@ RDB_tree_index_delete_rec(RDB_index *ixp, RDB_field keyv[], RDB_rec_transaction 
 {
     size_t keylen;
     void *key;
-    size_t valuelen;
-    void *value;
+    RDB_tree_node *pnodep, *snodep;
     int ret;
     int i;
 
@@ -311,15 +308,16 @@ RDB_tree_index_delete_rec(RDB_index *ixp, RDB_field keyv[], RDB_rec_transaction 
         return RDB_ERROR;
     }
 
-    value = RDB_tree_get(ixp->impl.tree.treep, key, keylen, &valuelen);
-    if (value == NULL) {
+    pnodep = RDB_tree_find(ixp->impl.tree.treep, key, keylen);
+    free(key);
+    if (pnodep == NULL) {
         RDB_raise_not_found("", ecp);
-        free(key);
         return RDB_ERROR;
     }
 
-    ret = RDB_tree_delete_node(ixp->impl.tree.treep,
-            (RDB_tree_node *) value, ecp);
-    free(key);
-    return ret;
+    snodep = (RDB_tree_node *) pnodep->value;
+    if (RDB_delete_from_tree_indexes(ixp->rmp, snodep, ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    return RDB_tree_delete_node(ixp->impl.tree.treep, snodep, ecp);
 }

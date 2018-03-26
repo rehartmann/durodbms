@@ -10,9 +10,8 @@
 
 #include <rec/recmap.h>
 
-#include <db.h>
-
-typedef RDB_exec_context RDB_exec_context;
+typedef struct RDB_exec_context RDB_exec_context;
+typedef struct RDB_tree_node RDB_tree_node;
 
 RDB_recmap *
 RDB_create_tree_recmap(int, const RDB_field_info[], int,
@@ -45,5 +44,8 @@ RDB_contains_tree_rec(RDB_recmap *, RDB_field[], RDB_rec_transaction *, RDB_exec
 
 int
 RDB_tree_recmap_est_size(RDB_recmap *, RDB_rec_transaction *, unsigned *, RDB_exec_context *);
+
+int
+RDB_delete_from_tree_indexes(RDB_recmap *, RDB_tree_node *, RDB_exec_context *);
 
 #endif /* TREEREC_AVLRECMAP_H_ */

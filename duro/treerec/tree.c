@@ -53,21 +53,21 @@ RDB_drop_tree(RDB_binary_tree *treep)
 }
 
 static int
-compare_key(const RDB_binary_tree *treep, const RDB_tree_node *nodep,
-        const void *key, size_t keylen)
+compare_key(const RDB_binary_tree *treep, const void *key, size_t keylen,
+        const RDB_tree_node *nodep)
 {
     int res;
 
     if (treep->comparison_fp != NULL) {
-        return (*treep->comparison_fp)(nodep->key, nodep->keylen,
-                key, keylen, treep->comparison_arg);
+        return (*treep->comparison_fp)(key, keylen,
+                nodep->key, nodep->keylen, treep->comparison_arg);
     }
-    res = memcmp(nodep->key, key, nodep->keylen <= keylen ?
+    res = memcmp(key, nodep->key, nodep->keylen <= keylen ?
             nodep->keylen : keylen);
     if (res != 0)
         return res;
 
-    return abs(nodep->keylen - keylen);
+    return abs(keylen - nodep->keylen);
 }
 
 RDB_tree_node *
@@ -75,7 +75,7 @@ RDB_tree_find(const RDB_binary_tree *treep, const void *key, size_t keylen)
 {
     RDB_tree_node *nodep = treep->root;
     while (nodep != NULL) {
-        int cmpres = compare_key(treep, nodep, key, keylen);
+        int cmpres = compare_key(treep, key, keylen, nodep);
         if (cmpres == 0)
             return nodep;
         if (cmpres < 0)
@@ -84,29 +84,6 @@ RDB_tree_find(const RDB_binary_tree *treep, const void *key, size_t keylen)
             nodep = nodep->right;
     }
     return NULL;
-}
-
-void *
-RDB_tree_get(const RDB_binary_tree *treep, const void *key, size_t keylen,
-        size_t *valuelenp)
-{
-    RDB_tree_node *nodep = RDB_tree_find(treep, key, keylen);
-    if (nodep == NULL)
-        return NULL;
-    *valuelenp = nodep->valuelen;
-    return nodep->value;
-}
-
-int
-RDB_tree_delete(RDB_binary_tree *treep, const void *key, size_t keylen,
-        RDB_exec_context *ecp)
-{
-    RDB_tree_node *nodep = RDB_tree_find(treep, key, keylen);
-    if (nodep == NULL) {
-        RDB_raise_not_found("", ecp);
-        return RDB_ERROR;
-    }
-    return RDB_tree_delete_node(treep, nodep, ecp);
 }
 
 int
@@ -215,7 +192,7 @@ RDB_tree_insert(RDB_binary_tree *treep, void *key, size_t keylen,
     }
     nodep = treep->root;
     for(;;) {
-        int cmpres = compare_key(treep, nodep, key, keylen);
+        int cmpres = compare_key(treep, key, keylen, nodep);
         if (cmpres == 0) {
             RDB_raise_key_violation("", ecp);
             return NULL;

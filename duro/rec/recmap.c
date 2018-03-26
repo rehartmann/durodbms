@@ -33,7 +33,7 @@ RDB_create_recmap(const char *name, const char *filename,
         RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     if (envp == NULL)
-        return RDB_create_bdb_recmap(NULL, NULL, NULL, fieldc, fieldinfov,
+        return RDB_create_tree_recmap(fieldc, fieldinfov,
             keyfieldc, cmpc, cmpv, flags, keyc, keyv, rtxp, ecp);
     return (*envp->create_recmap_fn)(name, filename, envp, fieldc, fieldinfov,
             keyfieldc, cmpc, cmpv, flags, keyc, keyv, rtxp, ecp);

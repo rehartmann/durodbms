@@ -4,12 +4,14 @@
  */
 
 #include "treecursor.h"
+#include "treerecmap.h"
 #include "tree.h"
 #include <rec/cursorimpl.h>
 #include <rec/recmapimpl.h>
 #include <rec/indeximpl.h>
 #include <bdbrec/bdbrecmap.h>
 #include <obj/excontext.h>
+#include <obj/builtintypes.h>
 #include <string.h>
 
 /*
@@ -125,9 +127,12 @@ RDB_tree_cursor_delete(RDB_cursor *curp, RDB_exec_context *ecp)
 {
     RDB_tree_node *nodep = curp->cur.tree.nodep;
     int ret = RDB_tree_cursor_next(curp, 0, ecp);
-    if (ret != RDB_OK)
+    if (ret != RDB_OK) {
+        if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
+            return RDB_ERROR;
+    }
+    if (RDB_delete_from_tree_indexes(curp->recmapp, nodep, ecp) != RDB_OK)
         return RDB_ERROR;
-
     return RDB_tree_delete_node(curp->cur.tree.treep, nodep, ecp);
 }
 
@@ -154,11 +159,14 @@ RDB_tree_cursor_next(RDB_cursor *curp, int flags, RDB_exec_context *ecp)
 {
     RDB_tree_node *nodep = curp->cur.tree.nodep;
     if (nodep == NULL) {
-        RDB_raise_invalid_argument("cursor position undefined", ecp);
+        RDB_raise_not_found("", ecp);
         return RDB_ERROR;
     }
     if (nodep->right != NULL) {
-        curp->cur.tree.nodep = nodep->right;
+        nodep = nodep->right;
+        while (nodep->left != NULL)
+            nodep = nodep->left;
+        curp->cur.tree.nodep = nodep;
         return RDB_OK;
     }
     while (nodep->parent != NULL && nodep != nodep->parent->left) {
@@ -176,11 +184,14 @@ RDB_tree_cursor_prev(RDB_cursor *curp, RDB_exec_context *ecp)
 {
     RDB_tree_node *nodep = curp->cur.tree.nodep;
     if (nodep == NULL) {
-        RDB_raise_invalid_argument("cursor position undefined", ecp);
+        RDB_raise_not_found("", ecp);
         return RDB_ERROR;
     }
-    if (nodep->right != NULL) {
-        curp->cur.tree.nodep = nodep->left;
+    if (nodep->left != NULL) {
+        nodep = nodep->left;
+        while (nodep->right != NULL)
+            nodep = nodep->right;
+        curp->cur.tree.nodep = nodep;
         return RDB_OK;
     }
     while (nodep->parent != NULL && nodep != nodep->parent->right) {
