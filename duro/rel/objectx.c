@@ -683,7 +683,7 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p,
 
 /**
  * Copy the value of property <var>propname</var>
- * of *<var>objp</var> *<var>propvalp</var>.
+ * of *<var>objp</var> to *<var>propvalp</var>.
  *
  * There must be type information associated with *<var>objp</var>.
 

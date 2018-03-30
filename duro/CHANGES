@@ -2,13 +2,17 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 1.4
 
-- lower() and upper() convert multibyte characters
+- lower() and upper() convert multibyte characters.
 
-- Fixed bug that caused memory leaks when dropping local variables
+- Fixed bug that caused memory leaks when dropping local variables.
 
-- Fixed bug that made the interpreter crash when trying to access dropped local variables
+- Fixed bug that made the interpreter crash when trying to access dropped local variables.
 
-- Fixed creation of local tables with multiple keys when an environment is open
+- Fixed creation of local tables with multiple keys when an environment is open.
+
+- Added handling of types with possible represenations to the REST server and Java client.
+
+- Java REST client: Fixed handling of arrays when converting from JSON.
 
 DuroDBMS 1.3
 

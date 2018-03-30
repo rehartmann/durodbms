@@ -72,8 +72,7 @@ gensrc = ['gen/hashmap.c', 'gen/hashmapit.c',
 objsrc = ['obj/object.c', 'obj/excontext.c', 'obj/type.c',
           'obj/builtintypes.c', 'obj/io.c','obj/expression.c', 'obj/key.c',
           'obj/tuple.c', 'obj/array.c', 'obj/operator.c',
-          'obj/builtinscops.c', 'obj/datetimeops.c', 'obj/objmatch.c',
-          'obj/json.c' ]
+          'obj/builtinscops.c', 'obj/datetimeops.c', 'obj/objmatch.c']
 
 recsrc = ['rec/cursor.c', 'rec/env.c', 'rec/index.c', 'rec/recmap.c', 'rec/sequence.c',
           'rec/tx.c', 'bdbrec/bdbenv.c', 'bdbrec/bdbrecmap.c', 'bdbrec/bdbcursor.c',
@@ -95,7 +94,7 @@ relsrc = ['rel/arrayx.c', 'rel/database.c', 'rel/uoperator.c',
         'rel/cat_op.c', 'rel/optimize.c', 'rel/transform.c',
         'rel/constraint.c', 'rel/assign.c', 'obj/opmap.c',
         'rel/match.c', 'rel/tostr.c',
-        'rel/pexpr.c', 'util/www.c']
+        'rel/pexpr.c', 'util/www.c', 'rel/json.c']
 if postgresql == 'true':
 	recsrc.append(['rel/sqlgen.c'])
 
@@ -295,11 +294,11 @@ rec_hdrs = Split('rec/cursor.h rec/env.h rec/dbdefs.h rec/index.h rec/recmap.h '
                  'treerec/treecursor.h treerec/treeindex.h')
 obj_hdrs = Split('obj/object.h obj/excontext.h obj/type.h obj/builtintypes.h '
                 'obj/expression.h obj/operator.h obj/opmap.h obj/objmatch.h '
-                'obj/tuple.h obj/array.h obj/json.h')
+                'obj/tuple.h obj/array.h')
 obj_ihdrs = ['obj/io.h', 'obj/key.h', 'obj/objinternal.h', 'obj/builtinscops.h',
              'obj/datetimeops.h']
 rel_hdrs = Split('rel/rdb.h rel/typeimpl.h '
-                 'rel/optimize.h rel/qresult.h rel/tostr.h ')
+                 'rel/optimize.h rel/qresult.h rel/tostr.h rel/json.h')
 rel_ihdrs = Split('rel/catalog.h rel/cat_stored.h rel/cat_type.h rel/cat_op.h '
 		'rel/delete.h rel/serialize.h '
         'rel/insert.h rel/transform.h rel/internal.h rel/stable.h '

@@ -7,12 +7,12 @@
 
 #include <microhttpd.h>
 #include <rel/rdb.h>
-#include <obj/json.h>
 #include <dli/iinterp.h>
 #include <sys/types.h>
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <rel/json.h>
 #include <signal.h>
 
 #define DEFAULT_PORT 8888
@@ -132,12 +132,12 @@ query_to_json(const char *dbname, const char *expstr, RDB_object *json)
         }
     }
 
-    if (Duro_commit(&interp, &ec) != RDB_OK)
-        goto error;
-
-    if (RDB_obj_to_json(json, &result, &ec) != RDB_OK) {
+    if (RDB_obj_to_json(json, &result, &ec, Duro_dt_tx(&interp)) != RDB_OK) {
         goto error;
     }
+
+    if (Duro_commit(&interp, &ec) != RDB_OK)
+        goto error;
 
     if (exp != NULL)
         RDB_del_expr(exp, &ec);

@@ -87,4 +87,8 @@ public class ScalarType extends Type {
         }
         return type;
     }
+
+    public static ScalarType fromString(String typename) {
+        return typeMap.get(typename);
+    }
 }

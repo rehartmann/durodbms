@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.LinkedList;
+import java.util.List;
 
 import javax.json.Json;
 import javax.json.JsonArray;
@@ -17,6 +19,8 @@ import javax.json.JsonValue;
 
 import net.sf.duro.DException;
 import net.sf.duro.DSession;
+import net.sf.duro.PossrepObject;
+import net.sf.duro.SimplePossrepObject;
 import net.sf.duro.Tuple;
 
 public class RESTSession extends DSession {
@@ -65,8 +69,20 @@ public class RESTSession extends DSession {
         return tuple;
     }
 
+    private static PossrepObject toScalar(String type, JsonObject jsonObject) {
+        PossrepObject obj = new SimplePossrepObject(type);
+        for (String key: jsonObject.keySet()) {
+            obj.setProperty(key, toJson(jsonObject.get(key)));
+        }
+        return obj;
+    }
+
     private static Object[] toArray(JsonArray jsonArray) {
-        return jsonArray.toArray();
+        Object[] result = new Object[jsonArray.size()];
+        for (int i = 0; i < jsonArray.size(); i++) {
+            result[i] = toJson(jsonArray.get(i));
+        }
+        return result;
     }
 
     private static Object toJson(JsonValue jsonValue) {
@@ -74,6 +90,10 @@ public class RESTSession extends DSession {
         case ARRAY:
             return toArray((JsonArray) jsonValue);
         case OBJECT:
+            JsonString jtype = ((JsonObject) jsonValue).getJsonString("@type");
+            if (jtype != null) {
+                return toScalar(jtype.getString(), (JsonObject) jsonValue);
+            }
             return toTuple((JsonObject) jsonValue);
         case STRING:
             return ((JsonString) jsonValue).getString();

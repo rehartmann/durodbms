@@ -13,7 +13,7 @@ public class RestClient {
     public static void main(String[] args) {
         try {
             DSession session = DSession.createSession(new URL("http", "localhost", 8888, "/D"));
-            Object result = session.evaluate("t");
+            Object result = session.evaluate("sys_rtables");
             if (result.getClass().isArray()) {
                 Object[] array = (Object[]) result;
 
