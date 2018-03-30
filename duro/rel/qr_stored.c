@@ -11,7 +11,6 @@
 #include "qresult.h"
 #include "typeimpl.h"
 #include "internal.h"
-#include <db.h>
 
 #ifdef POSTGRESQL
 #include <pgrec/pgcursor.h>

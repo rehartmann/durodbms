@@ -5,10 +5,12 @@
 
 #include "bdbindex.h"
 #include "bdbrecmap.h"
+#include "bdbcursor.h"
 #include <rec/indeximpl.h>
 #include <rec/recmapimpl.h>
 #include <rec/envimpl.h>
 #include <rec/dbdefs.h>
+#include <treerec/field.h>
 #include <gen/strfns.h>
 #include <obj/excontext.h>
 
@@ -178,6 +180,7 @@ new_index(RDB_recmap *rmp, const char *name, const char *filename,
     ixp->delete_index_fn = &RDB_delete_bdb_index;
     ixp->index_delete_rec_fn = &RDB_bdb_index_delete_rec;
     ixp->index_get_fields_fn = &RDB_bdb_index_get_fields;
+    ixp->index_cursor_fn = &RDB_bdb_index_cursor;
 
     return ixp;
 

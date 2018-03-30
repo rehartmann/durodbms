@@ -4,13 +4,18 @@
  */
 
 #include "envimpl.h"
+#include <obj/excontext.h>
+
+#ifdef BERKELEYDB
 #include <bdbrec/bdbenv.h>
+#endif
 
 #ifdef POSTGRESQL
 #include <pgrec/pgenv.h>
 #endif
 
 #include <string.h>
+#include <errno.h>
 
 /** @defgroup env Database environment functions 
  * @{
@@ -40,7 +45,9 @@ RDB_environment *
 RDB_open_env(const char *path, int flags, RDB_exec_context *ecp)
 {
     RDB_environment *envp;
+#ifdef BERKELEYDB
     int ret;
+#endif
 
 #ifdef POSTGRESQL
     if (strstr(path, "postgresql://") == path) {
@@ -48,11 +55,16 @@ RDB_open_env(const char *path, int flags, RDB_exec_context *ecp)
     }
 #endif
 
+#ifdef BERKELEYDB
     ret = RDB_bdb_open_env(path, &envp, flags);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp);
         return NULL;
     }
+#else
+    RDB_raise_not_supported("environment type not supported", ecp);
+    envp = NULL;
+#endif
     return envp;
 }
 
@@ -69,6 +81,7 @@ RDB_open_env(const char *path, int flags, RDB_exec_context *ecp)
 RDB_environment *
 RDB_create_env(const char *path, RDB_exec_context *ecp)
 {
+#ifdef BERKELEYDB
     RDB_environment *envp;
     int ret = RDB_bdb_create_env(path, &envp);
     if (ret != RDB_OK) {
@@ -76,6 +89,10 @@ RDB_create_env(const char *path, RDB_exec_context *ecp)
         return NULL;
     }
     return envp;
+#else
+    RDB_raise_not_supported("environment type not supported", ecp);
+    return NULL;
+#endif
 }
 
 /**
@@ -164,7 +181,23 @@ RDB_env_trace(RDB_environment *envp)
 void
 RDB_errcode_to_error(int errcode, RDB_exec_context *ecp)
 {
-    return RDB_bdb_errcode_to_error(errcode, ecp);
+    switch (errcode) {
+        case ENOMEM:
+            RDB_raise_no_memory(ecp);
+            break;
+        case EINVAL:
+            RDB_raise_invalid_argument("", ecp);
+            break;
+        case ENOENT:
+            RDB_raise_resource_not_found(strerror(errcode), ecp);
+            break;
+        default:
+#ifdef BERKELEYDB
+            RDB_bdb_errcode_to_error(errcode, ecp);
+#else
+            RDB_raise_system(strerror(errcode), ecp);
+#endif
+    }
 }
 
 RDB_bool

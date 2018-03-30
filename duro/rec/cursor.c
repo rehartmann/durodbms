@@ -29,11 +29,11 @@ RDB_cursor *
 RDB_index_cursor(RDB_index *idxp, RDB_bool wr,
                   RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
-    if (idxp->rmp->envp != NULL && idxp->rmp->envp->queries) {
+    if (idxp->index_cursor_fn == NULL) {
         RDB_raise_not_supported("RDB_index_cursor", ecp);
         return NULL;
     }
-    return RDB_bdb_index_cursor(idxp, wr, rtxp, ecp);
+    return (*idxp->index_cursor_fn)(idxp, wr, rtxp, ecp);
 }
 
 /*
@@ -103,9 +103,9 @@ RDB_cursor_prev(RDB_cursor *curp, RDB_exec_context *ecp)
 int
 RDB_cursor_seek(RDB_cursor *curp, int fieldc, RDB_field keyv[], int flags, RDB_exec_context *ecp)
 {
-    if (curp->recmapp->envp != NULL && curp->recmapp->envp->queries) {
-        RDB_raise_not_supported("RDB_cursor_seek", ecp);
+    if (curp->seek_fn == NULL) {
+        RDB_raise_not_supported("cursor seek", ecp);
         return RDB_ERROR;
     }
-    return RDB_bdb_cursor_seek(curp, fieldc, keyv, flags, ecp);
+    return (*curp->seek_fn)(curp, fieldc, keyv, flags, ecp);
 }

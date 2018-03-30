@@ -14,6 +14,8 @@ DuroDBMS 1.4
 
 - Java REST client: Fixed handling of arrays when converting from JSON.
 
+- Added option to build DuroDBMS without Berkeley DB.
+
 DuroDBMS 1.3
 
 - Added functions lower(), upper()

@@ -10,7 +10,10 @@
 
 #include "env.h"
 #include "recmap.h"
+
+#ifdef BERKELEYDB
 #include <db.h>
+#endif
 
 #ifdef POSTGRESQL
 #include <libpq-fe.h>
@@ -23,7 +26,9 @@ typedef struct RDB_exec_context RDB_exec_context;
 typedef struct RDB_environment {
     /* The Berkeley DB environment */
     union {
+#ifdef BERKELEYDB
         DB_ENV *envp;
+#endif
 #ifdef POSTGRESQL
         PGconn *pgconn;
 #endif

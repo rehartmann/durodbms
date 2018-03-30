@@ -6,8 +6,6 @@
 #include "indeximpl.h"
 #include "envimpl.h"
 #include "recmapimpl.h"
-#include <bdbrec/bdbindex.h>
-#include <treerec/treeindex.h>
 #include <obj/excontext.h>
 
 RDB_index *
@@ -26,12 +24,12 @@ RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
         const RDB_compare_field cmpv[], int flags, RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
 {
-    if (RDB_env_queries(envp)) {
-        RDB_raise_not_supported("RDB_open_index", ecp);
+    if (rmp->open_index_fn == NULL) {
+        RDB_raise_not_supported("", ecp);
         return NULL;
     }
-    return RDB_open_bdb_index(rmp, namp, filenamp, envp, fieldc, fieldv, cmpv, flags,
-            rtxp, ecp);
+    return (*rmp->open_index_fn)(rmp, namp, filenamp, envp, fieldc, fieldv,
+                cmpv, flags, rtxp, ecp);
 }
 
 int

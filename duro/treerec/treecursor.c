@@ -6,10 +6,10 @@
 #include "treecursor.h"
 #include "treerecmap.h"
 #include "tree.h"
+#include "field.h"
 #include <rec/cursorimpl.h>
 #include <rec/recmapimpl.h>
 #include <rec/indeximpl.h>
-#include <bdbrec/bdbrecmap.h>
 #include <obj/excontext.h>
 #include <obj/builtintypes.h>
 #include <string.h>
@@ -35,6 +35,8 @@ new_tree_cursor(RDB_recmap *rmp, RDB_binary_tree *treep, RDB_exec_context *ecp)
     curp->first_fn = &RDB_tree_cursor_first;
     curp->next_fn = &RDB_tree_cursor_next;
     curp->prev_fn = &RDB_tree_cursor_prev;
+    curp->seek_fn = NULL;
+
 
     return curp;
 }

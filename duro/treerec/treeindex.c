@@ -6,10 +6,10 @@
 #include "treeindex.h"
 #include "treerecmap.h"
 #include "tree.h"
+#include "field.h"
 #include <rec/dbdefs.h>
 #include <rec/recmapimpl.h>
 #include <rec/indeximpl.h>
-#include <bdbrec/bdbrecmap.h>
 #include <obj/excontext.h>
 
 #include <string.h>
@@ -164,6 +164,7 @@ new_tree_index(RDB_recmap *rmp,
     ixp->delete_index_fn = &RDB_delete_tree_index;
     ixp->index_delete_rec_fn = &RDB_tree_index_delete_rec;
     ixp->index_get_fields_fn = &RDB_tree_index_get_fields;
+    ixp->index_cursor_fn = NULL;
 
     return ixp;
 

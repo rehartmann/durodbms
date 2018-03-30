@@ -14,36 +14,48 @@ bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.6.1')
 
 release = 'pre1.4'
 
-env = Environment(ENV = os.environ, tools = ['default', 'textfile'], JAVACLASSPATH = '../jduro/lib/javax.json.jar')
+env = Environment(ENV = os.environ, tools = ['default', 'textfile'], JAVACLASSPATH = '../jduro/lib/javax.json.jar',
+        CPPPATH = ['.'])
 
 java_home = os.getenv('JAVA_HOME', '/usr/lib/jvm/java-8-openjdk-i386')
 
 oshlibsuffix = env['SHLIBSUFFIX']
 
 postgresql = ARGUMENTS.get('postgresql', 'false') 
+berkeleydb = ARGUMENTS.get('berkeleydb', 'true') 
 
 if env['PLATFORM'] == 'win32':
     default_prefix = 'C:'
-    env.Replace(LIBS = ['libdb61', 'ltdl', 'shlwapi'])
-    durolibs = ['libdb61', 'ltdl', 'regex', 'shlwapi']
+    env.Replace(LIBS = ['ltdl', 'shlwapi'])
+    durolibs = ['ltdl', 'regex', 'shlwapi']
 else:
     default_prefix = '/usr/local'
     env.Replace(SHLIBSUFFIX = env['SHLIBSUFFIX'] + '.' + release)
-    env.Replace(LIBS = ['db', 'ltdl', 'm'])
-    durolibs = ['db', 'ltdl', 'm', 'pq']
+    env.Replace(LIBS = ['ltdl', 'm'])
+    durolibs = ['ltdl', 'm', 'pq']
 
 prefix = ARGUMENTS.get('prefix', default_prefix)
 
 installdir = prefix + '/durodbms.' + release
 
-env.Replace(CPPPATH = ['.', bdbhome + '/include', '/usr/include/tcl'])
+env.Replace(RPATH = [installdir + '/lib'])
 
-env.Replace(LIBPATH = ['.', bdbhome + '/lib'])
-
-env.Replace(RPATH = [installdir + '/lib', bdbhome + '/lib'])
+env.Replace(LIBPATH = ['.'])
 
 if (os.environ.has_key('CFLAGS')):
     env.Replace(CCFLAGS = os.environ['CFLAGS'])
+
+if berkeleydb == 'true':
+    env.Replace(CPPPATH = env['CPPPATH'] + [bdbhome + '/include'])
+    env.Replace(LIBPATH = env['LIBPATH'] + [bdbhome + '/lib'])
+    env.Replace(RPATH = [bdbhome + '/lib'])
+    env.Append(CCFLAGS = ' -DBERKELEYDB')
+    if env['PLATFORM'] == 'win32':
+        env.Replace(LIBS = ['db61'])
+        durolibs = durolibs + ['db61']
+    else:
+        env.Replace(LIBS = ['db'])
+        durolibs = durolibs + ['db']
 
 if (os.environ.has_key('LDFLAGS')):
     env.Append(LINKFLAGS = os.environ['LDFLAGS'])
@@ -75,10 +87,13 @@ objsrc = ['obj/object.c', 'obj/excontext.c', 'obj/type.c',
           'obj/builtinscops.c', 'obj/datetimeops.c', 'obj/objmatch.c']
 
 recsrc = ['rec/cursor.c', 'rec/env.c', 'rec/index.c', 'rec/recmap.c', 'rec/sequence.c',
-          'rec/tx.c', 'bdbrec/bdbenv.c', 'bdbrec/bdbrecmap.c', 'bdbrec/bdbcursor.c',
-          'bdbrec/bdbsequence.c', 'bdbrec/bdbtx.c', 'bdbrec/bdbindex.c',
-          'treerec/tree.c', 'treerec/treerecmap.c', 'treerec/treecursor.c',
-          'treerec/treeindex.c']
+          'rec/tx.c', 'treerec/tree.c', 'treerec/treerecmap.c', 'treerec/treecursor.c',
+          'treerec/treeindex.c', 'treerec/field.c']
+
+if berkeleydb == 'true':
+    recsrc.append(['bdbrec/bdbenv.c', 'bdbrec/bdbrecmap.c', 'bdbrec/bdbcursor.c',
+          'bdbrec/bdbsequence.c', 'bdbrec/bdbtx.c', 'bdbrec/bdbindex.c'])
+
 if postgresql == 'true':
 	recsrc.append(['pgrec/pgenv.c', 'pgrec/pgrecmap.c', 'pgrec/pgtx.c', 'pgrec/pgindex.c',
           'pgrec/pgcursor.c'])
@@ -141,9 +156,11 @@ libdurotcllibs = ['duro']
 if env['PLATFORM'] == 'win32':
     libdurotcllibs += ['tcl85', 'libdb61']
     libdurotcl = env.SharedLibrary('durotcl', durotclsrc + ['durotcl.def'],
-            LIBS = libdurotcllibs)
+            LIBS = libdurotcllibs,
+            CPPPATH = env['CPPPATH'] + ['/usr/include/tcl'])
 else:
-    libdurotcl = env.SharedLibrary('durotcl', [durotclsrc, libduro])
+    libdurotcl = env.SharedLibrary('durotcl', [durotclsrc, libduro],
+    		CPPPATH = env['CPPPATH'] + ['/usr/include/tcl'])
 
 env.Alias('tcl', libdurotcl)
 
@@ -291,7 +308,7 @@ rec_hdrs = Split('rec/cursor.h rec/env.h rec/dbdefs.h rec/index.h rec/recmap.h '
                  'bdbrec/bdbsequence.h bdbrec/bdbtx.h '
                  'pgrec/pgenv.h pgrec/pgrecmap.h pgrec/pgtx.h pgrec/pgindex.h '
                  'pgrec/pgcursor.h treerec/tree.h treerec/treerecmap.h '
-                 'treerec/treecursor.h treerec/treeindex.h')
+                 'treerec/treecursor.h treerec/treeindex.h treerec/field.h')
 obj_hdrs = Split('obj/object.h obj/excontext.h obj/type.h obj/builtintypes.h '
                 'obj/expression.h obj/operator.h obj/opmap.h obj/objmatch.h '
                 'obj/tuple.h obj/array.h')

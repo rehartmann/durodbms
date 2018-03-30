@@ -26,6 +26,7 @@
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.1489731542" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="RDB_INT_MIN=INT_MIN"/>
 									<listOptionValue builtIn="false" value="RDB_INT_MAX=INT_MAX"/>
+									<listOptionValue builtIn="false" value="BERKELEYDB"/>
 								</option>
 								<option id="gnu.c.compiler.option.include.paths.1072589226" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="/usr/lib/jvm/java-6-openjdk-i386/include"/>

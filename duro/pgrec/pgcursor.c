@@ -38,6 +38,7 @@ new_pg_cursor(RDB_environment *envp, RDB_recmap *rmp, RDB_rec_transaction *rtxp,
     curp->prev_fn = &RDB_pg_cursor_prev;
     curp->set_fn = &RDB_pg_cursor_set;
     curp->delete_fn = &RDB_pg_cursor_delete;
+    curp->seek_fn = NULL;
 
     curp->cur.pg.current_row = NULL;
 

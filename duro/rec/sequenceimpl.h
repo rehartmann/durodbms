@@ -8,10 +8,14 @@
 
 #include "sequence.h"
 
+#ifdef BERKELEYDB
 #include <db.h>
+#endif
 
 typedef struct RDB_sequence {
+#ifdef BERKELEYDB
     DB_SEQUENCE *seq;
+#endif
     char *filenamp;
     char *cnamp;
 

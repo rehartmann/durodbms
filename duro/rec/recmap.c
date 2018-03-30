@@ -11,7 +11,6 @@
 #include <gen/strfns.h>
 #include <obj/object.h>
 #include <obj/excontext.h>
-#include <bdbrec/bdbrecmap.h>
 #include <treerec/treerecmap.h>
 
 /*

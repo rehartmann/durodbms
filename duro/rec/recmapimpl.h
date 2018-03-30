@@ -10,7 +10,11 @@
 
 #include "recmap.h"
 #include "env.h"
+
+#ifdef BERKELEYDB
 #include "db.h"
+#endif
+
 #include <treerec/tree.h>
 
 typedef struct RDB_cursor RDB_cursor;
@@ -21,7 +25,9 @@ typedef struct RDB_recmap {
     /* internal */
     RDB_environment *envp;
     union {
+#ifdef BERKELEYDB
         DB *dbp;
+#endif
         struct {
             RDB_binary_tree *treep;
             RDB_index *indexes;
@@ -67,6 +73,10 @@ typedef struct RDB_recmap {
             RDB_exec_context *);
     RDB_index *(*create_index_fn)(RDB_recmap *, const char *, const char *,
             RDB_environment *, int, const RDB_field_descriptor[],
+            const RDB_compare_field[], int, RDB_rec_transaction *,
+            RDB_exec_context *);
+    RDB_index *(*open_index_fn)(RDB_recmap *, const char *, const char *,
+            RDB_environment *, int, const int[],
             const RDB_compare_field[], int, RDB_rec_transaction *,
             RDB_exec_context *);
 } RDB_recmap;

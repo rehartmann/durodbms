@@ -52,13 +52,6 @@ RDB_contains_bdb_rec(RDB_recmap *, RDB_field[], RDB_rec_transaction *, RDB_exec_
 int
 RDB_bdb_recmap_est_size(RDB_recmap *, RDB_rec_transaction *, unsigned *, RDB_exec_context *);
 
-size_t
-RDB_get_vflen(RDB_byte *, size_t, int, int);
-
-int
-RDB_get_field(RDB_recmap *, int, const void *, size_t,
-        size_t *, int *);
-
 int
 RDB_set_field(RDB_recmap *, DBT *, const RDB_field *,
                int);
@@ -74,16 +67,5 @@ RDB_fields_to_DBT(RDB_recmap *, int, const RDB_field[],
 int
 RDB_update_DBT_rec(RDB_recmap *, DBT *, DBT *,
         int, const RDB_field[], DB_TXN *);
-
-int
-RDB_fields_to_mem(RDB_recmap *, int, const RDB_field[], void **, size_t *);
-
-int
-RDB_get_mem_fields(RDB_recmap *, void *, size_t,
-        void *, size_t, int fieldc, RDB_field[]);
-
-int
-RDB_set_field_mem(RDB_recmap *, void **, size_t *,
-        const RDB_field *, int);
 
 #endif /* BDBREC_BDBRECMAP_H_ */

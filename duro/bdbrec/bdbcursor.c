@@ -8,6 +8,7 @@
 #include <rec/cursorimpl.h>
 #include <rec/recmapimpl.h>
 #include <rec/indeximpl.h>
+#include <treerec/field.h>
 #include <obj/excontext.h>
 #include <string.h>
 
@@ -37,6 +38,7 @@ new_bdb_cursor(RDB_recmap *rmp, RDB_rec_transaction *rtxp, RDB_index *idxp,
     curp->first_fn = &RDB_bdb_cursor_first;
     curp->next_fn = &RDB_bdb_cursor_next;
     curp->prev_fn = &RDB_bdb_cursor_prev;
+    curp->seek_fn = &RDB_bdb_cursor_seek;
 
     return curp;
 }

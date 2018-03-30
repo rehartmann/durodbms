@@ -10,9 +10,9 @@
 #include <rec/dbdefs.h>
 #include <rec/recmapimpl.h>
 #include <rec/indeximpl.h>
-#include <bdbrec/bdbrecmap.h>
 #include <obj/excontext.h>
 #include <gen/strfns.h>
+#include <treerec/field.h>
 #include <treerec/treerecmap.h>
 #include <treerec/treecursor.h>
 #include <treerec/treeindex.h>
@@ -99,6 +99,7 @@ new_tree_recmap(int fieldc, const RDB_field_info fieldinfov[],
     rmp->recmap_est_size_fn = &RDB_tree_recmap_est_size;
     rmp->cursor_fn = &RDB_tree_recmap_cursor;
     rmp->create_index_fn = &RDB_create_tree_index;
+    rmp->open_index_fn = NULL;
 
     return rmp;
 }

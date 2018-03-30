@@ -11,12 +11,19 @@
 #include "index.h"
 #include "recmap.h"
 #include <treerec/tree.h>
+
+#ifdef BERKELEYDB
 #include <db.h>
+#endif
+
+typedef struct RDB_cursor RDB_cursor;
 
 typedef struct RDB_index {
     RDB_recmap *rmp;
     union {
+#ifdef BERKELEYDB
         DB *dbp;
+#endif
         struct {
             RDB_binary_tree *treep;
             struct RDB_index *nextp;
@@ -35,6 +42,8 @@ typedef struct RDB_index {
     int (*index_get_fields_fn)(RDB_index *, RDB_field[], int, RDB_rec_transaction *,
                RDB_field[], RDB_exec_context *);
     int (*index_delete_rec_fn)(RDB_index *, RDB_field[], RDB_rec_transaction *,
+            RDB_exec_context *);
+    RDB_cursor * (*index_cursor_fn)(RDB_index *, RDB_bool, RDB_rec_transaction *,
             RDB_exec_context *);
 } RDB_index;
 

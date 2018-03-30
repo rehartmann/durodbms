@@ -41,6 +41,7 @@ new_pg_recmap(const char *name, RDB_environment *envp,
     rmp->recmap_est_size_fn = &RDB_pg_recmap_est_size;
     rmp->cursor_fn = &RDB_pg_recmap_cursor;
     rmp->create_index_fn = &RDB_create_pg_index;
+    rmp->open_index_fn = NULL;
 
     rmp->fieldcount = fieldc;
     return rmp;

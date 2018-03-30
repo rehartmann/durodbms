@@ -30,6 +30,10 @@ new_min_index(const char *name, RDB_recmap *rmp, RDB_exec_context *ecp)
     }
     ixp->close_index_fn = &RDB_close_pg_index;
     ixp->delete_index_fn = &RDB_delete_pg_index;
+    ixp->index_delete_rec_fn = NULL;
+    ixp->index_get_fields_fn = NULL;
+    ixp->index_cursor_fn = NULL;
+
     return ixp;
 }
 
