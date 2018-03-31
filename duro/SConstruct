@@ -48,11 +48,11 @@ if (os.environ.has_key('CFLAGS')):
 if berkeleydb == 'true':
     env.Replace(CPPPATH = env['CPPPATH'] + [bdbhome + '/include'])
     env.Replace(LIBPATH = env['LIBPATH'] + [bdbhome + '/lib'])
-    env.Replace(RPATH = [bdbhome + '/lib'])
-    env.Append(CCFLAGS = ' -DBERKELEYDB')
+    env.Replace(RPATH = env['RPATH'] + [bdbhome + '/lib'])
+    env.Append(CFLAGS = ' -DBERKELEYDB')
     if env['PLATFORM'] == 'win32':
-        env.Replace(LIBS = ['db61'])
-        durolibs = durolibs + ['db61']
+        env.Replace(LIBS = ['libdb61'])
+        durolibs = durolibs + ['libdb61']
     else:
         env.Replace(LIBS = ['db'])
         durolibs = durolibs + ['db']
@@ -301,8 +301,9 @@ env.Alias('testbins', testbins)
 gen_hdrs = Split('gen/hashmap.h gen/hashmapit.h gen/hashtable.h '
         'gen/hashtabit.h gen/strfns.h gen/strdump.h gen/types.h '
         'gen/releaseno.h')
-rec_hdrs = Split('rec/cursor.h rec/env.h rec/dbdefs.h rec/index.h rec/recmap.h '
-                 'rec/sequence.h rec/tx.h rec/envimpl.h rec/recmapimpl.h '
+rec_hdrs = Split('rec/env.h rec/dbdefs.h rec/tx.h')
+rec_ihdrs = Split('rec/cursor.h rec/index.h rec/recmap.h '
+                 'rec/sequence.h rec/envimpl.h rec/recmapimpl.h '
                  'rec/indeximpl.h rec/cursorimpl.h rec/sequenceimpl.h '
                  'bdbrec/bdbenv.h bdbrec/bdbrecmap.h bdbrec/bdbcursor.h bdbrec/bdbindex.h '
                  'bdbrec/bdbsequence.h bdbrec/bdbtx.h '
@@ -435,6 +436,7 @@ if env.has_key('TAR'):
     env.Tar('src.tar', 'tests/lstables.c')
     env.Tar('src.tar', gen_hdrs)
     env.Tar('src.tar', rec_hdrs)
+    env.Tar('src.tar', rec_ihdrs)
     env.Tar('src.tar', obj_hdrs)
     env.Tar('src.tar', obj_ihdrs)
     env.Tar('src.tar', rel_hdrs)

@@ -11,6 +11,8 @@ scons install
 
 To build DuroDBMS with PostgreSQL support, add postgresql=true to each invocation.
 
+To build DuroDBMS without Berkeley DB support, add berkeleydb=false to each invocation.
+
 'scons test' will build the Tcl interface if it has not already been built
 because the tests depend on it. If Tcl is not available, running the tests
 will not be possible. Duroadmin will not be available either.
