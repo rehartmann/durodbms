@@ -28,7 +28,8 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
 
     if (seqitc > 0) {
         indexp = RDB_expr_sortindex(texp);
-        if (indexp == NULL || !RDB_index_sorts(indexp, seqitc, seqitv)) {
+        if (indexp == NULL || !RDB_index_sorts(indexp, seqitc, seqitv)
+                || (txp != NULL && RDB_env_queries(txp->envp))) {
             /* Create sorter */
             if (RDB_sorter(texp, &qrp, ecp, txp, seqitc, seqitv) != RDB_OK)
                 goto error;

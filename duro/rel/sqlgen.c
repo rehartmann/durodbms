@@ -8,6 +8,8 @@
 #include "sqlgen.h"
 #include "rdb.h"
 #include "internal.h"
+#include "stable.h"
+#include <rec/recmapimpl.h>
 #include <obj/objinternal.h>
 #include <pgrec/pgenv.h>
 #include <stdlib.h>
@@ -827,8 +829,13 @@ RDB_expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
     case RDB_EX_TBP:
         if (RDB_string_to_obj(sql, "\"", ecp) != RDB_OK)
             return RDB_ERROR;
-        if (RDB_append_string(sql, RDB_table_name(exp->def.tbref.tbp), ecp) != RDB_OK)
-            return RDB_ERROR;
+        if (exp->def.tbref.tbp->val.tbp->stp == NULL) {
+            if (RDB_append_string(sql, RDB_table_name(exp->def.tbref.tbp), ecp) != RDB_OK)
+                return RDB_ERROR;
+        } else {
+            if (RDB_append_string(sql, exp->def.tbref.tbp->val.tbp->stp->recmapp->namp, ecp) != RDB_OK)
+                return RDB_ERROR;
+        }
         return RDB_append_char(sql, '"', ecp);
     case RDB_EX_RO_OP:
         if (strcmp(exp->def.op.name, "project") == 0) {
@@ -914,7 +921,8 @@ RDB_expr_to_sql(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
 }
 
 int
-RDB_expr_to_sql_select(RDB_object *sql, RDB_expression *exp, RDB_environment *envp,
+RDB_expr_to_sql_select(RDB_object *sql, RDB_expression *exp,
+        int seqitc, const RDB_seq_item seqitv[], RDB_environment *envp,
         RDB_exec_context *ecp)
 {
     RDB_object te;
@@ -938,6 +946,29 @@ RDB_expr_to_sql_select(RDB_object *sql, RDB_expression *exp, RDB_environment *en
             goto error;
         if (RDB_append_string(sql, RDB_obj_string(&te), ecp) != RDB_OK)
             goto error;
+    }
+
+    if (seqitc > 0) {
+        int i;
+
+        if (RDB_append_string(sql, " ORDER BY ", ecp) != RDB_OK)
+            goto error;
+        for (i = 0; i < seqitc; i++) {
+            if (RDB_append_char(sql, '"', ecp) != RDB_OK)
+                return RDB_ERROR;
+            if (RDB_append_string(sql, seqitv[i].attrname, ecp) != RDB_OK)
+                return RDB_ERROR;
+            if (RDB_append_char(sql, '"', ecp) != RDB_OK)
+                return RDB_ERROR;
+            if (!seqitv[i].asc) {
+                if (RDB_append_string(sql, " DESC", ecp) != RDB_OK)
+                    return RDB_ERROR;
+            }
+            if (i < seqitc - 1) {
+                if (RDB_append_char(sql, ',', ecp) != RDB_OK)
+                    return RDB_ERROR;
+            }
+        }
     }
 
     RDB_destroy_obj(&te, ecp);

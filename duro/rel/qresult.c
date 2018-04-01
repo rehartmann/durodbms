@@ -851,7 +851,7 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
             RDB_object sql;
             RDB_cursor *curp;
             RDB_init_obj(&sql);
-            if (RDB_expr_to_sql_select(&sql, exp, txp->envp, ecp) != RDB_OK) {
+            if (RDB_expr_to_sql_select(&sql, exp, 0, NULL, txp->envp, ecp) != RDB_OK) {
                 RDB_destroy_obj(&sql, ecp);
                 return RDB_ERROR;
             }
@@ -1268,6 +1268,22 @@ strvec_find(const char *str, const RDB_string_vec *strvec)
     return -1;
 }
 
+static RDB_bool
+order_contains_nonsql_type(const RDB_type *reltyp, int seqitc, const RDB_seq_item seqitv[])
+{
+    int i;
+    RDB_type *attrtyp;
+
+    for (i = 0; i < seqitc; i++) {
+        attrtyp = RDB_type_attr_type(reltyp, seqitv[i].attrname);
+        if (attrtyp != &RDB_BOOLEAN && attrtyp != &RDB_INTEGER && attrtyp != &RDB_FLOAT
+                && attrtyp != &RDB_STRING && attrtyp != &RDB_BINARY) {
+            return RDB_TRUE;
+        }
+    }
+    return RDB_FALSE;
+}
+
 /*
  * Creates a qresult which sorts a table.
  */
@@ -1288,6 +1304,36 @@ RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
+    key.strv = NULL;
+
+    typ = RDB_expr_type(texp, NULL, NULL, NULL, ecp, txp);
+    if (typ == NULL)
+        goto error;
+
+#ifdef POSTGRESQL
+    if (txp != NULL && RDB_env_queries(txp->envp)
+            && !order_contains_nonsql_type(typ, seqitc, seqitv)
+            && RDB_sql_convertible(texp)) {
+        RDB_object sql;
+        RDB_cursor *curp;
+        RDB_init_obj(&sql);
+        if (RDB_expr_to_sql_select(&sql, texp, seqitc, seqitv, txp->envp, ecp)
+                != RDB_OK) {
+            RDB_destroy_obj(&sql, ecp);
+            goto error;
+        }
+        curp = RDB_pg_query_cursor(txp->envp, RDB_obj_string(&sql), RDB_FALSE,
+                txp->tx, ecp);
+        RDB_destroy_obj(&sql, ecp);
+        if (curp == NULL)
+            goto error;
+        if (RDB_init_cursor_qresult(qrp, curp, NULL, texp, ecp, txp) != RDB_OK)
+            goto error;
+        *qrpp = qrp;
+        return RDB_OK;
+    }
+#endif
+
     qrp->nested = RDB_FALSE;
     qrp->val.stored.tbp = NULL;
     qrp->endreached = RDB_FALSE;
@@ -1296,9 +1342,6 @@ RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
      * Create a sorted all-key table
      */
 
-    typ = RDB_expr_type(texp, NULL, NULL, NULL, ecp, txp);
-    if (typ == NULL)
-        goto error;
     typ = RDB_dup_nonscalar_type(typ, ecp);
     if (typ == NULL)
         goto error;
@@ -1306,6 +1349,7 @@ RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
     key.strc = RDB_base_type(typ)->def.tuple.attrc;
     key.strv = RDB_alloc(sizeof (char *) * RDB_base_type(typ)->def.tuple.attrc, ecp);
     if (key.strv == NULL) {
+        RDB_del_nonscalar_type(typ, ecp);
         goto error;
     }
     for (i = 0; i < key.strc; i++) {
