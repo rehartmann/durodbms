@@ -97,7 +97,7 @@ test casts {cast operators} -body {
 
 	    io.put_line(cast_as_string(500));
 	    io.put_line(cast_as_char(-13));
-	    io.put_line(cast_as_string(-34.5551));
+	    io.put_line(cast_as_string(-34.552));
 	    io.put_line(cast_as_char(0.0));
 	    
 	    io.put_line(cast_as_string(X'446f'));
@@ -114,7 +114,7 @@ test casts {cast operators} -body {
 0.0
 500
 -13
--34.5551
+-34.552
 0.0
 Do
 }
@@ -415,16 +415,16 @@ test deftypemr {user-defined type with multiple possreps} -setup $SETUP -cleanup
 
         for tp in p order(id asc);
              io.put(the_i(tp.amount)); io.put_line('');
-             io.put(the_r(tp.amount)); io.put_line('');
+             io.put(format("%.5f", the_r(tp.amount))); io.put_line('');
         end for;
 
         var p2 private relation {id int, amount fixed2}
-                init rel { tuple { id 1, amount fixed2r(500.11) },
-                       tuple { id 2, amount fixed2i(20012) } };
+                init rel { tuple { id 1, amount fixed2r(500.5) },
+                       tuple { id 2, amount fixed2i(20015) } };
 
         for tp in p2 order(id asc);
              io.put(the_i(tp.amount)); io.put_line('');
-             io.put(the_r(tp.amount)); io.put_line('');
+             io.put(format("%.5f", the_r(tp.amount))); io.put_line('');
         end for;
     }
 } -result {0
@@ -436,13 +436,13 @@ test deftypemr {user-defined type with multiple possreps} -setup $SETUP -cleanup
 20
 0.2
 350
-3.5
+3.50000
 1420
-14.2
-50011
-500.11
-20012
-200.12
+14.20000
+50050
+500.50000
+20015
+200.15000
 }
 
 test deftypemri {user-defined type with multiple possreps and incomplete implementation} -setup $SETUP -cleanup $CLEANUP -body {

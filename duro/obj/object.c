@@ -633,7 +633,7 @@ dfloat_to_str(RDB_float f, char *bufp)
 {
     size_t len;
 
-    sprintf(bufp, "%.10f", (double) f);
+    sprintf(bufp, "%.15f", (double) f);
 
     /* Remove trailing zeroes */
     len = strlen(bufp);

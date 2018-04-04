@@ -1268,8 +1268,10 @@ strvec_find(const char *str, const RDB_string_vec *strvec)
     return -1;
 }
 
+#ifdef POSTGRESQL
 static RDB_bool
-order_contains_nonsql_type(const RDB_type *reltyp, int seqitc, const RDB_seq_item seqitv[])
+order_contains_nonsql_type(const RDB_type *reltyp, int seqitc,
+        const RDB_seq_item seqitv[])
 {
     int i;
     RDB_type *attrtyp;
@@ -1283,6 +1285,7 @@ order_contains_nonsql_type(const RDB_type *reltyp, int seqitc, const RDB_seq_ite
     }
     return RDB_FALSE;
 }
+#endif
 
 /*
  * Creates a qresult which sorts a table.
