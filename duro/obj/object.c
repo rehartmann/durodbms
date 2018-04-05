@@ -633,12 +633,13 @@ dfloat_to_str(RDB_float f, char *bufp)
 {
     size_t len;
 
-    sprintf(bufp, "%.15f", (double) f);
+    len = sprintf(bufp, "%.15g", (double) f);
 
-    /* Remove trailing zeroes */
-    len = strlen(bufp);
-    while (len > 1 && bufp[len - 1] == '0' && bufp[len - 2] != '.') {
-        bufp[--len] = '\0';
+    /* Add decimal point */
+    if (strchr(bufp, '.') == NULL) {
+        bufp[len] = '.';
+        bufp[len + 1] = '0';
+        bufp[len + 2] = '\0';
     }
 }
 

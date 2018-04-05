@@ -415,7 +415,7 @@ test deftypemr {user-defined type with multiple possreps} -setup $SETUP -cleanup
 
         for tp in p order(id asc);
              io.put(the_i(tp.amount)); io.put_line('');
-             io.put(format("%.5f", the_r(tp.amount))); io.put_line('');
+             io.put(format("%.5g", the_r(tp.amount))); io.put_line('');
         end for;
 
         var p2 private relation {id int, amount fixed2}
@@ -436,9 +436,9 @@ test deftypemr {user-defined type with multiple possreps} -setup $SETUP -cleanup
 20
 0.2
 350
-3.50000
+3.5
 1420
-14.20000
+14.2
 50050
 500.50000
 20015
