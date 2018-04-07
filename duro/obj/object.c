@@ -636,7 +636,7 @@ dfloat_to_str(RDB_float f, char *bufp)
     len = sprintf(bufp, "%.15g", (double) f);
 
     /* Add decimal point */
-    if (strchr(bufp, '.') == NULL) {
+    if (strchr(bufp, '.') == NULL && strchr(bufp, 'e') == NULL) {
         bufp[len] = '.';
         bufp[len + 1] = '0';
         bufp[len + 2] = '\0';

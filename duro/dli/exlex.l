@@ -699,7 +699,7 @@ X\'([a-fA-F0-9][a-fA-F0-9])*\' {
     return TOK_LIT_INTEGER;
 }
 
-[0-9]+"."[0-9]+[Ee][0-9]+ {
+[0-9]+("."[0-9]+)?[Ee][+-]?[0-9]+ {
     double v = strtod(yytext, NULL);
     if (!isfinite(v)) {
 	    RDB_raise_type_constraint_violation("floating point number too large",
