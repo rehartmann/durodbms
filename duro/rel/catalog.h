@@ -58,6 +58,10 @@ RDB_cat_rename_table(RDB_object *, const char *, RDB_exec_context *,
         RDB_transaction *);
 
 int
+RDB_cat_rename_index(const char*, const char *, RDB_exec_context *,
+        RDB_transaction *);
+
+int
 RDB_cat_dbtables_insert(RDB_object *, RDB_database *, RDB_exec_context *,
         RDB_transaction *);
 

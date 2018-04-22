@@ -1981,13 +1981,25 @@ test rename_real {rename table} -setup $SETUP -cleanup $CLEANUP -body {
                 init rel { tup { no 1, name 'yo' },  tup { no 2, name 'yoyo' } }
                 key {no};
         var v virtual r where no = 1;
+        commit;
         
+        begin tx;
         rename var v as v2;
         io.put((tuple from v2).no);
         io.put(' ');
         io.put_line((tuple from v2).name);
+
+        drop var v2;
+        rename var r as r2;
+        var r real rel {i int};
+        insert r tup{i 2};
+        rename var r as r3;
+        io.put((tuple from r3).i);
+        io.put_line('');
+        commit;
     }
 } -result {1 yo
+2
 }
 
 test rename_real_syskey {rename table with system key} -setup $SETUP -cleanup $CLEANUP -body {

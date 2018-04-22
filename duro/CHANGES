@@ -2,6 +2,8 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 1.4
 
+- Fixed bug that prevented recreation of a renamed table.
+
 - lower() and upper() convert multibyte characters.
 
 - Fixed bug that caused memory leaks when dropping local variables.

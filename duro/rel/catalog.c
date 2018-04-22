@@ -2816,6 +2816,49 @@ error:
 }
 
 int
+RDB_cat_rename_index(const char *oldname, const char *newname, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    int cnt;
+    RDB_attr_update upd;
+    RDB_expression *argexp;
+    RDB_expression *condp;
+
+    upd.exp = NULL;
+    condp = RDB_ro_op("=", ecp);
+    if (condp == NULL) {
+        return RDB_ERROR;
+    }
+    argexp = RDB_var_ref("idxname", ecp);
+    if (argexp == NULL)
+        goto error;
+    RDB_add_arg(condp, argexp);
+    argexp = RDB_string_to_expr(oldname, ecp);
+    if (argexp == NULL)
+        goto error;
+    RDB_add_arg(condp, argexp);
+
+    upd.name = "idxname";
+    upd.exp = RDB_string_to_expr(newname, ecp);
+    if (upd.exp == NULL)
+        goto error;
+
+    cnt = RDB_update(txp->dbp->dbrootp->indexes_tbp, condp, 1,
+               &upd, ecp, txp);
+    if (cnt == (RDB_int) RDB_ERROR)
+        goto error;
+    RDB_del_expr(condp, ecp);
+    RDB_del_expr(upd.exp, ecp);
+    return RDB_OK;
+
+error:
+    RDB_del_expr(condp, ecp);
+    if (upd.exp != NULL)
+        RDB_del_expr(upd.exp, ecp);
+    return RDB_ERROR;
+}
+
+int
 RDB_cat_create_constraint(const char *name, RDB_expression *exp,
                       RDB_exec_context *ecp, RDB_transaction *txp)
 {

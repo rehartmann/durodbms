@@ -518,6 +518,33 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
         return RDB_ERROR;
     }
 
+    /*
+     * If the table is a persistent user table, insert recmap into sys_table_recmap
+     */
+    if (RDB_table_is_persistent(tbp) && RDB_table_is_user(tbp)) {
+        ret = RDB_cat_insert_table_recmap(tbp, RDB_table_name(tbp), ecp, txp);
+        if (ret == RDB_ERROR
+                && RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR) {
+            int n = 0;
+
+            RDB_clear_err(ecp);
+            /* Choose a different recmap name */
+            rmname = RDB_alloc(strlen(RDB_table_name(tbp)) + 4, ecp);
+            if (rmname == NULL) {
+                goto error;
+            }
+            do {
+                sprintf(rmname, "%s%d", RDB_table_name(tbp), ++n);
+                RDB_clear_err(ecp);
+                ret = RDB_cat_insert_table_recmap(tbp, rmname, ecp, txp);
+            } while (ret != RDB_OK
+                    && RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR
+                    && n <= 999);
+        }
+        if (ret != RDB_OK)
+            goto error;
+    }
+
     tbp->val.tbp->stp = RDB_alloc(sizeof(RDB_stored_table), ecp);
     if (tbp->val.tbp->stp == NULL) {
         return RDB_ERROR;
@@ -546,33 +573,6 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
     ret = table_field_infos(tbp, &finfov, ecp);
     if (ret != RDB_OK)
         goto error;
-
-    /*
-     * If the table is a persistent user table, insert recmap into sys_table_recmap
-     */
-    if (RDB_table_is_persistent(tbp) && RDB_table_is_user(tbp)) {
-        ret = RDB_cat_insert_table_recmap(tbp, RDB_table_name(tbp), ecp, txp);
-        if (ret == RDB_ERROR
-                && RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR) {
-            int n = 0;
-
-            RDB_clear_err(ecp);
-            /* Choose a different recmap name */
-            rmname = RDB_alloc(strlen(RDB_table_name(tbp)) + 4, ecp);
-            if (rmname == NULL) {
-                goto error;
-            }
-            do {
-                sprintf(rmname, "%s%d", RDB_table_name(tbp), ++n);
-                RDB_clear_err(ecp);
-                ret = RDB_cat_insert_table_recmap(tbp, rmname, ecp, txp);
-            } while (ret != RDB_OK
-                    && RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR
-                    && n <= 999);
-        }
-        if (ret != RDB_OK)
-            goto error;
-    }
 
     /*
      * Use a sorted recmap for local tables, so the order of the tuples

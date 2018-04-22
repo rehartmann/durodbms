@@ -1772,6 +1772,33 @@ RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
             }
             RDB_destroy_hashmap_iter(&hiter);
         }
+
+        /* Rename generated indexes */
+        if (tbp->val.tbp->stp != NULL) {
+            int i;
+            char *suffix;
+            char *newidxname;
+            for (i = 0; i < tbp->val.tbp->stp->indexc; i++) {
+                if (tbp->val.tbp->stp->indexv[i].name != NULL) {
+                    suffix = strchr(tbp->val.tbp->stp->indexv[i].name, '$');
+                    if (suffix != NULL) {
+                        newidxname = RDB_alloc(strlen(name) + strlen(suffix) + 1, ecp);
+                        if (newidxname == NULL)
+                            return RDB_ERROR;
+                    }
+                    strcpy(newidxname, name);
+                    strcat(newidxname, suffix);
+                    if (RDB_cat_rename_index(tbp->val.tbp->stp->indexv[i].name,
+                            newidxname, ecp, txp) != RDB_OK) {
+                        RDB_free(newidxname);
+                        RDB_handle_err(ecp, txp);
+                        return RDB_ERROR;
+                    }
+                    RDB_free(tbp->val.tbp->stp->indexv[i].name);
+                    tbp->val.tbp->stp->indexv[i].name = newidxname;
+                }
+            }
+        }
     }
 
     if (tbp->val.tbp->name != NULL)
