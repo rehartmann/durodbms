@@ -107,11 +107,12 @@ RDB_tree_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[],
     if (curp->secondary)
     */
 
+    if (RDB_recmap_is_key_update(curp->recmapp, fieldc, fields)) {
+        RDB_raise_invalid_argument("Modifiying the key is not supported", ecp);
+        return RDB_ERROR;
+    }
+
     for (i = 0; i < fieldc; i++) {
-        if (fields[i].no < curp->recmapp->keyfieldcount) {
-            RDB_raise_invalid_argument("Modifiying the key is not supported", ecp);
-            return RDB_ERROR;
-        }
         ret = RDB_set_field_mem(curp->recmapp, &curp->cur.tree.nodep->value,
                 &curp->cur.tree.nodep->valuelen, &fields[i],
                 curp->recmapp->vardatafieldcount);
@@ -135,7 +136,7 @@ RDB_tree_cursor_delete(RDB_cursor *curp, RDB_exec_context *ecp)
     }
     if (RDB_delete_from_tree_indexes(curp->recmapp, nodep, ecp) != RDB_OK)
         return RDB_ERROR;
-    return RDB_tree_delete_node(curp->cur.tree.treep, nodep, ecp);
+    return RDB_tree_delete_node(curp->cur.tree.treep, nodep->key, nodep->keylen, ecp);
 }
 
 /*

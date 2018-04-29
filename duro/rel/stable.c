@@ -410,17 +410,12 @@ table_field_infos(RDB_object *tbp, RDB_field_info **finfovp, RDB_exec_context *e
      * Try to get primary index (not available for new tables or
      * newly opened system tables)
      */
-    if (RDB_table_is_persistent(tbp)) {
-        pindexp = NULL;
-        for (i = 0; i < tbp->val.tbp->stp->indexc; i++) {
-            if (index_is_primary(tbp->val.tbp->stp->indexv[i].name)) {
-                pindexp = &tbp->val.tbp->stp->indexv[i];
-                break;
-            }
+    pindexp = NULL;
+    for (i = 0; i < tbp->val.tbp->stp->indexc; i++) {
+        if (index_is_primary(tbp->val.tbp->stp->indexv[i].name)) {
+            pindexp = &tbp->val.tbp->stp->indexv[i];
+            break;
         }
-    } else {
-        /* Transient tables don't have secondary indexes */
-        pindexp = &tbp->val.tbp->stp->indexv[0];
     }
 
     di = piattrc;

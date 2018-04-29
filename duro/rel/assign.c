@@ -1037,7 +1037,7 @@ do_insert(const RDB_ma_insert *insp, RDB_exec_context *ecp,
 }
 
 /*
- * Perform update. *updp->tbp must be a real table.
+ * Perform update. *updp->tbp must not be a virtual table.
  */
 static RDB_int
 do_update(const RDB_ma_update *updp,

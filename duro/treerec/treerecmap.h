@@ -48,4 +48,7 @@ RDB_tree_recmap_est_size(RDB_recmap *, RDB_rec_transaction *, unsigned *, RDB_ex
 int
 RDB_delete_from_tree_indexes(RDB_recmap *, RDB_tree_node *, RDB_exec_context *);
 
+RDB_bool
+RDB_recmap_is_key_update(RDB_recmap *, int, const RDB_field[]);
+
 #endif /* TREEREC_AVLRECMAP_H_ */

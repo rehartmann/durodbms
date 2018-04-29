@@ -11,6 +11,7 @@
 #include <rec/recmapimpl.h>
 #include <rec/indeximpl.h>
 #include <obj/excontext.h>
+#include <obj/builtintypes.h>
 #include <gen/strfns.h>
 #include <treerec/field.h>
 #include <treerec/treerecmap.h>
@@ -253,26 +254,64 @@ insert_into_indexes(RDB_recmap *rmp, RDB_tree_node *nodep, RDB_exec_context *ecp
     size_t skeylen;
     RDB_index *ixp;
     int ret;
-    RDB_tree_node **nodepp;
 
     for (ixp = rmp->impl.tree.indexes; ixp != NULL; ixp = ixp->impl.tree.nextp) {
+        void *key;
+
         ret = make_skey(ixp, nodep->key, nodep->keylen, nodep->value, nodep->valuelen, &skey, &skeylen);
         if (ret != RDB_OK) {
             RDB_errcode_to_error(ret, ecp);
             return RDB_ERROR;
         }
 
-        nodepp = RDB_alloc(sizeof(RDB_tree_node *), ecp);
-        if (nodepp == NULL)
+        key = RDB_alloc(nodep->keylen, ecp);
+        if (key == NULL)
             return RDB_ERROR;
+        memcpy (key, nodep->key, nodep->keylen);
 
-        *nodepp = nodep;
         if (RDB_tree_insert(ixp->impl.tree.treep, skey, skeylen,
-                nodepp, sizeof(RDB_tree_node *), ecp) == NULL) {
+                key, sizeof(RDB_tree_node *), ecp) == NULL) {
             free(skey);
-            RDB_free(nodepp);
+            RDB_free(key);
             return RDB_ERROR;
         }
+    }
+    return RDB_OK;
+}
+
+static int
+delete_tree_rec_by_key(RDB_recmap *rmp, void *key, size_t keylen, RDB_exec_context *ecp)
+{
+    if (rmp->impl.tree.indexes != NULL) {
+        /* Delete entry from indexes */
+        RDB_tree_node *nodep = RDB_tree_find(rmp->impl.tree.treep, key, keylen);
+        if (nodep != NULL) {
+            if (RDB_delete_from_tree_indexes(rmp, nodep, ecp) != RDB_OK) {
+                return RDB_ERROR;
+            }
+        }
+    }
+    return RDB_tree_delete_node(rmp->impl.tree.treep, key, keylen, ecp);
+}
+
+static int
+insert_tree_rec_kv(RDB_recmap *rmp, void *key, size_t keylen,
+        void *value, size_t valuelen, RDB_exec_context *ecp)
+{
+    RDB_tree_node *nodep;
+
+    if (check_in_indexes(rmp, key, keylen, value, valuelen, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    nodep = RDB_tree_insert(rmp->impl.tree.treep, key, keylen, value, valuelen, ecp);
+    if (nodep == NULL) {
+        return RDB_ERROR;
+    }
+
+    if (insert_into_indexes(rmp, nodep, ecp) != RDB_OK) {
+        delete_tree_rec_by_key(rmp, key, keylen, ecp);
+        return RDB_ERROR;
     }
     return RDB_OK;
 }
@@ -286,7 +325,6 @@ RDB_insert_tree_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp
     size_t valuelen;
     void *value = NULL;
     int ret;
-    RDB_tree_node *nodep;
 
     ret = key_to_mem(rmp, flds, &key, &keylen);
     if (ret != RDB_OK) {
@@ -300,22 +338,16 @@ RDB_insert_tree_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp
         return RDB_ERROR;
     }
 
-    if (check_in_indexes(rmp, key, keylen, value, valuelen, ecp) != RDB_OK) {
-        free(key);
-        free(value);
+    ret = insert_tree_rec_kv(rmp, key, keylen, value, valuelen, ecp);
+    if (ret != RDB_OK) {
+        RDB_free(key);
+        RDB_free(value);
         return RDB_ERROR;
     }
-
-    nodep = RDB_tree_insert(rmp->impl.tree.treep, key, keylen, value, valuelen, ecp);
-    if (nodep == NULL) {
-        free(key);
-        free(value);
-        return RDB_ERROR;
-    }
-
-    return insert_into_indexes(rmp, nodep, ecp);
+    return RDB_OK;
 }
 
+#ifdef RAUS
 static int
 check_update_indexes(RDB_recmap *rmp, RDB_tree_node *nodep, int fieldc,
         const RDB_field fieldv[], RDB_exec_context *ecp)
@@ -368,7 +400,9 @@ check_update_indexes(RDB_recmap *rmp, RDB_tree_node *nodep, int fieldc,
             return RDB_ERROR;
         }
         snodep = RDB_tree_find(ixp->impl.tree.treep, skey, skeylen);
-        if (snodep != NULL && snodep != nodep) {
+        if (snodep != NULL && snodep->valuelen == nodep->keylen
+                   && memcmp(snodep->value, nodep->key,
+                           snodep->valuelen < nodep->keylen ? snodep->valuelen : nodep->keylen) == 0) {
             free(skey);
             RDB_free(key);
             RDB_free(value);
@@ -405,18 +439,29 @@ RDB_update_tree_node(RDB_recmap *rmp, RDB_tree_node *nodep,
     }
 
     if (keymod) {
-        void *key = nodep->key;
+        /* Copy the key - the node must keep the key so RDB_tree_delete_node() can find it */
+        void *key;
         size_t keylen = nodep->keylen;
         void *value = nodep->value;
         size_t valuelen = nodep->valuelen;
 
+        if (nodep->keylen > 0) {
+            key = malloc(nodep->keylen);
+            if (key == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
+            memcpy(key, nodep->key, nodep->keylen);
+        }
+
         /* Delete node, but keep the data */
-        nodep->keylen = 0;
-        nodep->key = NULL;
         nodep->valuelen = 0;
         nodep->value = NULL;
-        if (RDB_tree_delete_node(rmp->impl.tree.treep, nodep, ecp) != RDB_OK)
+        ret = RDB_tree_delete_node(rmp->impl.tree.treep, key, keylen, ecp);
+        if (ret != RDB_OK) {
+            free(key);
             return RDB_ERROR;
+        }
 
         for (i = 0; i < fieldc; i++) {
             if (fieldv[i].no < rmp->keyfieldcount) {
@@ -426,11 +471,13 @@ RDB_update_tree_node(RDB_recmap *rmp, RDB_tree_node *nodep,
                 ret = RDB_set_field_mem(rmp, &value, &valuelen, &fieldv[i],
                                rmp->vardatafieldcount);
             }
-            if (ret != RDB_OK)
+            if (ret != RDB_OK) {
+                free(key);
                 return ret;
+            }
         }
 
-        /* Insert node */
+        /* Reinsert node */
         nodep = RDB_tree_insert(rmp->impl.tree.treep, key, keylen, value, valuelen, ecp);
         if (nodep == NULL) {
             if (keylen > 0)
@@ -448,6 +495,142 @@ RDB_update_tree_node(RDB_recmap *rmp, RDB_tree_node *nodep,
                 RDB_errcode_to_error(ret, ecp);
                 return RDB_ERROR;
             }
+        }
+    }
+    return RDB_OK;
+}
+#endif
+
+RDB_bool
+RDB_recmap_is_key_update(RDB_recmap *rmp, int fieldc, const RDB_field fieldv[])
+{
+    int i;
+    for (i = 0; i < fieldc; i++) {
+        RDB_index *ixp;
+
+        if (fieldv[i].no < rmp->keyfieldcount)
+            return RDB_TRUE;
+        for (ixp = rmp->impl.tree.indexes; ixp != NULL; ixp = ixp->impl.tree.nextp) {
+            int j;
+            for (j = 0; j < ixp->fieldc; j++) {
+                if (fieldv[i].no == ixp->fieldv[j])
+                    return RDB_TRUE;
+            }
+        }
+    }
+    return RDB_FALSE;
+}
+
+static int
+delete_update_reinsert_tree_node(RDB_recmap *rmp, RDB_tree_node *nodep,
+               int fieldc, const RDB_field fieldv[], RDB_exec_context *ecp)
+{
+    int ret;
+    int i;
+    void *key = NULL;
+    void *value = NULL;
+    size_t keylen, valuelen;
+    void *key2 = NULL;
+    void *value2 = NULL;
+    size_t keylen2, valuelen2;
+
+    keylen = nodep->keylen;
+    valuelen = nodep->valuelen;
+    if (keylen > 0) {
+        key = RDB_alloc(keylen, ecp);
+        if (key == NULL)
+            goto error;
+        memcpy(key, nodep->key, keylen);
+    }
+    if (valuelen > 0) {
+        value = RDB_alloc(valuelen, ecp);
+        if (value == NULL)
+            goto error;
+        memcpy(value, nodep->value, valuelen);
+    }
+
+    if (delete_tree_rec_by_key(rmp, key, keylen, ecp) != RDB_OK) {
+        goto error;
+    }
+
+    keylen2 = keylen;
+    valuelen2 = valuelen;
+    if (keylen2 > 0) {
+        key2 = RDB_alloc(keylen2, ecp);
+        if (key2 == NULL)
+            goto error;
+        memcpy(key2, key, keylen2);
+    }
+    if (valuelen > 0) {
+        value2 = RDB_alloc(valuelen2, ecp);
+        if (value2 == NULL)
+            goto error;
+        memcpy(value2, value, valuelen2);
+    }
+
+    for (i = 0; i < fieldc; i++) {
+        if (fieldv[i].no < rmp->keyfieldcount) {
+            ret = RDB_set_field_mem(rmp, &key, &keylen, &fieldv[i],
+                           rmp->varkeyfieldcount);
+        } else {
+            ret = RDB_set_field_mem(rmp, &value, &valuelen, &fieldv[i],
+                           rmp->vardatafieldcount);
+        }
+        if (ret != RDB_OK) {
+            free(key);
+            return ret;
+        }
+    }
+    ret = insert_tree_rec_kv(rmp, key, keylen, value, valuelen, ecp);
+    if (ret != RDB_OK) {
+        /* Insert unmodified record */
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR) {
+            if (insert_tree_rec_kv(rmp, key2, keylen2, value2, valuelen2, ecp) == RDB_OK) {
+                key2 = NULL;
+                value2 = NULL;
+            }
+        }
+        goto error;
+    }
+    RDB_free(key2);
+    RDB_free(value2);
+
+    return RDB_OK;
+
+error:
+    if (key != NULL) {
+        RDB_free(key);
+    }
+    if (value != NULL) {
+        RDB_free(value);
+    }
+    if (key2 != NULL) {
+        RDB_free(key2);
+    }
+    if (value2 != NULL) {
+        RDB_free(value2);
+    }
+
+    return RDB_ERROR;
+}
+
+static int
+RDB_update_tree_node(RDB_recmap *rmp, RDB_tree_node *nodep,
+               int fieldc, const RDB_field fieldv[], RDB_exec_context *ecp)
+{
+    int i;
+    int ret;
+
+    if (RDB_recmap_is_key_update(rmp, fieldc, fieldv)) {
+        return delete_update_reinsert_tree_node(rmp, nodep, fieldc, fieldv, ecp);
+    }
+
+    for (i = 0; i < fieldc; i++) {
+        ret = RDB_set_field_mem(rmp, &nodep->value, &nodep->valuelen,
+                &fieldv[i], rmp->vardatafieldcount);
+        if (ret != RDB_OK) {
+            RDB_errcode_to_error(ret, ecp);
+            return RDB_ERROR;
         }
     }
     return RDB_OK;
@@ -477,11 +660,7 @@ RDB_update_tree_rec(RDB_recmap *rmp, RDB_field keyv[],
         return RDB_ERROR;
     }
 
-
-    if (RDB_update_tree_node(rmp, nodep, fieldc, fieldv, ecp) != RDB_OK)
-        return RDB_ERROR;
-
-    return insert_into_indexes(rmp, nodep, ecp);
+    return RDB_update_tree_node(rmp, nodep, fieldc, fieldv, ecp);
 }
 
 int
@@ -491,7 +670,6 @@ RDB_delete_from_tree_indexes(RDB_recmap *rmp, RDB_tree_node *nodep, RDB_exec_con
     size_t skeylen;
     RDB_index *ixp;
     int ret;
-    RDB_tree_node *snodep;
 
     for (ixp = rmp->impl.tree.indexes; ixp != NULL; ixp = ixp->impl.tree.nextp) {
         ret = make_skey(ixp, nodep->key, nodep->keylen, nodep->value, nodep->valuelen, &skey, &skeylen);
@@ -500,13 +678,10 @@ RDB_delete_from_tree_indexes(RDB_recmap *rmp, RDB_tree_node *nodep, RDB_exec_con
             return RDB_ERROR;
         }
 
-        snodep = RDB_tree_find(ixp->impl.tree.treep, skey, skeylen);
+        ret = RDB_tree_delete_node(ixp->impl.tree.treep, skey, skeylen, ecp);
         free(skey);
-        if (snodep != NULL) {
-            ret = RDB_tree_delete_node(ixp->impl.tree.treep, snodep, ecp);
-            if (ret != RDB_OK)
-                return ret;
-        }
+        if (ret != RDB_OK)
+            return ret;
     }
     return RDB_OK;
 }
@@ -517,7 +692,6 @@ RDB_delete_tree_rec(RDB_recmap *rmp, int fieldc, RDB_field keyv[], RDB_rec_trans
 {
     size_t keylen;
     void *key;
-    RDB_tree_node *nodep;
     int ret;
 
     ret = key_to_mem(rmp, keyv, &key, &keylen);
@@ -526,15 +700,9 @@ RDB_delete_tree_rec(RDB_recmap *rmp, int fieldc, RDB_field keyv[], RDB_rec_trans
         return RDB_ERROR;
     }
 
-    nodep = RDB_tree_find(rmp->impl.tree.treep, key, keylen);
+    ret = delete_tree_rec_by_key(rmp, key, keylen, ecp);
     free(key);
-    if (nodep == NULL) {
-        RDB_raise_not_found("", ecp);
-        return RDB_ERROR;
-    }
-    if (RDB_delete_from_tree_indexes(rmp, nodep, ecp) != RDB_OK)
-        return RDB_ERROR;
-    return RDB_tree_delete_node(rmp->impl.tree.treep, nodep, ecp);
+    return ret;
 }
 
 int

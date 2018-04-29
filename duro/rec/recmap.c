@@ -12,6 +12,7 @@
 #include <obj/object.h>
 #include <obj/excontext.h>
 #include <treerec/treerecmap.h>
+/* #include <bdbrec/bdbrecmap.h> */
 
 /*
  * Create a recmap with the <var>name</var> specified by name in the DB environment

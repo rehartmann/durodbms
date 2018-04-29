@@ -47,7 +47,7 @@ RDB_tree_insert(RDB_binary_tree *, void *, size_t,
         void *, size_t, RDB_exec_context *);
 
 int
-RDB_tree_delete_node(RDB_binary_tree *, RDB_tree_node *,
+RDB_tree_delete_node(RDB_binary_tree *, void *key, size_t keylen,
         RDB_exec_context *);
 
 #endif /* TREEREC_TREE_H_ */

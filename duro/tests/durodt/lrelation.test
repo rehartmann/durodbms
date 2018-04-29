@@ -24,8 +24,8 @@ test private {creating private table and inserting tuples} -body {
             io.put_line("double creation caught");
         end try;
 
-        var pr2 private relation {i int} init relation { tuple {i 1}, tuple {i 2} }
-                key {i};
+        var pr2 private relation {i int, j int} init relation { tuple {i 1, j 1}, tuple {i 2, j 2} }
+                key {i} key {j};
 
         var a init 1;
         insert pr1 relation {tuple {i a, d 1.0, c 'X'}, tuple {i 2, d 1.1, c 'Y'}};
@@ -59,6 +59,9 @@ test private {creating private table and inserting tuples} -body {
 
         io.put((tuple from pr1).i); io.put_line('');
         io.put(sum(pr2, i)); io.put_line('');
+
+        -- io.put(pr2 where j = 1); io.put_line('');
+        -- io.put(pr2 where j = 2); io.put_line('');
 
         drop var pr1;
 
@@ -117,6 +120,44 @@ operator_not_found_error
 1 1
 1 2
 2 1
+}
+
+test private_secindex {private table with secondary index} -body {
+    exec $testdir/../../dli/durodt << {
+        var pr1 private relation {n int, m int, k int} key {n} key {m};
+        insert pr1 tup{n 1, m 10, k 1};
+        insert pr1 tup{n 2, m 20, k 2};
+        insert pr1 tup{n 3, m 30, k 3};
+        
+        try
+        	update pr1 where m = 10 {n := 2};
+        	io.put_line('update should have failed (key violation)');
+        catch err key_violation_error;
+            ;
+        end try;
+       	update pr1 where m = 10 {n := 5};
+        update pr1 where m = 20 {k := 4};
+        delete pr1 where m = 30;
+        
+        var tp tup same_heading_as(pr1);
+        for tp in pr1 order(n asc);
+            io.put(tp.n); io.put(' ');
+            io.put(tp.m); io.put(' ');
+            io.put(tp.k); io.put_line('');
+        end for;
+        
+        tp := tuple from pr1 where n=5;
+        io.put(tp.m); io.put_line('');
+        tp := tuple from pr1 where m=20;
+        io.put(tp.n); io.put_line('');
+        tp := tuple from pr1 where k=4;
+        io.put(tp.n); io.put_line('');
+    }
+} -result {2 20 4
+5 10 1
+10
+2
+2
 }
 
 test deedum {TABLE_DEE and TABLE_DUM} -body {

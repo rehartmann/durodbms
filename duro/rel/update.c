@@ -496,12 +496,12 @@ cleanup:
 }
 
 static RDB_int
-update_where_pindex(RDB_expression *texp, RDB_expression *condp,
+update_where_uindex(RDB_expression *texp, RDB_expression *condp,
         int updc, const RDB_attr_update updv[],
         RDB_getobjfn *getfn, void *getarg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int rcount;
+    RDB_int rcount;
     int ret;
     int i;
     struct RDB_tuple_and_getfn tg;
@@ -528,7 +528,7 @@ update_where_pindex(RDB_expression *texp, RDB_expression *condp,
          */
         if (RDB_provide_stored_table(refexp->def.tbref.tbp,
                 RDB_FALSE, ecp, txp) != RDB_OK) {
-            return RDB_ERROR;
+            return (RDB_int) RDB_ERROR;
         }
 
         if (refexp->def.tbref.tbp->val.tbp->stp == NULL) {
@@ -543,7 +543,7 @@ update_where_pindex(RDB_expression *texp, RDB_expression *condp,
         RDB_free(fvv);
         RDB_free(valv);
         RDB_free(fieldv);
-        rcount = RDB_ERROR;
+        rcount = (RDB_int) RDB_ERROR;
         goto cleanup;
     }
 
@@ -554,7 +554,7 @@ update_where_pindex(RDB_expression *texp, RDB_expression *condp,
     for (i = 0; i < objc; i++) {
         if (RDB_obj_to_field(&fvv[i], texp->def.op.optinfo.objpv[i], ecp)
                 != RDB_OK) {
-            rcount = RDB_ERROR;
+            rcount = (RDB_int) RDB_ERROR;
             goto cleanup;
         }
     }
@@ -569,7 +569,7 @@ update_where_pindex(RDB_expression *texp, RDB_expression *condp,
             RDB_clear_err(ecp);
             rcount = 0;
         } else {
-            rcount = RDB_ERROR;
+            rcount = (RDB_int) RDB_ERROR;
         }
         goto cleanup;
     }
@@ -584,7 +584,7 @@ update_where_pindex(RDB_expression *texp, RDB_expression *condp,
 
         if (RDB_evaluate_bool(condp, &RDB_get_from_tuple_or_fn, &tg, NULL,
                 ecp, txp, &b) != RDB_OK) {
-            rcount = RDB_ERROR;
+            rcount = (RDB_int) RDB_ERROR;
             goto cleanup;
         }
 
@@ -596,7 +596,7 @@ update_where_pindex(RDB_expression *texp, RDB_expression *condp,
 
     ret = upd_to_vals(updc, updv, &tpl, valv, getfn, getarg, ecp, txp);
     if (ret != RDB_OK) {
-        rcount = RDB_ERROR;
+        rcount = (RDB_int) RDB_ERROR;
         goto cleanup;
     }
 
@@ -608,20 +608,54 @@ update_where_pindex(RDB_expression *texp, RDB_expression *condp,
         valv[i].store_typ = RDB_type_attr_type(
                     RDB_obj_type(refexp->def.tbref.tbp), updv[i].name);
         if (RDB_obj_to_field(&fieldv[i], &valv[i], ecp) != RDB_OK) {
-            rcount = RDB_ERROR;
+            rcount = (RDB_int) RDB_ERROR;
             goto cleanup;
         }
     }
-        
+
     RDB_cmp_ecp = ecp;
-    ret = RDB_update_rec(refexp->def.tbref.tbp->val.tbp->stp->recmapp,
-            fvv, updc, fieldv,
-            RDB_table_is_persistent(refexp->def.tbref.tbp) ?
-                    txp->tx : NULL,
-            ecp);
+    if (refexp->def.tbref.indexp->idxp == NULL) {
+        ret = RDB_update_rec(refexp->def.tbref.tbp->val.tbp->stp->recmapp,
+                fvv, updc, fieldv,
+                RDB_table_is_persistent(refexp->def.tbref.tbp) ?
+                        txp->tx : NULL,
+                        ecp);
+    } else {
+        /* Set primary key fields update */
+        int keyfieldc = RDB_pkey_len(refexp->def.tbref.tbp);
+        RDB_type *tptyp = RDB_base_type(RDB_obj_type(refexp->def.tbref.tbp));
+        RDB_field *keyv = RDB_alloc(sizeof(RDB_field) * keyfieldc, ecp);
+        if (keyv == NULL) {
+            rcount = (RDB_int) RDB_ERROR;
+            goto cleanup;
+        }
+
+        for (i = 0; i < tptyp->def.tuple.attrc; i++) {
+            RDB_object *valp;
+            RDB_int fno = *RDB_field_no(refexp->def.tbref.tbp->val.tbp->stp,
+                    tptyp->def.tuple.attrv[i].name);
+            if (fno < keyfieldc) {
+                valp = RDB_tuple_get(&tpl, tptyp->def.tuple.attrv[i].name);
+                valp->store_typ = tptyp->def.tuple.attrv[i].typ;
+                ret = RDB_obj_to_field(&keyv[fno], valp, ecp);
+                if (ret != RDB_OK) {
+                    RDB_free(keyv);
+                    rcount = (RDB_int) RDB_ERROR;
+                    goto cleanup;
+                }
+            }
+        }
+
+        ret = RDB_update_rec(refexp->def.tbref.tbp->val.tbp->stp->recmapp,
+                keyv, updc, fieldv,
+                RDB_table_is_persistent(refexp->def.tbref.tbp) ?
+                        txp->tx : NULL,
+                        ecp);
+        RDB_free(keyv);
+    }
     if (ret != RDB_OK) {
         RDB_handle_err(ecp, txp);
-        rcount = RDB_ERROR;
+        rcount = (RDB_int) RDB_ERROR;
     } else {
        rcount = 1;
     }
@@ -1452,9 +1486,13 @@ RDB_update_where_index(RDB_expression *texp, RDB_expression *condp,
         }
     }
 
-    if (refexp->def.tbref.indexp->idxp == NULL) {
-        return update_where_pindex(texp, condp, updc, updv, getfn, getarg,
+    if (refexp->def.tbref.indexp->unique) {
+        return update_where_uindex(texp, condp, updc, updv, getfn, getarg,
                 ecp, txp);
+    }
+    if (txp == NULL) {
+        RDB_raise_internal("no transaction", ecp);
+        return RDB_ERROR;
     }
 
     if (upd_complex(refexp->def.tbref.tbp, updc, updv, ecp)
