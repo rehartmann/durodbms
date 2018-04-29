@@ -47,4 +47,8 @@ int
 RDB_tree_index_delete_rec(RDB_index *, RDB_field[], RDB_rec_transaction *,
         RDB_exec_context *);
 
+int
+RDB_index_get_field(RDB_index *, int, const void *, size_t, size_t *,
+              int *);
+
 #endif

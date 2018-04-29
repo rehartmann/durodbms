@@ -18,8 +18,8 @@
 /*
  * Read field from an index DBT !! duplicate
  */
-static int
-get_field(RDB_index *ixp, int fi, const void *datap, size_t len, size_t *lenp,
+int
+RDB_index_get_field(RDB_index *ixp, int fi, const void *datap, size_t len, size_t *lenp,
               int *vposp)
 {
     int i, vpos;
@@ -86,8 +86,8 @@ compare_key(const void *d1, size_t size1,
         void *data1p, *data2p;
         int res;
 
-        offs1 = get_field(ixp, i, d1, size1, &len1, NULL);
-        offs2 = get_field(ixp, i, d2, size2, &len2, NULL);
+        offs1 = RDB_index_get_field(ixp, i, d1, size1, &len1, NULL);
+        offs2 = RDB_index_get_field(ixp, i, d2, size2, &len2, NULL);
         data1p = ((RDB_byte *) d1) + offs1;
         data2p = ((RDB_byte *) d2) + offs2;
 
