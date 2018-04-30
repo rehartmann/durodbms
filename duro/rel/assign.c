@@ -1049,7 +1049,7 @@ do_update(const RDB_ma_update *updp,
     RDB_expression *exp = NULL;
 
     if (updp->condp == NULL) {
-        return RDB_update_real(updp->tbp, NULL, updp->updc, updp->updv,
+        return RDB_update_nonvirtual(updp->tbp, NULL, updp->updc, updp->updv,
                 getfn, getarg, ecp, txp);
     }
 
@@ -1075,7 +1075,7 @@ do_update(const RDB_ma_update *updp,
         return RDB_ERROR;
 
     if (nexp->kind == RDB_EX_TBP) {
-        ret = RDB_update_real(nexp->def.tbref.tbp, NULL,
+        ret = RDB_update_nonvirtual(nexp->def.tbref.tbp, NULL,
                 updp->updc, updp->updv, getfn, getarg, ecp, txp);
         RDB_del_expr(nexp, ecp);
         return ret;
@@ -1102,7 +1102,7 @@ do_update(const RDB_ma_update *updp,
         }
 
         if (nexp->def.op.args.firstp->kind == RDB_EX_TBP) {
-            ret = RDB_update_real(nexp->def.op.args.firstp->def.tbref.tbp,
+            ret = RDB_update_nonvirtual(nexp->def.op.args.firstp->def.tbref.tbp,
                     nexp->def.op.args.firstp->nextp, updp->updc, updp->updv,
                     getfn, getarg, ecp, txp);
             RDB_del_expr(nexp, ecp);

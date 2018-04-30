@@ -67,8 +67,6 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
     RDB_object tpl;
     int ret;
     int i;
-    void *datap;
-    size_t len;
     RDB_bool b;
     RDB_transaction tx;
     struct RDB_tuple_and_getfn tg;
@@ -120,43 +118,9 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
     ret = RDB_cursor_first(curp, ecp);
     rcount = 0;
     while (ret == RDB_OK) {
-        for (i = 0; i < tpltyp->def.tuple.attrc; i++) {
-            RDB_object val;
-            RDB_object *attrobjp;
-
-            ret = RDB_cursor_get(curp,
-                    *RDB_field_no(tbp->val.tbp->stp, tpltyp->def.tuple.attrv[i].name),
-                    &datap, &len, ecp);
-            if (ret != RDB_OK) {
-                RDB_handle_err(ecp,
-                        RDB_table_is_persistent(tbp) ? &tx : NULL);
-                rcount = (RDB_int) RDB_ERROR;
-                goto cleanup;
-            }
-
-            /*
-             * First set tuple attribute to 'empty' value,
-             * then update tuple attribute
-             */
-            RDB_init_obj(&val);
-            ret = RDB_tuple_set(&tpl, tpltyp->def.tuple.attrv[i].name, &val, ecp);
-            RDB_destroy_obj(&val, ecp);
-            if (ret != RDB_OK) {
-                rcount = (RDB_int) RDB_ERROR;
-                goto cleanup;
-            }
-            attrobjp = RDB_tuple_get(&tpl, tpltyp->def.tuple.attrv[i].name);
-            if (attrobjp == NULL) {
-                RDB_raise_name(tpltyp->def.tuple.attrv[i].name, ecp);
-                rcount = (RDB_int) RDB_ERROR;
-                goto cleanup;
-            }
-            ret = RDB_irep_to_obj(attrobjp, tpltyp->def.tuple.attrv[i].typ,
-                    datap, len, ecp);
-            if (ret != RDB_OK) {
-                rcount = (RDB_int) RDB_ERROR;
-                goto cleanup;
-            }
+        if (RDB_get_by_cursor(tbp, curp, tpltyp, &tpl, ecp, txp) != RDB_OK) {
+            rcount = (RDB_int) RDB_ERROR;
+            goto cleanup;
         }
 
         /* Evaluate condition */
@@ -223,31 +187,9 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
     
     RDB_cmp_ecp = ecp;
     while (ret == RDB_OK) {
-        for (i = 0; i < tpltyp->def.tuple.attrc; i++) {
-            RDB_object val;
-
-            ret = RDB_cursor_get(curp,
-                    *RDB_field_no(tbp->val.tbp->stp, tpltyp->def.tuple.attrv[i].name),
-                    &datap, &len, ecp);
-            if (ret != RDB_OK) {
-                RDB_handle_err(ecp,
-                        RDB_table_is_persistent(tbp) ? &tx : NULL);
-                rcount = RDB_ERROR;
-                goto cleanup;
-            }
-            RDB_init_obj(&val);
-            ret = RDB_tuple_set(&tpl, tpltyp->def.tuple.attrv[i].name, &val,
-                    ecp);
-            RDB_destroy_obj(&val, ecp);
-            if (ret != RDB_OK) {
-                goto cleanup;
-            }
-            ret = RDB_irep_to_obj(
-                    RDB_tuple_get(&tpl, tpltyp->def.tuple.attrv[i].name),
-                    tpltyp->def.tuple.attrv[i].typ, datap, len, ecp);
-            if (ret != RDB_OK) {
-                goto cleanup;
-            }
+        if (RDB_get_by_cursor(tbp, curp, tpltyp, &tpl, ecp, txp) != RDB_OK) {
+            rcount = (RDB_int) RDB_ERROR;
+            goto cleanup;
         }
 
         /* Evaluate condition */
@@ -1397,7 +1339,7 @@ updv_sql_convertible(int updc, const RDB_attr_update updv[],
 #endif
 
 RDB_int
-RDB_update_real(RDB_object *tbp, RDB_expression *condp,
+RDB_update_nonvirtual(RDB_object *tbp, RDB_expression *condp,
         int updc, const RDB_attr_update updv[],
         RDB_getobjfn *getfn, void *getarg,
         RDB_exec_context *ecp, RDB_transaction *txp)

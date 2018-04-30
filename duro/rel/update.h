@@ -11,7 +11,7 @@
 #include "rdb.h"
 
 RDB_int
-RDB_update_real(RDB_object *, RDB_expression *,
+RDB_update_nonvirtual(RDB_object *, RDB_expression *,
         int, const RDB_attr_update[],
         RDB_getobjfn *, void *,
         RDB_exec_context *, RDB_transaction *);
