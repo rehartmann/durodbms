@@ -218,7 +218,7 @@ irep_to_table(RDB_object *tbp, RDB_type *typ, const void *datap, size_t len,
             RDB_destroy_obj(&tpl, ecp);
             return l;
         }
-        ret = RDB_insert_real(tbp, &tpl, ecp, NULL);
+        ret = RDB_insert_nonvirtual(tbp, &tpl, ecp, NULL);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             return RDB_ERROR;
@@ -1029,7 +1029,7 @@ RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
                 return RDB_ERROR;
             }
             /* Delete all tuples */
-            ret = RDB_delete_real(dstvalp, NULL, NULL, NULL, ecp,
+            ret = RDB_delete_nonvirtual(dstvalp, NULL, NULL, NULL, ecp,
                     RDB_table_is_persistent(dstvalp) ? txp : NULL);
             if (ret == (RDB_int) RDB_ERROR)
                 return RDB_ERROR;

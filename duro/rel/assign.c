@@ -1002,7 +1002,7 @@ do_insert(const RDB_ma_insert *insp, RDB_exec_context *ecp,
     switch (insp->objp->kind) {
     case RDB_OB_INITIAL:
     case RDB_OB_TUPLE:
-        if (RDB_insert_real(insp->tbp, insp->objp, ecp, txp)
+        if (RDB_insert_nonvirtual(insp->tbp, insp->objp, ecp, txp)
                 != RDB_OK) {
             if ((insp->flags & RDB_DISTINCT) != 0
                     || RDB_obj_type(RDB_get_err(ecp)) != &RDB_ELEMENT_EXISTS_ERROR) {
@@ -1126,7 +1126,7 @@ do_delete(const RDB_ma_delete *delp,
     RDB_expression *tbexp, *exp, *nexp;
 
     if (delp->condp == NULL) {
-        return RDB_delete_real(delp->tbp, NULL, getfn, getarg, ecp, txp);
+        return RDB_delete_nonvirtual(delp->tbp, NULL, getfn, getarg, ecp, txp);
     }
 
     tbexp = RDB_table_ref(delp->tbp, ecp);
@@ -1149,7 +1149,7 @@ do_delete(const RDB_ma_delete *delp,
     RDB_del_expr(tbexp, ecp);
 
     if (nexp->kind == RDB_EX_TBP) {
-        ret = RDB_delete_real(nexp->def.tbref.tbp, NULL, getfn, getarg,
+        ret = RDB_delete_nonvirtual(nexp->def.tbref.tbp, NULL, getfn, getarg,
                 ecp, txp);
         RDB_del_expr(nexp, ecp);
         return ret;
@@ -1173,7 +1173,7 @@ do_delete(const RDB_ma_delete *delp,
         }
 
         if (nexp->def.op.args.firstp->kind == RDB_EX_TBP) {
-            ret = RDB_delete_real(nexp->def.op.args.firstp->def.tbref.tbp,
+            ret = RDB_delete_nonvirtual(nexp->def.op.args.firstp->def.tbref.tbp,
                     nexp->def.op.args.firstp->nextp, getfn, getarg, ecp, txp);
             RDB_del_expr(nexp, ecp);
             return ret;
@@ -1198,7 +1198,7 @@ do_vdelete_rel(RDB_object *destp, RDB_object *srcp, int flags, RDB_exec_context 
     if (qrp == NULL)
         goto error;
     while (RDB_next_tuple(qrp,  &tpl, ecp, txp) == RDB_OK) {
-        cnt = RDB_delete_real_tuple(destp, &tpl, flags, ecp, txp);
+        cnt = RDB_delete_nonvirtual_tuple(destp, &tpl, flags, ecp, txp);
         if (cnt == (RDB_int) RDB_ERROR) {
             goto error;
         }
@@ -1230,7 +1230,7 @@ do_vdelete(const RDB_ma_vdelete *delp, RDB_exec_context *ecp,
     switch (delp->objp->kind) {
     case RDB_OB_INITIAL:
     case RDB_OB_TUPLE:
-        return RDB_delete_real_tuple(delp->tbp, delp->objp, delp->flags,
+        return RDB_delete_nonvirtual_tuple(delp->tbp, delp->objp, delp->flags,
                 ecp, txp);
     case RDB_OB_TABLE:
         return do_vdelete_rel(delp->tbp, delp->objp, delp->flags, ecp, txp);

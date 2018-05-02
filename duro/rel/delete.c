@@ -108,7 +108,7 @@ error:
 #endif
 
 RDB_int
-RDB_delete_real(RDB_object *tbp, RDB_expression *condp,
+RDB_delete_nonvirtual(RDB_object *tbp, RDB_expression *condp,
         RDB_getobjfn *getfn, void *getarg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -523,7 +523,7 @@ error:
 }
 
 RDB_int
-RDB_delete_real_tuple(RDB_object *tbp, RDB_object *tplp, int flags, RDB_exec_context *ecp,
+RDB_delete_nonvirtual_tuple(RDB_object *tbp, RDB_object *tplp, int flags, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;

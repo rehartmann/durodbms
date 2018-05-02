@@ -10,6 +10,7 @@
 #include "internal.h"
 #include "stable.h"
 #include "sqlgen.h"
+#include "delete.h"
 #include <obj/objinternal.h>
 #include <gen/strfns.h>
 
@@ -72,6 +73,7 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
     struct RDB_tuple_and_getfn tg;
     RDB_object tmptb;
     RDB_type *tmptbtyp;
+    RDB_object copytb;
     RDB_type *tpltyp = tbp->typ->def.basetyp;
     RDB_cursor *curp = NULL;
     RDB_object *valv = RDB_alloc(sizeof(RDB_object) * updc, ecp);
@@ -89,6 +91,29 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
     for (i = 0; i < updc; i++)
         RDB_init_obj(&valv[i]);
     RDB_init_obj(&tpl);
+    RDB_init_obj(&tmptb);
+
+    if (!RDB_table_is_persistent(tbp)) {
+        /* Make copy of the table so it can be restored if the update fails */
+        RDB_type *copytbtyp;
+
+        RDB_init_obj(&copytb);
+        copytbtyp = RDB_dup_nonscalar_type(tbp->typ, ecp);
+        if (copytbtyp == NULL) {
+            rcount = (RDB_int) RDB_ERROR;
+            goto cleanup;
+        }
+        if (RDB_init_table_from_type(&copytb, NULL, copytbtyp,
+                1, tbp->val.tbp->keyv, 0, NULL, ecp) != RDB_OK) {
+            RDB_del_nonscalar_type(copytbtyp, ecp);
+            rcount = (RDB_int) RDB_ERROR;
+            goto cleanup;
+        }
+        if (RDB_move_tuples(&copytb, tbp, RDB_DISTINCT, ecp, NULL) == (RDB_int) RDB_ERROR) {
+            rcount = RDB_ERROR;
+            goto cleanup;
+        }
+    }
 
     /*
      * Iterate over the records and insert the updated records into
@@ -98,9 +123,8 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
     if (tmptbtyp == NULL) {
         rcount = (RDB_int) RDB_ERROR;
         goto cleanup;
-    }        
+    }
 
-    RDB_init_obj(&tmptb);
     ret = RDB_init_table_from_type(&tmptb, NULL, tmptbtyp,
             1, tbp->val.tbp->keyv, 0, NULL, ecp);
     if (ret != RDB_OK) {
@@ -155,7 +179,7 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
             }
 
             /* Insert tuple into temporary table */
-            ret = RDB_insert_real(&tmptb, &tpl, ecp,
+            ret = RDB_insert_nonvirtual(&tmptb, &tpl, ecp,
                     RDB_table_is_persistent(tbp) ? &tx : NULL);
             /*
              * If the elements already exists, more than one tuple are combined into one,
@@ -242,6 +266,16 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
     if (RDB_move_tuples(tbp, &tmptb, RDB_DISTINCT, ecp,
             RDB_table_is_persistent(tbp) ? &tx : NULL) == (RDB_int) RDB_ERROR) {
         rcount = RDB_ERROR;
+        if (!RDB_table_is_persistent(tbp)) {
+            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_KEY_VIOLATION_ERROR)
+                goto cleanup;
+            if (RDB_delete_nonvirtual(tbp, NULL, NULL, NULL, ecp, NULL) == (RDB_int) RDB_ERROR)
+                goto cleanup;
+            RDB_move_tuples(tbp, &copytb, RDB_DISTINCT, ecp, NULL);
+
+            /* Restore error */
+            RDB_raise_key_violation("", ecp);
+        }
     }
 
 cleanup:
@@ -270,6 +304,8 @@ cleanup:
         if (RDB_commit(ecp, &tx) != RDB_OK) {
             return RDB_ERROR;
         }
+    } else {
+        RDB_destroy_obj(&copytb, ecp);
     }
     return rcount;
 }

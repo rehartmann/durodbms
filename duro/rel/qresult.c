@@ -2472,7 +2472,7 @@ RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 
         /* Check for duplicate, if necessary */
         if (qrp->matp != NULL && strcmp(qrp->exp->def.op.name, "tclose") != 0) {
-            ret = RDB_insert_real(qrp->matp, tplp, ecp, txp);
+            ret = RDB_insert_nonvirtual(qrp->matp, tplp, ecp, txp);
             if (ret != RDB_OK) {
                 if (RDB_obj_type(RDB_get_err(ecp))
                         != &RDB_ELEMENT_EXISTS_ERROR) {
@@ -2534,7 +2534,7 @@ RDB_reset_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
     }
     if (qrp->exp != NULL && qrp->matp != NULL) {
         /* Clear materialized result */
-        if (RDB_delete_real(qrp->matp, NULL, NULL, NULL, ecp, txp)
+        if (RDB_delete_nonvirtual(qrp->matp, NULL, NULL, NULL, ecp, txp)
                 == (RDB_int) RDB_ERROR)
             return RDB_ERROR;
     }

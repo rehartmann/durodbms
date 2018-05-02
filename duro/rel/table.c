@@ -293,9 +293,9 @@ RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, int flags, RDB_exec_context 
 
     while ((ret = RDB_next_tuple(qrp, &tpl, ecp, txp)) == RDB_OK) {
         if (!RDB_table_is_persistent(dstp))
-            ret = RDB_insert_real(dstp, &tpl, ecp, NULL);
+            ret = RDB_insert_nonvirtual(dstp, &tpl, ecp, NULL);
         else
-            ret = RDB_insert_real(dstp, &tpl, ecp, txp);
+            ret = RDB_insert_nonvirtual(dstp, &tpl, ecp, txp);
         if (ret != RDB_OK) {
             if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_ELEMENT_EXISTS_ERROR
                     || (flags & RDB_DISTINCT) != 0) {

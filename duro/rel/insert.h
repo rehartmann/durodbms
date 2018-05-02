@@ -13,7 +13,7 @@ typedef struct RDB_exec_context RDB_exec_context;
 typedef struct RDB_transaction RDB_transaction;
 
 int
-RDB_insert_real(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *,
+RDB_insert_nonvirtual(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *,
         RDB_transaction *);
 
 #endif /*INSERT_H*/

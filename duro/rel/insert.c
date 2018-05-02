@@ -13,7 +13,7 @@
 #include <string.h>
 
 int
-RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
+RDB_insert_nonvirtual(RDB_object *tbp, const RDB_object *tplp,
                  RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;

@@ -247,7 +247,7 @@ RDB_cat_dbtables_insert(RDB_object *tbp, RDB_database *dbp, RDB_exec_context *ec
          * If it's a system table bypass contraint checking because resolving
          * table names may not yet work
          */
-        if (RDB_insert_real(txp->dbp->dbrootp->dbtables_tbp, &tpl, ecp, txp)
+        if (RDB_insert_nonvirtual(txp->dbp->dbrootp->dbtables_tbp, &tpl, ecp, txp)
                 != RDB_OK)
             goto error;
     }
@@ -324,7 +324,7 @@ insert_key(const RDB_string_vec *keyp, int i, const char *tablenamep,
         }
     }
 
-    if (RDB_insert_real(dbrootp->keys_tbp, &tpl, ecp, txp) != RDB_OK)
+    if (RDB_insert_nonvirtual(dbrootp->keys_tbp, &tpl, ecp, txp) != RDB_OK)
         goto error;
 
     RDB_destroy_obj(&tpl, ecp);
@@ -405,7 +405,7 @@ insert_defvals(RDB_object *tbp, RDB_dbroot *dbrootp,
             if (RDB_table_is_user(tbp)) {
                 ret = RDB_insert(dbrootp->table_attr_defvals_tbp, &tpl, ecp, txp);
             } else {
-                ret = RDB_insert_real(dbrootp->table_attr_defvals_tbp, &tpl, ecp, txp);
+                ret = RDB_insert_nonvirtual(dbrootp->table_attr_defvals_tbp, &tpl, ecp, txp);
             }
             if (ret != RDB_OK) {
                 goto error;
@@ -463,7 +463,7 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
             goto error;
         }
     } else {
-        if (RDB_insert_real(dbrootp->rtables_tbp, &tpl, ecp, txp) != RDB_OK) {
+        if (RDB_insert_nonvirtual(dbrootp->rtables_tbp, &tpl, ecp, txp) != RDB_OK) {
             goto error;
         }
     }
@@ -504,7 +504,7 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
                 goto error;
             }
         } else {
-            if (RDB_insert_real(dbrootp->table_attr_tbp, &atpl, ecp, txp) != RDB_OK) {
+            if (RDB_insert_nonvirtual(dbrootp->table_attr_tbp, &atpl, ecp, txp) != RDB_OK) {
                 goto error;
             }
         }
@@ -1101,7 +1101,7 @@ insert_version_info(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         goto cleanup;
 
     /* bypass checks */
-    ret = RDB_insert_real(dbrootp->version_info_tbp, &tpl, ecp, txp);
+    ret = RDB_insert_nonvirtual(dbrootp->version_info_tbp, &tpl, ecp, txp);
 
 cleanup:
     RDB_destroy_obj(&tpl, ecp);
