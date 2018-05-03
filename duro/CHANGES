@@ -2,6 +2,8 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 1.4
 
+- Added option to build DuroDBMS without Berkeley DB.
+
 - Fixed bug that prevented recreation of a renamed table.
 
 - lower() and upper() convert multibyte characters.
@@ -12,11 +14,12 @@ DuroDBMS 1.4
 
 - Fixed creation of local tables with multiple keys when an environment is open.
 
-- Added handling of types with possible represenations to the REST server and Java client.
+- Fixed problem with updating private tables that could cause a tuple to disappear
+  after an update that failed because of a key violation.
+
+- Added handling of types with possible represenations to the REST server and its Java client.
 
 - Java REST client: Fixed handling of arrays when converting from JSON.
-
-- Added option to build DuroDBMS without Berkeley DB.
 
 DuroDBMS 1.3
 
