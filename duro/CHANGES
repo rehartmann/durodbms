@@ -4,6 +4,9 @@ DuroDBMS 1.4
 
 - Added option to build DuroDBMS without Berkeley DB.
 
+- Moved to Berkeley DB 6.2. (Not on Windows, because DuroDBMS does not work with
+  Berkeley DB 6.2 on Windows XP)
+
 - Fixed bug that prevented recreation of a renamed table.
 
 - lower() and upper() convert multibyte characters.

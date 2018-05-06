@@ -10,7 +10,7 @@ import subprocess
 # Basic settings
 #
 
-bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.6.1')
+bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.6.2')
 
 release = '1.4'
 

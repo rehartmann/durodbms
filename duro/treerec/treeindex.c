@@ -16,7 +16,7 @@
 #include <errno.h>
 
 /*
- * Read field from an index DBT !! duplicate
+ * Read field from an index key
  */
 int
 RDB_index_get_field(RDB_index *ixp, int fi, const void *datap, size_t len, size_t *lenp,
