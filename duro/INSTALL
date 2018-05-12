@@ -19,7 +19,7 @@ will not be possible. Duroadmin will not be available either.
 
 SCons is available from www.scons.org.
 
-To compile DuroDBMS, you need GNU Libtool and Berkeley DB (6.1 recommended).
+To compile DuroDBMS, you need GNU Libtool and Berkeley DB.
 
 Building the Java interface requires Java Development Kit 8. 
 
@@ -28,11 +28,11 @@ Building the Tcl interface requires Tcl (8.1 or later).
 'scons test' requires the Tcl interface and the tcltest package.
 
 On Unix-like systems, Berkeley DB is assumed to be located in
-/usr/local/BerkeleyDB.6.1. If Berkeley DB is located in a different directory,
+/usr/local/BerkeleyDB.6.2. If Berkeley DB is located in a different directory,
 you can pass this directory to SCons using the bdbhome variable, so
 if Berkeley DB is located in /usr instead of /usr/local, you may use:
 
-scons bdbhome=/usr/BerkeleyDB.6.1
+scons bdbhome=/usr/BerkeleyDB.6.2
 
 The location of Berkeley DB may also be specified using
 the environment. With Visual C++, the variables LIB and INCLUDE
@@ -45,7 +45,7 @@ variable to scons, e. g.:
 
 scons installdir=/usr install
 
-This will install DuroDBMS in /usr/duro.1.3.
+This will install DuroDBMS in /usr/duro.1.4.
 
 To build the REST server, type:
 

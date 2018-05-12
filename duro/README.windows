@@ -15,9 +15,6 @@ The following software is required for running this version of DuroDBMS on MS Wi
 Add the directories where the respective DLLs are located to PATH,
 together with the 'bin' subdirectory of the DuroDBMS root directory.
 
-DuroDBMS has been tested under Linux/x86 and Windows XP with Berkeley
-DB 6.1 and Tcl 8.5.
-
 To learn about how to use DuroDBMS, see the documentation in the 'docs'
 subdirectory. Example code can be found in the 'tests' subdirectory
 of the source release.
