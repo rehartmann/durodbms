@@ -21,7 +21,7 @@ SCons is available from www.scons.org.
 
 To compile DuroDBMS, you need GNU Libtool and Berkeley DB.
 
-Building the Java interface requires Java Development Kit 8. 
+Building the Java interface requires Java Development Kit 7 or later and the javax.json package. 
 
 Building the Tcl interface requires Tcl (8.1 or later).
 
