@@ -17,7 +17,7 @@ release = '1.4'
 env = Environment(ENV = os.environ, tools = ['default', 'textfile'], JAVACLASSPATH = '../jduro/lib/javax.json.jar',
         CPPPATH = ['.'])
 
-java_home = os.getenv('JAVA_HOME', '/usr/lib/jvm/java-8-openjdk-i386')
+java_home = os.getenv('JAVA_HOME', '/usr/lib/jvm/java-11-openjdk-i386')
 
 oshlibsuffix = env['SHLIBSUFFIX']
 
@@ -133,7 +133,7 @@ else:
     # Name of JNI lib gets no version number because System.loadLibrary()
     # does not support it
     libjduro = env.SharedLibrary('jduro', ['jduro/jduro.c', 'jduro/probj.c'],
-            CPPPATH = env['CPPPATH'] + [java_home + '/include'],
+            CPPPATH = env['CPPPATH'] + [java_home + '/include'] + [java_home + '/include/linux'],
             LIBS = env['LIBS'] + libduro,
             SHLIBSUFFIX = DefaultEnvironment()["SHLIBSUFFIX"])
 
