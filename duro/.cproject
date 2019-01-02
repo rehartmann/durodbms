@@ -30,6 +30,7 @@
 								</option>
 								<option id="gnu.c.compiler.option.include.paths.1072589226" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="/usr/lib/jvm/java-6-openjdk-i386/include"/>
+									<listOptionValue builtIn="false" value="/usr/lib/jvm/java-11-openjdk-386/include/linux"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1308327551" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>

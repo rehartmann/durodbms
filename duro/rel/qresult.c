@@ -1978,6 +1978,7 @@ wrap_tuple(const RDB_object *tplp, RDB_expression *exp,
                 return RDB_ERROR;
             }
             argp = argp->nextp->nextp;
+            ++i;
         }
         if (i == wrapc) {
             /* Attribute not found, copy */
