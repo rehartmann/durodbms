@@ -21,7 +21,8 @@ SCons is available from www.scons.org.
 
 To compile DuroDBMS, you need GNU Libtool and Berkeley DB.
 
-Building the Java interface requires Java Development Kit 7 or later and the javax.json package. 
+Building the Java interface requires Java Development Kit 7 or later and the javax.json package.
+Copy the JAR file to jduro/lib or add it to CLASSPATH.  
 
 Building the Tcl interface requires Tcl (8.1 or later).
 
@@ -38,14 +39,14 @@ The location of Berkeley DB may also be specified using
 the environment. With Visual C++, the variables LIB and INCLUDE
 can be used.
 
-By default, DuroDBMS is installed in C:\duro.1.4 on Windows, and
-/usr/local/duro.1.4 on all other systems.
+By default, DuroDBMS is installed in C:\duro.1.5 on Windows, and
+/usr/local/duro.1.5 on all other systems.
 You can specify a different directory by passing an installdir
 variable to scons, e. g.:
 
 scons installdir=/usr install
 
-This will install DuroDBMS in /usr/duro.1.4.
+This will install DuroDBMS in /usr/duro.1.5.
 
 To build the REST server, type:
 

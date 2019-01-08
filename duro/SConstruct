@@ -12,10 +12,10 @@ import subprocess
 
 bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.6.2')
 
-release = '1.4'
+release = '1.5'
 
-env = Environment(ENV = os.environ, tools = ['default', 'textfile'], JAVACLASSPATH = '../jduro/lib/javax.json.jar',
-        CPPPATH = ['.'])
+env = Environment(ENV = os.environ, tools = ['default', 'textfile'], CPPPATH = ['.'])
+env.Append(JAVACLASSPATH = [os.getenv('CLASSPATH'), '../jduro/lib/javax.json.jar'])
 
 java_home = os.getenv('JAVA_HOME', '/usr/lib/jvm/java-11-openjdk-i386')
 
@@ -139,7 +139,7 @@ else:
 
 jdurolibs = [libjduro, 'jduro.jar']
 
-env.Alias('jni', jdurolibs)
+env.Alias('jni', ['../jduro/classes'] + jdurolibs)
 
 #
 # Tcl interface
@@ -194,9 +194,12 @@ durod = env.Program('srv/durod.c', LIBS = env['LIBS'] + [libduro, 'microhttpd'])
 # Java interface
 #
 
-env.Java('../jduro/bin', '../jduro/src' )
+if not os.path.exists('../jduro/classes'):
+  os.makedirs('../jduro/classes')
 
-env.Jar('jduro.jar', '../jduro/bin', JARCHDIR='$SOURCE') 
+env.Java('../jduro/classes', '../jduro/src' )
+
+env.Jar(target = 'jduro.jar', source = '../jduro/classes', JARCHDIR='$SOURCE') 
 
 #
 # Docs
@@ -213,7 +216,7 @@ env.Command('docs/api/html/index.html',
 env.Alias('javadocs', 'docs/javadoc/index.html')
 
 env.Command('docs/javadoc/index.html', Glob('../jduro/src/net/sf/duro/*.java'),
-        'javadoc -d docs/javadoc -classpath ../jduro/src net.sf.duro')
+        'javadoc -d docs/javadoc -classpath ../jduro/src:../jduro/lib/javax.json.jar net.sf.duro')
 
 #
 # Defaults
