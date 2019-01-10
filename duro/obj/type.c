@@ -1356,7 +1356,7 @@ RDB_unwrap_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
     int i, j, k;
     int ret;
     RDB_attr *attrp;
-    RDB_type *newtyp;
+    RDB_type *newtyp = NULL;
 
     /* Compute # of attributes */
     nattrc = typ->def.tuple.attrc;
@@ -1429,17 +1429,19 @@ RDB_unwrap_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
     return newtyp;
 
 error:
-    for (i = 0; i < attrc; i++) {
-        attrp = &newtyp->def.tuple.attrv[i];
-        if (attrp->name != NULL)
-            free (attrp->name);
-        if (attrp->typ != NULL) {
-            if (!RDB_type_is_scalar(attrp->typ))
-                RDB_del_nonscalar_type(attrp->typ, ecp);
+    if (newtyp != NULL) {
+        for (i = 0; i < attrc; i++) {
+            attrp = &newtyp->def.tuple.attrv[i];
+            if (attrp->name != NULL)
+                free (attrp->name);
+            if (attrp->typ != NULL) {
+                if (!RDB_type_is_scalar(attrp->typ))
+                    RDB_del_nonscalar_type(attrp->typ, ecp);
+            }
         }
+        RDB_free(newtyp->def.tuple.attrv);
+        RDB_free(newtyp);
     }
-    RDB_free(newtyp->def.tuple.attrv);
-    RDB_free(newtyp);
     return NULL;
 }    
 
