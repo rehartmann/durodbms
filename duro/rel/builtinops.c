@@ -182,7 +182,7 @@ OPERATOR extend(r RELATION { * }, attrexp <em>ANY</em>, attrname string, ...) RE
 
 <h3 id="op_group">OPERATOR group</h3>
 
-OPERATOR group(r RELATION { * }, attrname string ...) RETURNS RELATION { * };
+OPERATOR group(r RELATION { * }, attrname string, ..., dst_attr string) RETURNS RELATION { * };
 
 <hr>
 

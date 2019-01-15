@@ -58,14 +58,16 @@ compare_key(const RDB_binary_tree *treep, const void *key, size_t keylen,
 {
     int res;
 
-    if (treep->comparison_fp != NULL) {
-        return (*treep->comparison_fp)(key, keylen,
-                nodep->key, nodep->keylen, treep->comparison_arg);
+    if (keylen > 0 && nodep->keylen > 0) {
+        if (treep->comparison_fp != NULL) {
+            return (*treep->comparison_fp)(key, keylen,
+                    nodep->key, nodep->keylen, treep->comparison_arg);
+        }
+        res = memcmp(key, nodep->key, nodep->keylen <= keylen ?
+                nodep->keylen : keylen);
+        if (res != 0)
+            return res;
     }
-    res = memcmp(key, nodep->key, nodep->keylen <= keylen ?
-            nodep->keylen : keylen);
-    if (res != 0)
-        return res;
 
     return abs(keylen - nodep->keylen);
 }

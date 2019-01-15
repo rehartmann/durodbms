@@ -113,9 +113,10 @@ RDB_obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
     }
     default: ;
     }
-    if (impltyp->ireplen == RDB_VARIABLE_LEN)
-        *lenp += objp->val.bin.len;
-    else
+    if (impltyp->ireplen == RDB_VARIABLE_LEN) {
+        if (objp->kind == RDB_OB_BIN)
+            *lenp += objp->val.bin.len;
+    } else
         *lenp += impltyp->ireplen;
     return RDB_OK;
 }

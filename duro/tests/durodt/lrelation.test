@@ -208,6 +208,19 @@ test group {GROUP} -body {
 } -result {TRUE
 }
 
+test group_empty {GROUP with relation-valued attribute without attributes} -body {
+    exec $testdir/../../dli/durodt << {
+        var gt init rel{tup{i 1, j 2}} group { } as g;
+        var t init tuple from gt;
+        io.put(t.i); io.put_line('');
+        io.put(t.j); io.put_line('');
+        io.put(is_empty(t.g));  io.put_line('');
+    }
+} -result {1
+2
+TRUE
+}
+
 test ungroup {UNGROUP} -body {
     exec $testdir/../../dli/durodt << {
 		var ugt init rel{

@@ -515,9 +515,13 @@ do_group(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     keyfc = RDB_pkey_len(qrp->matp);
 
-    keyfv = RDB_alloc(sizeof (RDB_field) * keyfc, ecp);
-    if (keyfv == NULL) {
-        return RDB_ERROR;
+    if (keyfc > 0) {
+        keyfv = RDB_alloc(sizeof (RDB_field) * keyfc, ecp);
+        if (keyfv == NULL) {
+            return RDB_ERROR;
+        }
+    } else {
+        keyfv = NULL;
     }
 
     /*
@@ -656,6 +660,8 @@ group_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
 
     qrp->exp = exp;
     qrp->nested = RDB_FALSE;
+    qrp->val.stored.tbp = NULL;
+    qrp->val.stored.curp = NULL;
 
     /* Need keys */
     keyc = RDB_infer_keys(exp, NULL, NULL, NULL, ecp, txp, &keyv, &freekeys);
