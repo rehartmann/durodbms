@@ -11,7 +11,11 @@
 
 #include <string.h>
 #include <math.h>
+#ifdef POSIX_REGEX
 #include <regex.h>
+#else
+#include <regex/regex.h>
+#endif
 #include <ctype.h>
 #ifdef _WIN32
 #include "Shlwapi.h"
@@ -764,6 +768,7 @@ static int
 op_regex_like(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
+#ifdef POSIX_REGEX
     regex_t reg;
     int ret;
 
@@ -775,6 +780,10 @@ op_regex_like(int argc, RDB_object *argv[], RDB_operator *op,
     RDB_bool_to_obj(retvalp, (RDB_bool)
             (regexec(&reg, argv[0]->val.bin.datap, 0, NULL, 0) == 0));
     regfree(&reg);
+#else
+    RDB_bool_to_obj(retvalp,
+            RDB_regex_match(argv[0]->val.bin.datap, argv[1]->val.bin.datap));
+#endif
 
     return RDB_OK;
 }

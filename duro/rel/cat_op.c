@@ -61,8 +61,8 @@ tuple_to_operator(const char *name, const RDB_object *tplp,
 
     libname = RDB_tuple_get_string(tplp, "lib");
     if (libname[0] != '\0') {
-        op->modhdl = lt_dlopenext(libname);
 #ifndef _WIN32
+        op->modhdl = lt_dlopenext(libname);
         if (op->modhdl == NULL) {
             char buf[64];
 
@@ -70,6 +70,8 @@ tuple_to_operator(const char *name, const RDB_object *tplp,
             snprintf(buf, sizeof(buf), "%s.so.%s", libname, RDB_release_number);
             op->modhdl = lt_dlopen(buf);
         }
+#else
+        op->modhdl = LoadLibraryA(libname);
 #endif
         if (op->modhdl == NULL) {
             RDB_raise_resource_not_found(libname, ecp);
@@ -177,7 +179,11 @@ cat_load_ro_op(const char *name, RDB_object *tbp, RDB_exec_context *ecp,
         } else if (symname[0] == '\0') {
             op->opfn.ro_fp = NULL;
         } else {
+#ifdef _WIN32
+            op->opfn.ro_fp = (RDB_ro_op_func *) GetProcAddress(op->modhdl, symname);
+#else
             op->opfn.ro_fp = (RDB_ro_op_func *) lt_dlsym(op->modhdl, symname);
+#endif
             if (op->opfn.ro_fp == NULL) {
                 RDB_raise_resource_not_found(symname, ecp);
                 RDB_free_op_data(op, ecp);
@@ -309,7 +315,11 @@ cat_load_upd_op(const char *name, RDB_object *tbp, RDB_exec_context *ecp,
 
         symname = RDB_tuple_get_string(&tpl, "symbol");
         if (symname[0] != '\0') {
+#ifdef _WIN32
+            op->opfn.upd_fp = (RDB_upd_op_func *) GetProcAddress(op->modhdl, symname);
+#else
             op->opfn.upd_fp = (RDB_upd_op_func *) lt_dlsym(op->modhdl, symname);
+#endif
             if (op->opfn.upd_fp == NULL) {
                 RDB_raise_resource_not_found(symname, ecp);
                 RDB_free_op_data(op, ecp);

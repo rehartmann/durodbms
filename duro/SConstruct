@@ -10,9 +10,9 @@ import subprocess
 # Basic settings
 #
 
-bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.6.2')
+bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.18.1')
 
-release = '1.5'
+release = '1.6'
 
 env = Environment(ENV = os.environ, tools = ['default', 'textfile'], CPPPATH = ['.'])
 env.Append(JAVACLASSPATH = [os.getenv('CLASSPATH'), '../jduro/lib/javax.json.jar'])
@@ -24,10 +24,15 @@ oshlibsuffix = env['SHLIBSUFFIX']
 postgresql = ARGUMENTS.get('postgresql', 'false') 
 berkeleydb = ARGUMENTS.get('berkeleydb', 'true') 
 
+conf = Configure(env)
+posix_regex = conf.CheckCHeader('regex.h')
+
 if env['PLATFORM'] == 'win32':
     default_prefix = 'C:'
     env.Replace(LIBS = ['ltdl', 'shlwapi'])
-    durolibs = ['ltdl', 'regex', 'shlwapi']
+    durolibs = ['shlwapi']
+    if posix_regex:
+        durolibs = durolibs + ['regex']
 else:
     default_prefix = '/usr/local'
     env.Replace(SHLIBSUFFIX = env['SHLIBSUFFIX'] + '.' + release)
@@ -51,11 +56,14 @@ if berkeleydb == 'true':
     env.Replace(RPATH = env['RPATH'] + [bdbhome + '/lib'])
     env.Append(CFLAGS = ' -DBERKELEYDB')
     if env['PLATFORM'] == 'win32':
-        env.Replace(LIBS = ['libdb61'])
-        durolibs = durolibs + ['libdb61']
+        env.Replace(LIBS = ['libdb181'])
+        durolibs = durolibs + ['libdb181']
     else:
         env.Replace(LIBS = ['db'])
         durolibs = durolibs + ['db']
+
+if posix_regex:
+    env.Append(CFLAGS = ' -DPOSIX_REGEX')
 
 if (os.environ.has_key('LDFLAGS')):
     env.Append(LINKFLAGS = os.environ['LDFLAGS'])
@@ -119,6 +127,8 @@ interpsrc = ['dli/exparse.c', 'dli/exlex.c', 'dli/parse.c', 'dli/parsenode.c',
         'dli/interp_vardef.c', 'dli/ioop.c']
 
 durosrc = gensrc + objsrc + recsrc + relsrc + interpsrc
+if not posix_regex:
+    durosrc = durosrc + ['regex/regex.cpp']
 
 if env['PLATFORM'] == 'win32':
     libduro = env.SharedLibrary('duro', durosrc + ['duro.def'],
@@ -154,7 +164,7 @@ durotclsrc = ['tcl/duro.c', 'tcl/envcmd.c',
 libdurotcllibs = ['duro']
 
 if env['PLATFORM'] == 'win32':
-    libdurotcllibs += ['tcl85', 'libdb61']
+    libdurotcllibs += ['tcl86t', 'libdb181']
     libdurotcl = env.SharedLibrary('durotcl', durotclsrc + ['durotcl.def'],
             LIBS = libdurotcllibs,
             CPPPATH = env['CPPPATH'] + ['/usr/include/tcl'])
@@ -208,9 +218,9 @@ env.Jar(target = 'jduro.jar', source = '../jduro/classes', JARCHDIR='$SOURCE')
 env.Alias('apidocs', 'docs/api/html/index.html')
 
 env.Command('docs/api/html/index.html',
-        ['Doxyfile'] + recsrc + objsrc + relsrc + interpsrc + ['obj/type.h']
-            + ['rel/rdb.h'] + ['obj/operator.h']
-            + ['dli/parse.c', 'dli/ioop.c', 'dli/iinterp.c', 'dli/parse.h'],
+        ['Doxyfile'] + recsrc + objsrc + relsrc + interpsrc
+            + ['obj/type.h', 'rel/rdb.h', 'obj/operator.h',
+               'dli/parse.c', 'dli/ioop.c', 'dli/iinterp.c', 'dli/parse.h'],
         'doxygen')
 
 env.Alias('javadocs', 'docs/javadoc/index.html')
@@ -420,6 +430,7 @@ if env.has_key('TAR'):
     env.Tar('src.tar', gensrc)
     env.Tar('src.tar', recsrc)
     env.Tar('src.tar', objsrc)
+    env.Tar('src.tar', ['regex/regex.h', 'regex/regex.cpp'])
     env.Tar('src.tar', relsrc)
     env.Tar('src.tar', interpsrc)
     env.Tar('src.tar', 'dli/durodt.c')

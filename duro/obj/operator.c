@@ -201,7 +201,11 @@ RDB_free_op_data(RDB_operator *op, RDB_exec_context *ecp)
         RDB_del_nonscalar_type(op->rtyp, ecp);
     if (op->modhdl != NULL) {
         /* Operator loaded from module */
+#ifdef _WIN32
+        FreeLibrary(op->modhdl);
+#else
         lt_dlclose(op->modhdl);
+#endif
     }
     for (i = 0; i < op->paramc; i++) {
         if (!RDB_type_is_scalar(op->paramv[i].typ))

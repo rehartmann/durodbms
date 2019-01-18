@@ -11,7 +11,12 @@
 #include "operator.h"
 #include "expression.h"
 
+#ifndef _WIN32
 #include <ltdl.h>
+#else
+#include <winsock2.h>
+#include <windows.h>
+#endif
 
 enum {
     /** marks types which have been defined but not implemented */
@@ -69,7 +74,12 @@ struct RDB_op_data {
     RDB_type *rtyp;
     char *version;
     RDB_object source;
+#ifdef _WIN32
+    HMODULE modhdl;
+#else
     lt_dlhandle modhdl;
+#endif
+
     int paramc;
     RDB_parameter *paramv;
     union {

@@ -2,6 +2,12 @@ Summary of Changes to DuroDBMS
 
 DuroDBMS 1.6
 
+- GNU Libtool is no longer required on Windows.
+
+- If POSIX regular expressions are not available, C++ regular expressions are used.
+
+- Moved to Berkeley DB 18.1.
+
 - Fixed bug in storing relations without attributes.
 
 - Fixed bug in expression serialization.

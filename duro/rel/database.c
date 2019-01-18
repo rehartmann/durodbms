@@ -294,7 +294,9 @@ cleanup_env(RDB_environment *envp)
 
     RDB_destroy_exec_context(&ec);
 
+#ifndef _WIN32
     lt_dlexit();
+#endif
 }
 
 static RDB_dbroot *
@@ -567,10 +569,12 @@ get_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
         if (RDB_init_builtin(ecp) != RDB_OK) {
             goto error;
         }
+#ifndef _WIN32
         if (lt_dlinit() != 0) {
             RDB_raise_system("lt_dlinit() failed.", ecp);
             return NULL;
         }
+#endif
         dbrootp = create_dbroot(envp, ecp);
         if (dbrootp == NULL) {
             goto error;
@@ -584,7 +588,9 @@ error:
         close_systables(dbrootp, ecp);
         free_dbroot(dbrootp, ecp);
         RDB_env_set_xdata(envp, NULL);
+#ifndef _WIN32
         lt_dlexit();
+#endif
     }
 
     return NULL;

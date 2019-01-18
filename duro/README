@@ -6,8 +6,8 @@ a relational database management system and programming language.
 The following software is required for compiling and running DuroDBMS:
 
 - Berkeley DB Transactional Data Store (release 6.1 or later)
-- POSIX.2 regular expressions
-- GNU Libtool
+- POSIX.2 or C++ regular expressions
+- GNU Libtool (not under MS Windows)
 - Tcl 8.5 or later (optional)
 - SCons 1.2.0 or later
 - GNU Readline (not under MS Windows)
@@ -20,7 +20,7 @@ When DuroDBMS is installed, the Tcl interface is installed as a package in
 the 'lib' subdirectory. The simplest way to make it available to application
 scripts is to add this subdirectory to TCLLIBPATH, e.g.:
 
-    TCLLIBPATH=/usr/local/durodbms.1.5/lib
+    TCLLIBPATH=/usr/local/durodbms.1.6/lib
     export TCLLIBPATH
 
 Building the REST server requires libmicrohttpd.
