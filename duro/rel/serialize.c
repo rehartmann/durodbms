@@ -458,7 +458,7 @@ deserialize_size_t(const RDB_object *valp, int *posp, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
     memcpy(vp, ((RDB_byte *)valp->val.bin.datap) + *posp, sizeof (size_t));
-    *posp += sizeof (RDB_int);
+    *posp += sizeof (size_t);
     return RDB_OK;
 }
 
