@@ -172,12 +172,27 @@ test private_secindex {private table with secondary index} -body {
         io.put(tp.n); io.put_line('');
         tp := tuple from pr1 where k=4;
         io.put(tp.n); io.put_line('');
+
+        var pr2 private relation {n string, m string, k string} key {n} key {m};
+        insert pr2 tup{n 'a', m 'abcdefghikj', k 'x'};
+        insert pr2 tup{n 'b', m 'abcdefghikjl', k 'y'};
+        insert pr2 tup{n 'c', m 'abcdefghikjlm', k 'z'};
+        update pr2 where m = 'abcdefghikj' { n := 'd' };
+
+        var tp2 init tuple from pr2 where m = 'abcdefghikj';
+        io.put(tp2.n); io.put_line('');
+        io.put(tp2.k); io.put_line('');
+
+        io.put((tuple from pr2 where m = 'abcdefghikjl').k); io.put_line('');
     }
 } -result {2 20 4
 5 10 1
 10
 2
 2
+d
+x
+y
 }
 
 test deedum {TABLE_DEE and TABLE_DUM} -body {

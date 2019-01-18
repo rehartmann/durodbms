@@ -270,7 +270,7 @@ insert_into_indexes(RDB_recmap *rmp, RDB_tree_node *nodep, RDB_exec_context *ecp
         memcpy (key, nodep->key, nodep->keylen);
 
         if (RDB_tree_insert(ixp->impl.tree.treep, skey, skeylen,
-                key, sizeof(RDB_tree_node *), ecp) == NULL) {
+                key, nodep->keylen, ecp) == NULL) {
             free(skey);
             RDB_free(key);
             return RDB_ERROR;
