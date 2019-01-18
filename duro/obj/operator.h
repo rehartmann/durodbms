@@ -10,8 +10,6 @@
 
 #include "object.h"
 
-#include <ltdl.h>
-
 typedef struct RDB_op_data RDB_operator;
 typedef struct RDB_transaction RDB_transaction;
 typedef struct RDB_exec_context RDB_exec_context;
