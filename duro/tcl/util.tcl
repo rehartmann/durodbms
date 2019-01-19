@@ -2,7 +2,7 @@
 # Utility procedures for Durotcl
 #
 
-package provide duro 1.4
+package provide duro 1.6
 
 namespace eval duro {
 
