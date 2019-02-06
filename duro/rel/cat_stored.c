@@ -266,7 +266,7 @@ RDB_cat_insert_table_recmap(RDB_object *tbp, const char *rmname,
 
     RDB_init_obj(&tbnameobj);
 
-    /* Insert entry into sys_vtables */
+    /* Insert entry into sys_table_recmap */
 
     ret = RDB_string_to_id(&tbnameobj, RDB_table_name(tbp), ecp);
     if (ret != RDB_OK)

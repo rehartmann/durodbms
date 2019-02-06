@@ -94,7 +94,7 @@ RDB_object *
 RDB_raise_internal(const char *, RDB_exec_context *);
 
 RDB_object *
-RDB_raise_lock_not_granted(RDB_exec_context *);
+RDB_raise_concurrency(RDB_exec_context *);
 
 RDB_object *
 RDB_raise_aggregate_undefined(RDB_exec_context *);

@@ -81,10 +81,12 @@ TYPE system_error POSSREP { msg string };
 Unspecified system error.
 
 <pre>
-TYPE lock_not_granted_error POSSREP { };
+TYPE concurrency_error POSSREP { };
 </pre>
 
-A lock was requested but could not be granted.
+A concurrency error occurred.
+For example, a lock was requested but could not be granted or the current transaction was rolled back
+because a concurrent modification was detected.
 
 <pre>
 TYPE deadlock_error POSSREP { };
@@ -141,7 +143,7 @@ RDB_type RDB_VERSION_MISMATCH_ERROR;
 RDB_type RDB_NOT_SUPPORTED_ERROR;
 RDB_type RDB_IN_USE_ERROR;
 RDB_type RDB_NO_MEMORY_ERROR;
-RDB_type RDB_LOCK_NOT_GRANTED_ERROR;
+RDB_type RDB_CONCURRENCY_ERROR;
 RDB_type RDB_DEADLOCK_ERROR;
 RDB_type RDB_RESOURCE_NOT_FOUND_ERROR;
 RDB_type RDB_INTERNAL_ERROR;
@@ -632,8 +634,8 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
         &internal_comp
     };
 
-    static RDB_possrep lock_not_granted_rep = {
-        "lock_not_granted_error",
+    static RDB_possrep concurrency_rep = {
+        "concurrency_error",
         0,
     };
 
@@ -975,20 +977,20 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
     RDB_INTERNAL_ERROR.def.scalar.init_val_is_valid = RDB_TRUE;
     RDB_INTERNAL_ERROR.compare_op = NULL;
 
-    RDB_LOCK_NOT_GRANTED_ERROR.kind = RDB_TP_SCALAR;
-    RDB_LOCK_NOT_GRANTED_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_LOCK_NOT_GRANTED_ERROR.name = "lock_not_granted_error";
-    RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.builtin = RDB_TRUE;
-    RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.ordered = RDB_FALSE;
-    RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.repc = 1;
-    RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.repv = &lock_not_granted_rep;
-    RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.arep = &empty_tuple_type;
-    RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.constraintp = NULL;
-    RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.initexp = NULL;
-    RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.sysimpl = RDB_TRUE;
-    RDB_init_obj(&RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.init_val);
-    RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.init_val_is_valid = RDB_TRUE;
-    RDB_LOCK_NOT_GRANTED_ERROR.compare_op = NULL;
+    RDB_CONCURRENCY_ERROR.kind = RDB_TP_SCALAR;
+    RDB_CONCURRENCY_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_CONCURRENCY_ERROR.name = "concurrency_error";
+    RDB_CONCURRENCY_ERROR.def.scalar.builtin = RDB_TRUE;
+    RDB_CONCURRENCY_ERROR.def.scalar.ordered = RDB_FALSE;
+    RDB_CONCURRENCY_ERROR.def.scalar.repc = 1;
+    RDB_CONCURRENCY_ERROR.def.scalar.repv = &concurrency_rep;
+    RDB_CONCURRENCY_ERROR.def.scalar.arep = &empty_tuple_type;
+    RDB_CONCURRENCY_ERROR.def.scalar.constraintp = NULL;
+    RDB_CONCURRENCY_ERROR.def.scalar.initexp = NULL;
+    RDB_CONCURRENCY_ERROR.def.scalar.sysimpl = RDB_TRUE;
+    RDB_init_obj(&RDB_CONCURRENCY_ERROR.def.scalar.init_val);
+    RDB_CONCURRENCY_ERROR.def.scalar.init_val_is_valid = RDB_TRUE;
+    RDB_CONCURRENCY_ERROR.compare_op = NULL;
 
     RDB_AGGREGATE_UNDEFINED_ERROR.kind = RDB_TP_SCALAR;
     RDB_AGGREGATE_UNDEFINED_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -1196,7 +1198,7 @@ RDB_add_builtin_pr_types(RDB_exec_context *ecp)
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (RDB_add_type(&RDB_LOCK_NOT_GRANTED_ERROR,
+    if (RDB_add_type(&RDB_CONCURRENCY_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }

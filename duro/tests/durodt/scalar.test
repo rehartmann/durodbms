@@ -64,7 +64,7 @@ test scalar_builtin_types_pr {built-in scalar types with possreps} -body {
 
         var sys_err system_error;
 
-        var lock_not_granted_err lock_not_granted_error;
+        var concurrency_err concurrency_error;
 
         var deadlock_err deadlock_error;
 

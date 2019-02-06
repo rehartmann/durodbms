@@ -124,7 +124,7 @@ RDB_pgresult_to_error(const RDB_environment *envp, const PGresult *res,
     } else if (strcmp(sqlstate, "55006") == 0) {
         RDB_raise_in_use(errmsg, ecp);
     } else if (strcmp(sqlstate, "55P03") == 0) {
-        RDB_raise_lock_not_granted(ecp);
+        RDB_raise_concurrency(ecp);
     } else if (strncmp(sqlstate, "57", 2) == 0
             || strncmp(sqlstate, "58", 2) == 0) {
         RDB_raise_system(errmsg, ecp);

@@ -244,13 +244,13 @@ RDB_raise_internal(const char *msg, RDB_exec_context *ecp)
 }
 
 RDB_object *
-RDB_raise_lock_not_granted(RDB_exec_context *ecp)
+RDB_raise_concurrency(RDB_exec_context *ecp)
 {
     RDB_object *errp = RDB_raise_err(ecp);
     if (errp == NULL)
         return NULL;
 
-    errp->typ = &RDB_LOCK_NOT_GRANTED_ERROR;
+    errp->typ = &RDB_CONCURRENCY_ERROR;
     return errp;
 }
 

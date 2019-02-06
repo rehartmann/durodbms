@@ -188,7 +188,7 @@ RDB_bdb_errcode_to_error(int errcode, RDB_exec_context *ecp)
             RDB_raise_not_found("", ecp);
             break;
         case DB_LOCK_NOTGRANTED:
-            RDB_raise_lock_not_granted(ecp);
+            RDB_raise_concurrency(ecp);
             break;
         case DB_LOCK_DEADLOCK:
             RDB_raise_deadlock(ecp);
