@@ -340,8 +340,8 @@ RDB_insert_tree_rec(RDB_recmap *rmp, RDB_field flds[], RDB_rec_transaction *rtxp
 
     ret = insert_tree_rec_kv(rmp, key, keylen, value, valuelen, ecp);
     if (ret != RDB_OK) {
-        RDB_free(key);
-        RDB_free(value);
+        free(key);
+        free(value);
         return RDB_ERROR;
     }
     return RDB_OK;
