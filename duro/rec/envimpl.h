@@ -19,6 +19,11 @@
 #include <libpq-fe.h>
 #endif
 
+#ifdef FOUNDATIONDB
+#define FDB_API_VERSION 600 
+#include <foundationdb/fdb_c.h>
+#endif
+
 typedef struct RDB_sequence RDB_sequence;
 typedef struct RDB_index RDB_index;
 typedef struct RDB_exec_context RDB_exec_context;
@@ -31,6 +36,9 @@ typedef struct RDB_environment {
 #endif
 #ifdef POSTGRESQL
         PGconn *pgconn;
+#endif
+#ifdef FOUNDATIONDB
+		FDBDatabase *fdb;
 #endif
     } env;
     FILE *errfile;

@@ -1118,11 +1118,6 @@ check_version_info(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     RDB_init_obj(&tpl);
     ret = RDB_extract_tuple(dbrootp->version_info_tbp, ecp, txp, &tpl);
     if (ret != RDB_OK) {
-        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
-            RDB_clear_err(ecp);
-            RDB_raise_version_mismatch(ecp);
-            ret = RDB_ERROR;
-        }
         goto cleanup;
     }
 
@@ -1470,8 +1465,19 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     } else {
         /* Check if catalog version matches software version */
         ret = check_version_info(dbrootp, ecp, txp);
-        if (ret != RDB_OK)
-            return ret;
+		if (ret != RDB_OK) {
+			if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+				/*
+				 * With some storage engines (notably FoundationDB)
+				 * opening a recmap succeeds even if it has not been created before.
+				 * In this case, create is never true, so the version info is inserted
+				 * if it's not found
+				 */
+				ret = insert_version_info(dbrootp, ecp, txp);
+			}
+			if (ret != RDB_OK)
+				return RDB_ERROR;
+		}
     }
 
     ret = provide_systable("sys_constraints", 2, constraints_attrv,

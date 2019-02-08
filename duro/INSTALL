@@ -13,6 +13,9 @@ To build DuroDBMS with PostgreSQL support, add postgresql=true to each invocatio
 
 To build DuroDBMS without Berkeley DB support, add berkeleydb=false to each invocation.
 
+To build DuroDBMS with FoundationDB support, add foundationdb=true to each invocation.
+FoundationDB support is still incomplete and experimental and only available on MS Windows.
+
 'scons test' will build the Tcl interface if it has not already been built
 because the tests depend on it. If Tcl is not available, running the tests
 will not be possible. Duroadmin will not be available either.

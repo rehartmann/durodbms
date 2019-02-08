@@ -36,7 +36,15 @@ typedef struct RDB_cursor {
             PGresult *current_row;
         } pg;
 #endif
+#ifdef FOUNDATIONDB
         struct {
+			uint8_t *key;
+			int key_length;
+			uint8_t *value;
+			int value_length;
+		} fdb;
+#endif
+		struct {
             RDB_binary_tree *treep;
             RDB_tree_node *nodep;
         } tree;

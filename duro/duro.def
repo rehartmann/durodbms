@@ -25,7 +25,7 @@ RDB_AGGREGATE_UNDEFINED_ERROR
 RDB_VERSION_MISMATCH_ERROR
 RDB_NOT_SUPPORTED_ERROR
 RDB_NO_MEMORY_ERROR
-RDB_LOCK_NOT_GRANTED_ERROR
+RDB_CONCURRENCY_ERROR
 RDB_DEADLOCK_ERROR
 RDB_RESOURCE_NOT_FOUND_ERROR
 RDB_INTERNAL_ERROR
@@ -189,7 +189,7 @@ RDB_raise_in_use
 RDB_raise_system
 RDB_raise_resource_not_found
 RDB_raise_internal
-RDB_raise_lock_not_granted
+RDB_raise_concurrency
 RDB_raise_aggregate_undefined
 RDB_raise_version_mismatch
 RDB_raise_syntax

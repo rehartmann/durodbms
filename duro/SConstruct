@@ -23,10 +23,14 @@ oshlibsuffix = env['SHLIBSUFFIX']
 
 postgresql = ARGUMENTS.get('postgresql', 'false') 
 berkeleydb = ARGUMENTS.get('berkeleydb', 'true') 
+foundationdb = ARGUMENTS.get('foundationdb', 'false')
 
 conf = Configure(env)
 posix_regex = conf.CheckCHeader('regex.h')
 
+#
+# Platform-specific flags
+#
 if env['PLATFORM'] == 'win32':
     default_prefix = 'C:'
     env.Replace(LIBS = ['ltdl', 'shlwapi'])
@@ -48,7 +52,7 @@ env.Replace(RPATH = [installdir + '/lib'])
 env.Replace(LIBPATH = ['.'])
 
 if (os.environ.has_key('CFLAGS')):
-    env.Replace(CCFLAGS = os.environ['CFLAGS'])
+    env.Replace(CFLAGS = os.environ['CFLAGS'])
 
 if berkeleydb == 'true':
     env.Replace(CPPPATH = env['CPPPATH'] + [bdbhome + '/include'])
@@ -73,7 +77,12 @@ if postgresql == 'true':
     env.Replace(CPPPATH = env['CPPPATH'] + [pginclude])
     pglib = subprocess.check_output(['pg_config', '--libdir']).rstrip()
     env.Replace(LIBPATH = env['LIBPATH'] + [pglib])
-    env.Append(CCFLAGS = ' -DPOSTGRESQL')
+    env.Append(CFLAGS = ' -DPOSTGRESQL')
+
+if foundationdb == 'true':
+    env.Append(CFLAGS = ' -DFOUNDATIONDB')
+    env.Replace(LIBS = ['fdb_c'])
+    durolibs = durolibs + ['fdb_c']
 
 #
 # DuroDBMS core library
@@ -101,6 +110,10 @@ recsrc = ['rec/cursor.c', 'rec/env.c', 'rec/index.c', 'rec/recmap.c', 'rec/seque
 if berkeleydb == 'true':
     recsrc.append(['bdbrec/bdbenv.c', 'bdbrec/bdbrecmap.c', 'bdbrec/bdbcursor.c',
           'bdbrec/bdbsequence.c', 'bdbrec/bdbtx.c', 'bdbrec/bdbindex.c'])
+
+if foundationdb == 'true':
+    recsrc.append(['fdbrec/fdbenv.c', 'fdbrec/fdbrecmap.c', 'fdbrec/fdbtx.c',
+          'fdbrec/fdbsequence.c', 'fdbrec/fdbcursor.c', 'fdbrec/fdbindex.c'])
 
 if postgresql == 'true':
 	recsrc.append(['pgrec/pgenv.c', 'pgrec/pgrecmap.c', 'pgrec/pgtx.c', 'pgrec/pgindex.c',
@@ -322,7 +335,9 @@ rec_ihdrs = Split('rec/cursor.h rec/index.h rec/recmap.h '
                  'bdbrec/bdbsequence.h bdbrec/bdbtx.h '
                  'pgrec/pgenv.h pgrec/pgrecmap.h pgrec/pgtx.h pgrec/pgindex.h '
                  'pgrec/pgcursor.h treerec/tree.h treerec/treerecmap.h '
-                 'treerec/treecursor.h treerec/treeindex.h treerec/field.h')
+                 'treerec/treecursor.h treerec/treeindex.h treerec/field.h '
+                 'fdbrec/fdbenv.h fdbrec/fdbcursor.h fdbrec/fdbrecmap.h '
+                 'fdbrec/fdbsequence.h fdbrec/fdbtx.h fdbrec/fdbindex.h')
 obj_hdrs = Split('obj/object.h obj/excontext.h obj/type.h obj/builtintypes.h '
                 'obj/expression.h obj/operator.h obj/opmap.h obj/objmatch.h '
                 'obj/tuple.h obj/array.h')

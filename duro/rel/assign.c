@@ -2179,6 +2179,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     int nvdelc;
     int ncopyc;
     RDB_bool need_tx;
+    RDB_bool rollback_on_error = RDB_FALSE;
     RDB_transaction subtx;
     RDB_transaction *atxp = NULL;
     RDB_ma_insert *ninsv = NULL;
@@ -2314,11 +2315,17 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                         && ((ncopyv[0].dstp->val.tbp->stp != NULL
                             && ncopyv[0].dstp->val.tbp->stp->indexc > 1)
                             || ncopyv[0].srcp->kind == RDB_OB_TABLE))) {
+            rollback_on_error = RDB_TRUE;
             if (RDB_begin_tx(ecp, &subtx, RDB_tx_db(txp), txp) != RDB_OK) {
-                rcount = RDB_ERROR;
-                goto cleanup;
+                if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_SUPPORTED_ERROR) {
+                    rcount = RDB_ERROR;
+                    goto cleanup;
+                }
+                /* If subtransactions are not supported, proceed without one */
+                atxp = txp;
+            } else {
+                atxp = &subtx;
             }
-            atxp = &subtx;
         } else {
             atxp = txp;
         }
@@ -2329,7 +2336,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     rcount = 0;
     for (i = 0; i < ninsc; i++) {
         if (RDB_TB_CHECK & ninsv[i].tbp->val.tbp->flags) {
-            if (RDB_check_table(ninsv[i].tbp, ecp, txp) != RDB_OK) {
+            if (RDB_check_table(ninsv[i].tbp, ecp, atxp) != RDB_OK) {
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
@@ -2449,10 +2456,17 @@ cleanup:
     if (gencopyp != NULL)
         del_copylist(gencopyp, ecp);
 
-    /* Abort subtx, if necessary */
+    /* Rollback if necessary */
     if (rcount == RDB_ERROR) {
         if (atxp == &subtx) {
+            /* Rollback subtransaction only */
             RDB_rollback(ecp, &subtx);
+        } else if (rollback_on_error && RDB_tx_is_running(txp)) {
+            /*
+             * Must rollback transaction, because the assignment
+             * may have been partially executed
+             */
+            RDB_rollback(ecp, txp);
         }
     }
 

@@ -1051,6 +1051,7 @@ create_table(const char *name, RDB_type *reltyp,
 {
     RDB_transaction tx;
     RDB_obj_cleanup_func *cleanup_fp;
+	RDB_bool subtx_active;
 
     RDB_object *tbp = RDB_hashmap_get(&txp->dbp->tbmap, name);
     if (tbp != NULL && tbp != &null_tb) {
@@ -1078,21 +1079,35 @@ create_table(const char *name, RDB_type *reltyp,
     }
 
     /* Create subtransaction */
-    if (RDB_begin_tx(ecp, &tx, txp->dbp, txp) != RDB_OK)
-        return NULL;
+	if (RDB_begin_tx(ecp, &tx, txp->dbp, txp) != RDB_OK) {
+		if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_SUPPORTED_ERROR)
+			return NULL;
+		/* If subtransactions are not supported, proceed without one */
+		subtx_active = RDB_FALSE;
+	} else {
+		subtx_active = RDB_TRUE;
+	}
 
     /* Insert table into catalog */
-    if (RDB_cat_insert(tbp, ecp, &tx) != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        goto error;
+    if (RDB_cat_insert(tbp, ecp, subtx_active ? &tx : txp) != RDB_OK) {
+		if (subtx_active) {
+            RDB_rollback(ecp, &tx);
+		} else {
+			RDB_rollback(ecp, txp);
+		}
+		goto error;
     }
 
     if (RDB_assoc_table_db(tbp, txp->dbp, ecp) != RDB_OK) {
-        RDB_rollback(ecp, &tx);
+        if (subtx_active) {
+			RDB_rollback(ecp, &tx);
+		} else {
+			RDB_rollback(ecp, txp);
+		}
         goto error;
     }
 
-    if (RDB_commit(ecp, &tx) != RDB_OK) {
+    if (subtx_active && RDB_commit(ecp, &tx) != RDB_OK) {
         RDB_hashmap_put(&txp->dbp->tbmap, name, NULL);
         goto error;
     }

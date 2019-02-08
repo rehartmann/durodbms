@@ -14,6 +14,10 @@
 #include <pgrec/pgenv.h>
 #endif
 
+#ifdef FOUNDATIONDB
+#include <fdbrec/fdbenv.h>
+#endif
+
 #include <string.h>
 #include <errno.h>
 
@@ -32,6 +36,8 @@
  * to RDB_open_env.
  * If DuroDBMS has been built with PostgreSQL support, \a path can be
  * a PostgreSQL URI.
+ * If DuroDBMS has been built with FoundationSQL support, \a path can be
+ * a URI of the form foundationdb://<file> where file is a cluster file path.
  *
  * @param path  pathname of the direcory where the data is stored.
  * @param flags can be zero or RDB_RECOVER. If it is RDB_RECOVER,
@@ -54,7 +60,11 @@ RDB_open_env(const char *path, int flags, RDB_exec_context *ecp)
         return RDB_pg_open_env(path, ecp);
     }
 #endif
-
+#ifdef FOUNDATIONDB
+	if (strstr(path, "foundationdb://") == path) {
+		return RDB_fdb_open_env(path + 15, ecp);
+	}
+#endif
 #ifdef BERKELEYDB
     ret = RDB_bdb_open_env(path, &envp, flags);
     if (ret != RDB_OK) {
