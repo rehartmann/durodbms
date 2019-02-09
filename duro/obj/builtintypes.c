@@ -24,7 +24,7 @@
 <tr><td>integer<td>RDB_INTEGER<td>RDB_int
 <tr><td>float<td>RDB_FLOAT<td>RDB_float
 <tr><td>string<td>RDB_STRING<td>char *
-<tr><td>binary<td>RDB_BINARY<td>RDB_byte *
+<tr><td>binary<td>RDB_BINARY<td>uint8_t *
 </table>
 
 @page error-types Built-in error types

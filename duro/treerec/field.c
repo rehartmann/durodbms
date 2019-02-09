@@ -23,7 +23,7 @@ RDB_get_field(RDB_recmap *rmp, int fno, const void *datap, size_t len, size_t *l
 {
     int i, vpos;
     int offs = 0;
-    RDB_byte *databp = (RDB_byte *) datap;
+    uint8_t *databp = (uint8_t *) datap;
 
     if (fno < rmp->keyfieldcount) {
         /*
@@ -115,7 +115,7 @@ RDB_get_field(RDB_recmap *rmp, int fno, const void *datap, size_t len, size_t *l
 }
 
 static size_t
-get_len(const RDB_byte *databp)
+get_len(const uint8_t *databp)
 {
     size_t len;
 
@@ -128,19 +128,19 @@ get_len(const RDB_byte *databp)
 }
 
 static void
-set_len(RDB_byte *databp, size_t len)
+set_len(uint8_t *databp, size_t len)
 {
-    databp[0] = (RDB_byte)(len & 0xff);
-    databp[1] = (RDB_byte)(len >> 8);
-    databp[2] = (RDB_byte)(len >> 16);
-    databp[3] = (RDB_byte)(len >> 24);
+    databp[0] = (uint8_t)(len & 0xff);
+    databp[1] = (uint8_t)(len >> 8);
+    databp[2] = (uint8_t)(len >> 16);
+    databp[3] = (uint8_t)(len >> 24);
 }
 
 int
 RDB_fields_to_mem(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
         void **datap, size_t *sizep)
 {
-    RDB_byte *databp;
+    uint8_t *databp;
     int vfldc;
     int fi;
     int vfi;
@@ -246,13 +246,13 @@ RDB_get_mem_fields(RDB_recmap *rmp, void *key, size_t keylen,
                     key, keylen, &retfieldv[i].len, NULL);
             if (offs < 0)
                 return offs;
-            retfieldv[i].datap = ((RDB_byte *)key) + offs;
+            retfieldv[i].datap = ((uint8_t *)key) + offs;
         } else {
             offs = RDB_get_field(rmp, retfieldv[i].no,
                     value, valuelen, &retfieldv[i].len, NULL);
             if (offs < 0)
                 return offs;
-            retfieldv[i].datap = ((RDB_byte *)value) + offs;
+            retfieldv[i].datap = ((uint8_t *)value) + offs;
         }
     }
 
@@ -266,7 +266,7 @@ RDB_set_field_mem(RDB_recmap *recmapp, void **datap, size_t *sizep,
     size_t oldlen;
     int vpos;
     void *ndata;
-    RDB_byte *databp = (RDB_byte *) *datap;
+    uint8_t *databp = *datap;
     int offs = RDB_get_field(recmapp, fieldp->no,
                     *datap, *sizep, &oldlen, &vpos);
     if (offs < 0)
@@ -288,7 +288,7 @@ RDB_set_field_mem(RDB_recmap *recmapp, void **datap, size_t *sizep,
         if (ndata == NULL)
             return ENOMEM;
         *datap = ndata;
-        databp = (RDB_byte *) *datap;
+        databp = (uint8_t *) *datap;
 
         /* If the field grows, move the data following the field after realloc */
         if (fieldp->len > oldlen)
@@ -305,7 +305,7 @@ RDB_set_field_mem(RDB_recmap *recmapp, void **datap, size_t *sizep,
 }
 
 size_t
-RDB_get_vflen(RDB_byte *databp, size_t len, int vfcnt, int vpos)
+RDB_get_vflen(uint8_t *databp, size_t len, int vfcnt, int vpos)
 {
     return get_len(&databp[len - vfcnt * RECLEN_SIZE + vpos * RECLEN_SIZE]);
 }

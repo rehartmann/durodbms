@@ -45,11 +45,11 @@ typedef int RDB_obj_cleanup_func(RDB_object *, RDB_exec_context *);
 
 typedef struct RDB_time {
     int16_t year;
-    RDB_byte month;
-    RDB_byte day;
-    RDB_byte hour;
-    RDB_byte minute;
-    RDB_byte second;
+    uint8_t month;
+    uint8_t day;
+    uint8_t hour;
+    uint8_t minute;
+    uint8_t second;
 } RDB_time;
 
 struct tm;

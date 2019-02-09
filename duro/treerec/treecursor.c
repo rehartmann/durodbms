@@ -66,7 +66,7 @@ int
 RDB_tree_cursor_get(RDB_cursor *curp, int fno, void **datapp, size_t *lenp,
         RDB_exec_context *ecp)
 {
-    RDB_byte *databp;
+    uint8_t *databp;
     int offs;
 
     if (curp->cur.tree.nodep == NULL) {

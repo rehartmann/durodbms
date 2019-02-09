@@ -84,8 +84,8 @@ compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p, size_t *locp)
         offs2 = RDB_get_field(rmp, rmp->cmpv[i].fno, dbt2p->data, dbt2p->size, &len2, NULL);
         if (offs2 < 0)
             return offs2;
-        data1p = ((RDB_byte *) dbt1p->data) + offs1;
-        data2p = ((RDB_byte *) dbt2p->data) + offs2;
+        data1p = ((uint8_t *) dbt1p->data) + offs1;
+        data2p = ((uint8_t *) dbt2p->data) + offs2;
 
         /* Compare field */
         res = (*rmp->cmpv[i].comparep)(data1p, len1, data2p, len2,

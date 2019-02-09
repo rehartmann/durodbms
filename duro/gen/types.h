@@ -16,8 +16,7 @@
 
 typedef int32_t RDB_int;
 typedef double RDB_float;
-typedef unsigned char RDB_byte;
-typedef char RDB_bool;
+typedef int8_t RDB_bool;
 
 #define RDB_INT_MAX INT32_MAX
 #define RDB_INT_MIN INT32_MIN

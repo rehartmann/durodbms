@@ -158,7 +158,7 @@ append_hex_binary(RDB_object *objp, const RDB_object *binp,
 
     buf[2] = '\0';
     for (i = 0; i < binp->val.bin.len; i++) {
-        RDB_byte v = ((char *) binp->val.bin.datap)[i];
+        uint8_t v = ((uint8_t *) binp->val.bin.datap)[i];
         buf[0] = (v >> 4) < 10 ? '0' + (v >> 4) : 'a' + (v >> 4) - 10;
         buf[1] = (v & 0x0f) < 10 ? '0' + (v & 0x0f) : 'a' + (v & 0x0f) - 10;
         if (RDB_append_string(objp, buf, ecp) != RDB_OK)

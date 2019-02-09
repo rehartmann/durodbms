@@ -275,10 +275,10 @@ static void
 hton(void *p, size_t len)
 {
     uint32_t v = 1;
-    if ((*(RDB_byte*)&v) == 1) {
+    if ((*(uint8_t*)&v) == 1) {
         int i;
-        RDB_byte *cp = p;
-        RDB_byte h;
+        uint8_t *cp = p;
+        uint8_t h;
         for (i = 0; i < len / 2; i++) {
             h = cp[len - 1 - i];
             cp[len - 1 - i] = cp[i];
@@ -291,10 +291,10 @@ void
 RDB_ntoh(void *dstp, const void *srcp, size_t len)
 {
     uint32_t v = 1;
-    if ((*(RDB_byte*)&v) == 1) {
+    if ((*(uint8_t*)&v) == 1) {
         int i;
-        const RDB_byte *srccp = srcp;
-        RDB_byte *dstcp = dstp;
+        const uint8_t *srccp = srcp;
+        uint8_t *dstcp = dstp;
         for (i = 0; i < len; i++) {
             dstcp[i] = srccp[len - 1 - i];
         }

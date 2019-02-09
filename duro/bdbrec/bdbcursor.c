@@ -109,15 +109,15 @@ int
 RDB_bdb_cursor_get(RDB_cursor *curp, int fno, void **datapp, size_t *lenp,
         RDB_exec_context *ecp)
 {
-    RDB_byte *databp;
+    uint8_t *databp;
     int offs;
 
     if (fno < curp->recmapp->keyfieldcount) {
-        databp = (RDB_byte *)curp->cur.bdb.current_key.data;
+        databp = curp->cur.bdb.current_key.data;
         offs = RDB_get_field(curp->recmapp, fno,
                 databp, curp->cur.bdb.current_key.size, lenp, NULL);
     } else {
-        databp = (RDB_byte *)curp->cur.bdb.current_data.data;
+        databp = curp->cur.bdb.current_data.data;
         offs = RDB_get_field(curp->recmapp, fno,
                 databp, curp->cur.bdb.current_data.size, lenp, NULL);
     }

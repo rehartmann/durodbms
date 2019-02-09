@@ -24,7 +24,7 @@ RDB_index_get_field(RDB_index *ixp, int fi, const void *datap, size_t len, size_
 {
     int i, vpos;
     int offs = 0;
-    RDB_byte *databp = (RDB_byte *) datap;
+    uint8_t *databp = (uint8_t *) datap;
     int fno = ixp->fieldv[fi];
 
     /*
@@ -88,8 +88,8 @@ compare_key(const void *d1, size_t size1,
 
         offs1 = RDB_index_get_field(ixp, i, d1, size1, &len1, NULL);
         offs2 = RDB_index_get_field(ixp, i, d2, size2, &len2, NULL);
-        data1p = ((RDB_byte *) d1) + offs1;
-        data2p = ((RDB_byte *) d2) + offs2;
+        data1p = ((uint8_t *) d1) + offs1;
+        data2p = ((uint8_t *) d2) + offs2;
 
         /* Compare fields */
         res = (*ixp->cmpv[i].comparep)(data1p, len1, data2p, len2,
@@ -297,13 +297,13 @@ RDB_tree_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc,
                     &retfieldv[i].len, NULL);
             if (offs < 0)
                 return offs;
-            retfieldv[i].datap = ((RDB_byte *)rmnodep->key) + offs;
+            retfieldv[i].datap = ((uint8_t *)rmnodep->key) + offs;
         } else {
             offs = RDB_get_field(ixp->rmp, fno,
                     rmnodep->value, rmnodep->valuelen, &retfieldv[i].len, NULL);
             if (offs < 0)
                 return offs;
-            retfieldv[i].datap = ((RDB_byte *)rmnodep->value) + offs;
+            retfieldv[i].datap = ((uint8_t *)rmnodep->value) + offs;
         }
     }
     return RDB_OK;

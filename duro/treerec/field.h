@@ -33,6 +33,6 @@ RDB_set_field_mem(RDB_recmap *, void **, size_t *,
         const RDB_field *, int);
 
 size_t
-RDB_get_vflen(RDB_byte *, size_t, int, int);
+RDB_get_vflen(uint8_t *, size_t, int, int);
 
 #endif /* TREEREC_FIELD_H_ */

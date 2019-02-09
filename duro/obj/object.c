@@ -490,7 +490,7 @@ RDB_binary_set(RDB_object *valp, size_t pos, const void *srcp, size_t len,
 
     /* Copy data */
     if (len > 0)
-        memcpy(((RDB_byte *)valp->val.bin.datap) + pos, srcp, len);
+        memcpy(((uint8_t *)valp->val.bin.datap) + pos, srcp, len);
     return RDB_OK;
 }
 
@@ -528,7 +528,7 @@ RDB_binary_get(const RDB_object *objp, size_t pos, size_t len,
         else
             *alenp = len;
     }
-    *pp = (RDB_byte *)objp->val.bin.datap + pos;
+    *pp = (uint8_t *)objp->val.bin.datap + pos;
     return RDB_OK;
 }
 

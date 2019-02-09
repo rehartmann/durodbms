@@ -44,8 +44,8 @@ compare_key(const void *d1, size_t size1,
         offs2 = RDB_get_field(rmp, rmp->cmpv[i].fno, d2, size2, &len2, NULL);
         if (offs2 < 0)
             return offs2;
-        data1p = ((RDB_byte *) d1) + offs1;
-        data2p = ((RDB_byte *) d2) + offs2;
+        data1p = ((uint8_t *) d1) + offs1;
+        data2p = ((uint8_t *) d2) + offs2;
 
         /* Compare field */
         res = (*rmp->cmpv[i].comparep)(data1p, len1, data2p, len2,

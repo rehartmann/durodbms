@@ -34,8 +34,8 @@ compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p, size_t *locp)
 
         offs1 = RDB_index_get_field(ixp, i, dbt1p->data, dbt1p->size, &len1, NULL);
         offs2 = RDB_index_get_field(ixp, i, dbt2p->data, dbt2p->size, &len2, NULL);
-        data1p = ((RDB_byte *) dbt1p->data) + offs1;
-        data2p = ((RDB_byte *) dbt2p->data) + offs2;
+        data1p = ((uint8_t *) dbt1p->data) + offs1;
+        data2p = ((uint8_t *) dbt2p->data) + offs2;
 
         /* Compare fields */
         res = (*ixp->cmpv[i].comparep)(data1p, len1, data2p, len2,
@@ -335,13 +335,13 @@ RDB_bdb_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc,
                     &retfieldv[i].len, NULL);
             if (offs < 0)
                 return offs;
-            retfieldv[i].datap = ((RDB_byte *)pkey.data) + offs;
+            retfieldv[i].datap = ((uint8_t *)pkey.data) + offs;
         } else {
             offs = RDB_get_field(ixp->rmp, fno,
                     data.data, data.size, &retfieldv[i].len, NULL);
             if (offs < 0)
                 return offs;
-            retfieldv[i].datap = ((RDB_byte *)data.data) + offs;
+            retfieldv[i].datap = ((uint8_t *)data.data) + offs;
         }
     }
     free(key.data);

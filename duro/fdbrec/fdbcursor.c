@@ -71,16 +71,16 @@ int
 RDB_fdb_cursor_get(RDB_cursor *curp, int fno, void **datapp, size_t *lenp,
         RDB_exec_context *ecp)
 {
-	RDB_byte *databp;
+	uint8_t *databp;
 	int offs;
 
 	if (fno < curp->recmapp->keyfieldcount) {
 		int prefixlen = RDB_fdb_key_prefix_length(curp->recmapp);
-		databp = ((RDB_byte *)curp->cur.fdb.key) + prefixlen;
+		databp = ((uint8_t *)curp->cur.fdb.key) + prefixlen;
 		offs = RDB_get_field(curp->recmapp, fno,
 			databp,	curp->cur.fdb.key_length - prefixlen, lenp, NULL);
 	} else {
-		databp = (RDB_byte *)curp->cur.fdb.value;
+		databp = curp->cur.fdb.value;
 		offs = RDB_get_field(curp->recmapp, fno,
 			databp,	curp->cur.fdb.value_length, lenp, NULL);
 	}

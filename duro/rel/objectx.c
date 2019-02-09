@@ -128,7 +128,7 @@ len_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap,
     int ret;
     size_t len;
     size_t llen = 0;
-    RDB_byte *bp = (RDB_byte *) datap;
+    uint8_t *bp = (uint8_t *) datap;
 
     if (typ->ireplen == RDB_VARIABLE_LEN) {
         memcpy(&len, bp, sizeof len);
@@ -156,7 +156,7 @@ irep_to_tuple(RDB_object *tplp, RDB_type *typ, const void *datap,
     int i;
     int ret;
     size_t len = 0;
-    const RDB_byte *bp = (RDB_byte *) datap;
+    const uint8_t *bp = (uint8_t *) datap;
     char *lastname = NULL;
 
     if (RDB_type_is_scalar(typ))
@@ -194,7 +194,7 @@ irep_to_table(RDB_object *tbp, RDB_type *typ, const void *datap, size_t len,
 {
     int ret;
     RDB_object tpl;
-    RDB_byte *bp = (RDB_byte *)datap;
+    uint8_t *bp = (uint8_t *)datap;
     RDB_type *tbtyp;
 
     if (RDB_type_is_scalar(typ))
@@ -241,7 +241,7 @@ irep_to_array(RDB_object *arrp, RDB_type *typ, const void *datap, size_t dlen,
     RDB_object tpl;
     size_t len;
     int arrlen = 0;
-    RDB_byte *bp = (RDB_byte *) datap;
+    uint8_t *bp = (uint8_t *) datap;
 
     if (RDB_type_is_scalar(typ))
         typ = typ->def.scalar.arep;
@@ -270,7 +270,7 @@ irep_to_array(RDB_object *arrp, RDB_type *typ, const void *datap, size_t dlen,
     }
 
     len = dlen;
-    bp = (RDB_byte *)datap;
+    bp = (uint8_t *)datap;
     for (i = 0; i < arrlen; i++) {
         int l = len_irep_to_obj(&tpl, typ->def.basetyp, bp, len, ecp);
         if (l < 0) {
@@ -304,7 +304,7 @@ obj_to_len_irep(void *dstp, const RDB_object *objp, RDB_type *typ,
         RDB_exec_context *ecp)
 {
     int ret;
-    RDB_byte *bp = dstp;
+    uint8_t *bp = dstp;
     size_t len = typ->ireplen;
 
     if (len == RDB_VARIABLE_LEN) {
@@ -328,7 +328,7 @@ table_to_irep(void *dstp, RDB_object *tbp, size_t len)
     RDB_qresult *qrp;
     int ret;
     size_t l;
-    RDB_byte *bp = dstp;
+    uint8_t *bp = dstp;
 
     RDB_init_exec_context(&ec);
 
@@ -370,7 +370,7 @@ RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
     RDB_exec_context ec;
     const void *srcp;
     RDB_type *impltyp;
-    RDB_byte *bp = dstp;
+    uint8_t *bp = dstp;
 
     if (RDB_type_is_dummy(objp->store_typ)) {
         size_t typenamsz;

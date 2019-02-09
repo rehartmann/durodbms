@@ -49,9 +49,9 @@ RDB_serialize_str(RDB_object *valp, int *posp, const char *str,
     if (reserve_space(valp, *posp, len + sizeof len, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    memcpy(((RDB_byte *) valp->val.bin.datap) + *posp, &len, sizeof len);
+    memcpy(((uint8_t *) valp->val.bin.datap) + *posp, &len, sizeof len);
     *posp += sizeof len;
-    memcpy(((RDB_byte *) valp->val.bin.datap) + *posp, str, len);
+    memcpy(((uint8_t *) valp->val.bin.datap) + *posp, str, len);
     *posp += len;
     return RDB_OK;
 }
@@ -62,7 +62,7 @@ RDB_serialize_int(RDB_object *valp, int *posp, RDB_int v, RDB_exec_context *ecp)
     if (reserve_space(valp, *posp, sizeof v, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    memcpy(((RDB_byte *) valp->val.bin.datap) + *posp, &v, sizeof v);
+    memcpy(((uint8_t *) valp->val.bin.datap) + *posp, &v, sizeof v);
     *posp += sizeof v;
     return RDB_OK;
 }
@@ -75,18 +75,18 @@ serialize_size_t(RDB_object *valp, int *posp, size_t v, RDB_exec_context *ecp)
     ret = reserve_space(valp, *posp, sizeof v, ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
-    memcpy(((RDB_byte *) valp->val.bin.datap) + *posp, &v, sizeof v);
+    memcpy(((uint8_t *) valp->val.bin.datap) + *posp, &v, sizeof v);
     *posp += sizeof v;
     return RDB_OK;
 }
 
 static int
-RDB_serialize_byte(RDB_object *valp, int *posp, RDB_byte b,
+RDB_serialize_byte(RDB_object *valp, int *posp, uint8_t b,
         RDB_exec_context *ecp)
 {
     if (reserve_space(valp, *posp, 1, ecp) != RDB_OK)
         return RDB_ERROR;
-    ((RDB_byte *) valp->val.bin.datap)[(*posp)++] = b;
+    ((uint8_t *) valp->val.bin.datap)[(*posp)++] = b;
     return RDB_OK;
 }
 
@@ -94,7 +94,7 @@ int
 RDB_serialize_scalar_type(RDB_object *valp, int *posp, const char *name,
         RDB_exec_context *ecp)
 {
-    if (RDB_serialize_byte(valp, posp, (RDB_byte) RDB_TP_SCALAR, ecp) != RDB_OK)
+    if (RDB_serialize_byte(valp, posp, (uint8_t) RDB_TP_SCALAR, ecp) != RDB_OK)
         return RDB_ERROR;
     return RDB_serialize_str(valp, posp, name, ecp);
 }
@@ -107,7 +107,7 @@ RDB_serialize_type(RDB_object *valp, int *posp, const RDB_type *typ,
         return RDB_serialize_scalar_type(valp, posp, RDB_type_name(typ), ecp);
     }
 
-    if (RDB_serialize_byte(valp, posp, (RDB_byte) typ->kind, ecp) != RDB_OK)
+    if (RDB_serialize_byte(valp, posp, (uint8_t) typ->kind, ecp) != RDB_OK)
         return RDB_ERROR;
 
     switch (typ->kind) {
@@ -202,7 +202,7 @@ RDB_serialize_obj(RDB_object *valp, int *posp, const RDB_object *argvalp,
     if (reserve_space(valp, *posp, len, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    RDB_obj_to_irep(((RDB_byte *) valp->val.bin.datap) + *posp, argvalp, len);
+    RDB_obj_to_irep(((uint8_t *) valp->val.bin.datap) + *posp, argvalp, len);
     *posp += len;
     if (crtpltyp) {
         RDB_del_nonscalar_type(typ, ecp);
@@ -230,7 +230,7 @@ RDB_serialize_expr(RDB_object *valp, int *posp, RDB_expression *exp,
         RDB_exec_context *ecp)
 {
     /* Expression kind (1 byte) */
-    if (RDB_serialize_byte(valp, posp, (RDB_byte) exp->kind, ecp) != RDB_OK)
+    if (RDB_serialize_byte(valp, posp, (uint8_t) exp->kind, ecp) != RDB_OK)
         return RDB_ERROR;
 
     switch(exp->kind) {
@@ -272,7 +272,7 @@ RDB_serialize_expr(RDB_object *valp, int *posp, RDB_expression *exp,
          */
 
         if (exp->typ != NULL && exp->def.op.args.firstp == NULL) {
-            if (RDB_serialize_byte(valp, posp, (RDB_byte) RDB_TRUE,
+            if (RDB_serialize_byte(valp, posp, (uint8_t) RDB_TRUE,
                     ecp) != RDB_OK)
                 return RDB_ERROR;
 
@@ -281,7 +281,7 @@ RDB_serialize_expr(RDB_object *valp, int *posp, RDB_expression *exp,
                     return RDB_ERROR;
             }
         } else {
-            if (RDB_serialize_byte(valp, posp, (RDB_byte) RDB_FALSE,
+            if (RDB_serialize_byte(valp, posp, (uint8_t) RDB_FALSE,
                     ecp) != RDB_OK)
                 return RDB_ERROR;
         }
@@ -304,11 +304,11 @@ serialize_table(RDB_object *valp, int *posp, RDB_object *tbp,
         return RDB_ERROR;
 
     if (tbp->val.tbp->exp == NULL) {
-        if (RDB_serialize_byte(valp, posp, (RDB_byte) 1, ecp) != RDB_OK)
+        if (RDB_serialize_byte(valp, posp, (uint8_t) 1, ecp) != RDB_OK)
             return RDB_ERROR;
         return serialize_trobj(valp, posp, tbp, ecp);
     }
-    if (RDB_serialize_byte(valp, posp, (RDB_byte) 0, ecp) != RDB_OK)
+    if (RDB_serialize_byte(valp, posp, (uint8_t) 0, ecp) != RDB_OK)
         return RDB_ERROR;
     return RDB_serialize_expr(valp, posp, tbp->val.tbp->exp, ecp);
 }
@@ -419,7 +419,7 @@ RDB_deserialize_str(const RDB_object *valp, int *posp, RDB_exec_context *ecp,
         RDB_raise_internal("invalid string during deserialization", ecp);
         return RDB_ERROR;
     }
-    memcpy (&len, ((RDB_byte *)valp->val.bin.datap) + *posp, sizeof len);
+    memcpy (&len, ((uint8_t *)valp->val.bin.datap) + *posp, sizeof len);
     *posp += sizeof len;
     if (*posp + len > valp->val.bin.len) {
         RDB_raise_internal("invalid string during deserialization", ecp);
@@ -429,7 +429,7 @@ RDB_deserialize_str(const RDB_object *valp, int *posp, RDB_exec_context *ecp,
     if (*strp == NULL) {
         return RDB_ERROR;
     }
-    memcpy(*strp, ((RDB_byte *)valp->val.bin.datap) + *posp, len);
+    memcpy(*strp, ((uint8_t *)valp->val.bin.datap) + *posp, len);
     (*strp)[len] = '\0';
     *posp += len;
 
@@ -444,7 +444,7 @@ RDB_deserialize_int(const RDB_object *valp, int *posp, RDB_exec_context *ecp,
         RDB_raise_internal("invalid integer during deserialization", ecp);
         return RDB_ERROR;
     }
-    memcpy(vp, ((RDB_byte *)valp->val.bin.datap) + *posp, sizeof (RDB_int));
+    memcpy(vp, ((uint8_t *)valp->val.bin.datap) + *posp, sizeof (RDB_int));
     *posp += sizeof (RDB_int);
     return RDB_OK;
 }
@@ -457,7 +457,7 @@ deserialize_size_t(const RDB_object *valp, int *posp, RDB_exec_context *ecp,
         RDB_raise_internal("invalid integer during deserialization", ecp);
         return RDB_ERROR;
     }
-    memcpy(vp, ((RDB_byte *)valp->val.bin.datap) + *posp, sizeof (size_t));
+    memcpy(vp, ((uint8_t *)valp->val.bin.datap) + *posp, sizeof (size_t));
     *posp += sizeof (size_t);
     return RDB_OK;
 }
@@ -470,7 +470,7 @@ RDB_deserialize_byte(const RDB_object *valp, int *posp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    return ((RDB_byte *) valp->val.bin.datap)[(*posp)++];
+    return ((uint8_t *) valp->val.bin.datap)[(*posp)++];
 }
 
 RDB_type *
@@ -586,7 +586,7 @@ RDB_deserialize_obj(const RDB_object *valp, int *posp, RDB_exec_context *ecp,
     }
 
     ret = RDB_irep_to_obj(argvalp, typ,
-            ((RDB_byte *)valp->val.bin.datap) + *posp, len, ecp);
+            ((uint8_t *)valp->val.bin.datap) + *posp, len, ecp);
     *posp += len;
 
     if (typ->kind == RDB_TP_TUPLE) {
