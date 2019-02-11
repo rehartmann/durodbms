@@ -4,6 +4,7 @@
 #include <rec/recmapimpl.h>
 #include <fdbrec/fdbcursor.h>
 #include <fdbrec/fdbindex.h>
+#include <treerec/field.h>
 
 #define FDB_API_VERSION 600
 #include <foundationdb/fdb_c.h>
@@ -110,15 +111,19 @@ RDB_fdb_key_prefix_length(RDB_recmap *rmp)
 	return strlen(rmp->namp) + 3;
 }
 
-static void
-make_table_key_name(RDB_recmap *rmp, uint8_t *key_name, size_t keylen, const void *key)
+static uint8_t *
+prepend_key_prefix(RDB_recmap *rmp, const void *key, size_t keylen, RDB_exec_context *ecp)
 {
 	size_t namelen = strlen(rmp->namp);
+    uint8_t *key_name = RDB_alloc(namelen + RDB_fdb_key_prefix_length(rmp), ecp);
+    if (key_name == NULL)
+        return NULL;
 
 	memcpy(key_name, "t/", 2);
 	memcpy(key_name + 2, rmp->namp, namelen);
 	key_name[2 + namelen] = '/';
 	memcpy(key_name + 3 + namelen, key, keylen);
+    return key_name;
 }
 
 static int
@@ -133,12 +138,11 @@ fields_to_fdb_key(RDB_recmap *rmp, RDB_field fieldv[],
         return RDB_ERROR;
     }
     *key_name_length = RDB_fdb_key_prefix_length(rmp) + keylen;
-    *key_name = RDB_alloc(*key_name_length, ecp);
+    *key_name = prepend_key_prefix(rmp, key, keylen, ecp);
     if (*key_name == NULL) {
         free(key);
         return RDB_ERROR;
     }
-    make_table_key_name(rmp, *key_name, keylen, key);
     free(key);
     return RDB_OK;
 }
@@ -165,19 +169,21 @@ RDB_insert_fdb_rec(RDB_recmap *rmp, RDB_field fieldv[], RDB_rec_transaction *rtx
     /* Check if the key already exists */
     f = fdb_transaction_get((FDBTransaction*) rtxp, key_name, key_name_length, 0);
     err = fdb_future_block_until_ready(f);
-    RDB_free(key_name);
     if (err != 0) {
+        RDB_free(key_name);
         fdb_future_destroy(f);
         RDB_fdb_errcode_to_error(err, ecp);
         return RDB_ERROR;
     }
     err = fdb_future_get_value(f, &present, &out_value, &out_value_length);
     if (err != 0) {
+        RDB_free(key_name);
         fdb_future_destroy(f);
         RDB_fdb_errcode_to_error(err, ecp);
         return RDB_ERROR;
     }
     if (present) {
+        RDB_free(key_name);
         RDB_raise_key_violation("", ecp);
         fdb_future_destroy(f);
         return RDB_ERROR;
@@ -192,36 +198,107 @@ RDB_insert_fdb_rec(RDB_recmap *rmp, RDB_field fieldv[], RDB_rec_transaction *rtx
 
 	fdb_transaction_set((FDBTransaction*) rtxp, key_name, key_name_length,
 			(uint8_t *)value, valuelen);
-	free(value);
+    RDB_free(key_name);
+    free(value);
 	return RDB_OK;
 }
 
-/*
 static int
-RDB_update_fdb_kv(RDB_recmap *rmp, uint8_t **key_name, int *key_name_length,
-    uint8_t **value, int *value_length, int fieldc, const RDB_field fieldv[],
-    FDBTransaction *rtxp, RDB_exec_context *ecp)
+RDB_update_fdb_kv(RDB_recmap *rmp, uint8_t *key_name, int key_name_length,
+        void **key, size_t *key_length, void **data, size_t *data_length,
+        int fieldc, const RDB_field fieldv[],
+        FDBTransaction *txp, RDB_exec_context *ecp)
 {
-    return 0;
+    int i;
+    int ret;
+    fdb_error_t err;
+    RDB_bool modifykey = RDB_FALSE;
+
+    /* Check if the key is to be modified */
+    for (i = 0; i < fieldc; i++) {
+        if (fieldv[i].no < rmp->keyfieldcount) {
+            modifykey = RDB_TRUE;
+            break;
+        }
+    }
+
+    if (modifykey) {
+        /* Delete original key */
+        fdb_transaction_clear(txp, key_name, key_name_length);
+    }
+
+    for (i = 0; i < fieldc; i++) {
+        if (fieldv[i].no < rmp->keyfieldcount) {
+            ret = RDB_set_field_mem(rmp, key, key_length, &fieldv[i],
+                rmp->varkeyfieldcount);
+        }
+        else {
+            ret = RDB_set_field_mem(rmp, data, data_length, &fieldv[i],
+                rmp->vardatafieldcount);
+        }
+        if (ret != RDB_OK)
+            return ret;
+    }
+
+    /* If the key changes, check if new key already exists */
+    if (modifykey) {
+        FDBFuture *f;
+        uint8_t const* out_value;
+        int out_value_length;
+        fdb_bool_t present;
+
+        key_name_length = *key_length + RDB_fdb_key_prefix_length(rmp);
+        key_name = prepend_key_prefix(rmp, key, *key_length, ecp);
+        if (key_name == NULL)
+            return RDB_ERROR;
+
+        f = fdb_transaction_get(txp, key_name, key_name_length, 0);
+        err = fdb_future_block_until_ready(f);
+        if (err != 0) {
+            RDB_free(key_name);
+            fdb_future_destroy(f);
+            RDB_fdb_errcode_to_error(err, ecp);
+            return RDB_ERROR;
+        }
+        err = fdb_future_get_value(f, &present, &out_value, &out_value_length);
+        fdb_future_destroy(f);
+        if (err != 0) {
+            RDB_free(key_name);
+            RDB_fdb_errcode_to_error(err, ecp);
+            return RDB_ERROR;
+        }
+        if (present) {
+            RDB_free(key_name);
+            RDB_raise_key_violation("", ecp);
+            return RDB_ERROR;
+        }
+    }
+
+    /* Write record back */
+    fdb_transaction_set(txp, key_name, key_name_length, (uint8_t *)*data, *data_length);
+    if (modifykey)
+        RDB_free(key_name);
+    return RDB_OK;
 }
-*/
 
 int
 RDB_update_fdb_rec(RDB_recmap *rmp, RDB_field keyv[],
 	int fieldc, const RDB_field fieldv[], RDB_rec_transaction *rtxp,
 	RDB_exec_context *ecp)
 {
-    RDB_raise_not_supported("update", ecp);
-    return RDB_ERROR;
-    /*
+    int ret;
     uint8_t *key_name;
     int key_name_length;
-    int ret;
     uint8_t *value;
     int value_length;
+    size_t key_length;
+    void *key;
+    size_t data_length;
+    void *data;
     fdb_bool_t present;
     fdb_error_t err;
     FDBFuture* f;
+    int prefix_length = RDB_fdb_key_prefix_length(rmp);
 
     if (fields_to_fdb_key(rmp, keyv, &key_name, &key_name_length, ecp) != RDB_OK) {
         return RDB_ERROR;
@@ -249,12 +326,33 @@ RDB_update_fdb_rec(RDB_recmap *rmp, RDB_field keyv[],
         return RDB_ERROR;
     }
 
-    ret = RDB_update_fdb_kv(rmp, &key_name, &key_name_length, &value, &value_length,
-        fieldc, fieldv, (FDBTransaction*)rtxp, ecp);
-    RDB_free(key_name);
+    key_length = key_name_length - prefix_length;
+    key = malloc(key_length - prefix_length);
+    if (key == NULL) {
+        RDB_free(key_name);
+        fdb_future_destroy(f);
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+    memcpy(key, key_name + prefix_length, key_length);
+    data_length = value_length;
+    data = malloc(data_length);
+    if (data == NULL) {
+        RDB_free(key_name);
+        fdb_future_destroy(f);
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+    memcpy(data, value, data_length);
     fdb_future_destroy(f);
+
+    ret = RDB_update_fdb_kv(rmp, key_name, key_name_length, &key, &key_length,
+            &data, &data_length,
+            fieldc, fieldv, (FDBTransaction*)rtxp, ecp);
+    RDB_free(key_name);
+    free(key);
+    free(data);
     return ret;
-    */
 }
 
 int
@@ -279,7 +377,7 @@ RDB_get_fdb_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
     uint8_t *key_name;
     int key_name_length;
     int ret;
-    uint8_t const* value;
+    uint8_t *value;
     int value_length;
     fdb_bool_t present;
     fdb_error_t err;
@@ -384,6 +482,6 @@ int
 RDB_fdb_recmap_est_size(RDB_recmap *rmp, RDB_rec_transaction *rtxp, unsigned *sz,
 	RDB_exec_context *ecp)
 {
-	*sz = 100;
+	*sz = 0;
 	return RDB_OK;
 }

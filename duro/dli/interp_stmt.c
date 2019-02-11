@@ -544,8 +544,14 @@ Duro_rollback(Duro_interp *interp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    if (RDB_rollback(ecp, &interp->txnp->tx) != RDB_OK)
-        return RDB_ERROR;
+    /*
+     * If the transaction has been rolled back by an API call, don't
+     * raise a no_running_tx error to preserve the original error.
+     */
+    if (RDB_tx_is_running(&interp->txnp->tx)) {
+        if (RDB_rollback(ecp, &interp->txnp->tx) != RDB_OK)
+            return RDB_ERROR;
+    }
 
     ptxnp = interp->txnp->parentp;
     RDB_free(interp->txnp);

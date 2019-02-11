@@ -218,7 +218,7 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
     RDB_expression *wherep = NULL;
     RDB_type *typ = NULL;
 
-    upd[0].exp = upd[1].exp = upd[2].exp = upd[3].exp = NULL;
+    upd[0].exp = upd[1].exp = upd[2].exp = NULL;
 
     if (!RDB_tx_is_running(txp)) {
         RDB_raise_no_running_tx(ecp);

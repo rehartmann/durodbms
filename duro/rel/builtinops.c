@@ -780,7 +780,7 @@ op_remove(int argc, RDB_object *argv[], RDB_operator *op,
 {
     int i;
     int ret;
-    const char **attrv;
+    char **attrv;
 
     if (argv[0]->kind == RDB_OB_TABLE)
         return op_vtable(argc, argv, op, ecp, txp, retvalp);

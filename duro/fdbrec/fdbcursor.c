@@ -30,6 +30,7 @@ new_fdb_cursor(RDB_recmap *rmp, RDB_rec_transaction *rtxp, RDB_index *idxp,
     curp->tx = rtxp;
 	curp->cur.fdb.key = NULL;
 	curp->cur.fdb.value = NULL;
+    curp->secondary = RDB_FALSE;
 
     curp->destroy_fn = &RDB_destroy_fdb_cursor;
     curp->get_fn = &RDB_fdb_cursor_get;
@@ -80,21 +81,20 @@ RDB_fdb_cursor_get(RDB_cursor *curp, int fno, void **datapp, size_t *lenp,
 		offs = RDB_get_field(curp->recmapp, fno,
 			databp,	curp->cur.fdb.key_length - prefixlen, lenp, NULL);
 	} else {
-		databp = curp->cur.fdb.value;
+        databp = curp->cur.fdb.value;
 		offs = RDB_get_field(curp->recmapp, fno,
 			databp,	curp->cur.fdb.value_length, lenp, NULL);
 	}
-	if (offs < 0) {
+    if (offs < 0) {
 		RDB_errcode_to_error(offs, ecp);
 		return RDB_ERROR;
 	}
-	*datapp = databp + offs;
+    *datapp = databp + offs;
 	return RDB_OK;
 }
 
 /*
  * Update the current record.
- * This works only with cursors over secondary indexes.
  */
 static int
 RDB_fdb_cursor_update(RDB_cursor *curp, int fieldc, const RDB_field fieldv[],
@@ -108,8 +108,36 @@ int
 RDB_fdb_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[],
         RDB_exec_context *ecp)
 {
-    RDB_raise_not_supported("RDB_fdb_cursor_set not implemented", ecp);
-	return RDB_ERROR;
+    int i;
+    int ret;
+    void *data = curp->cur.fdb.value;
+    size_t data_length = (size_t)curp->cur.fdb.value_length;
+
+    if (curp->secondary)
+        return RDB_fdb_cursor_update(curp, fieldc, fields, ecp);
+
+    for (i = 0; i < fieldc; i++) {
+        if (fields[i].no < curp->recmapp->keyfieldcount) {
+            RDB_raise_invalid_argument("Modifiying the key is not supported", ecp);
+            return RDB_ERROR;
+        }
+        ret = RDB_set_field_mem(curp->recmapp, &data, &data_length, &fields[i],
+            curp->recmapp->vardatafieldcount);
+        if (ret != RDB_OK) {
+            RDB_errcode_to_error(ret, ecp);
+            return RDB_ERROR;
+        }
+    }
+    curp->cur.fdb.value = (uint8_t *)data;
+    curp->cur.fdb.value_length = data_length;
+
+    /* Write record back */
+
+    /* Key not modified, so write data only */
+    fdb_transaction_set((FDBTransaction*)curp->tx,
+        curp->cur.fdb.key, curp->cur.fdb.key_length,
+        curp->cur.fdb.value, curp->cur.fdb.value_length);
+    return RDB_OK;
 }
 
 int
