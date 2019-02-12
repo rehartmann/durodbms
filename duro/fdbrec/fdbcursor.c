@@ -100,7 +100,7 @@ static int
 RDB_fdb_cursor_update(RDB_cursor *curp, int fieldc, const RDB_field fieldv[],
         RDB_exec_context *ecp)
 {
-    RDB_raise_not_supported("update by cursor not available", ecp);
+    RDB_raise_not_supported("update by index cursor not available", ecp);
 	return RDB_ERROR;
 }
 
@@ -299,7 +299,7 @@ RDB_fdb_cursor_next(RDB_cursor *curp, int flags, RDB_exec_context *ecp)
 int
 RDB_fdb_cursor_prev(RDB_cursor *curp, RDB_exec_context *ecp)
 {
-    RDB_raise_not_supported("cursors not available", ecp);
+    RDB_raise_not_supported("scrolling backward not supported", ecp);
 	return RDB_ERROR;
 }
 
@@ -310,6 +310,6 @@ int
 RDB_fdb_cursor_seek(RDB_cursor *curp, int fieldc, RDB_field keyv[], int flags,
         RDB_exec_context *ecp)
 {
-    RDB_raise_not_supported("cursors not available", ecp);
+    RDB_raise_not_supported("seek", ecp);
 	return RDB_ERROR;
 }

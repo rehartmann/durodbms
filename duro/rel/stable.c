@@ -871,12 +871,14 @@ RDB_delete_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp,
 
     if (txp != NULL) {
         /*
-         * Schedule recmap for deletion.
-         * The recmap cannot be deleted immediately, because
+         * If deletion of recmap has to be delayed, schedule recmap for deletion.
+         * On Berkeley DB the recmap cannot be deleted immediately, because
          * this means closing the DB handle, which must not be closed
          * before transaction commit.
          */
-        ret = RDB_add_del_recmap(txp, stp->recmapp, ecp);
+        ret = RDB_recmap_delayed_deletion(stp->recmapp) ?
+                RDB_add_del_recmap(txp, stp->recmapp, ecp)
+                : RDB_delete_recmap(stp->recmapp, txp->tx, ecp);
     } else {
         ret = RDB_delete_recmap(stp->recmapp, NULL, ecp);
         if (ret != RDB_OK) {

@@ -144,6 +144,12 @@ RDB_recmap_est_size(RDB_recmap *rmp, RDB_rec_transaction *rtxp, unsigned *sz,
     return (*rmp->recmap_est_size_fn)(rmp, rtxp, sz, ecp);
 }
 
+RDB_bool
+RDB_recmap_delayed_deletion(RDB_recmap *rmp)
+{
+    return rmp->delayed_deletion;
+}
+
 /*
  * Allocate a RDB_recmap structure and initialize its storage-independent fields.
  */
@@ -206,6 +212,7 @@ RDB_new_recmap(const char *namp, const char *filenamp,
         rmp->fieldinfos[i].flags = fieldinfov[i].flags;
         rmp->fieldinfos[i].attrname = fieldinfov[i].attrname;
     }
+    rmp->delayed_deletion = RDB_FALSE;
 
     return rmp;
 

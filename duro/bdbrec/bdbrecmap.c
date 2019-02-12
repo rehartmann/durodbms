@@ -33,6 +33,7 @@ new_recmap(const char *namp, const char *filenamp,
             keyfieldc, flags, ecp);
     if (rmp == NULL)
         return NULL;
+    rmp->delayed_deletion = RDB_TRUE;
 
     rmp->close_recmap_fn = RDB_close_bdb_recmap;
     rmp->delete_recmap_fn = &RDB_delete_bdb_recmap;

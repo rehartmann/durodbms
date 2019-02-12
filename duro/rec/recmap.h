@@ -99,4 +99,7 @@ RDB_contains_rec(RDB_recmap *, RDB_field[], RDB_rec_transaction *, RDB_exec_cont
 int
 RDB_recmap_est_size(RDB_recmap *, RDB_rec_transaction *, unsigned *, RDB_exec_context *);
 
+RDB_bool
+RDB_recmap_delayed_deletion(RDB_recmap *);
+
 #endif

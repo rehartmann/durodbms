@@ -55,6 +55,9 @@ typedef struct RDB_recmap {
     /* RDB_TRUE if duplicate keys are allowed */
     RDB_bool dup_keys;
 
+    /* RDB_TRUE if deletion is only possible after commit */
+    RDB_bool delayed_deletion;
+
     int (*close_recmap_fn)(RDB_recmap *, RDB_exec_context *);
     int (*delete_recmap_fn)(RDB_recmap *, RDB_rec_transaction *, RDB_exec_context *);
     int (*insert_rec_fn)(RDB_recmap *, RDB_field[], RDB_rec_transaction *,
