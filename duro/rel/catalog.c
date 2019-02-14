@@ -2701,12 +2701,18 @@ RDB_cat_rename_table(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
     RDB_attr_update upd;
     RDB_ma_update updv[5];
     RDB_transaction tx;
+    RDB_bool subtx_active;
     RDB_expression *idcondp = NULL;
     RDB_expression *condp = NULL;
 
     /* Start subtx */
-    if (RDB_begin_tx(ecp, &tx, RDB_tx_db(txp), txp) != RDB_OK)
-        return RDB_ERROR;
+    if (RDB_begin_tx(ecp, &tx, RDB_tx_db(txp), txp) == RDB_OK) {
+        subtx_active = RDB_TRUE;
+    } else {
+        if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_SUPPORTED_ERROR)
+            return RDB_ERROR;
+        subtx_active = RDB_FALSE;
+    }
 
     updid.exp = NULL;
     upd.exp = NULL;
@@ -2761,11 +2767,12 @@ RDB_cat_rename_table(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         updv[4].updv = &updid;
 
         ret = RDB_multi_assign(0, NULL, 5, updv, 0, NULL, 0, NULL, 0, NULL,
-                NULL, NULL, ecp, &tx);
+                NULL, NULL, ecp, subtx_active ? &tx : txp);
         if (ret == RDB_ERROR)
             goto error;
     } else {
-        ret = RDB_update(txp->dbp->dbrootp->vtables_tbp, idcondp, 1, &updid, ecp, &tx);
+        ret = RDB_update(txp->dbp->dbrootp->vtables_tbp, idcondp, 1, &updid, ecp,
+            subtx_active ? &tx : txp);
         if (ret == RDB_ERROR)
             goto error;
         if (ret == 0) {
@@ -2786,7 +2793,7 @@ RDB_cat_rename_table(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
             updv[2].updv = &upd;
 
             ret = RDB_multi_assign(0, NULL, 3, updv, 0, NULL, 0, NULL, 0, NULL,
-                    NULL, NULL, ecp, &tx);
+                    NULL, NULL, ecp, subtx_active ? &tx : txp);
             if (ret == RDB_ERROR)
                 goto error;
         }
@@ -2795,10 +2802,12 @@ RDB_cat_rename_table(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         RDB_raise_not_found("table not found in catalog", ecp);
         goto error;
     }
-    ret = RDB_update(txp->dbp->dbrootp->table_recmap_tbp, idcondp, 1, &updid, ecp, &tx);
+    ret = RDB_update(txp->dbp->dbrootp->table_recmap_tbp, idcondp, 1, &updid, ecp,
+            subtx_active ? &tx : txp);
     if (ret == RDB_ERROR)
         goto error;
-    ret = RDB_update(txp->dbp->dbrootp->dbtables_tbp, idcondp, 1, &updid, ecp, &tx);
+    ret = RDB_update(txp->dbp->dbrootp->dbtables_tbp, idcondp, 1, &updid, ecp,
+            subtx_active ? &tx : txp);
 
     RDB_del_expr(idcondp, ecp);
     RDB_del_expr(condp, ecp);
@@ -2806,10 +2815,14 @@ RDB_cat_rename_table(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         RDB_del_expr(updid.exp, ecp);
     if (upd.exp != NULL)
         RDB_del_expr(upd.exp, ecp);
-    return RDB_commit(ecp, &tx);
+    return subtx_active ? RDB_commit(ecp, &tx) : RDB_OK;
 
 error:
-    RDB_rollback(ecp, &tx);
+    if (subtx_active) {
+        RDB_rollback(ecp, &tx);
+    } else {
+        RDB_rollback(ecp, txp);
+    }
     if (idcondp != NULL)
         RDB_del_expr(idcondp, ecp);
     if (condp != NULL)
