@@ -26,9 +26,9 @@ typedef struct RDB_index {
 #endif
         struct {
             RDB_binary_tree *treep;
-            struct RDB_index *nextp;
         } tree;
     } impl;
+    struct RDB_index *nextp;
     char *namp;
     char *filenamp;
     int fieldc;

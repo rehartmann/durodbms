@@ -199,8 +199,8 @@ RDB_create_tree_index(RDB_recmap *rmp, const char *name, const char *filename,
         return NULL;
 
     /* Associate index with recmap */
-    ixp->impl.tree.nextp = rmp->impl.tree.indexes;
-    rmp->impl.tree.indexes = ixp;
+    ixp->nextp = rmp->indexes;
+    rmp->indexes = ixp;
 
     return ixp;
 
@@ -213,11 +213,11 @@ error:
 static RDB_index *
 find_prev_index(RDB_index *ixp)
 {
-    RDB_index *ixp2 = ixp->rmp->impl.tree.indexes;
+    RDB_index *ixp2 = ixp->rmp->indexes;
     while (ixp2 != NULL) {
-        if (ixp2->impl.tree.nextp == ixp)
+        if (ixp2->nextp == ixp)
             return ixp2;
-        ixp2 = ixp2->impl.tree.nextp;
+        ixp2 = ixp2->nextp;
     }
     return NULL;
 }
@@ -233,9 +233,9 @@ RDB_delete_tree_index(RDB_index *ixp, RDB_rec_transaction *rtxp,
     /* Remove from list */
     prev = find_prev_index(ixp);
     if (prev != NULL) {
-        prev->impl.tree.nextp = ixp->impl.tree.nextp;
-    } else if (ixp->rmp->impl.tree.indexes == ixp) {
-        ixp->rmp->impl.tree.indexes = ixp->rmp->impl.tree.indexes->impl.tree.nextp;
+        prev->nextp = ixp->nextp;
+    } else if (ixp->rmp->indexes == ixp) {
+        ixp->rmp->indexes = ixp->rmp->indexes->nextp;
     }
 
     free(ixp->fieldv);

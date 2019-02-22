@@ -88,7 +88,7 @@ new_tree_recmap(int fieldc, const RDB_field_info fieldinfov[],
         RDB_free(rmp);
         return NULL;
     }
-    rmp->impl.tree.indexes = NULL;
+    rmp->indexes = NULL;
 
     rmp->close_recmap_fn = RDB_close_tree_recmap;
     rmp->delete_recmap_fn = &RDB_delete_tree_recmap;
@@ -231,7 +231,7 @@ check_in_indexes(RDB_recmap *rmp, void *key, size_t keylen,
     RDB_index *ixp;
     int ret;
 
-    for (ixp = rmp->impl.tree.indexes; ixp != NULL; ixp = ixp->impl.tree.nextp) {
+    for (ixp = rmp->indexes; ixp != NULL; ixp = ixp->nextp) {
         ret = make_skey(ixp, key, keylen, value, valuelen, &skey, &skeylen);
         if (ret != RDB_OK) {
             RDB_errcode_to_error(ret, ecp);
@@ -255,7 +255,7 @@ insert_into_indexes(RDB_recmap *rmp, RDB_tree_node *nodep, RDB_exec_context *ecp
     RDB_index *ixp;
     int ret;
 
-    for (ixp = rmp->impl.tree.indexes; ixp != NULL; ixp = ixp->impl.tree.nextp) {
+    for (ixp = rmp->indexes; ixp != NULL; ixp = ixp->nextp) {
         void *key;
 
         ret = make_skey(ixp, nodep->key, nodep->keylen, nodep->value, nodep->valuelen, &skey, &skeylen);
@@ -282,7 +282,7 @@ insert_into_indexes(RDB_recmap *rmp, RDB_tree_node *nodep, RDB_exec_context *ecp
 static int
 delete_tree_rec_by_key(RDB_recmap *rmp, void *key, size_t keylen, RDB_exec_context *ecp)
 {
-    if (rmp->impl.tree.indexes != NULL) {
+    if (rmp->indexes != NULL) {
         /* Delete entry from indexes */
         RDB_tree_node *nodep = RDB_tree_find(rmp->impl.tree.treep, key, keylen);
         if (nodep != NULL) {
@@ -356,7 +356,7 @@ RDB_recmap_is_key_update(RDB_recmap *rmp, int fieldc, const RDB_field fieldv[])
 
         if (fieldv[i].no < rmp->keyfieldcount)
             return RDB_TRUE;
-        for (ixp = rmp->impl.tree.indexes; ixp != NULL; ixp = ixp->impl.tree.nextp) {
+        for (ixp = rmp->indexes; ixp != NULL; ixp = ixp->nextp) {
             int j;
             for (j = 0; j < ixp->fieldc; j++) {
                 if (fieldv[i].no == ixp->fieldv[j])
@@ -517,7 +517,7 @@ RDB_delete_from_tree_indexes(RDB_recmap *rmp, RDB_tree_node *nodep, RDB_exec_con
     RDB_index *ixp;
     int ret;
 
-    for (ixp = rmp->impl.tree.indexes; ixp != NULL; ixp = ixp->impl.tree.nextp) {
+    for (ixp = rmp->indexes; ixp != NULL; ixp = ixp->nextp) {
         ret = make_skey(ixp, nodep->key, nodep->keylen, nodep->value, nodep->valuelen, &skey, &skeylen);
         if (ret != RDB_OK) {
             RDB_errcode_to_error(ret, ecp);

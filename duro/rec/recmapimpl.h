@@ -30,9 +30,9 @@ typedef struct RDB_recmap {
 #endif
         struct {
             RDB_binary_tree *treep;
-            RDB_index *indexes;
         } tree;
     } impl;
+    RDB_index *indexes;
     char *namp;
     char *filenamp;
     int fieldcount; /* # of fields total */
