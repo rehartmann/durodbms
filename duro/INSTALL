@@ -32,24 +32,24 @@ Building the Tcl interface requires Tcl (8.1 or later).
 'scons test' requires the Tcl interface and the tcltest package.
 
 On Unix-like systems, Berkeley DB is assumed to be located in
-/usr/local/BerkeleyDB.6.2. If Berkeley DB is located in a different directory,
+/usr/local/BerkeleyDB.18.1. If Berkeley DB is located in a different directory,
 you can pass this directory to SCons using the bdbhome variable, so
 if Berkeley DB is located in /usr instead of /usr/local, you may use:
 
-scons bdbhome=/usr/BerkeleyDB.6.2
+scons bdbhome=/usr/BerkeleyDB.18.1
 
 The location of Berkeley DB may also be specified using
 the environment. With Visual C++, the variables LIB and INCLUDE
 can be used.
 
-By default, DuroDBMS is installed in C:\duro.1.5 on Windows, and
-/usr/local/duro.1.5 on all other systems.
+By default, DuroDBMS is installed in C:\duro.1.7 on Windows, and
+/usr/local/duro.1.7 on all other systems.
 You can specify a different directory by passing an installdir
 variable to scons, e. g.:
 
 scons installdir=/usr install
 
-This will install DuroDBMS in /usr/duro.1.5.
+This will install DuroDBMS in /usr/duro.1.7.
 
 To build the REST server, type:
 
