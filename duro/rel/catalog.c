@@ -726,7 +726,6 @@ RDB_cat_insert_ptable(const char *name,
     int ret;
     int i;
     RDB_object tpl;
-    RDB_object tbnameobj;
     RDB_object defval;
     RDB_object attrnameobj;
 
@@ -735,7 +734,6 @@ RDB_cat_insert_ptable(const char *name,
      */
 
     RDB_init_obj(&tpl);
-    RDB_init_obj(&tbnameobj);
     RDB_init_obj(&attrnameobj);
     RDB_init_obj(&defval);
 
@@ -794,9 +792,6 @@ RDB_cat_insert_ptable(const char *name,
 
     /*
      * Insert keys into sys_keys
-     *
-    if (RDB_string_to_id(&tbnameobj, name, ecp) != RDB_OK)
-        goto error;
      */
     for (i = 0; i < keyc; i++) {
         if (insert_key(&keyv[i], i, name, txp->dbp->dbrootp,
@@ -806,14 +801,12 @@ RDB_cat_insert_ptable(const char *name,
 
     RDB_destroy_obj(&tpl, ecp);
     RDB_destroy_obj(&defval, ecp);
-    RDB_destroy_obj(&tbnameobj, ecp);
     RDB_destroy_obj(&attrnameobj, ecp);
     return RDB_OK;
 
 error:
     RDB_destroy_obj(&tpl, ecp);
     RDB_destroy_obj(&defval, ecp);
-    RDB_destroy_obj(&tbnameobj, ecp);
     RDB_destroy_obj(&attrnameobj, ecp);
     return RDB_ERROR;
 }
