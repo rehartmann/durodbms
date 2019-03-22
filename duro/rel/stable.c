@@ -859,12 +859,12 @@ RDB_delete_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp,
     /* Schedule secondary indexes for deletion */
     for (i = 0; i < stp->indexc; i++) {
         if (stp->indexv[i].idxp != NULL) {
-            if (txp != NULL) {
+            if (txp != NULL && RDB_recmap_delayed_deletion(stp->recmapp)) {
                 ret = RDB_add_del_index(txp, stp->indexv[i].idxp, ecp);
                 if (ret != RDB_OK)
                     return ret;
             } else {
-                ret = RDB_delete_index(stp->indexv[i].idxp, NULL, ecp);
+                ret = RDB_delete_index(stp->indexv[i].idxp, txp != NULL ? txp->tx : NULL, ecp);
             }
         }
     }

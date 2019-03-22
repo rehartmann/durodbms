@@ -195,15 +195,15 @@ value_to_mem(RDB_recmap *rmp, RDB_field fldv[], void **valuep, size_t *valuelen)
                              fldv + rmp->keyfieldcount, valuep, valuelen);
 }
 
-static int
-make_skey(RDB_index *ixp, void *key, size_t keylen, void *value, size_t valuelen,
+int
+RDB_make_skey(RDB_index *ixp, void *key, size_t keylen, void *value, size_t valuelen,
         void **skeyp, size_t *skeylenp)
 {
     RDB_field *fieldv;
     int ret;
     int i;
 
-    fieldv = malloc (sizeof(RDB_field) * ixp->fieldc);
+    fieldv = malloc(sizeof(RDB_field) * ixp->fieldc);
     if (fieldv == NULL)
         return ENOMEM;
 
@@ -232,7 +232,7 @@ check_in_indexes(RDB_recmap *rmp, void *key, size_t keylen,
     int ret;
 
     for (ixp = rmp->indexes; ixp != NULL; ixp = ixp->nextp) {
-        ret = make_skey(ixp, key, keylen, value, valuelen, &skey, &skeylen);
+        ret = RDB_make_skey(ixp, key, keylen, value, valuelen, &skey, &skeylen);
         if (ret != RDB_OK) {
             RDB_errcode_to_error(ret, ecp);
             return RDB_ERROR;
@@ -258,7 +258,7 @@ insert_into_indexes(RDB_recmap *rmp, RDB_tree_node *nodep, RDB_exec_context *ecp
     for (ixp = rmp->indexes; ixp != NULL; ixp = ixp->nextp) {
         void *key;
 
-        ret = make_skey(ixp, nodep->key, nodep->keylen, nodep->value, nodep->valuelen, &skey, &skeylen);
+        ret = RDB_make_skey(ixp, nodep->key, nodep->keylen, nodep->value, nodep->valuelen, &skey, &skeylen);
         if (ret != RDB_OK) {
             RDB_errcode_to_error(ret, ecp);
             return RDB_ERROR;
@@ -383,15 +383,19 @@ delete_update_reinsert_tree_node(RDB_recmap *rmp, RDB_tree_node *nodep,
     keylen = nodep->keylen;
     valuelen = nodep->valuelen;
     if (keylen > 0) {
-        key = RDB_alloc(keylen, ecp);
-        if (key == NULL)
+        key = malloc(keylen);
+        if (key == NULL) {
+            RDB_raise_no_memory(ecp);
             goto error;
+        }
         memcpy(key, nodep->key, keylen);
     }
     if (valuelen > 0) {
-        value = RDB_alloc(valuelen, ecp);
-        if (value == NULL)
+        value = malloc(valuelen);
+        if (value == NULL) {
+            RDB_raise_no_memory(ecp);
             goto error;
+        }
         memcpy(value, nodep->value, valuelen);
     }
 
@@ -423,8 +427,8 @@ delete_update_reinsert_tree_node(RDB_recmap *rmp, RDB_tree_node *nodep,
                            rmp->vardatafieldcount);
         }
         if (ret != RDB_OK) {
-            free(key);
-            return ret;
+            RDB_raise_no_memory(ecp);
+            goto error;
         }
     }
     ret = insert_tree_rec_kv(rmp, key, keylen, value, valuelen, ecp);
@@ -445,10 +449,10 @@ delete_update_reinsert_tree_node(RDB_recmap *rmp, RDB_tree_node *nodep,
 
 error:
     if (key != NULL) {
-        RDB_free(key);
+        free(key);
     }
     if (value != NULL) {
-        RDB_free(value);
+        free(value);
     }
     if (key2 != NULL) {
         RDB_free(key2);
@@ -518,7 +522,7 @@ RDB_delete_from_tree_indexes(RDB_recmap *rmp, RDB_tree_node *nodep, RDB_exec_con
     int ret;
 
     for (ixp = rmp->indexes; ixp != NULL; ixp = ixp->nextp) {
-        ret = make_skey(ixp, nodep->key, nodep->keylen, nodep->value, nodep->valuelen, &skey, &skeylen);
+        ret = RDB_make_skey(ixp, nodep->key, nodep->keylen, nodep->value, nodep->valuelen, &skey, &skeylen);
         if (ret != RDB_OK) {
             RDB_errcode_to_error(ret, ecp);
             return RDB_ERROR;
