@@ -7,6 +7,7 @@
 #include "fdbrecmap.h"
 #include <rec/cursorimpl.h>
 #include <rec/recmapimpl.h>
+#include <rec/indeximpl.h>
 #include <obj/excontext.h>
 #include <fdbrec/fdbsequence.h>
 #include <fdbrec/fdbtx.h>
@@ -55,7 +56,7 @@ RDB_cursor *
 RDB_fdb_index_cursor(RDB_index *idxp, RDB_bool wr,
                   RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
-    RDB_raise_not_supported("indexes not available", ecp);
+    RDB_raise_not_supported("cursor over indexes not supported", ecp);
 	return NULL;
 }
 
@@ -116,11 +117,12 @@ RDB_fdb_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[],
     if (curp->secondary)
         return RDB_fdb_cursor_update(curp, fieldc, fields, ecp);
 
+    if (RDB_recmap_is_key_update(curp->recmapp, fieldc, fields)) {
+        RDB_raise_invalid_argument("Modifiying the key is not supported", ecp);
+        return RDB_ERROR;
+    }
+
     for (i = 0; i < fieldc; i++) {
-        if (fields[i].no < curp->recmapp->keyfieldcount) {
-            RDB_raise_invalid_argument("Modifiying the key is not supported", ecp);
-            return RDB_ERROR;
-        }
         ret = RDB_set_field_mem(curp->recmapp, &data, &data_length, &fields[i],
             curp->recmapp->vardatafieldcount);
         if (ret != RDB_OK) {
@@ -144,7 +146,8 @@ int
 RDB_fdb_cursor_delete(RDB_cursor *curp, RDB_exec_context *ecp)
 {
     fdb_transaction_clear((FDBTransaction*)curp->tx, curp->cur.fdb.key, curp->cur.fdb.key_length);
-	return RDB_OK;
+    return RDB_delete_from_fdb_indexes(curp->recmapp, curp->cur.fdb.key, curp->cur.fdb.key_length,
+            curp->cur.fdb.value, curp->cur.fdb.value_length, (FDBTransaction*)curp->tx, ecp);
 }
 
 static int

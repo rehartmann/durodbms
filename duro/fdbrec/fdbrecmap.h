@@ -9,6 +9,7 @@
 #define FDBREC_FDBRECMAP_H_
 
 #include <rec/recmap.h>
+#include <rec/index.h>
 
 typedef RDB_exec_context RDB_exec_context;
 
@@ -52,5 +53,14 @@ RDB_fdb_recmap_est_size(RDB_recmap *, RDB_rec_transaction *, unsigned *, RDB_exe
 
 int
 RDB_fdb_key_prefix_length(RDB_recmap *);
+
+int
+RDB_fdb_key_index_prefix_length(RDB_index *);
+
+uint8_t *
+RDB_fdb_prepend_key_prefix(RDB_recmap *, const void *, size_t, RDB_exec_context *);
+
+uint8_t *
+RDB_fdb_prepend_key_index_prefix(RDB_index *, const void *, size_t, RDB_exec_context *);
 
 #endif /* FDBREC_FDBRECMAP_H_ */
