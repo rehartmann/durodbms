@@ -4,13 +4,14 @@
  */
 
 #include "fdbcursor.h"
+#include "fdbenv.h"
 #include "fdbrecmap.h"
+#include "fdbsequence.h"
+#include "fdbrec/fdbtx.h"
 #include <rec/cursorimpl.h>
 #include <rec/recmapimpl.h>
 #include <rec/indeximpl.h>
 #include <obj/excontext.h>
-#include <fdbrec/fdbsequence.h>
-#include <fdbrec/fdbtx.h>
 
 #define FDB_API_VERSION 600
 #include <foundationdb/fdb_c.h>
@@ -221,14 +222,14 @@ RDB_fdb_cursor_first(RDB_cursor *curp, RDB_exec_context *ecp)
 	RDB_free(endkeybuf);
 	if (err != 0) {
 		fdb_future_destroy(f);
-		RDB_fdb_errcode_to_error(err, ecp);
-		return RDB_ERROR;
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)curp->tx);
+        return RDB_ERROR;
 	}
 	err = fdb_future_get_keyvalue_array(f, &out_kv, &out_count, &out_more);
 	if (err != 0) {
 		fdb_future_destroy(f);
-		RDB_fdb_errcode_to_error(err, ecp);
-		return RDB_ERROR;
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)curp->tx);
+        return RDB_ERROR;
 	}
 	if (out_count == 0) {
 		fdb_future_destroy(f);
@@ -275,14 +276,14 @@ RDB_fdb_cursor_next(RDB_cursor *curp, int flags, RDB_exec_context *ecp)
 	RDB_free(endkeybuf);
 	if (err != 0) {
 		fdb_future_destroy(f);
-		RDB_fdb_errcode_to_error(err, ecp);
-		return RDB_ERROR;
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)curp->tx);
+        return RDB_ERROR;
 	}
 	err = fdb_future_get_keyvalue_array(f, &out_kv, &out_count, &out_more);
 	if (err != 0) {
 		fdb_future_destroy(f);
-		RDB_fdb_errcode_to_error(err, ecp);
-		return RDB_ERROR;
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)curp->tx);
+        return RDB_ERROR;
 	}
 
 	if (out_count == 0) {

@@ -7,6 +7,7 @@
  */
 
 #include "fdbsequence.h"
+#include "fdbenv.h"
 #include <rec/sequenceimpl.h>
 #include <obj/excontext.h>
 #include <gen/strfns.h>
@@ -53,13 +54,13 @@ RDB_open_fdb_sequence(const char *cname, const char *filename,
     err = fdb_future_block_until_ready(f);
     if (err != 0) {
         fdb_future_destroy(f);
-        RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         goto error;
     }
     err = fdb_future_get_value(f, &present, &out_value, &out_value_length);
     fdb_future_destroy(f);
     if (err != 0) {
-        RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         goto error;
     }
     if (!present) {
@@ -132,13 +133,13 @@ RDB_fdb_sequence_next(RDB_sequence *seqp, RDB_rec_transaction *rtxp, RDB_int *va
     err = fdb_future_block_until_ready(f);
     if (err != 0) {
         fdb_future_destroy(f);
-        RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         goto error;
     }
     err = fdb_future_get_value(f, &present, &out_value, &out_value_length);
     if (err != 0) {
         fdb_future_destroy(f);
-        RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         goto error;
     }
     if (!present || out_value_length != sizeof(RDB_int)) {
@@ -189,13 +190,13 @@ RDB_rename_fdb_sequence(const char *oldname, const char *newname,
     err = fdb_future_block_until_ready(f);
     if (err != 0) {
         fdb_future_destroy(f);
-        RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         goto error;
     }
     err = fdb_future_get_value(f, &present, &out_value, &out_value_length);
     if (err != 0) {
         fdb_future_destroy(f);
-        RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         goto error;
     }
     if (!present || out_value_length != sizeof(RDB_int)) {

@@ -4,6 +4,7 @@
  */
 
 #include "fdbindex.h"
+#include "fdbenv.h"
 #include "fdbrecmap.h"
 #include <rec/dbdefs.h>
 #include <rec/indeximpl.h>
@@ -216,14 +217,14 @@ RDB_fdb_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc,
     if (err != 0) {
         RDB_free(key_name);
         fdb_future_destroy(f1);
-        RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         return RDB_ERROR;
     }
     err = fdb_future_get_value(f1, &present, &pkey, &pkey_length);
     if (err != 0) {
         RDB_free(key_name);
         fdb_future_destroy(f1);
-        RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         return RDB_ERROR;
     }
     if (!present) {
@@ -241,14 +242,14 @@ RDB_fdb_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc,
     if (err != 0) {
         RDB_free(pkey_name);
         fdb_future_destroy(f2);
-        RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         return RDB_ERROR;
     }
     err = fdb_future_get_value(f2, &present, &value, &value_length);
     if (err != 0) {
         RDB_free(pkey_name);
         fdb_future_destroy(f2);
-        RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         return RDB_ERROR;
     }
     if (!present) {

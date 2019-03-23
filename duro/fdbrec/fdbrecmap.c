@@ -4,12 +4,13 @@
 */
 
 #include "fdbrecmap.h"
+#include "fdbenv.h"
+#include "fdbcursor.h"
+#include "fdbindex.h"
 #include <rec/dbdefs.h>
 #include <obj/excontext.h>
 #include <rec/recmapimpl.h>
 #include <rec/indeximpl.h>
-#include <fdbrec/fdbcursor.h>
-#include <fdbrec/fdbindex.h>
 #include <treerec/field.h>
 #include <treerec/treerecmap.h>
 
@@ -268,14 +269,14 @@ RDB_insert_fdb_rec(RDB_recmap *rmp, RDB_field fieldv[], RDB_rec_transaction *rtx
     if (err != 0) {
         RDB_free(key_name);
         fdb_future_destroy(f);
-        RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         return RDB_ERROR;
     }
     err = fdb_future_get_value(f, &present, &out_value, &out_value_length);
     if (err != 0) {
         RDB_free(key_name);
         fdb_future_destroy(f);
-        RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         return RDB_ERROR;
     }
     if (present) {
@@ -403,14 +404,14 @@ RDB_update_fdb_rec(RDB_recmap *rmp, RDB_field keyv[],
     if (err != 0) {
         RDB_free(key_name);
         fdb_future_destroy(f);
-        RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         return RDB_ERROR;
     }
     err = fdb_future_get_value(f, &present, &value, &value_length);
     if (err != 0) {
         RDB_free(key_name);
         fdb_future_destroy(f);
-        RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         return RDB_ERROR;
     }
     if (!present) {
@@ -501,14 +502,14 @@ RDB_delete_fdb_kv(RDB_recmap *rmp, uint8_t *key_name, int key_name_length,
             /* Rollback .. */
             RDB_free(key_name);
             fdb_future_destroy(f);
-            RDB_fdb_errcode_to_error(err, ecp);
+            RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
             return RDB_ERROR;
         }
         err = fdb_future_get_value(f, &present, &value, &value_length);
         if (err != 0) {
             RDB_free(key_name);
             fdb_future_destroy(f);
-            RDB_fdb_errcode_to_error(err, ecp);
+            RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
             return RDB_ERROR;
         }
         if (present) {
@@ -562,14 +563,14 @@ RDB_get_fdb_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
     if (err != 0) {
         RDB_free(key_name);
         fdb_future_destroy(f);
-        RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         return RDB_ERROR;
     }
     err = fdb_future_get_value(f, &present, &value, &value_length);
     if (err != 0) {
         RDB_free(key_name);
         fdb_future_destroy(f);
-        RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         return RDB_ERROR;
     }
     if (!present) {
@@ -615,13 +616,13 @@ RDB_contains_fdb_rec(RDB_recmap *rmp, RDB_field fieldv[], RDB_rec_transaction *r
     RDB_free(key_name);
     if (err != 0) {
         fdb_future_destroy(f);
-        RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         return RDB_ERROR;
     }
     err = fdb_future_get_value(f, &present, &out_value, &out_value_length);
     if (err != 0) {
         fdb_future_destroy(f);
-        RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         return RDB_ERROR;
     }
     if (!present) {

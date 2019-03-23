@@ -32,6 +32,7 @@ RDB_fdb_close_env(RDB_environment *envp, RDB_exec_context *ecp)
 {
 	fdb_database_destroy(envp->env.fdb);
 	free(envp);
+    return RDB_OK;
 }
 
 static void
@@ -55,14 +56,14 @@ RDB_fdb_open_env(const char *path, RDB_exec_context *ecp)
 	if (!RDB_fdb_initialized) {
 		err = fdb_select_api_version(600);
 		if (err != 0) {
-			RDB_fdb_errcode_to_error(err, ecp);
+            RDB_handle_fdb_errcode(err, ecp, NULL);
 			return (DWORD) 0;
 		}
 		RDB_fdb_initialized = RDB_TRUE;
 
 		err = fdb_setup_network();
 		if (err != 0) {
-			RDB_fdb_errcode_to_error(err, ecp);
+            RDB_handle_fdb_errcode(err, ecp, NULL);
 			return NULL;
 		}
 
@@ -98,13 +99,13 @@ RDB_fdb_open_env(const char *path, RDB_exec_context *ecp)
 	err = fdb_future_block_until_ready(f);
 	if (err != 0) {
 		fdb_future_destroy(f);
-		RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, NULL);
 		free(envp);
 		return NULL;
 	}
 	if ((err = fdb_future_get_cluster(f, &cluster)) != 0) {
 		fdb_future_destroy(f);
-		RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, NULL);
 		free(envp);
 		return NULL;
 	}
@@ -113,13 +114,13 @@ RDB_fdb_open_env(const char *path, RDB_exec_context *ecp)
 	err = fdb_future_block_until_ready(f);
 	if (err != 0) {
 		fdb_future_destroy(f);
-		RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, NULL);
 		free(envp);
 		return NULL;
 	}
 	if ((err = fdb_future_get_database(f, &envp->env.fdb)) != 0) {
 		fdb_future_destroy(f);
-		RDB_fdb_errcode_to_error(err, ecp);
+        RDB_handle_fdb_errcode(err, ecp, NULL);
 		free(envp);
 		return NULL;
 	}
@@ -129,18 +130,28 @@ RDB_fdb_open_env(const char *path, RDB_exec_context *ecp)
 }
 
 void
-RDB_fdb_errcode_to_error(fdb_error_t code, RDB_exec_context *ecp)
+RDB_handle_fdb_errcode(fdb_error_t err, RDB_exec_context *ecp, FDBTransaction *transaction)
 {
-	switch (code) {
+    if (transaction != NULL) {
+        FDBFuture *f = fdb_transaction_on_error(transaction, err);
+        fdb_error_t err2 = fdb_future_block_until_ready(f);
+        if (err2 == 0) {
+            err2 = fdb_future_get_error(f);
+        }
+        ecp->error_retryable = (err2 == 0) ? RDB_TRUE : RDB_FALSE;
+        fdb_future_destroy(f);
+    }
+
+	switch (err) {
 	case 1020:
-		RDB_raise_concurrency(fdb_get_error(code), ecp);
+		RDB_raise_concurrency(ecp);
 		break;
 	case 1501:
 		RDB_raise_no_memory(ecp);
 		break;
 	case 1511:
 	case 1515:
-		RDB_raise_resource_not_found(fdb_get_error(code), ecp);
+		RDB_raise_resource_not_found(fdb_get_error(err), ecp);
 	case 1102:
 	case 2015:
 	case 2016:
@@ -149,25 +160,25 @@ RDB_fdb_errcode_to_error(fdb_error_t code, RDB_exec_context *ecp)
 	case 2202:
 	case 2203:
 	case 4100:
-		RDB_raise_internal(fdb_get_error(code), ecp);
+		RDB_raise_internal(fdb_get_error(err), ecp);
 		break;
 	case 2004:
 	case 2012:
 	case 2013: 
 	case 2018:
 	case 2104:
-		RDB_raise_invalid_argument(fdb_get_error(code), ecp);
+		RDB_raise_invalid_argument(fdb_get_error(err), ecp);
 		break;
 	case 1038:
 	case 2105:
-		RDB_raise_in_use(fdb_get_error(code), ecp);
+		RDB_raise_in_use(fdb_get_error(err), ecp);
 		break;
 	case 2102:
 	case 2103:
 	case 2108:
-		RDB_raise_not_supported(fdb_get_error(code), ecp);
+		RDB_raise_not_supported(fdb_get_error(err), ecp);
 		break;
 	default:
-		RDB_raise_system(fdb_get_error(code), ecp);
+		RDB_raise_system(fdb_get_error(err), ecp);
 	}
 }

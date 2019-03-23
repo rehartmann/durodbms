@@ -21,7 +21,7 @@ int
 RDB_fdb_close_env(RDB_environment *, RDB_exec_context *);
 
 void
-RDB_fdb_errcode_to_error(fdb_error_t, RDB_exec_context *);
+RDB_handle_fdb_errcode(fdb_error_t, RDB_exec_context *, FDBTransaction *);
 
 int
 RDB_fdb_string_literal(RDB_environment *, RDB_object *, const char *,
