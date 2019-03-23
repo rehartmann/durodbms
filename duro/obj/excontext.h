@@ -25,6 +25,9 @@ typedef struct RDB_exec_context {
 
     /* Property map */
     RDB_hashmap pmap;
+
+    /* RDB_TRUE is the operation that failed should be retried */
+    RDB_bool error_retryable;
 } RDB_exec_context;
 
 void
@@ -41,6 +44,9 @@ RDB_get_err(RDB_exec_context *);
 
 void
 RDB_clear_err(RDB_exec_context *);
+
+RDB_bool
+RDB_err_retryable(RDB_exec_context *);
 
 RDB_object *
 RDB_raise_no_memory(RDB_exec_context *);

@@ -24,6 +24,7 @@ void
 RDB_init_exec_context(RDB_exec_context *ecp)
 {
     ecp->error_active = RDB_FALSE;
+    ecp->error_retryable = RDB_FALSE;
     RDB_init_hashmap(&ecp->pmap, 16);
 }
 
@@ -98,9 +99,17 @@ RDB_clear_err(RDB_exec_context *ecp)
         RDB_destroy_obj(&ecp->error, ecp);
         ecp->error_active = RDB_FALSE;
     }
+    ecp->error_retryable = RDB_FALSE;
 }
 
-/*@{*/
+/**
+ * Returns RDB_TRUE if a retryable error has been raised, RDB_FALSE if not.
+ */
+RDB_bool
+RDB_err_retryable(RDB_exec_context *ecp)
+{
+    return ecp->error_active && ecp->error_retryable ? RDB_TRUE : RDB_FALSE;
+}
 
 /** Convenience function to raise a system-provided error.
  */
@@ -311,8 +320,6 @@ RDB_raise_connection(const char *msg, RDB_exec_context *ecp)
     return raise_msg_err(&RDB_CONNECTION_ERROR, msg, ecp);
 }
 
-/*@}*/
-
 /** <strong>RDB_ec_set_property</strong> sets the property <var>name</var>
 of the RDB_exec_context given by <var>ecp</var> to <var>val</var>.
 
@@ -345,9 +352,7 @@ RDB_ec_property(RDB_exec_context *ecp, const char *name)
 }
 
 /**
- * Raise an error that corresponds to the error code <var>errcode</var>.
- * <var>errcode</var> can be a POSIX error code,
- * a Berkeley DB error code or an error code from the record layer.
+ * Raises an error that corresponds to the POSIX error code <var>errcode</var>.
  */
 void
 RDB_errno_to_error(int errcode, RDB_exec_context *ecp)
