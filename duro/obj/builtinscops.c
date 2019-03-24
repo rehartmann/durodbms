@@ -768,9 +768,9 @@ static int
 op_regex_like(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
+    int ret;
 #ifdef POSIX_REGEX
     regex_t reg;
-    int ret;
 
     ret = regcomp(&reg, argv[1]->val.bin.datap, REG_EXTENDED);
     if (ret != 0) {
@@ -781,8 +781,13 @@ op_regex_like(int argc, RDB_object *argv[], RDB_operator *op,
             (regexec(&reg, argv[0]->val.bin.datap, 0, NULL, 0) == 0));
     regfree(&reg);
 #else
-    RDB_bool_to_obj(retvalp,
-            RDB_regex_match(argv[0]->val.bin.datap, argv[1]->val.bin.datap));
+    RDB_bool result;
+
+    ret = RDB_regex_match(argv[0]->val.bin.datap, argv[1]->val.bin.datap, &result, ecp);
+    if (ret != RDB_OK) {
+        return RDB_ERROR;
+    }
+    RDB_bool_to_obj(retvalp, result);
 #endif
 
     return RDB_OK;

@@ -28,6 +28,8 @@
 #define STDIN_FILENO 0
 #define STDOUT_FILENO 1
 #define STDERR_FILENO 2
+#include <windows.h>
+#include <synchapi.h>
 #else
 #include <unistd.h>
 #endif
@@ -205,6 +207,12 @@ The value of the environment variable @a name.
 OPERATOR chdir(path string) UPDATES {};
 
 Changes the current direcory to \a path.
+
+<hr>
+
+OPERATOR sleep(seconds integer) UPDATES {};
+
+Suspends execution for the specified number of seconds.
 
 <hr>
 
@@ -849,6 +857,18 @@ op_chdir(int argc, RDB_object *argv[], RDB_operator *op,
     return RDB_OK;
 }
 
+static int
+op_sleep(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+#ifdef _WIN32
+    Sleep((DWORD)(RDB_obj_int(argv[0]) * 1000));
+#else
+    sleep((unsigned) RDB_obj_int(argv[0]));
+#endif
+    return RDB_OK;
+}
+
 /*
  * Operator exit() without arguments
  */
@@ -913,6 +933,7 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     static RDB_parameter seek_paramv[2];
     static RDB_parameter close_paramv[1];
     static RDB_parameter chdir_paramv[1];
+    static RDB_parameter sleep_paramv[1];
     static RDB_parameter exit_int_params[1];
     static RDB_parameter system_params[2];
 
@@ -993,6 +1014,9 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
 
     chdir_paramv[0].typ = &RDB_STRING;
     chdir_paramv[0].update = RDB_FALSE;
+
+    sleep_paramv[0].typ = &RDB_INTEGER;
+    sleep_paramv[0].update = RDB_FALSE;
 
     exit_int_params[0].typ = &RDB_INTEGER;
     exit_int_params[0].update = RDB_FALSE;
@@ -1099,6 +1123,11 @@ RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     }
 
     if (RDB_put_upd_op(opmapp, "os.chdir", 1, chdir_paramv, &op_chdir, ecp)
+            != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    if (RDB_put_upd_op(opmapp, "os.sleep", 1, sleep_paramv, &op_sleep, ecp)
             != RDB_OK) {
         return RDB_ERROR;
     }

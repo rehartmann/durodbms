@@ -1,4 +1,5 @@
 #include <gen/types.h>
+#include <obj/excontext.h>
 
-RDB_bool
-RDB_regex_match(const char *s, const char *pattern);
+int
+RDB_regex_match(const char *, const char *, RDB_bool *, RDB_exec_context *);
