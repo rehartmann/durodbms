@@ -29,8 +29,6 @@ void yy_delete_buffer(YY_BUFFER_STATE);
 
 /** @page update-ops Built-in system and connection operators
 
-@section connection-ops Connection operators
-
 OPERATOR connect(envname string) UPDATES {};
 
 Connects to the database environment \a envname.
@@ -47,7 +45,11 @@ Closes the database connection and sets current_db to the empty string.
 
 OPERATOR create_db(dbname string) UPDATES {};
 
-Create a database named \a dbname.
+Creates a database named \a dbname.
+
+OPERATOR retryable() RETURNS boolean;
+
+Returns true if a failed operation can be restarted.
 
 */
 
@@ -243,6 +245,15 @@ trace_op(int argc, RDB_object *argv[], RDB_operator *op,
     return RDB_OK;
 }
 
+static int
+retryable(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    Duro_interp *interp = RDB_ec_property(ecp, "INTERP");
+    RDB_bool_to_obj(retvalp, interp->retryable);
+    return RDB_OK;
+}
+
 /* Add I/O operators and variables */
 static int
 add_io(Duro_interp *interp, RDB_exec_context *ecp) {
@@ -305,6 +316,8 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
     interp->impl_typename = NULL;
     interp->current_foreachp = NULL;
 
+    interp->retryable = RDB_FALSE;
+
     Duro_init_vars(interp);
 
     RDB_init_op_map(&interp->sys_upd_op_map);
@@ -347,6 +360,10 @@ Duro_init_interp(Duro_interp *interp, RDB_exec_context *ecp,
     if (RDB_put_upd_op(&interp->sys_upd_op_map, "trace", 1, trace_params,
             &trace_op, ecp) != RDB_OK)
         goto error;
+    if (RDB_put_global_ro_op("retryable", 0, NULL, &RDB_BOOLEAN, &retryable, ecp)
+                != RDB_OK) {
+        goto error;
+    }
 
     /* Create current_db and implicit_tx in system package */
 

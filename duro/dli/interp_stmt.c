@@ -1,7 +1,7 @@
 /*
  * The interpreter main loop
  *
- * Copyright (C) 2016 Rene Hartmann.
+ * Copyright (C) 2016, 2019 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -510,9 +510,15 @@ Duro_commit(Duro_interp *interp, RDB_exec_context *ecp)
 
     ret = RDB_commit(ecp, &interp->txnp->tx);
 
-    ptxnp = interp->txnp->parentp;
-    RDB_free(interp->txnp);
-    interp->txnp = ptxnp;
+    /*
+     * If the commit failed but the transaction can be restarted,
+     * keep the transaction.
+     */
+    if (ret == RDB_OK || !RDB_err_retryable(ecp)) {
+        ptxnp = interp->txnp->parentp;
+        RDB_free(interp->txnp);
+        interp->txnp = ptxnp;
+    }
 
     return ret;
 }
@@ -1814,6 +1820,8 @@ exec_catch(const RDB_parse_node *catchp, const RDB_type *errtyp,
         goto error;
     }
 
+    /* Clear error, but preserve the retryable flag */
+    interp->retryable = ecp->error_retryable;
     RDB_clear_err(ecp);
     interp->err_line = -1;
 
@@ -2786,28 +2794,40 @@ Duro_exec_stmt_impl_tx(RDB_parse_node *stmtp, Duro_interp *interp,
             return RDB_ERROR;
         }
     }
-    if (Duro_exec_stmt(stmtp, interp, ecp, NULL) != RDB_OK) {
-        if (implicit_tx) {
-            Duro_rollback(interp, ecp);
-        } else {
-            RDB_object *errobjp = RDB_get_err(ecp);
-            if (RDB_obj_type(errobjp) == &RDB_OPERATOR_NOT_FOUND_ERROR
-                    && interp->txnp == NULL) {
-                RDB_object msgobj;
-                RDB_init_obj(&msgobj);
-                if (RDB_obj_property(errobjp, "msg", &msgobj, NULL, ecp, NULL) == RDB_OK) {
-                    /* Add info about missing tx */
-                    RDB_append_string(&msgobj, ", no running transaction", ecp);
-                    RDB_obj_set_property(errobjp, "msg", &msgobj, NULL, ecp, NULL);
-                }
-                RDB_destroy_obj(&msgobj, ecp);
-            }
+    for (;;) {
+        int ret = Duro_exec_stmt(stmtp, interp, ecp, NULL);
+        if (ret == RDB_OK && implicit_tx) {
+            ret = Duro_commit(interp, ecp);
         }
-        return RDB_ERROR;
-    }
-
-    if (implicit_tx) {
-        return Duro_commit(interp, ecp);
+        if (ret == RDB_OK) {
+            /* Success */
+            break;
+        } else {
+            /* If implicit transactions are enabled and the error is retryable, repeat */
+            if (implicit_tx) {
+                if (!RDB_err_retryable(ecp)) {
+                    if (interp->txnp != NULL && RDB_tx_is_running(&interp->txnp->tx)) {
+                        Duro_rollback(interp, ecp);
+                    }
+                    return RDB_ERROR;
+                }
+            } else {
+                RDB_object *errobjp = RDB_get_err(ecp);
+                if (RDB_obj_type(errobjp) == &RDB_OPERATOR_NOT_FOUND_ERROR
+                        && interp->txnp == NULL) {
+                    RDB_object msgobj;
+                    RDB_init_obj(&msgobj);
+                    if (RDB_obj_property(errobjp, "msg", &msgobj, NULL, ecp, NULL) == RDB_OK) {
+                        /* Add info about missing tx */
+                        RDB_append_string(&msgobj, ", no running transaction", ecp);
+                        RDB_obj_set_property(errobjp, "msg", &msgobj, NULL, ecp, NULL);
+                    }
+                    RDB_destroy_obj(&msgobj, ecp);
+                }
+                return RDB_ERROR;
+            }
+            RDB_clear_err(ecp);
+        }
     }
     return RDB_OK;
 }

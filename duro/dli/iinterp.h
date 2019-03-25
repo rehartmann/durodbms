@@ -75,6 +75,8 @@ typedef struct Duro_interp {
     RDB_hashmap uop_info_map;
 
     void *user_data;
+
+    RDB_bool retryable;
 } Duro_interp;
 
 int

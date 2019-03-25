@@ -70,7 +70,7 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
     int i;
     RDB_bool b;
     RDB_transaction tx;
-    RDB_bool subtx_active;
+    RDB_bool subtx_active = RDB_FALSE;
     struct RDB_tuple_and_getfn tg;
     RDB_object tmptb;
     RDB_type *tmptbtyp;
@@ -88,7 +88,6 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
             if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_SUPPORTED_ERROR) {
                 return RDB_ERROR;
             }
-            subtx_active = RDB_FALSE;
         } else {
             subtx_active = RDB_TRUE;
         }
@@ -334,7 +333,7 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
     size_t len;
     RDB_bool b;
     RDB_transaction tx;
-    RDB_bool subtx_active;
+    RDB_bool subtx_active = RDB_FALSE;
     struct RDB_tuple_and_getfn tg;
     RDB_type *tpltyp = tbp->typ->def.basetyp;
     RDB_cursor *curp = NULL;
@@ -353,7 +352,6 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
             if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_SUPPORTED_ERROR) {
                 return RDB_ERROR;
             }
-            subtx_active = RDB_FALSE;
         } else {
             subtx_active = RDB_TRUE;
         }
