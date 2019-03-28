@@ -4,6 +4,12 @@ DuroDBMS 1.7
 
 - Added support for FoundationDB as storage engine.
 
+- As part of the support for FoundationDB, added automatic restart of
+  failed statements when implicit transactions are enabled.
+
+- As part of the support for FoundationDB, added read-only operator
+  retryable() to determine whether a failed operation should be restarted.
+
 - Renamed lock_not_granted_error to concurrency_error.
 
 DuroDBMS 1.6
