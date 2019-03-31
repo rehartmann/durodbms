@@ -819,8 +819,9 @@ add_arg_list(RDB_expression *exp, RDB_parse_node *nodep,
 	RDB_expression *argp;
     RDB_parse_node *itemp = nodep->val.children.firstp;
 
-    if (itemp == NULL)
+    if (itemp == NULL) {
     	return RDB_OK;
+    }
 	for(;;) {
 		argp = RDB_parse_node_expr(itemp, ecp, txp);
 		if (argp == NULL)

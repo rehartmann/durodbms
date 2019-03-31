@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Rene Hartmann.
+ * Copyright (C) 2018, 2019 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -100,7 +100,7 @@ RDB_new_index(RDB_recmap *rmp, const char *name, const char *filename,
     }
     for (i = 0; i < fieldc; i++)
         ixp->fieldv[i] = fieldv[i];
-    ixp->cmpv = 0;
+    ixp->cmpv = NULL;
 
     if (cmpv != NULL) {
         ixp->cmpv = RDB_alloc(sizeof (RDB_compare_field) * fieldc, ecp);
