@@ -355,7 +355,7 @@ transform_where(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         }
     }
 
-    // Should never be reached
+    /* Should never be reached */
     RDB_raise_internal("transform_where()", ecp);
     return RDB_ERROR;
 }

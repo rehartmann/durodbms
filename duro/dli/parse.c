@@ -94,7 +94,7 @@ add_args(RDB_expression *exp, RDB_parse_node *pnodep, RDB_exec_context *ecp,
             if (nodep->nextp == NULL)
                break;
                
-            // Skip comma
+            /* Skip comma */
             nodep = nodep->nextp->nextp;
         }
     }
@@ -753,7 +753,7 @@ ro_op_node_expr(RDB_parse_node *argnodep, RDB_exec_context *ecp,
         opnamep = RDB_expr_var_name(argnodep->exp);
     }
 
-    // Readonly operator
+    /* Readonly operator */
     if (strncmp(opnamep, RDB_THE_PREFIX, sizeof(RDB_THE_PREFIX) - 1) == 0) {
         RDB_expression *argp;
 

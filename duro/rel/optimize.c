@@ -408,7 +408,7 @@ like_first_meta(const char *pattern, RDB_exec_context *ecp)
         offs += nb;
     }
 
-    // Should never be reached
+    /* Should never be reached */
     RDB_raise_internal("like_first_meta()", ecp);
     return RDB_ERROR;
 }

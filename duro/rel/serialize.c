@@ -532,7 +532,7 @@ RDB_deserialize_type(const RDB_object *valp, int *posp, RDB_exec_context *ecp,
                     return NULL;
                 }
             } else {
-                // Generic tuple type -- replace empty attribute name by NULL
+                /* Generic tuple type -- replace empty attribute name by NULL */
                 RDB_free(typ->def.tuple.attrv[i].name);
                 typ->def.tuple.attrv[i].name = NULL;
             }
