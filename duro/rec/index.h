@@ -43,4 +43,9 @@ int
 RDB_index_delete_rec(RDB_index *, RDB_field[], RDB_rec_transaction *,
         RDB_exec_context *);
 
+RDB_index *
+RDB_new_index(RDB_recmap *, const char *, const char *,
+        RDB_environment *, int, const int[],
+        const RDB_compare_field[], int, RDB_exec_context *);
+
 #endif
