@@ -441,7 +441,7 @@ if env.has_key('TAR'):
     disttargz = disttar + '.gz'
 
     env.Tar('src.tar', Split('SConstruct README README.windows INSTALL '
-            'COPYING AUTHORS CHANGES Doxyfile'))
+            'AUTHORS CHANGES Doxyfile'))
     env.Tar('src.tar', gensrc)
     env.Tar('src.tar', recsrc)
     env.Tar('src.tar', objsrc)
@@ -492,6 +492,7 @@ if env.has_key('TAR'):
         'cd ..; mv duro/src.tar duro/' + disttar
                 + ' && tar -f duro/' + disttar
                 + ' --append jduro/src/net/sf/duro/*.java'
+                + ' COPYING'
                 + ' jduro/src/net/sf/duro/rest/*.java'
                 + ' jduro/tests/net/sf/duro/tests/*.java' + ' jduro/examples/*.java'
                 + ' --transform \'s,^,durodbms-' + release + '/,S\''
