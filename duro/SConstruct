@@ -314,7 +314,7 @@ durodt_test_scripts = Glob('tests/durodt/*.test') + ['tests/durodt/scalar.td',
         'tests/durodt/all.tcl', 'tests/durodt/setup.tcl']
 
 test = env.Command('tests/passed', [libduro, libdurotcl, testbins, durodt],
-        'tclsh tests/all.tcl -verbose "{pass error}" -postgresql ' + postgresql)
+        'tclsh tests/all.tcl -verbose "{pass error}" -postgresql ' + postgresql + ' -foundationdb ' + foundationdb)
 
 env.Alias('test', test)
 

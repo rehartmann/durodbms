@@ -25,11 +25,14 @@ test insert_delete {creating table, insert, delete} \
 
         disconnect();
 
-        if os.getenv('DURO_STORAGE')='POSTGRESQL' then
+		case
+        when os.getenv('DURO_STORAGE') = 'POSTGRESQL' then
             connect('postgresql:///testdb');
-        else
+        when os.getenv('DURO_STORAGE') = 'FOUNDATIONDB' then
+            connect('foundationdb://');
+		else
             connect('dbenv');
-        end if;
+        end case;
         current_db := 'D';
 
         begin tx;

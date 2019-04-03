@@ -13,7 +13,10 @@ set ::SETUP {
         catch {exec dropdb testdb}
         exec createdb testdb
         set dbenvname postgresql:///testdb
-    } else {
+    } elseif {[info exists env(DURO_STORAGE)] && $env(DURO_STORAGE) == "FOUNDATIONDB"} {
+		exec fdbcli < $scriptdir/fdbclear
+        set dbenvname foundationdb://
+	} else {
     	# Create DB environment dir, ensure it's empty
     	removeDirectory dbenv
     	makeDirectory dbenv

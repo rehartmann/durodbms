@@ -14,7 +14,8 @@ if {$::tcl_platform(platform) == "windows"} {
 }
 
 set pgargidx [lsearch $argv -postgresql]
-set targv [lreplace $argv $pgargidx [expr $pgargidx+1]]
+set fdbargidx [lsearch $argv -foundationdb]
+set targv [lreplace $argv $pgargidx [expr $fdbargidx+1]]
 
 ::tcltest::configure -testdir $dir
 ::tcltest::configure -tmpdir [::tcltest::configure -testdir]
