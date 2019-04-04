@@ -17,6 +17,8 @@
 #define FDB_API_VERSION 600
 #include <foundationdb/fdb_c.h>
 
+FDBFuture *RDB_fdb_resultf = NULL;
+
 /*
  * Allocate a RDB_recmap structure and initialize its fields for FDB.
  */
@@ -552,30 +554,35 @@ RDB_get_fdb_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
     int value_length;
     fdb_bool_t present;
     fdb_error_t err;
-    FDBFuture* f;
 
     if (fields_to_fdb_key(rmp, keyv, &key_name, &key_name_length, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 
-    f = fdb_transaction_get((FDBTransaction*)rtxp, key_name, key_name_length, 0);
-    err = fdb_future_block_until_ready(f);
+	if (RDB_fdb_resultf != NULL) {
+        fdb_future_destroy(RDB_fdb_resultf);
+    }
+    RDB_fdb_resultf = fdb_transaction_get((FDBTransaction*)rtxp, key_name, key_name_length, 0);
+    err = fdb_future_block_until_ready(RDB_fdb_resultf);
     if (err != 0) {
         RDB_free(key_name);
-        fdb_future_destroy(f);
+        fdb_future_destroy(RDB_fdb_resultf);
+		RDB_fdb_resultf = NULL;
         RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         return RDB_ERROR;
     }
-    err = fdb_future_get_value(f, &present, &value, &value_length);
+    err = fdb_future_get_value(RDB_fdb_resultf, &present, &value, &value_length);
     if (err != 0) {
         RDB_free(key_name);
-        fdb_future_destroy(f);
+        fdb_future_destroy(RDB_fdb_resultf);
+		RDB_fdb_resultf = NULL;
         RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         return RDB_ERROR;
     }
     if (!present) {
         RDB_free(key_name);
-        fdb_future_destroy(f);
+        fdb_future_destroy(RDB_fdb_resultf);
+		RDB_fdb_resultf = NULL;
         RDB_raise_not_found("", ecp);
         return RDB_ERROR;
     }
@@ -584,7 +591,6 @@ RDB_get_fdb_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
     ret = RDB_get_mem_fields(rmp, key_name + prefix_len, key_name_length - prefix_len,
             value, value_length, fieldc, retfieldv);
     RDB_free(key_name);
-    fdb_future_destroy(f);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp);
         return RDB_ERROR;

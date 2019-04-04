@@ -5,9 +5,6 @@
 #include <fdbrec/fdbsequence.h>
 #include <fdbrec/fdbtx.h>
 
-#define FDB_API_VERSION 600
-#include <foundationdb/fdb_c.h>
-
 #include <windows.h>
 #include <strsafe.h>
 
@@ -30,6 +27,10 @@ RDB_event_loop(_In_ LPVOID lpParameter)
 static int
 RDB_fdb_close_env(RDB_environment *envp, RDB_exec_context *ecp)
 {
+    if (RDB_fdb_resultf != NULL) {
+        fdb_future_destroy(RDB_fdb_resultf);
+        RDB_fdb_resultf = NULL;
+    }
 	fdb_database_destroy(envp->env.fdb);
 	free(envp);
     return RDB_OK;

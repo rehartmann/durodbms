@@ -188,7 +188,7 @@ RDB_fdb_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc,
     fdb_error_t err;
     int ret;
     fdb_bool_t present;
-    FDBFuture *f1, *f2;
+    FDBFuture *f1;
     int recmap_prefix_length = RDB_fdb_key_prefix_length(ixp->rmp);
 
     for (i = 0; i < ixp->fieldc; i++) {
@@ -236,25 +236,31 @@ RDB_fdb_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc,
 
     pkey_name = RDB_fdb_prepend_key_prefix(ixp->rmp, pkey, pkey_length, ecp);
     pkey_name_length = pkey_length + recmap_prefix_length;
-    f2 = fdb_transaction_get((FDBTransaction*)rtxp, pkey_name, pkey_name_length, 0);
-    err = fdb_future_block_until_ready(f2);
+    if (RDB_fdb_resultf != NULL) {
+        fdb_future_destroy(RDB_fdb_resultf);
+    }
+    RDB_fdb_resultf = fdb_transaction_get((FDBTransaction*)rtxp, pkey_name, pkey_name_length, 0);
+    err = fdb_future_block_until_ready(RDB_fdb_resultf);
     fdb_future_destroy(f1);
     if (err != 0) {
         RDB_free(pkey_name);
-        fdb_future_destroy(f2);
+        fdb_future_destroy(RDB_fdb_resultf);
+        RDB_fdb_resultf = NULL;
         RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         return RDB_ERROR;
     }
-    err = fdb_future_get_value(f2, &present, &value, &value_length);
+    err = fdb_future_get_value(RDB_fdb_resultf, &present, &value, &value_length);
     if (err != 0) {
         RDB_free(pkey_name);
-        fdb_future_destroy(f2);
+        fdb_future_destroy(RDB_fdb_resultf);
+        RDB_fdb_resultf = NULL;
         RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         return RDB_ERROR;
     }
     if (!present) {
         RDB_free(pkey_name);
-        fdb_future_destroy(f2);
+        fdb_future_destroy(RDB_fdb_resultf);
+        RDB_fdb_resultf = NULL;
         RDB_raise_not_found("", ecp);
         return RDB_ERROR;
     }
@@ -262,7 +268,6 @@ RDB_fdb_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc,
     ret = RDB_get_mem_fields(ixp->rmp, pkey_name + recmap_prefix_length, pkey_name_length - recmap_prefix_length,
             value, value_length, fieldc, retfieldv);
     RDB_free(key_name);
-    fdb_future_destroy(f2);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp);
         return RDB_ERROR;

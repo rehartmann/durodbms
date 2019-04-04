@@ -35,11 +35,17 @@ test invtable {invalid table definitions} -setup $SETUP -body {
         error "unexpected errorCode: $::errorCode"
     }
 
+	catch { duro::rollback $tx }
+    set tx [duro::begin $dbenv TEST]
+
     if {![catch {
         duro::table drop "T 1" $tx
     }]} {
         error "table \"T 1\" should not exist, but does"
     }
+
+	catch { duro::rollback $tx }
+    set tx [duro::begin $dbenv TEST]
 
     if {![catch {
         duro::table create T1 {
@@ -52,6 +58,9 @@ test invtable {invalid table definitions} -setup $SETUP -body {
     if {![string match {invalid_argument_error*A B*} [lindex $::errorCode 1]]} {
         error "invalid errorCode: $::errorCode"
     }
+
+	catch { duro::rollback $tx }
+    set tx [duro::begin $dbenv TEST]
     
     if {![catch {
         duro::table create T1 {
@@ -61,6 +70,9 @@ test invtable {invalid table definitions} -setup $SETUP -body {
     }]} {
         error "creation of table T1 should fail, but succeeded"
     }
+
+	catch { duro::rollback $tx }
+    set tx [duro::begin $dbenv TEST]
     
     if {![catch {
         duro::table drop T1 $tx
@@ -68,6 +80,9 @@ test invtable {invalid table definitions} -setup $SETUP -body {
         error "table T1 should not exist, but does"
     }
     
+	catch { duro::rollback $tx }
+    set tx [duro::begin $dbenv TEST]
+
     if {![catch {
         duro::table create T2 {
            {A1 string}
@@ -77,12 +92,18 @@ test invtable {invalid table definitions} -setup $SETUP -body {
         error "creation of table T2 should fail, but succeeded"
     }
     
+	catch { duro::rollback $tx }
+    set tx [duro::begin $dbenv TEST]
+
     if {![catch {
         duro::table drop T2 $tx
     }]} {
         error "table T2 should not exist, but does"
     }
     
+	catch { duro::rollback $tx }
+    set tx [duro::begin $dbenv TEST]
+
     if {![catch {
         duro::table create T3 {
            {A1 string}
@@ -92,12 +113,18 @@ test invtable {invalid table definitions} -setup $SETUP -body {
         error "creation of table T3 should fail, but succeeded"
     }
     
+	catch { duro::rollback $tx }
+    set tx [duro::begin $dbenv TEST]
+
     if {![catch {
         duro::table drop T3 $tx
     }]} {
         error "table T3 should not exist, but does"
     }
     
+	catch { duro::rollback $tx }
+    set tx [duro::begin $dbenv TEST]
+
     duro::table create T {{A integer}} {{A}} $tx
 
     if {![catch {
@@ -112,7 +139,7 @@ test invtable {invalid table definitions} -setup $SETUP -body {
         error "creation of table P should fail, but succeeded"
     }
     
-    duro::rollback $tx
+	duro::rollback $tx
     
     # Close DB environment
     duro::env close $dbenv

@@ -10,8 +10,12 @@
 
 #include <rec/recmap.h>
 #include <rec/index.h>
+#define FDB_API_VERSION 600
+#include <foundationdb/fdb_c.h>
 
 typedef RDB_exec_context RDB_exec_context;
+
+extern FDBFuture *RDB_fdb_resultf;
 
 RDB_recmap *
 RDB_create_fdb_recmap(const char *, const char *,
