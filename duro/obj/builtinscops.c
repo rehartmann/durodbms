@@ -719,6 +719,7 @@ op_concat(int argc, RDB_object *argv[], RDB_operator *op,
                 return RDB_ERROR;
             }
             retvalp->val.bin.datap = datap;
+            retvalp->val.bin.len = dstsize;
         }
     } else {
         RDB_raise_type_mismatch("invalid return type for || operator", ecp);
