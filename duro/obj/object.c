@@ -249,8 +249,11 @@ RDB_tm_to_obj(RDB_object *objp, const struct tm *tm)
     objp->val.time.second = tm->tm_sec;
 }
 
-static int
-set_str_obj_len(RDB_object *objp, size_t len, RDB_exec_context *ecp)
+/**
+ * Converts *objp to a string of size len.
+ */
+int
+RDB_set_str_obj_len(RDB_object *objp, size_t len, RDB_exec_context *ecp)
 {
     void *datap;
 
@@ -287,7 +290,7 @@ string.
 int
 RDB_string_to_obj(RDB_object *valp, const char *str, RDB_exec_context *ecp)
 {
-    if (set_str_obj_len(valp, strlen(str) + 1, ecp) != RDB_OK)
+    if (RDB_set_str_obj_len(valp, strlen(str) + 1, ecp) != RDB_OK)
         return RDB_ERROR;
 
     strcpy(valp->val.bin.datap, str);
@@ -304,7 +307,7 @@ int
 RDB_string_n_to_obj(RDB_object *valp, const char *str, size_t n,
         RDB_exec_context *ecp)
 {
-    if (set_str_obj_len(valp, n + 1, ecp) != RDB_OK)
+    if (RDB_set_str_obj_len(valp, n + 1, ecp) != RDB_OK)
         return RDB_ERROR;
 
     strncpy(valp->val.bin.datap, str, n);
@@ -332,7 +335,7 @@ RDB_append_string(RDB_object *objp, const char *str, RDB_exec_context *ecp)
     int len = olen + strlen(str);
 
     if (len + 1 > objp->val.bin.len) {
-        if (set_str_obj_len(objp,
+        if (RDB_set_str_obj_len(objp,
                 objp->val.bin.len + STR_BUF_INC > len + 1 ?
                 objp->val.bin.len + STR_BUF_INC : len + 1,
                 ecp) != RDB_OK) {
@@ -363,7 +366,7 @@ RDB_append_char(RDB_object *objp, char ch, RDB_exec_context *ecp)
     int olen = strlen((char *) objp->val.bin.datap);
 
     if (olen + 2 > objp->val.bin.len) {
-        if (set_str_obj_len(objp,
+        if (RDB_set_str_obj_len(objp,
                 objp->val.bin.len + STR_BUF_INC > olen + 2 ?
                 objp->val.bin.len + STR_BUF_INC : olen + 2,
                 ecp) != RDB_OK) {

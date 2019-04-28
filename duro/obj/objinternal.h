@@ -152,4 +152,7 @@ RDB_irep_is_string(const RDB_type *);
 RDB_bool
 RDB_expr_op_is_noarg(const RDB_expression *);
 
+int
+RDB_set_str_obj_len(RDB_object *, size_t, RDB_exec_context *);
+
 #endif /* OBJINTERNAL_H_ */

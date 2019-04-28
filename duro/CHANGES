@@ -12,6 +12,9 @@ DuroDBMS 1.7
 
 - Renamed lock_not_granted_error to concurrency_error.
 
+- Fixed problems in ||, upper(), and lower() which could cause the string
+  length being set incorrectly.
+
 DuroDBMS 1.6
 
 - GNU Libtool is no longer required on Windows.

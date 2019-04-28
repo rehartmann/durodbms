@@ -697,32 +697,9 @@ op_concat(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     size_t s1len = strlen(argv[0]->val.bin.datap);
-    size_t dstsize = s1len + strlen(argv[1]->val.bin.datap) + 1;
+    size_t dstlen = s1len + strlen(argv[1]->val.bin.datap) + 1;
 
-    if (retvalp->kind == RDB_OB_INITIAL) {
-        /* Turn *retvalp into a string */
-        void *datap = RDB_alloc(dstsize, ecp);
-        if (datap == NULL) {
-            return RDB_ERROR;
-        }
-        RDB_set_obj_type(retvalp, &RDB_STRING);
-        retvalp->val.bin.datap = datap;
-        if (retvalp->val.bin.datap == NULL) {
-            return RDB_ERROR;
-        }
-        retvalp->val.bin.len = dstsize;
-    } else if (retvalp->typ == &RDB_STRING) {
-        /* Grow string if necessary */
-        if (retvalp->val.bin.len < dstsize) {
-            void *datap = RDB_realloc(retvalp->val.bin.datap, dstsize, ecp);
-            if (datap == NULL) {
-                return RDB_ERROR;
-            }
-            retvalp->val.bin.datap = datap;
-            retvalp->val.bin.len = dstsize;
-        }
-    } else {
-        RDB_raise_type_mismatch("invalid return type for || operator", ecp);
+    if (RDB_set_str_obj_len(retvalp, dstlen, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
     strcpy(retvalp->val.bin.datap, argv[0]->val.bin.datap);
@@ -818,30 +795,7 @@ op_lower(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     dstlen = wcstombs(NULL, wchars, 0) + 1;
-
-    if (retvalp->kind == RDB_OB_INITIAL) {
-        /* Turn *retvalp into a string */
-        void *datap = RDB_alloc(dstlen, ecp);
-        if (datap == NULL) {
-            goto error;
-        }
-        RDB_set_obj_type(retvalp, &RDB_STRING);
-        retvalp->val.bin.datap = datap;
-        if (retvalp->val.bin.datap == NULL) {
-            goto error;
-        }
-        retvalp->val.bin.len = dstlen;
-    } else if (retvalp->typ == &RDB_STRING) {
-        /* Grow string if necessary */
-        if (retvalp->val.bin.len < dstlen) {
-            void *datap = RDB_realloc(retvalp->val.bin.datap, dstlen, ecp);
-            if (datap == NULL) {
-                goto error;
-            }
-            retvalp->val.bin.datap = datap;
-        }
-    } else {
-        RDB_raise_type_mismatch("invalid return type", ecp);
+    if (RDB_set_str_obj_len(retvalp, dstlen, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -879,27 +833,7 @@ op_upper(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     dstlen = wcstombs(NULL, wchars, 0) + 1;
-
-    if (retvalp->kind == RDB_OB_INITIAL) {
-        /* Turn *retvalp into a string */
-        void *datap = RDB_alloc(dstlen, ecp);
-        if (datap == NULL) {
-            goto error;
-        }
-        RDB_set_obj_type(retvalp, &RDB_STRING);
-        retvalp->val.bin.datap = datap;
-        retvalp->val.bin.len = dstlen;
-    } else if (retvalp->typ == &RDB_STRING) {
-        /* Grow string if necessary */
-        if (retvalp->val.bin.len < dstlen) {
-            void *datap = RDB_realloc(retvalp->val.bin.datap, dstlen, ecp);
-            if (datap == NULL) {
-                goto error;
-            }
-            retvalp->val.bin.datap = datap;
-        }
-    } else {
-        RDB_raise_type_mismatch("invalid return type", ecp);
+    if (RDB_set_str_obj_len(retvalp, dstlen, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 
