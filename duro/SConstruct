@@ -309,7 +309,7 @@ test_scripts = Split('tests/aggr.test tests/constraints.test tests/convert.test 
         'tests/sdivide.test tests/string.test tests/subset.test '
         'tests/transform.test tests/tuple.test tests/update.test '
         'tests/utype.test tests/vtables.test '
-        'tests/all.tcl tests/testutil.tcl tests/setup.tcl')
+        'tests/all.tcl tests/testutil.tcl tests/setup.tcl tests/fdbclear')
 durodt_test_scripts = Glob('tests/durodt/*.test') + ['tests/durodt/scalar.td',
         'tests/durodt/all.tcl', 'tests/durodt/setup.tcl']
 

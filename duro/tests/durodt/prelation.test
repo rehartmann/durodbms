@@ -42,11 +42,14 @@ test create {creating and populating public table} -setup $SETUP -cleanup $CLEAN
         -- Must reconnect before accessing p again
         commit;
         disconnect();
-        if os.getenv('DURO_STORAGE')='POSTGRESQL' then
+        case
+        when os.getenv('DURO_STORAGE')='POSTGRESQL' then
             connect('postgresql:///testdb');
+        when os.getenv('DURO_STORAGE')='FOUNDATIONDB' then
+            connect('foundationdb://');
         else
             connect('dbenv');
-        end if;
+        end case;
         current_db:='D';
 
         begin tx;

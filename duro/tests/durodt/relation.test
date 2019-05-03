@@ -150,11 +150,14 @@ test insert_delete {creating table, insert, delete} \
         commit;
 
         -- connect() without preceding disconnect()
-        if os.getenv('DURO_STORAGE')='POSTGRESQL' then
+        case
+        when os.getenv('DURO_STORAGE') = 'POSTGRESQL' then
             connect('postgresql:///testdb');
+        when os.getenv('DURO_STORAGE') = 'FOUNDATIONDB' then
+            connect('foundationdb://');
         else
-            connect('dbenv', true);
-        end if;
+            connect('dbenv');
+        end case;
 
         var hs init 'a';
         begin tx;
@@ -963,7 +966,7 @@ test roop {user defined read-only operators} -setup $SETUP -cleanup $CLEANUP -bo
     }
 } -result {TRUE
 3
-} 
+}
 
 test zero_attrs {Tables with zero attributes} -setup $SETUP -body {
     exec $testdir/../../dli/durodt -e $dbenvname << {
@@ -976,11 +979,14 @@ test zero_attrs {Tables with zero attributes} -setup $SETUP -body {
         disconnect();
 
         -- Connect again and read virtual table
-        if os.getenv('DURO_STORAGE')='POSTGRESQL' then
+        case
+        when os.getenv('DURO_STORAGE')='POSTGRESQL' then
             connect('postgresql:///testdb');
+        when os.getenv('DURO_STORAGE')='FOUNDATIONDB' then
+            connect('foundationdb://');
         else
             connect('dbenv');
-        end if;
+        end case;
         current_db:='D';
         begin tx;
         io.put(ev); io.put_line('');
@@ -1603,11 +1609,14 @@ test index_reopen {creating and filling a table with an index and accessing it a
 
         disconnect();
 
-        if os.getenv('DURO_STORAGE')='POSTGRESQL' then
+        case
+        when os.getenv('DURO_STORAGE') = 'POSTGRESQL' then
             connect('postgresql:///testdb');
+        when os.getenv('DURO_STORAGE') = 'FOUNDATIONDB' then
+            connect('foundationdb://');
         else
             connect('dbenv');
-        end if;
+        end case;
         current_db := 'D';
 
         begin tx;
@@ -2124,11 +2133,14 @@ test 2dbs {2 databases} -setup $SETUP -cleanup $CLEANUP -body {
         commit;
         disconnect();
         
-        if os.getenv('DURO_STORAGE')='POSTGRESQL' then
+        case
+        when os.getenv('DURO_STORAGE') = 'POSTGRESQL' then
             connect('postgresql:///testdb');
+        when os.getenv('DURO_STORAGE') = 'FOUNDATIONDB' then
+            connect('foundationdb://');
         else
             connect('dbenv');
-        end if;
+        end case;
         current_db := 'D';
         begin tx;
         io.put_line((tuple from r).s);

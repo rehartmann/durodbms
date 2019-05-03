@@ -25,6 +25,7 @@ RDB_create_public_table_from_type(const char *name,
     int i;
     RDB_transaction tx;
     RDB_string_vec allkey;
+    RDB_bool subtx_active = RDB_FALSE;
 
     if (name != NULL && !RDB_legal_name(name)) {
         RDB_raise_invalid_argument("invalid table name", ecp);
@@ -78,19 +79,25 @@ RDB_create_public_table_from_type(const char *name,
         keyv = &allkey;
     }
 
-    /* Create subtransaction */
-    if (RDB_begin_tx(ecp, &tx, txp->dbp, txp) != RDB_OK)
-        goto error;
+    /* Start subtransaction */
+    if (RDB_begin_tx(ecp, &tx, txp->dbp, txp) != RDB_OK) {
+        if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_SUPPORTED_ERROR) {
+            goto error;
+        }
+    } else {
+        subtx_active = RDB_TRUE;
+    }
 
     /* Insert table into catalog */
     if (RDB_cat_insert_ptable(name, reltyp->def.basetyp->def.tuple.attrc,
-            reltyp->def.basetyp->def.tuple.attrv, keyc, keyv, ecp, &tx) != RDB_OK) {
+            reltyp->def.basetyp->def.tuple.attrv, keyc, keyv, ecp,
+            subtx_active ? &tx : txp) != RDB_OK) {
         /* Don't destroy type */
-        RDB_rollback(ecp, &tx);
+        RDB_rollback(ecp, subtx_active ? &tx : txp);
         goto error;
     }
 
-    if (RDB_commit(ecp, &tx) != RDB_OK) {
+    if (subtx_active && RDB_commit(ecp, &tx) != RDB_OK) {
         goto error;
     }
 
