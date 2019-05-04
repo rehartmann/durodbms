@@ -45,7 +45,14 @@ RDB_create_pg_index(RDB_recmap *rmp, const char *name, const char *filename,
 {
     RDB_object command;
     PGresult *res;
-    RDB_index *ixp = new_min_index(name, rmp, ecp);
+    RDB_index *ixp;
+
+    if (cmpv != NULL) {
+        RDB_raise_not_supported("comparison function not supported", ecp);
+        return NULL;
+    }
+
+    ixp = new_min_index(name, rmp, ecp);
     if (rmp == NULL)
         return NULL;
 

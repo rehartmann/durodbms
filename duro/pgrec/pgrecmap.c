@@ -60,7 +60,7 @@ RDB_create_pg_recmap(const char *name, const char *filename,
     RDB_recmap *rmp;
 
     if (cmpc != 0) {
-        RDB_raise_not_supported("cmpv", ecp);
+        RDB_raise_not_supported("comparison function not supported", ecp);
         return NULL;
     }
     if (RDB_ORDERED & flags) {
