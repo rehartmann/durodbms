@@ -2806,7 +2806,7 @@ Duro_exec_stmt_impl_tx(RDB_parse_node *stmtp, Duro_interp *interp,
             /* If implicit transactions are enabled and the error is retryable, repeat */
             if (implicit_tx) {
                 if (!RDB_err_retryable(ecp)) {
-                    if (interp->txnp != NULL && RDB_tx_is_running(&interp->txnp->tx)) {
+                    if (interp->txnp != NULL) {
                         Duro_rollback(interp, ecp);
                     }
                     return RDB_ERROR;

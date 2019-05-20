@@ -57,13 +57,21 @@ test insert_delete {creating table, insert, delete} \
 
         begin tx;
         insert r tup {i 3, d 1.0, c 'Z'};
+		commit;
 
+		begin tx;
         try
             insert r relation {} {};
         catch err type_mismatch_error;
             io.put_line('type mismatch caught - empty relation');
         end try;
+		try
+		    commit;
+		catch e no_running_transaction_error;
+		    ;
+		end try;
 
+		begin tx;
         try
             insert r tup {i 4, d 1.0, c 'X', c2 'Y'};
         catch err type_mismatch_error;
@@ -89,21 +97,35 @@ test insert_delete {creating table, insert, delete} \
 
         var r2 real relation {no int, id string, str string} key {no} key {id};
         insert r2 tup{no 1, id '1', str 'xxx'};
+		commit;
 
+		begin tx;
         -- Test key #1
         try
             insert r2 tup {no 1, id '2', str 'yyy'};
         catch err key_violation_error;
             io.put_line('key violation caught (1)');
         end try;
+		try
+		    commit;
+		catch e no_running_transaction_error;
+		    ;
+		end try;
 
+		begin tx;
         -- Test key #2
         try
             insert r2 tup {no 1, id '2', str 'zzz'};
         catch err key_violation_error;
             io.put_line('key violation caught (2)');
         end try;
+		try
+		    commit;
+		catch e no_running_transaction_error;
+		    ;
+		end try;
 
+		begin tx;
         insert r2 tup {no 2, id '2', str 'xxx'};
 
         -- Try to delete with only the key matching

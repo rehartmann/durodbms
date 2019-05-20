@@ -473,12 +473,12 @@ RDB_delete_where_index(RDB_expression *texp, RDB_expression *condp,
     return delete_where_nuindex(texp, condp, getfn, getarg, ecp, txp);
 }
 
-static RDB_int
+static int
 sql_delete_tuple(RDB_object *tbp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int i;
-    RDB_int cnt;
+    int ret;
     RDB_type *tuptyp = tbp->typ->def.basetyp;
     int attrcount = tuptyp->def.tuple.attrc;
     RDB_field *fvp = RDB_alloc(sizeof(RDB_field) * attrcount, ecp);
@@ -513,9 +513,9 @@ sql_delete_tuple(RDB_object *tbp, RDB_object *tplp, RDB_exec_context *ecp,
         }
     }
 
-    cnt = RDB_delete_rec(tbp->val.tbp->stp->recmapp, attrcount, fvp, txp->tx, ecp);
+    ret = RDB_delete_rec(tbp->val.tbp->stp->recmapp, attrcount, fvp, txp->tx, ecp);
     RDB_free(fvp);
-    return cnt;
+    return ret;
 
 error:
     RDB_free(fvp);
@@ -550,12 +550,11 @@ RDB_delete_nonvirtual_tuple(RDB_object *tbp, RDB_object *tplp, int flags, RDB_ex
     }
 
     if (RDB_table_is_persistent(tbp) && txp != NULL && RDB_env_queries(txp->envp)) {
-        RDB_int cnt = sql_delete_tuple(tbp, tplp, ecp, txp);
-        if (cnt == 0 && (RDB_INCLUDED & flags)) {
-            RDB_raise_not_found("tuple not found", ecp);
-            return (RDB_int) RDB_ERROR;
+        ret = sql_delete_tuple(tbp, tplp, ecp, txp);
+        if (ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+            return 0;
         }
-        return cnt;
+        return ret == RDB_ERROR ? (RDB_int) RDB_ERROR : 1;
     }
 
     /* Check if the table contains the tuple */

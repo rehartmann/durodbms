@@ -22,6 +22,8 @@ set targv [lreplace $argv $pgargidx [expr $fdbargidx+1]]
 if {$env(DURO_STORAGE) == "POSTGRESQL"} {
     lappend targv -skip {join_rename_index join_rename_nuindex join_rename_nuindex
             matching_index}
+} elseif {$env(DURO_STORAGE) == "FOUNDATIONDB"} {
+    lappend targv -skip {updop drop_nested_tx nested_rollback}
 }
 eval ::tcltest::configure $targv
 ::tcltest::runAllTests

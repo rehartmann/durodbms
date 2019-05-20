@@ -533,6 +533,11 @@ RDB_delete_pg_rec(RDB_recmap *rmp, int fieldc, RDB_field fieldv[], RDB_rec_trans
         RDB_pgresult_to_error(rmp->envp, res, ecp);
         goto error;
     }
+    if (atoi(PQcmdTuples(res)) == 0) {
+        PQclear(res);
+        RDB_raise_not_found("tuple not found", ecp);
+        goto error;
+    }
     PQclear(res);
 
     RDB_free(lenv);
