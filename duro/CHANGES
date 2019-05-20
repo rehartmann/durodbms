@@ -7,8 +7,9 @@ DuroDBMS 1.7
 - As part of the support for FoundationDB, added automatic restart of
   failed statements when implicit transactions are enabled.
 
-- As part of the support for FoundationDB, added read-only operator
-  retryable() to determine whether a failed operation should be restarted.
+- As part of the support for FoundationDB, added function RDB_err_retryable()
+  and read-only operator retryable() (the latter only being available in Duro D/T)
+  to determine whether a failed operation should be restarted.
 
 - Renamed lock_not_granted_error to concurrency_error.
 
