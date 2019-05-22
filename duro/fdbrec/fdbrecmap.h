@@ -16,6 +16,7 @@
 typedef RDB_exec_context RDB_exec_context;
 
 extern FDBFuture *RDB_fdb_resultf;
+extern uint8_t *RDB_fdb_key_name;
 
 RDB_recmap *
 RDB_create_fdb_recmap(const char *, const char *,

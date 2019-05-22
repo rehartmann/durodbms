@@ -478,7 +478,7 @@ int
 RDB_get_DBT_fields(RDB_recmap *rmp, const DBT *keyp, const DBT *datap, int fieldc,
            RDB_field retfieldv[])
 {
-    return RDB_get_mem_fields(rmp, keyp->data, keyp->size, datap->data, datap->size,
+    return RDB_get_mem_fields(rmp, keyp->data, (size_t)keyp->size, datap->data, (size_t)datap->size,
             fieldc, retfieldv);
 }
 

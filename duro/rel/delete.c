@@ -552,7 +552,7 @@ RDB_delete_nonvirtual_tuple(RDB_object *tbp, RDB_object *tplp, int flags, RDB_ex
     if (RDB_table_is_persistent(tbp) && txp != NULL && RDB_env_queries(txp->envp)) {
         ret = sql_delete_tuple(tbp, tplp, ecp, txp);
         if (ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
-            return 0;
+            return (RDB_INCLUDED & flags) != 0 ? (RDB_int) RDB_ERROR : 1;
         }
         return ret == RDB_ERROR ? (RDB_int) RDB_ERROR : 1;
     }

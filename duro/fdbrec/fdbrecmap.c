@@ -18,6 +18,7 @@
 #include <foundationdb/fdb_c.h>
 
 FDBFuture *RDB_fdb_resultf = NULL;
+uint8_t *RDB_fdb_key_name;
 
 /*
  * Allocate a RDB_recmap structure and initialize its fields for FDB.
@@ -547,7 +548,6 @@ int
 RDB_get_fdb_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
 	RDB_rec_transaction *rtxp, RDB_field retfieldv[], RDB_exec_context *ecp)
 {
-    uint8_t *key_name;
     int key_name_length;
     int ret;
     uint8_t *value;
@@ -555,17 +555,22 @@ RDB_get_fdb_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
     fdb_bool_t present;
     fdb_error_t err;
 
-    if (fields_to_fdb_key(rmp, keyv, &key_name, &key_name_length, ecp) != RDB_OK) {
+    if (RDB_fdb_key_name == NULL) {
+        RDB_free(RDB_fdb_key_name);
+        RDB_fdb_key_name = NULL;
+    }
+    if (fields_to_fdb_key(rmp, keyv, &RDB_fdb_key_name, &key_name_length, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 
 	if (RDB_fdb_resultf != NULL) {
         fdb_future_destroy(RDB_fdb_resultf);
     }
-    RDB_fdb_resultf = fdb_transaction_get((FDBTransaction*)rtxp, key_name, key_name_length, 0);
+    RDB_fdb_resultf = fdb_transaction_get((FDBTransaction*)rtxp, RDB_fdb_key_name, key_name_length, 0);
     err = fdb_future_block_until_ready(RDB_fdb_resultf);
     if (err != 0) {
-        RDB_free(key_name);
+        RDB_free(RDB_fdb_key_name);
+        RDB_fdb_key_name = NULL;
         fdb_future_destroy(RDB_fdb_resultf);
 		RDB_fdb_resultf = NULL;
         RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
@@ -573,14 +578,16 @@ RDB_get_fdb_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
     }
     err = fdb_future_get_value(RDB_fdb_resultf, &present, &value, &value_length);
     if (err != 0) {
-        RDB_free(key_name);
+        RDB_free(RDB_fdb_key_name);
+        RDB_fdb_key_name = NULL;
         fdb_future_destroy(RDB_fdb_resultf);
 		RDB_fdb_resultf = NULL;
         RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         return RDB_ERROR;
     }
     if (!present) {
-        RDB_free(key_name);
+        RDB_free(RDB_fdb_key_name);
+        RDB_fdb_key_name = NULL;
         fdb_future_destroy(RDB_fdb_resultf);
 		RDB_fdb_resultf = NULL;
         RDB_raise_not_found("", ecp);
@@ -588,9 +595,8 @@ RDB_get_fdb_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
     }
 
     int prefix_len = RDB_fdb_key_prefix_length(rmp);
-    ret = RDB_get_mem_fields(rmp, key_name + prefix_len, key_name_length - prefix_len,
-            value, value_length, fieldc, retfieldv);
-    RDB_free(key_name);
+    ret = RDB_get_mem_fields(rmp, RDB_fdb_key_name + prefix_len, (size_t)(key_name_length - prefix_len),
+            value, (size_t)value_length, fieldc, retfieldv);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp);
         return RDB_ERROR;

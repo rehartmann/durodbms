@@ -33,8 +33,13 @@ test update_keyindex {update real tables using key} -setup $SETUP -body {
     duro::insert T {I 1 S1 Bla S2 Bli S3 Blubb} $tx
     duro::insert T {I 2 S1 Blb S2 Bli S3 Blubb} $tx
     duro::insert T {I 3 S1 Blc S2 Bli S3 Blubb} $tx
+    duro::commit $tx
 
+    set tx [duro::begin $dbenv TEST]
     duro::update T {I = 1 AND S2 = "Bli"} S3 {"Yo"} $tx
+    duro::commit $tx
+
+    set tx [duro::begin $dbenv TEST]
     set stpl {I 1 S1 Bla S2 Bli S3 Yo}
     set tpl [duro::expr {TUPLE FROM (T WHERE S1="Bla")} $tx]
     if {![tequal $tpl $stpl]} {
