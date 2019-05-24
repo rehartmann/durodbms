@@ -49,7 +49,7 @@ for more information on <cite>TTM</cite> and Tutorial D.
 
 <pre>
 durodt
-Duro D/T library version 1.6
+Duro D/T library version 1.7
 Implicit transactions enabled.
 no db>
 </pre>
@@ -202,6 +202,17 @@ Here it is used to convert the integer result to a string.
 In Duro D/T, type conversion is always explicit.
 
 <p>For details on the built-in operator <code>io.put_line</code>, see the chapter on I/O below.
+
+<p>NaN is supported as a float value:
+
+<pre>
+no db> f := NaN;
+1 element affected.
+no db>
+</pre>
+
+<p>NaN is equal to itself. In this regard, it does not follow the IEEE 754 standard
+because a value not being equal to itself would violate RM prescription 8. 
 
 <h2 id="comments">Comments</h2>
 

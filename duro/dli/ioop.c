@@ -12,6 +12,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <math.h>
 
 #ifdef DURO_FCGI
 #include <fcgi_stdio.h>

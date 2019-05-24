@@ -1445,4 +1445,17 @@ test upperlower {upper() and lower()} -body {
 TESTTEST
 }
 
+test nan {NaN} -body {
+    exec $testdir/../../dli/durodt << {
+        var f init NaN;
+        
+        io.put_line(if f = NaN then 'true' else 'false');
+        io.put_line(if f = 0.0 then 'true' else 'false');
+        io.put_line(if 1.0 = f then 'true' else 'false');
+    }
+} -result {true
+false
+false
+}
+
 cleanupTests

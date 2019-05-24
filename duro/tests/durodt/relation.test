@@ -2256,4 +2256,25 @@ test equality {table equality} -setup $SETUP -cleanup $CLEANUP -body {
 FALSE
 }
 
+test nan {insert and read NaN into and from table} \
+            -setup $SETUP -cleanup $CLEANUP -body {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
+        current_db := 'D';
+
+        begin tx;
+        var r real relation {k string, f float} key {k};
+        insert r tup {k '1', f 1.0};
+        insert r tup {k '2', f NaN};
+        commit;
+        
+        begin tx;
+        io.put((tuple from r where k = '2').f);
+        io.put_line('');
+        io.put_line((tuple from r where f = NaN).k);
+        commit;
+    }
+} -result {NaN
+2
+}
+
 cleanupTests

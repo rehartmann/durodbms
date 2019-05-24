@@ -153,7 +153,7 @@ integer = digit{digit}.
 
 decimal = digit{digit}'.'digit{digit}.
 
-float = digit{digit}'.'digit{digit}('E' | 'e')digit{digit}.
+float = digit{digit}'.'digit{digit}('E' | 'e')digit{digit} | NaN.
 
 binary = "X'"{hex_digit hex_digit}"'"
 </pre>

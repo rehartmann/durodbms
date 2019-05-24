@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 
 static RDB_bool
 explist_user_types(RDB_expr_list *explistp, RDB_gettypefn *getfnp, void *getarg)
@@ -749,7 +750,9 @@ obj_to_sql(RDB_object *sql, RDB_object *srcp, RDB_type *typ, RDB_environment *en
     case RDB_OB_INT:
         return RDB_obj_to_string(sql, srcp, ecp);
     case RDB_OB_FLOAT:
-        {
+        if (isnan(RDB_obj_float(srcp))) {
+            return RDB_string_to_obj(sql, "DOUBLE PRECISION 'NaN'", ecp);
+        } else {
             RDB_object str;
 
             if (RDB_string_to_obj(sql, "CAST (", ecp) != RDB_OK)

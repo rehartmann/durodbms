@@ -14,6 +14,7 @@
 #include <gen/hashmap.h>
 
 #include <string.h>
+#include <math.h>
 
 /** @page builtin-types Built-in basic data types
 @section basic-types Basic data types
@@ -181,12 +182,23 @@ compare_float(int argc, RDB_object *argv[], RDB_operator *op,
 {
     RDB_int res;
 
-    if (argv[0]->val.float_val < argv[1]->val.float_val) {
+    /* Unlike in the IEEE 754 standard, a NaN is equal to itself */
+    if (isnan(argv[0]->val.float_val)) {
+        if (isnan(argv[1]->val.float_val)) {
+            res = (RDB_int) 0;
+        } else {
+            res = (RDB_int) 1;
+        }
+    } else if (isnan(argv[1]->val.float_val)) {
         res = (RDB_int) -1;
-    } else if (argv[0]->val.float_val > argv[1]->val.float_val) {
-        res = (RDB_int) 1;
     } else {
-        res = (RDB_int) 0;
+        if (argv[0]->val.float_val < argv[1]->val.float_val) {
+            res = (RDB_int) -1;
+        } else if (argv[0]->val.float_val > argv[1]->val.float_val) {
+            res = (RDB_int) 1;
+        } else {
+            res = (RDB_int) 0;
+        }
     }
     RDB_int_to_obj(retvalp, res);
     return RDB_OK;

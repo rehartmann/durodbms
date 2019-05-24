@@ -567,6 +567,15 @@ PACKAGE {
     RETURN_TOKEN(TOK_CONCAT);
 }
 
+NaN {
+    yylval = RDB_new_parse_expr(RDB_float_to_expr(nan(""), RDB_parse_ecp),
+            whitecommp, RDB_parse_ecp);
+    whitecommp = NULL;
+    if (yylval == NULL)
+        yyterminate();
+    return TOK_LIT_FLOAT;
+}
+
 [a-zA-Z][a-zA-Z0-9_#]*\'? {
     int i;
 
