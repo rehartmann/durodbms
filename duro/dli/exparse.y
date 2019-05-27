@@ -11,8 +11,10 @@
 %{
 #define YYDEBUG 1
 
+#include <obj/object.h>
+#include <obj/expression.h>
+#include <obj/type.h>
 #include <dli/parsenode.h>
-#include <rel/rdb.h>
 
 #define YYSTYPE RDB_parse_node*
 

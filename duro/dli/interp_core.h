@@ -10,7 +10,6 @@
 
 #include "iinterp.h"
 #include <gen/hashmap.h>
-#include <rel/rdb.h>
 #include "parse.h"
 
 #define DURO_RETURN (-1000)

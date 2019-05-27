@@ -16,6 +16,8 @@ typedef struct RDB_expression RDB_expression;
 typedef struct RDB_exec_context RDB_exec_context;
 typedef struct RDB_type RDB_type;
 
+typedef RDB_type *RDB_gettypefn(const char *, void *);
+
 /**@addtogroup table
  * @{
  */

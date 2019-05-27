@@ -8,7 +8,6 @@
  * See the file COPYING for redistribution information.
  */
 
-#include <rel/rdb.h>
 #include <obj/opmap.h>
 
 extern RDB_object Duro_stdin_obj;

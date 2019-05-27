@@ -1,13 +1,16 @@
-#ifndef RDB_PARSENODE_H
-#define RDB_PARSENODE_H
-
-#include <rel/rdb.h>
-#include <stdio.h>
-
 /*
  * Copyright (C) 2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
+#ifndef RDB_PARSENODE_H
+#define RDB_PARSENODE_H
+
+#include <obj/excontext.h>
+
+#include <stdio.h>
+
+
+typedef struct RDB_transaction RDB_transaction;
 
 enum RDB_node_kind {
     RDB_NODE_TOK, /* Token */

@@ -13,7 +13,7 @@
 %{
 #define YYSTYPE RDB_parse_node *
 
-#include <rel/rdb.h>
+#include <dli/parse.h>
 #include <rel/typeimpl.h>
 #include "parsenode.h"
 #include "exparse.h"

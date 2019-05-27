@@ -6,9 +6,13 @@
  * See the file COPYING for redistribution information.
  */
 
-#include <stdio.h>
-#include <rel/rdb.h>
+#include <obj/type.h>
 #include "parsenode.h"
+#include <stdio.h>
+
+/* Function definition for reading lines of input */
+typedef char *RDB_read_line_fn(void);
+typedef void RDB_free_line_fn(char *);
 
 extern int RDB_parse_tokens[];
 

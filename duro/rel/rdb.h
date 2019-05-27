@@ -68,10 +68,6 @@ typedef struct {
 
 typedef struct RDB_qresult RDB_qresult;
 
-/* Function definition for reading lines of input */
-typedef char *RDB_read_line_fn(void);
-typedef void RDB_free_line_fn(char *);
-
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 
 typedef struct RDB_database RDB_database;
@@ -111,8 +107,6 @@ typedef struct {
  */
 
 typedef RDB_object *RDB_getobjfn(const char *, void *);
-
-typedef RDB_type *RDB_gettypefn(const char *, void *);
 
 /** @addtogroup generic
  * @{
