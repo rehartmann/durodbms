@@ -115,7 +115,7 @@ test insert_delete {creating table, insert, delete} \
 		begin tx;
         -- Test key #2
         try
-            insert r2 tup {no 1, id '2', str 'zzz'};
+            insert r2 tup {no 2, id '1', str 'zzz'};
         catch err key_violation_error;
             io.put_line('key violation caught (2)');
         end try;

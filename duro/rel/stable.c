@@ -513,6 +513,7 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
         return RDB_ERROR;
     }
 
+    tbp->val.tbp->stp = NULL;
     /*
      * If the table is a persistent user table, insert recmap into sys_table_recmap
      */
@@ -536,18 +537,18 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
                     && RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR
                     && n <= 999);
         }
-        if (ret != RDB_OK)
+        if (ret != RDB_OK) {
             goto error;
+        }
     }
 
     tbp->val.tbp->stp = RDB_alloc(sizeof(RDB_stored_table), ecp);
     if (tbp->val.tbp->stp == NULL) {
-        return RDB_ERROR;
+        goto error;
     }
-
-    tbp->val.tbp->stp->recmapp = NULL;
     RDB_init_hashtable(&tbp->val.tbp->stp->attrmap, RDB_DFL_MAP_CAPACITY, &hash_str,
-            &str_equals);
+        &str_equals);
+
     tbp->val.tbp->stp->est_cardinality = 0;
 
     if (RDB_table_is_persistent(tbp) && RDB_table_is_user(tbp)) {
@@ -611,26 +612,26 @@ error:
     }
     RDB_free(rmname);
 
-    RDB_init_hashtable_iter(&hiter, &tbp->val.tbp->stp->attrmap);
-    while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
-        RDB_free(entryp->key);
-        RDB_free(entryp);
+    if (tbp->val.tbp->stp != NULL) {
+        RDB_init_hashtable_iter(&hiter, &tbp->val.tbp->stp->attrmap);
+        while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
+            RDB_free(entryp->key);
+            RDB_free(entryp);
+        }
+        RDB_destroy_hashtable_iter(&hiter);
+        RDB_destroy_hashtable(&tbp->val.tbp->stp->attrmap);
+        if (tbp->val.tbp->stp->recmapp != NULL && txp == NULL) {
+            /*
+             * Delete recmap if there is no transaction, otherwise this must happen
+             * through the rollback
+             * (If the transaction has been created under the control of a transaction,
+             * the transaction must have been committed before the DB handle can be destroyed)
+             */
+            RDB_delete_recmap(tbp->val.tbp->stp->recmapp, NULL, ecp);
+        }
+        RDB_free(tbp->val.tbp->stp);
+        tbp->val.tbp->stp = NULL;
     }
-    RDB_destroy_hashtable_iter(&hiter);
-
-    RDB_destroy_hashtable(&tbp->val.tbp->stp->attrmap);
-
-    if (tbp->val.tbp->stp->recmapp != NULL && txp == NULL) {
-        /*
-         * Delete recmap if there is no transaction, otherwise this must happen
-         * through the rollback
-         * (If the transaction has been created under the control of a transaction,
-         * the transaction must have been committed before the DB handle can be destroyed)
-         */
-        RDB_delete_recmap(tbp->val.tbp->stp->recmapp, NULL, ecp);
-    }
-    RDB_free(tbp->val.tbp->stp);
-    tbp->val.tbp->stp = NULL;
 
     return RDB_ERROR;
 }

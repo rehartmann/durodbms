@@ -35,6 +35,7 @@ new_fdb_index(RDB_recmap *rmp, const char *name,
     }
     ixp->fieldv = NULL;
     ixp->rmp = rmp;
+    ixp->flags = flags;
 
     ixp->namp = RDB_dup_str(name);
     if (ixp->namp == NULL) {
