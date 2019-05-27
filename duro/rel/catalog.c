@@ -1301,18 +1301,50 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     /* Create or open catalog tables */
 
     for(;;) {
-        ret = provide_systable("sys_tableattrs", 4, table_attr_attrv,
-                1, table_attr_keyv, create, RDB_FALSE, ecp, txp, dbrootp->envp,
-                &dbrootp->table_attr_tbp);
+        ret = provide_systable("sys_version_info", 3, version_info_attrv,
+                1, version_info_keyv, create, RDB_FALSE, ecp, txp, dbrootp->envp,
+                &dbrootp->version_info_tbp);
         if (!create && ret != RDB_OK
                 && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
             /* Table not found, so tables must be created */
             create = RDB_TRUE;
             RDB_clear_err(ecp);
+            /* Repeat */
         } else {
             break;
         }
     }
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    if (create) {
+        /* Insert version info into catalog */
+        ret = insert_version_info(dbrootp, ecp, txp);
+        if (ret != RDB_OK)
+            return ret;
+    } else {
+        /* Check if catalog version matches software version */
+        ret = check_version_info(dbrootp, ecp, txp);
+        if (ret != RDB_OK) {
+            if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+                /*
+                 * With some storage engines (notably FoundationDB)
+                 * opening a recmap succeeds even if it has not been created before.
+                 * So if we get a not_found_error here, the catalog tables have not been
+                 * physically created yet.
+                 */
+                create = RDB_TRUE;
+                ret = insert_version_info(dbrootp, ecp, txp);
+            }
+            if (ret != RDB_OK)
+                return RDB_ERROR;
+        }
+    }
+
+    ret = provide_systable("sys_tableattrs", 4, table_attr_attrv,
+            1, table_attr_keyv, create, RDB_FALSE, ecp, txp, dbrootp->envp,
+            &dbrootp->table_attr_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -1441,36 +1473,6 @@ RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
             &dbrootp->upd_op_versions_tbp);
     if (ret != RDB_OK) {
         return ret;
-    }
-
-    ret = provide_systable("sys_version_info", 3, version_info_attrv,
-            1, version_info_keyv, create, RDB_FALSE, ecp, txp, dbrootp->envp,
-            &dbrootp->version_info_tbp);
-    if (ret != RDB_OK) {
-        return ret;
-    }
-
-    if (create) {
-        /* Insert version info into catalog */
-        ret = insert_version_info(dbrootp, ecp, txp);
-        if (ret != RDB_OK)
-            return ret;
-    } else {
-        /* Check if catalog version matches software version */
-        ret = check_version_info(dbrootp, ecp, txp);
-		if (ret != RDB_OK) {
-			if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
-				/*
-				 * With some storage engines (notably FoundationDB)
-				 * opening a recmap succeeds even if it has not been created before.
-				 * In this case, create is never true, so the version info is inserted
-				 * if it's not found
-				 */
-				ret = insert_version_info(dbrootp, ecp, txp);
-			}
-			if (ret != RDB_OK)
-				return RDB_ERROR;
-		}
     }
 
     ret = provide_systable("sys_constraints", 2, constraints_attrv,

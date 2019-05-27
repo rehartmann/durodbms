@@ -1725,7 +1725,7 @@ RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         if (ret != RDB_OK) {
             if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
                 RDB_raise_internal(
-                        "table is persisten but was not found in the catalog",
+                        "table is persistent but was not found in the catalog",
                         ecp);
             }
             return RDB_ERROR;
