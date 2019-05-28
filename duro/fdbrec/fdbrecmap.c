@@ -372,6 +372,7 @@ RDB_update_fdb_kv(RDB_recmap *rmp, uint8_t *key_name, int key_name_length,
     int i;
     int ret;
     fdb_error_t err;
+    RDB_bool exists;
 
     if (RDB_recmap_is_key_update(rmp, fieldc, fieldv)) {
         uint8_t *new_key;
@@ -398,6 +399,18 @@ RDB_update_fdb_kv(RDB_recmap *rmp, uint8_t *key_name, int key_name_length,
         if (new_key == NULL) {
             return RDB_ERROR;
         }
+        
+        /* Check if key exists */
+        if (RDB_fdb_key_exists(new_key, (int)*key_length + prefixlen, (FDBTransaction *)rtxp,
+                ecp, &exists) != RDB_OK) {
+            RDB_free(new_key);
+            return RDB_ERROR;
+        }
+        if (exists) {
+            RDB_raise_key_violation("", ecp);
+            return RDB_ERROR;
+        }
+        
         if (insert_into_fdb_indexes(rmp, new_key + prefixlen, *key_length,
                 *data, (int)*data_length, rtxp, ecp) != RDB_OK) {
             RDB_free(new_key);

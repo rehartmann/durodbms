@@ -7,6 +7,7 @@
 
 #include "cat_stored.h"
 #include "internal.h"
+#include "insert.h"
 #include <gen/strfns.h>
 #include <obj/objinternal.h>
 
@@ -282,7 +283,8 @@ RDB_cat_insert_table_recmap(RDB_object *tbp, const char *rmname,
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_insert(txp->dbp->dbrootp->table_recmap_tbp, &tpl, ecp, txp);
+    ret = RDB_insert_nonvirtual(txp->dbp->dbrootp->table_recmap_tbp, &tpl,
+            ecp, txp);
 
 cleanup:
     RDB_destroy_obj(&tpl, ecp);

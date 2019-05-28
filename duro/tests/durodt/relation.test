@@ -1300,14 +1300,22 @@ test real_default {public real table with default values} -setup $SETUP -cleanup
                 default {r 1.2, c 'xyz'};
         insert r1 tup {i 5};
         insert r1 rel {i int} {};
+		commit;
 
+		begin tx;
         -- Must fail
         try
             insert r1 rel {} {};
         catch err type_mismatch_error;
             io.put_line('type_mismatch_error caught');
         end try;
+		try
+			commit;
+		catch err no_running_transaction_error;
+			;
+		end try;
 
+		begin tx;
         insert r1 rel {tup {i 1}, tup {i 2}};
 
         var r2 real relation {i int, r float, c string}

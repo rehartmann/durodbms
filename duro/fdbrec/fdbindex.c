@@ -171,9 +171,10 @@ RDB_delete_fdb_index(RDB_index *ixp, RDB_rec_transaction *rtxp,
     return RDB_close_fdb_index(ixp, ecp);
 }
 
-int
-RDB_fdb_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc,
-        RDB_rec_transaction *rtxp, RDB_field retfieldv[], RDB_exec_context *ecp)
+static int
+RDB_fdb_index_get(RDB_index *ixp, RDB_field keyv[], RDB_rec_transaction *rtxp,
+        uint8_t **value, int *value_length, int *pkey_name_length,
+        RDB_exec_context *ecp)
 {
     size_t keylen;
     void *key;
@@ -181,14 +182,11 @@ RDB_fdb_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc,
     int key_name_length;
     uint8_t *pkey;
     int pkey_length;
-    int pkey_name_length;
-    uint8_t *value;
-    int value_length;
     int i;
     fdb_error_t err;
     int ret;
-    fdb_bool_t present;
     FDBFuture *f1;
+    fdb_bool_t present;
     int recmap_prefix_length = RDB_fdb_key_prefix_length(ixp->rmp);
 
     for (i = 0; i < ixp->fieldc; i++) {
@@ -239,11 +237,11 @@ RDB_fdb_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc,
         fdb_future_destroy(f1);
         return RDB_ERROR;
     }
-    pkey_name_length = pkey_length + recmap_prefix_length;
+    *pkey_name_length = pkey_length + recmap_prefix_length;
     if (RDB_fdb_resultf != NULL) {
         fdb_future_destroy(RDB_fdb_resultf);
     }
-    RDB_fdb_resultf = fdb_transaction_get((FDBTransaction*)rtxp, RDB_fdb_key_name, pkey_name_length, 0);
+    RDB_fdb_resultf = fdb_transaction_get((FDBTransaction*)rtxp, RDB_fdb_key_name, *pkey_name_length, 0);
     err = fdb_future_block_until_ready(RDB_fdb_resultf);
     fdb_future_destroy(f1);
     if (err != 0) {
@@ -254,12 +252,8 @@ RDB_fdb_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc,
         RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         return RDB_ERROR;
     }
-    err = fdb_future_get_value(RDB_fdb_resultf, &present, &value, &value_length);
+    err = fdb_future_get_value(RDB_fdb_resultf, &present, value, value_length);
     if (err != 0) {
-        RDB_free(RDB_fdb_key_name);
-        RDB_fdb_key_name = NULL;
-        fdb_future_destroy(RDB_fdb_resultf);
-        RDB_fdb_resultf = NULL;
         RDB_handle_fdb_errcode(err, ecp, (FDBTransaction*)rtxp);
         return RDB_ERROR;
     }
@@ -271,8 +265,25 @@ RDB_fdb_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc,
         RDB_raise_not_found("", ecp);
         return RDB_ERROR;
     }
+    return RDB_OK;
+}
 
-    ret = RDB_get_mem_fields(ixp->rmp, RDB_fdb_key_name + recmap_prefix_length, (size_t) pkey_length,
+int
+RDB_fdb_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc,
+        RDB_rec_transaction *rtxp, RDB_field retfieldv[], RDB_exec_context *ecp)
+{
+    uint8_t *value;
+    int value_length;
+    int pkey_name_length;
+    int recmap_prefix_length = RDB_fdb_key_prefix_length(ixp->rmp);
+    int ret = RDB_fdb_index_get(ixp, keyv, rtxp, &value, &value_length,
+            &pkey_name_length, ecp);
+    if (ret != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    ret = RDB_get_mem_fields(ixp->rmp, RDB_fdb_key_name + recmap_prefix_length,
+            (size_t) (pkey_name_length - recmap_prefix_length),
             value, (size_t) value_length, fieldc, retfieldv);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp);
@@ -285,6 +296,15 @@ int
 RDB_fdb_index_delete_rec(RDB_index *ixp, RDB_field keyv[], RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
 {
-	RDB_raise_not_supported("deleting by index not supported", ecp);
-    return RDB_ERROR;
+    uint8_t *value;
+    int value_length;
+    int pkey_name_length;
+    int ret = RDB_fdb_index_get(ixp, keyv, rtxp, &value, &value_length,
+            &pkey_name_length, ecp);
+    if (ret != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    fdb_transaction_clear((FDBTransaction*)rtxp, RDB_fdb_key_name, pkey_name_length);
+    return RDB_OK;
 }
