@@ -2305,7 +2305,8 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
      * (It is not checked if there is actually more than tuple in it)
      */
     if (need_tx) {
-        if ((ninsc + nupdc + ndelc + nvdelc + ncopyc > 1)
+        if (updc > 0
+                || (ninsc + ndelc + nvdelc + ncopyc > 1)
                 || (ninsc == 1
                     && ((ninsv[0].tbp->val.tbp->stp != NULL
                         && ninsv[0].tbp->val.tbp->stp->indexc > 1)

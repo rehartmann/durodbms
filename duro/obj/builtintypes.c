@@ -67,7 +67,7 @@ TYPE syntax_error possrep { msg string };
 TYPE in_use_error possrep { msg string };
 </pre>
 
-@subsection system-errors System errors
+@section system-errors System errors
 
 <pre>
 TYPE no_memory_error POSSREP {  };

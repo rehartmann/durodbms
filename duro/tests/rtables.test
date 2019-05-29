@@ -71,7 +71,8 @@ test rtables {real tables} -setup $SETUP -body {
         error "update should fail, but succeeded"
     }
     
-    duro::rollback $tx
+	# Under FoundationDB, an unsuccessful update will cause a rollback
+    catch { duro::rollback $tx }
     
     set tx [duro::begin $dbenv TEST]
     
@@ -82,7 +83,7 @@ test rtables {real tables} -setup $SETUP -body {
         error "update should fail, but succeeded"
     }
     
-    duro::rollback $tx
+    catch { duro::rollback $tx }
     
     set tx [duro::begin $dbenv TEST]
     
@@ -93,7 +94,7 @@ test rtables {real tables} -setup $SETUP -body {
         error "update should fail, but succeeded"
     }
     
-    duro::rollback $tx
+    catch { duro::rollback $tx }
 
     set tx [duro::begin $dbenv TEST]
 
@@ -323,7 +324,7 @@ test rtables {real tables} -setup $SETUP -body {
     }
 
     # PostgreSQL wants a new tx after failure
-    duro::rollback $tx
+    catch { duro::rollback $tx }
     set tx [duro::begin $dbenv TEST]
 
     set a [duro::array create T3 {A asc} $tx]

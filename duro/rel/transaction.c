@@ -127,7 +127,16 @@ the control of a transaction which has a running child transaction.
 
 RDB_OK on success, RDB_ERROR if an error occurred.
 
-The call may fail for a @ref system-errors "system error".
+@par Errors:
+
+<dl>
+<dt>not_supported_error
+<dd><var>parentp</var> is not NULL and the underlying storage system
+does not support nested transactions.
+</dl>
+
+The call may also fail for a @ref system-errors "system error".
+
  */
 int
 RDB_begin_tx(RDB_exec_context *ecp, RDB_transaction *txp, RDB_database *dbp,
