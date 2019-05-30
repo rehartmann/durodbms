@@ -195,7 +195,7 @@ RDB_create_tbindex(RDB_object *tbp, RDB_tbindex *indexp, RDB_environment *envp,
         goto cleanup;
     }
 
-    if (indexp->ordered) {
+    if (indexp->ordered && (envp == NULL || !RDB_env_queries(envp))) {
         cmpv = cmpvec(tbp, indexp, ecp);
         if (cmpv == NULL) {
             ret = RDB_ERROR;
@@ -325,9 +325,16 @@ create_indexes(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp,
         if ((!RDB_table_is_persistent(tbp) && i > 0)
                 || (RDB_table_is_persistent(tbp)
                     && !index_is_primary(tbp->val.tbp->stp->indexv[i].name))) {
-            if (RDB_create_tbindex(tbp, &tbp->val.tbp->stp->indexv[i], envp,
-                    ecp, txp) != RDB_OK)
-                return RDB_ERROR;
+            /*
+             * When SQL is used, create only non-unique indexes
+             * because the unique indexes are created with the keys
+             */
+            if (envp == NULL || !RDB_env_queries(envp)
+                    || !tbp->val.tbp->stp->indexv[i].unique) {
+                if (RDB_create_tbindex(tbp, &tbp->val.tbp->stp->indexv[i], envp,
+                        ecp, txp) != RDB_OK)
+                    return RDB_ERROR;
+            }
         }
     }
     return RDB_OK;
@@ -595,7 +602,7 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
     }
 
     /* Create non-primary indexes */
-    if (tbp->val.tbp->stp->indexc > 1 && (envp == NULL || !RDB_env_queries(envp))) {
+    if (tbp->val.tbp->stp->indexc > 1) {
         ret = create_indexes(tbp, envp, ecp, txp);
         if (ret != RDB_OK)
             goto error;
