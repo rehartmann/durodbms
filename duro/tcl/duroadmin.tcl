@@ -6,7 +6,7 @@ exec wish "$0" ${1+"$@"}
 # Copyright (C) 2004-2009, 2012-2014 Rene Hartmann.
 # See the file COPYING for redistribution information.
 
-set duro_version 1.6
+set duro_version 1.7
 
 package require -exact duro $duro_version
 package require Tktable
@@ -142,6 +142,42 @@ proc open_env {} {
     }
 
     open_env_path $envpath
+}
+
+proc open_env_url {} {
+    toplevel .dialog
+    wm title .dialog "Open environment"
+    wm geometry .dialog "+300+300"
+    ttk::frame .dialog.fr
+    pack .dialog.fr
+
+    ttk::label .dialog.fr.l -text "Environment URL or path:"
+    ttk::entry .dialog.fr.envname -textvariable envname
+
+    set ::action ok
+    ttk::frame .dialog.fr.buttons
+    ttk::button .dialog.fr.buttons.ok -text OK -command {set action ok}
+    ttk::button .dialog.fr.buttons.cancel -text Cancel -command {set action cancel}
+
+    pack .dialog.fr.buttons -side bottom -padx 5 -pady 5
+    pack .dialog.fr.buttons.ok .dialog.fr.buttons.cancel -side left
+    pack .dialog.fr.l .dialog.fr.envname -side left -padx 5 -pady 5
+
+    focus .dialog.fr.envname
+
+    set done 0
+    grab .dialog
+
+    tkwait variable action
+    if {$::action != "ok"} {
+        destroy .dialog
+        return
+    }
+
+    # Open environment
+    open_env_path $::envname
+
+    destroy .dialog
 }
 
 proc create_env {} {
@@ -344,13 +380,13 @@ proc create_db {} {
 
     set ::newdbname ""
 
-    label .dialog.l -text "Database name:"
-    entry .dialog.dbname -textvariable newdbname
+    ttk::label .dialog.l -text "Database name:"
+    ttk::entry .dialog.dbname -textvariable newdbname
 
     set ::action ok
-    frame .dialog.buttons
-    button .dialog.buttons.ok -text OK -command {set action ok}
-    button .dialog.buttons.cancel -text Cancel -command {set action cancel}
+    ttk::frame .dialog.buttons
+    ttk::button .dialog.buttons.ok -text OK -command {set action ok}
+    ttk::button .dialog.buttons.cancel -text Cancel -command {set action cancel}
 
     pack .dialog.buttons -side bottom -padx 5 -pady 5
     pack .dialog.buttons.ok .dialog.buttons.cancel -side left
@@ -397,13 +433,13 @@ proc rename_table {} {
 
     set ::newtablename ""
 
-    label .dialog.l -text "New table name:"
-    entry .dialog.tablename -textvariable newtablename
+    ttk::label .dialog.l -text "New table name:"
+    ttk::entry .dialog.tablename -textvariable newtablename
 
     set ::action ok
-    frame .dialog.buttons
-    button .dialog.buttons.ok -text OK -command {set action ok}
-    button .dialog.buttons.cancel -text Cancel -command {set action cancel}
+    ttk::frame .dialog.buttons
+    ttk::button .dialog.buttons.ok -text OK -command {set action ok}
+    ttk::button .dialog.buttons.cancel -text Cancel -command {set action cancel}
 
     pack .dialog.buttons -side bottom -padx 5 -pady 5
     pack .dialog.buttons.ok .dialog.buttons.cancel -side left
@@ -462,48 +498,48 @@ proc get_types {tx} {
 }
 
 proc set_attr_row {r} {
-    set menucmd [concat "tk_optionMenu .dialog.tabledef.type$r ::type($r)" \
+    set menucmd [concat "tk_optionMenu .dialog.fr.tabledef.type$r ::type($r)" \
             $::types]
     if {$r == 0} {
         set ::mw [eval $menucmd]
     } else {
         eval $menucmd
     }
-    set keycount [expr {[.dialog.tabledef cget -cols] - 2}]
+    set keycount [expr {[.dialog.fr.tabledef cget -cols] - 2}]
 
-    .dialog.tabledef window configure [expr $r + 1],1 \
-            -window .dialog.tabledef.type$r
+    .dialog.fr.tabledef window configure [expr $r + 1],1 \
+            -window .dialog.fr.tabledef.type$r
     set t$r string
 
     for {set i 0} {$i < $keycount} {incr i} {
-        checkbutton .dialog.tabledef.key$r,$i -variable key($r,$i)
-        .dialog.tabledef window configure [expr $r + 1],[expr $i + 2] \
-                -window .dialog.tabledef.key$r,$i
+        checkbutton .dialog.fr.tabledef.key$r,$i -variable key($r,$i)
+        .dialog.fr.tabledef window configure [expr $r + 1],[expr $i + 2] \
+                -window .dialog.fr.tabledef.key$r,$i
     }
 
-    set h [expr {-[winfo reqheight .dialog.tabledef.type$r] - 2 *
-                [.dialog.tabledef.key0,0 cget -pady]}]
-    .dialog.tabledef height [expr $r + 1] $h
+    set h [expr {-[winfo reqheight .dialog.fr.tabledef.type$r] - 2 *
+                [.dialog.fr.tabledef.key0,0 cget -pady]}]
+    .dialog.fr.tabledef height [expr $r + 1] $h
 }
 
 proc add_attr_row {} {
-    set rowcount [.dialog.tabledef cget -rows]
-    .dialog.tabledef configure -rows [expr {$rowcount + 1}]
+    set rowcount [.dialog.fr.tabledef cget -rows]
+    .dialog.fr.tabledef configure -rows [expr {$rowcount + 1}]
     set_attr_row [expr {$rowcount - 1}]
 }
 
 proc add_key {} {
-    set rowcount [.dialog.tabledef cget -rows]
-    set colcount [.dialog.tabledef cget -cols]
+    set rowcount [.dialog.fr.tabledef cget -rows]
+    set colcount [.dialog.fr.tabledef cget -cols]
     set keycount [expr {$colcount - 2}]
 
-    .dialog.tabledef configure -cols [expr {$colcount + 1}]
+    .dialog.fr.tabledef configure -cols [expr {$colcount + 1}]
     set ::tabledef(0,$colcount) "Key #[expr $keycount + 1]"
     for {set i 0} {$i < $rowcount - 1} {incr i} {
-        checkbutton .dialog.tabledef.key$i,$keycount \
+        checkbutton .dialog.fr.tabledef.key$i,$keycount \
                 -variable key($i,$keycount)
-        .dialog.tabledef window configure [expr $i + 1],[expr {$keycount + 2}] \
-                -window .dialog.tabledef.key$i,$keycount
+        .dialog.fr.tabledef window configure [expr $i + 1],[expr {$keycount + 2}] \
+                -window .dialog.fr.tabledef.key$i,$keycount
     }
 }
 
@@ -524,23 +560,24 @@ proc create_rtable {} {
 
     set ::newtablename ""
 
-    label .dialog.l -text "Table name:"
-    entry .dialog.tablename -textvariable newtablename
+    ttk::frame .dialog.fr
+    ttk::label .dialog.fr.l -text "Table name:"
+    ttk::entry .dialog.fr.tablename -textvariable newtablename
     set ::tableflag -global
-    checkbutton .dialog.global -text "Global" -variable tableflag \
+    ttk::checkbutton .dialog.fr.global -text "Global" -variable tableflag \
             -onvalue -global -offvalue -local
 
     set attrcount 4
 
-    table .dialog.tabledef -titlerows 1 -rows [expr {$attrcount +1}] \
+    table .dialog.fr.tabledef -titlerows 1 -rows [expr {$attrcount +1}] \
             -cols 3 -variable tabledef -anchor w
 
     set ::action ok
-    frame .dialog.buttons
-    button .dialog.buttons.ok -text OK -command {set action ok}
-    button .dialog.buttons.cancel -text Cancel -command {set action cancel}
-    button .dialog.buttons.addattr -text "Add attribute" -command add_attr_row
-    button .dialog.buttons.addkey -text "Add key" -command add_key
+    ttk::frame .dialog.fr.buttons
+    ttk::button .dialog.fr.buttons.ok -text OK -command {set action ok}
+    ttk::button .dialog.fr.buttons.cancel -text Cancel -command {set action cancel}
+    ttk::button .dialog.fr.buttons.addattr -text "Add attribute" -command add_attr_row
+    ttk::button .dialog.fr.buttons.addkey -text "Add key" -command add_key
 
     set ::tabledef(0,0) "Attribute name"
     set ::tabledef(0,1) Type
@@ -550,25 +587,26 @@ proc create_rtable {} {
         set_attr_row $i
     }
 
-    .dialog.tabledef width 0 [string length ::tabledef(0,0)]
+    .dialog.fr.tabledef width 0 [string length ::tabledef(0,0)]
 
     # Change type in line #1 to boolean to set width
     $::mw invoke 1
-    .dialog.tabledef width 1 [expr {-[winfo reqwidth .dialog.tabledef.type0] - 2 *
-            [.dialog.tabledef.type0 cget -pady]}]
+    .dialog.fr.tabledef width 1 [expr {-[winfo reqwidth .dialog.fr.tabledef.type0] - 2 *
+            [.dialog.fr.tabledef.type0 cget -pady]}]
 
     # Change type back
     $::mw invoke 0
 
-    .dialog.tabledef.key0,0 select
+    .dialog.fr.tabledef.key0,0 select
 
-    pack .dialog.buttons -side bottom -padx 5 -pady 5
-    pack .dialog.buttons.ok .dialog.buttons.cancel \
-            .dialog.buttons.addattr .dialog.buttons.addkey -side left
-    pack .dialog.tabledef -side bottom -anchor w -padx 5 -pady 5
-    pack .dialog.l .dialog.tablename .dialog.global -side left -padx 5 -pady 5
+    pack .dialog.fr
+    pack .dialog.fr.buttons -side bottom -padx 5 -pady 5
+    pack .dialog.fr.buttons.ok .dialog.fr.buttons.cancel \
+            .dialog.fr.buttons.addattr .dialog.fr.buttons.addkey -side left
+    pack .dialog.fr.tabledef -side bottom -anchor w -padx 5 -pady 5
+    pack .dialog.fr.l .dialog.fr.tablename .dialog.fr.global -side left -padx 5 -pady 5
 
-    focus .dialog.tablename
+    focus .dialog.fr.tablename
 
     set done 0
     grab .dialog
@@ -587,8 +625,8 @@ proc create_rtable {} {
         # Build lists for attributes and keys
         set attrs {}
 
-        set attrcount [expr {[.dialog.tabledef cget -rows] - 1}]
-        set keycount [expr {[.dialog.tabledef cget -cols] - 2}]
+        set attrcount [expr {[.dialog.fr.tabledef cget -rows] - 1}]
+        set keycount [expr {[.dialog.fr.tabledef cget -cols] - 2}]
 
         for {set i 0} {$i < $attrcount} {incr i} {
             if {[info exists ::tabledef([expr $i + 1],0)]} {
@@ -645,26 +683,32 @@ proc create_vtable {} {
 
     set ::newtablename ""
 
-    label .dialog.l -text "Table name:"
-    entry .dialog.tablename -textvariable newtablename
+    ttk::frame .dialog.vtfr
+    ttk::label .dialog.vtfr.l -text "Table name:"
+    ttk::entry .dialog.vtfr.tablename -textvariable newtablename
     set ::tableflag -global
-    checkbutton .dialog.global -text "Global" -variable tableflag \
+    ttk::checkbutton .dialog.vtfr.global -text "Global" -variable tableflag \
             -onvalue -global -offvalue -local
-    label .dialog.defl -text "Table definition:"
-    text .dialog.tabledef
+    ttk::label .dialog.vtfr.defl -text "Table definition:"
+    text .dialog.vtfr.tabledef
 
     set ::action ok
-    frame .dialog.buttons
-    button .dialog.buttons.ok -text OK -command {set action ok}
-    button .dialog.buttons.cancel -text Cancel -command {set action cancel}
+    ttk::frame .dialog.buttons
+    ttk::button .dialog.buttons.ok -text OK -command {set action ok}
+    ttk::button .dialog.buttons.cancel -text Cancel -command {set action cancel}
 
     pack .dialog.buttons -side bottom -padx 5 -pady 5
     pack .dialog.buttons.ok .dialog.buttons.cancel -side left
-    pack .dialog.tabledef -side bottom -padx 5
-    pack .dialog.defl -side bottom -anchor w -padx 5
-    pack .dialog.l .dialog.tablename .dialog.global -side left -padx 5 -pady 5
+    pack .dialog.vtfr
+    grid columnconfigure .dialog.vtfr {0 1 2} -weight 0
+    grid columnconfigure .dialog.vtfr 3 -weight 2
+    grid .dialog.vtfr.l -column 0 -row 0 -sticky w
+    grid .dialog.vtfr.tablename -column 1 -row 0 -sticky w
+    grid .dialog.vtfr.global -column 2 -row 0 -sticky w
+    grid .dialog.vtfr.defl -column 0 -row 1
+    grid .dialog.vtfr.tabledef -column 0 -row 2 -columnspan 4
 
-    focus .dialog.tablename
+    focus .dialog.vtfr.tablename
 
     set done 0
     grab .dialog
@@ -684,7 +728,7 @@ proc create_vtable {} {
             # Create virtual table
             set tx [duro::begin $::dbenv $::db]
             duro::table expr $::tableflag $::newtablename \
-                    [.dialog.tabledef get 1.0 end] $tx
+                    [.dialog.vtfr.tabledef get 1.0 end] $tx
             duro::commit $tx
             set done 1
         } msg]} {
@@ -921,12 +965,14 @@ proc must_quote {type} {
 proc del_row {} {
     set table [.tables get anchor]
     if {$table == ""} {
+        puts 1
         return
     }
 
     scan [.tableframe.table index active] %d,%d row col
     set rowcount [.tableframe.table cget -rows]
     if {$row == [expr {$rowcount - 1}]} {
+        puts 2
         return
     }
 
@@ -1004,24 +1050,24 @@ proc exec_script {} {
 
     set ::script ""
 
-    label .dialog.scriptl -text "Script: (Transaction is available as \$tx)"
+    ttk::label .dialog.scriptl -text "Script: (Transaction is available as \$tx)"
     text .dialog.script -height 10
 
     set ::action ""
-    frame .dialog.buttons
-    button .dialog.buttons.execute -text Execute \
+    ttk::frame .dialog.buttons
+    ttk::button .dialog.buttons.execute -text Execute \
         -command {set action execute}
-    button .dialog.buttons.close -text Close -command {set action close}
+    ttk::button .dialog.buttons.close -text Close -command {set action close}
 
-    label .dialog.outputl -text "Output:"
+    ttk::label .dialog.outputl -text "Output:"
     text .dialog.output -height 10 -state disabled
 
     pack .dialog.output -side bottom
-    pack .dialog.outputl -side bottom -anchor w
+    pack .dialog.outputl -side bottom -anchor w -fill x
     pack .dialog.buttons -side bottom -padx 5 -pady 5
     pack .dialog.buttons.execute .dialog.buttons.close -side left
     pack .dialog.script -side bottom
-    pack .dialog.scriptl -side bottom -anchor w
+    pack .dialog.scriptl -side bottom -anchor w -fill x
 
     focus .dialog.script
 
@@ -1059,14 +1105,14 @@ proc about {} {
 
     set ::newtablename ""
 
-    label .about.l1 -text "Duroadmin"
+    ttk::label .about.l1 -text "Duroadmin"
     text .about.t -width 40 -height 3
     .about.t insert end "Duro $::duro_version, (C) 2003-2012 Rene Hartmann."
     .about.t insert end "\n\nDuro comes with ABSOLUTELY NO WARRANTY."
     .about.t configure -state disabled
 
     frame .about.buttons
-    button .about.buttons.ok -text OK -command {destroy .about}
+    ttk::button .about.buttons.ok -text OK -command {destroy .about}
 
     pack .about.l1 .about.t -side top -anchor w -padx 10 -pady 10
     pack .about.buttons -side bottom
@@ -1087,6 +1133,8 @@ proc quit {} {
     exit
 }
 
+ttk::style theme use clam
+
 set duroadmin(initrows) 20
 set dbenv ""
 set ltables {}
@@ -1098,7 +1146,8 @@ menu .mbar
 menu .mbar.file
 .mbar add cascade -label File -menu .mbar.file -underline 0
 
-.mbar.file add command -label "Open Environment..." -command open_env
+.mbar.file add command -label "Open Environment Directory..." -command open_env
+.mbar.file add command -label "Open Environment URL..." -command open_env_url
 .mbar.file add command -label "Create Environment..." -command create_env
 .mbar.file add command -label "Close Environment" -command close_env \
         -state disabled
@@ -1120,35 +1169,35 @@ menu .mbar.db.create
 menu .mbar.db.drop
 .mbar.db add cascade -label Drop -menu .mbar.db.drop
 .mbar.db add command -label "Delete row" -command del_row -state disabled
-.mbar.db add command -label "Rename table" -command rename_table \
+.mbar.db add command -label "Rename table..." -command rename_table \
         -state disabled
 .mbar.db add command -label "Execute script..." -command exec_script \
         -state disabled
 
-.mbar.db.create add command -label "Database" -state disabled \
+.mbar.db.create add command -label "Database..." -state disabled \
         -command create_db
-.mbar.db.create add command -label "Real table" -state disabled \
+.mbar.db.create add command -label "Real table..." -state disabled \
         -command create_rtable
-.mbar.db.create add command -label "Virtual table" -state disabled \
+.mbar.db.create add command -label "Virtual table..." -state disabled \
         -command create_vtable
-.mbar.db.drop add command -label "Database" -state disabled \
+.mbar.db.drop add command -label "Database..." -state disabled \
         -command drop_db
-.mbar.db.drop add command -label "Table" -state disabled \
+.mbar.db.drop add command -label "Table..." -state disabled \
         -command drop_table
 
 menu .mbar.help
 .mbar add cascade -label "Help" -menu .mbar.help -underline 0
 .mbar.help add command -label "About Duroadmin" -command about
 
-frame .dbsframe
-label .dbsframe.dbl -text "Database:" -state disabled
+ttk::frame .dbsframe
+ttk::label .dbsframe.dbl -text "Database:" -state disabled
 set dbmenu [tk_optionMenu .dbsframe.dbs db ""]
 .dbsframe.dbs configure -state disabled
 
 listbox .tables -yscrollcommand ".tablesbar set"
 scrollbar .tablesbar -orient vertical -command ".tables yview"
 
-frame .tableframe
+ttk::frame .tableframe
 table .tableframe.table -multiline 1 -wrap 1 -titlerows 1 -rows [expr {$duroadmin(initrows) + 2}] \
         -xscrollcommand ".tableframe.xbar set" \
         -yscrollcommand ".tableframe.ybar set" \
@@ -1158,9 +1207,9 @@ table .tableframe.table -multiline 1 -wrap 1 -titlerows 1 -rows [expr {$duroadmi
 scrollbar .tableframe.xbar -orient horizontal -command ".tableframe.table xview"
 scrollbar .tableframe.ybar -orient vertical -command ".tableframe.table yview"
 
-button .morebutton -text More -state disabled -command more_tuples
+ttk::button .morebutton -text More -state disabled -command more_tuples
 
-pack .dbsframe -anchor w
+pack .dbsframe -anchor w -fill x
 pack .tables .tablesbar -side left -fill y
 pack .morebutton -side bottom -anchor ne
 pack .tableframe -side left -anchor nw -fill both
