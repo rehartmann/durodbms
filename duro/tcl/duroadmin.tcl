@@ -498,8 +498,9 @@ proc get_types {tx} {
 }
 
 proc set_attr_row {r} {
-    set menucmd [concat "tk_optionMenu .dialog.fr.tabledef.type$r ::type($r)" \
-            $::types]
+    set ::type($r) string
+    set menucmd [concat "ttk::combobox .dialog.fr.tabledef.type$r -textvariable ::type($r)" \
+            -values [list $::types]]
     if {$r == 0} {
         set ::mw [eval $menucmd]
     } else {
@@ -512,13 +513,13 @@ proc set_attr_row {r} {
     set t$r string
 
     for {set i 0} {$i < $keycount} {incr i} {
-        checkbutton .dialog.fr.tabledef.key$r,$i -variable key($r,$i)
+        set ::key($r,$i) 0
+        ttk::checkbutton .dialog.fr.tabledef.key$r,$i -variable ::key($r,$i)
         .dialog.fr.tabledef window configure [expr $r + 1],[expr $i + 2] \
                 -window .dialog.fr.tabledef.key$r,$i
     }
 
-    set h [expr {-[winfo reqheight .dialog.fr.tabledef.type$r] - 2 *
-                [.dialog.fr.tabledef.key0,0 cget -pady]}]
+    set h [expr {-[winfo reqheight .dialog.fr.tabledef.type$r]}]
     .dialog.fr.tabledef height [expr $r + 1] $h
 }
 
@@ -536,7 +537,8 @@ proc add_key {} {
     .dialog.fr.tabledef configure -cols [expr {$colcount + 1}]
     set ::tabledef(0,$colcount) "Key #[expr $keycount + 1]"
     for {set i 0} {$i < $rowcount - 1} {incr i} {
-        checkbutton .dialog.fr.tabledef.key$i,$keycount \
+        set ::key($i,$keycount) 0
+        ttk::checkbutton .dialog.fr.tabledef.key$i,$keycount \
                 -variable key($i,$keycount)
         .dialog.fr.tabledef window configure [expr $i + 1],[expr {$keycount + 2}] \
                 -window .dialog.fr.tabledef.key$i,$keycount
@@ -589,15 +591,15 @@ proc create_rtable {} {
 
     .dialog.fr.tabledef width 0 [string length ::tabledef(0,0)]
 
+    set v [$::mw get]
     # Change type in line #1 to boolean to set width
-    $::mw invoke 1
-    .dialog.fr.tabledef width 1 [expr {-[winfo reqwidth .dialog.fr.tabledef.type0] - 2 *
-            [.dialog.fr.tabledef.type0 cget -pady]}]
+    $::mw set boolean
+    .dialog.fr.tabledef width 1 [expr {-[winfo reqwidth .dialog.fr.tabledef.type0]}]
 
     # Change type back
-    $::mw invoke 0
+    $::mw set $v
 
-    .dialog.fr.tabledef.key0,0 select
+    set ::key(0,0) 1
 
     pack .dialog.fr
     pack .dialog.fr.buttons -side bottom -padx 5 -pady 5
