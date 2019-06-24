@@ -11,14 +11,15 @@ import java.util.Map;
  *
  */
 public class SimplePossrepObject implements PossrepObject {
-    private Map<String, Object> valueMap;
-    private ScalarType type;
+    private final Map<String, Object> valueMap;
+    private final ScalarType type;
 
     public SimplePossrepObject(String typeName) {
-        type = ScalarType.fromString(typeName);
+        ScalarType type = ScalarType.fromString(typeName);
         if (type == null) {
             type = new ScalarType(typeName, null);
         }
+        this.type = type;
         valueMap = new HashMap<String, Object>();
     }
 
@@ -41,8 +42,8 @@ public class SimplePossrepObject implements PossrepObject {
     }
 
     /**
-     * Determines if two PossrepObjects are equal using the DuroDBMS library
-     * function RDB_obj_equals().
+     * Determines if two PossrepObjects are equal by comparing the property values
+     * using equals().
      */
     public boolean equals(Object obj) {
         if (obj == null)

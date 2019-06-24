@@ -6,7 +6,7 @@ package net.sf.duro;
  * @author Rene Hartmann
  *
  */
-public class ArrayType extends Type {
+public final class ArrayType extends Type {
     private static final long serialVersionUID = 1L;
 
     private final Type baseType;

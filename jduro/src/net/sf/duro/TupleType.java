@@ -10,11 +10,11 @@ import java.util.Set;
  * @author Rene Hartmann
  *
  */
-public class TupleType extends Type {
+public final class TupleType extends Type {
 
     private static final long serialVersionUID = 1L;
 
-    private Map<String, Type> attributeMap;
+    private final Map<String, Type> attributeMap;
 
     public TupleType(NameTypePair[] attributes) {
         attributeMap = new HashMap<String, Type>();

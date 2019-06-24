@@ -8,7 +8,7 @@ import java.util.Set;
  * @author Rene Hartmann
  *
  */
-public class RelationType extends Type {
+public final class RelationType extends Type {
 
     private static final long serialVersionUID = 1L;
 
