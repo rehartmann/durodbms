@@ -413,9 +413,19 @@ RDB_fdb_cursor_next(RDB_cursor *curp, int flags, RDB_exec_context *ecp)
 	}
 
     if (RDB_REC_DUP & flags) {
-        /* If the key has changed, return not_found */
-        if (out_kv[0].key_length < curp->cur.fdb.key_length
-                || memcmp(out_kv[0].key, curp->cur.fdb.key, curp->cur.fdb.key_length) != 0) {
+        /* If the secondary key has changed, return not_found */
+        int skeylen;
+        memcpy(&skeylen,
+            (uint8_t *)out_kv[0].key + out_kv[0].key_length - sizeof(int),
+            sizeof(int));
+        if (out_kv[0].key_length < skeylen + keylen) {
+            RDB_raise_internal("invalid record length", ecp);
+            fdb_future_destroy(f);
+            return RDB_ERROR;
+        }
+        if (curp->cur.fdb.key_length < skeylen + keylen
+                || memcmp(out_kv[0].key, curp->cur.fdb.key,
+                        skeylen + keylen) != 0) {
             fdb_future_destroy(f);
             RDB_raise_not_found("no record for key", ecp);
             return RDB_ERROR;

@@ -38,6 +38,10 @@ test index {indexes} -setup $SETUP -body {
     if {![catch {duro::index create IX1 T1 {C -} $tx}]} {
         error "Index creation should fail, but succeeded"
     }
+
+    duro::commit $tx
+
+    set tx [duro::begin $dbenv TEST]
     
     duro::insert T1 {A 1 B Bli C X} $tx
     duro::insert T1 {A 2 B Bla C Y} $tx

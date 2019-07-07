@@ -10,8 +10,10 @@
 #include <rec/dbdefs.h>
 #include <rec/indeximpl.h>
 #include <rec/recmapimpl.h>
+#include <rec/cursorimpl.h>
 #include <gen/strfns.h>
 #include <obj/excontext.h>
+#include <obj/builtintypes.h>
 
 #define FDB_API_VERSION 600
 #include <foundationdb/fdb_c.h>
@@ -63,6 +65,80 @@ error:
     return NULL;
 }
 
+static int
+RDB_populate_fdb_index(RDB_index *ixp, RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
+{
+    void *skey = NULL;
+    size_t skeylen;
+    int key_name_length;
+    uint8_t *key_name;
+    int ret;
+    RDB_cursor *curp = RDB_fdb_recmap_cursor(ixp->rmp, RDB_FALSE, rtxp, ecp);
+    if (curp == NULL)
+        return RDB_ERROR;
+
+    if (RDB_fdb_cursor_first(curp, ecp) != RDB_OK) {
+        if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
+            RDB_destroy_fdb_cursor(curp, ecp);
+            return RDB_ERROR;
+        }
+        return RDB_destroy_fdb_cursor(curp, ecp);
+    }
+    do {
+        int keyprefixlen = RDB_fdb_key_prefix_length(ixp->rmp);
+        ret = RDB_make_skey(ixp, curp->cur.fdb.key + keyprefixlen,
+                (size_t)curp->cur.fdb.key_length - keyprefixlen,
+                curp->cur.fdb.value, (size_t)curp->cur.fdb.value_length,
+                &skey, &skeylen);
+        if (ret != RDB_OK) {
+            RDB_errcode_to_error(ret, ecp);
+            RDB_destroy_fdb_cursor(curp, ecp);
+            return RDB_ERROR;
+        }
+
+        key_name_length = skeylen + RDB_fdb_key_index_prefix_length(ixp);
+        key_name = RDB_fdb_prepend_key_index_prefix(ixp, skey, skeylen, ecp);
+        RDB_free(skey);
+        if (key_name == NULL) {
+            RDB_destroy_fdb_cursor(curp, ecp);
+            return RDB_ERROR;
+        }
+
+        if (RDB_UNIQUE & ixp->flags) {
+            RDB_raise_not_supported("delayed creation of unique index", ecp);
+            RDB_destroy_fdb_cursor(curp, ecp);
+            return RDB_ERROR;
+            /*
+            fdb_transaction_set((FDBTransaction*)rtxp, key_name, key_name_length,
+                    curp->cur.fdb.key + keyprefixlen,
+                    curp->cur.fdb.key_length - keyprefixlen);
+            */
+        } else {
+            int len = key_name_length + curp->cur.fdb.key_length - keyprefixlen + sizeof(int);
+            int skeylen = key_name_length - RDB_fdb_key_index_prefix_length(ixp);
+            uint8_t *buf = RDB_alloc(len, ecp);
+            if (buf == NULL) {
+                RDB_free(key_name);
+                RDB_destroy_fdb_cursor(curp, ecp);
+                return RDB_ERROR;
+            }
+            memcpy(buf, key_name, key_name_length);
+            memcpy(buf + key_name_length, curp->cur.fdb.key + keyprefixlen,
+                    curp->cur.fdb.key_length - keyprefixlen);
+            memcpy(buf + key_name_length + curp->cur.fdb.key_length - keyprefixlen,
+                    &skeylen, sizeof(int));
+            fdb_transaction_set((FDBTransaction*)rtxp, buf, len, (uint8_t*) "", 0);
+            RDB_free(buf);
+        }
+        RDB_free(key_name);
+    } while (RDB_fdb_cursor_next(curp, 0, ecp) == RDB_OK);
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
+        RDB_destroy_fdb_cursor(curp, ecp);
+        return RDB_ERROR;
+    }
+    return RDB_destroy_fdb_cursor(curp, ecp);
+}
+
 /*
  * Create index.
  */
@@ -90,7 +166,10 @@ RDB_create_fdb_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     ixp->nextp = rmp->indexes;
     rmp->indexes = ixp;
 
-    /* !! index existing entries ... */
+    if (RDB_populate_fdb_index(ixp, rtxp, ecp) != RDB_OK) {
+        RDB_close_fdb_index(ixp, ecp);
+        return NULL;
+    }
 
     return ixp;
 
