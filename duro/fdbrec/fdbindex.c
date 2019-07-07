@@ -6,6 +6,7 @@
 #include "fdbindex.h"
 #include "fdbenv.h"
 #include "fdbrecmap.h"
+#include "fdbcursor.h"
 #include <rec/dbdefs.h>
 #include <rec/indeximpl.h>
 #include <rec/recmapimpl.h>
@@ -23,11 +24,6 @@ new_fdb_index(RDB_recmap *rmp, const char *name,
     int i;
     RDB_index *ixp;
     RDB_bool all_cmpfn = RDB_TRUE;
-
-    if (!(RDB_UNIQUE & flags)) {
-        RDB_raise_invalid_argument("non-unique index not supported", ecp);
-        return NULL;
-    }
 
     ixp = RDB_alloc(sizeof(RDB_index), ecp);
     if (ixp == NULL) {
@@ -57,7 +53,7 @@ new_fdb_index(RDB_recmap *rmp, const char *name,
     ixp->delete_index_fn = &RDB_delete_fdb_index;
     ixp->index_delete_rec_fn = &RDB_fdb_index_delete_rec;
     ixp->index_get_fields_fn = &RDB_fdb_index_get_fields;
-    ixp->index_cursor_fn = NULL; /* Not needed because there are only unique indexes */
+    ixp->index_cursor_fn = &RDB_fdb_index_cursor;
 
     return ixp;
 
@@ -79,10 +75,6 @@ RDB_create_fdb_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     RDB_index *ixp = NULL;
     int i;
 
-    if (cmpv != NULL) {
-        RDB_raise_not_supported("comparison function not supported", ecp);
-        return NULL;
-    }
     int *fnov = RDB_alloc(fieldc * sizeof(int), ecp);
     if (fnov == NULL)
         goto error;
@@ -97,6 +89,8 @@ RDB_create_fdb_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     /* Associate index with recmap */
     ixp->nextp = rmp->indexes;
     rmp->indexes = ixp;
+
+    /* !! index existing entries ... */
 
     return ixp;
 
@@ -147,11 +141,16 @@ RDB_delete_fdb_index(RDB_index *ixp, RDB_rec_transaction *rtxp,
     uint8_t *endkeybuf;
     int keylen = RDB_fdb_key_index_prefix_length(ixp);
 
+    if (rtxp == NULL) {
+        RDB_raise_no_running_tx(ecp);
+        return RDB_ERROR;
+    }
+
     /* Allocate and fill buffer for start key and end key */
-    keybuf = RDB_alloc(keylen, ecp);
+    keybuf = RDB_alloc(keylen + 1, ecp);
     if (keybuf == NULL)
         return RDB_ERROR;
-    endkeybuf = RDB_alloc(keylen, ecp);
+    endkeybuf = RDB_alloc(keylen + 1, ecp);
     if (endkeybuf == NULL) {
         RDB_free(keybuf);
         return RDB_ERROR;
@@ -307,4 +306,25 @@ RDB_fdb_index_delete_rec(RDB_index *ixp, RDB_field keyv[], RDB_rec_transaction *
 
     fdb_transaction_clear((FDBTransaction*)rtxp, RDB_fdb_key_name, pkey_name_length);
     return RDB_OK;
+}
+
+int
+RDB_fdb_key_index_prefix_length(RDB_index *ixp)
+{
+    return strlen(ixp->namp) + 3;
+}
+
+uint8_t *
+RDB_fdb_prepend_key_index_prefix(RDB_index *ixp, const void *key, size_t keylen, RDB_exec_context *ecp)
+{
+    size_t namelen = strlen(ixp->namp);
+    uint8_t *key_name = RDB_alloc(RDB_fdb_key_index_prefix_length(ixp) + keylen, ecp);
+    if (key_name == NULL)
+        return NULL;
+
+    memcpy(key_name, "i/", 2);
+    memcpy(key_name + 2, ixp->namp, namelen);
+    key_name[2 + namelen] = '/';
+    memcpy(key_name + 3 + namelen, key, keylen);
+    return key_name;
 }

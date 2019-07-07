@@ -1244,6 +1244,9 @@ RDB_table_iterator(RDB_object *tbp,
         RDB_tbindex *indexp = RDB_expr_sortindex(texp);
         if (indexp == NULL || !RDB_index_sorts(indexp, seqitc, seqitv)) {
             /* Create sorter */
+            if (txp != NULL && RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
+                fputs("Creating sorter\n", stderr);
+            }
             if (RDB_sorter(texp, &qrp, ecp, txp, seqitc, seqitv) != RDB_OK)
                 return NULL;
         }

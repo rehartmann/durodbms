@@ -1201,9 +1201,16 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
 
         if (tbp->val.tbp->stp->indexv[i].idxp != NULL) {
             /* Destroy index */
-            if (RDB_add_del_index(txp, tbp->val.tbp->stp->indexv[i].idxp, ecp)
-                    != RDB_OK)
-                goto error;
+            if (RDB_recmap_delayed_deletion(tbp->val.tbp->stp->recmapp)) {
+                if (RDB_add_del_index(txp, tbp->val.tbp->stp->indexv[i].idxp, ecp)
+                        != RDB_OK)
+                    goto error;
+            } else {
+                if (RDB_delete_index(tbp->val.tbp->stp->indexv[i].idxp,
+                        txp->tx, ecp) != RDB_OK) {
+                    goto error;
+                }
+            }
         }
 
         /*

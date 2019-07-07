@@ -31,6 +31,9 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
         if (indexp == NULL || !RDB_index_sorts(indexp, seqitc, seqitv)
                 || (txp != NULL && RDB_env_queries(txp->envp))) {
             /* Create sorter */
+            if (txp != NULL && RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
+                fputs("Creating sorter\n", stderr);
+            }
             if (RDB_sorter(texp, &qrp, ecp, txp, seqitc, seqitv) != RDB_OK)
                 goto error;
         }

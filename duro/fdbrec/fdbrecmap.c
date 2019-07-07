@@ -152,12 +152,9 @@ RDB_fdb_key_prefix_length(RDB_recmap *rmp)
 	return strlen(rmp->namp) + 3;
 }
 
-int
-RDB_fdb_key_index_prefix_length(RDB_index *ixp)
-{
-    return strlen(ixp->namp) + 3;
-}
-
+/*
+ * Construct an FDB key from a key. No trailing zero is appended.
+ */
 uint8_t *
 RDB_fdb_prepend_key_prefix(RDB_recmap *rmp, const void *key, size_t keylen, RDB_exec_context *ecp)
 {
@@ -170,21 +167,6 @@ RDB_fdb_prepend_key_prefix(RDB_recmap *rmp, const void *key, size_t keylen, RDB_
 	memcpy(key_name + 2, rmp->namp, namelen);
 	key_name[2 + namelen] = '/';
 	memcpy(key_name + 3 + namelen, key, keylen);
-    return key_name;
-}
-
-uint8_t *
-RDB_fdb_prepend_key_index_prefix(RDB_index *ixp, const void *key, size_t keylen, RDB_exec_context *ecp)
-{
-    size_t namelen = strlen(ixp->namp);
-    uint8_t *key_name = RDB_alloc(RDB_fdb_key_index_prefix_length(ixp) + keylen, ecp);
-    if (key_name == NULL)
-        return NULL;
-
-    memcpy(key_name, "i/", 2);
-    memcpy(key_name + 2, ixp->namp, namelen);
-    key_name[2 + namelen] = '/';
-    memcpy(key_name + 3 + namelen, key, keylen);
     return key_name;
 }
 
@@ -266,9 +248,30 @@ insert_into_fdb_indexes(RDB_recmap *rmp, uint8_t *key, int key_length, void *val
     }
 
     for (i = 0, ixp = rmp->indexes; ixp != NULL; ixp = ixp->nextp, i++) {
-        fdb_transaction_set((FDBTransaction*)rtxp, key_name[i], key_name_length[i],
-                key, key_length);
-        RDB_free(key_name[i]);
+        if (RDB_UNIQUE & ixp->flags) {
+            fdb_transaction_set((FDBTransaction*)rtxp, key_name[i], key_name_length[i],
+                    key, key_length);
+            RDB_free(key_name[i]);
+            key_name[i] = NULL;
+        } else {
+            /*
+             * Store everything in FDB key:
+             * first secondary key, then primary key, then secondary key length
+             */
+            int len = key_name_length[i] + key_length + sizeof(int);
+            int skeylen = key_name_length[i] - RDB_fdb_key_index_prefix_length(ixp);
+            uint8_t *buf = RDB_alloc(len, ecp);
+            if (buf == NULL) {
+                goto error;
+            }
+            memcpy(buf, key_name[i], key_name_length[i]);
+            memcpy(buf + key_name_length[i], key, key_length);
+            memcpy(buf + key_name_length[i] + key_length, &skeylen, sizeof(int));
+            fdb_transaction_set((FDBTransaction*)rtxp, buf, len, (uint8_t*) "", 0);
+            RDB_free(key_name[i]);
+            key_name[i] = NULL;
+            RDB_free(buf);
+        }
     }
     RDB_free(key_name);
     RDB_free(key_name_length);
@@ -448,8 +451,8 @@ RDB_update_fdb_rec(RDB_recmap *rmp, RDB_field keyv[],
     int ret;
     uint8_t *key_name;
     int key_name_length;
-    uint8_t *value;
     int value_length;
+    uint8_t *value;
     size_t key_length;
     void *key;
     size_t data_length;
