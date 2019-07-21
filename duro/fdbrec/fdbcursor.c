@@ -63,7 +63,7 @@ RDB_fdb_index_cursor(RDB_index *idxp, RDB_bool wr,
                   RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     if (RDB_UNIQUE & idxp->flags) {
-        RDB_raise_not_supported("cursor over non-unique index not supported", ecp);
+        RDB_raise_not_supported("cursor over unique index not supported", ecp);
         return NULL;
     }
     return new_fdb_cursor(idxp->rmp, rtxp, idxp, ecp);
@@ -176,9 +176,41 @@ RDB_fdb_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[],
 int
 RDB_fdb_cursor_delete(RDB_cursor *curp, RDB_exec_context *ecp)
 {
-    fdb_transaction_clear((FDBTransaction*)curp->tx, curp->cur.fdb.key, curp->cur.fdb.key_length);
-    return RDB_delete_from_fdb_indexes(curp->recmapp, curp->cur.fdb.key, curp->cur.fdb.key_length,
+    if (curp->idxp == NULL) {
+        fdb_transaction_clear((FDBTransaction*)curp->tx, curp->cur.fdb.key, curp->cur.fdb.key_length);
+        return RDB_delete_from_fdb_indexes(curp->recmapp, curp->cur.fdb.key, curp->cur.fdb.key_length,
             curp->cur.fdb.value, curp->cur.fdb.value_length, (FDBTransaction*)curp->tx, ecp);
+    } else {
+        int pkeylen;
+        int skeylen;
+        uint8_t *pkey;
+        int res;
+        int iprefixlen = RDB_fdb_key_index_prefix_length(curp->idxp);
+
+        if (curp->cur.fdb.key_length < iprefixlen + sizeof(int)) {
+            RDB_raise_internal("invalid key record size", ecp);
+            return RDB_ERROR;
+        }
+
+        memcpy(&skeylen, (uint8_t *)curp->cur.fdb.key + curp->cur.fdb.key_length - sizeof(int),
+                sizeof(int));
+        if (skeylen > curp->cur.fdb.key_length - sizeof(int)) {
+            RDB_raise_internal("invalid size of secondary index record", ecp);
+            return RDB_ERROR;
+        }
+        pkeylen = curp->cur.fdb.key_length - iprefixlen - skeylen - sizeof(int);
+
+        pkey = RDB_fdb_prepend_key_prefix(curp->recmapp,
+                ((uint8_t*)curp->cur.fdb.key) + iprefixlen + skeylen, pkeylen, ecp);
+        if (pkey == NULL) {
+            return RDB_ERROR;
+        }
+
+        res = RDB_delete_fdb_kv(curp->recmapp, pkey, pkeylen + RDB_fdb_key_prefix_length(curp->recmapp),
+                (FDBTransaction*)curp->tx, ecp);
+        RDB_free(pkey);
+        return res;
+    }
 }
 
 static int
@@ -202,7 +234,7 @@ fdbkv_to_cursor(RDB_cursor *curp, const FDBKeyValue *fdbkv, RDB_exec_context *ec
         curp->cur.fdb.key_length = fdbkv->key_length;
     }
 
-    if (curp->idxp == NULL || (RDB_UNIQUE & curp->idxp->flags)) {
+    if (curp->idxp == NULL) {
         curp->cur.fdb.value_length = fdbkv->value_length;
         if (fdbkv->value_length > 0) {
             curp->cur.fdb.value = RDB_alloc(fdbkv->value_length, ecp);

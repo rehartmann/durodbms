@@ -1252,6 +1252,7 @@ if {$dbenvname == "dbenv"} {
 37
 38
 39
+TRUE
 }
 } else {
     set expected {*
@@ -1260,6 +1261,7 @@ if {$dbenvname == "dbenv"} {
 37
 38
 39
+TRUE
 }
 }
 
@@ -1287,6 +1289,11 @@ test create_index {creating index} -setup $SETUP -cleanup $CLEANUP -match glob -
             io.put(t.ai); io.put_line('');
         end for;
 
+        commit;
+        
+        begin tx;
+        delete r where ac = '1';
+        io.put(is_empty(r where ai = 1)); io.put_line('');
         commit;
 
         begin tx;
