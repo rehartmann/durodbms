@@ -1369,6 +1369,20 @@ RDB_update_nonvirtual(RDB_object *tbp, RDB_expression *condp,
             ecp, txp);
 }
 
+static RDB_bool
+upd_refers_index(int updc, const RDB_attr_update updv[], const RDB_tbindex *idxp)
+{
+    int i, j;
+    for (i = 0; i < updc; i++) {
+        for (j = 0; j < idxp->attrc; j++) {
+            if (strcmp(updv[i].name, idxp->attrv[j].attrname) == 0) {
+                return RDB_TRUE;
+            }
+        }
+    }
+    return RDB_FALSE;
+}
+
 RDB_int
 RDB_update_where_index(RDB_expression *texp, RDB_expression *condp,
         int updc, const RDB_attr_update updv[],
@@ -1406,7 +1420,8 @@ RDB_update_where_index(RDB_expression *texp, RDB_expression *condp,
 
     if (upd_complex(refexp->def.tbref.tbp, updc, updv, ecp)
         || RDB_expr_refers(texp->def.op.args.firstp->nextp, refexp->def.tbref.tbp)
-        || (condp != NULL && RDB_expr_refers(condp, refexp->def.tbref.tbp))) {
+        || (condp != NULL && RDB_expr_refers(condp, refexp->def.tbref.tbp))
+        || upd_refers_index(updc, updv, refexp->def.tbref.indexp)) {
         return update_where_index_complex(texp, condp, updc, updv,
                 getfn, getarg, ecp, txp);
     }

@@ -1253,6 +1253,12 @@ if {$dbenvname == "dbenv"} {
 38
 39
 TRUE
+35
+36
+937
+938
+939
+940
 }
 } else {
     set expected {*
@@ -1262,10 +1268,16 @@ TRUE
 38
 39
 TRUE
+35
+36
+937
+938
+939
+940
 }
 }
 
-test create_index {creating index} -setup $SETUP -cleanup $CLEANUP -match glob -body {
+test where_index {creating index and WHERE using index} -setup $SETUP -cleanup $CLEANUP -match glob -body {
     exec $testdir/../../dli/durodt -e $dbenvname -d D << {
         begin tx;
         var r real relation {ai int, ad float, ac string} key {ai};
@@ -1294,6 +1306,16 @@ test create_index {creating index} -setup $SETUP -cleanup $CLEANUP -match glob -
         begin tx;
         delete r where ac = '1';
         io.put(is_empty(r where ai = 1)); io.put_line('');
+        commit;
+
+        begin tx;
+        update r where ac >= '37' { ac := '9' || ac };
+        commit;
+        
+        begin tx;
+        for t in r where ai >= 35 order(ai asc);
+            io.put_line(t.ac);
+        end for;
         commit;
 
         begin tx;
