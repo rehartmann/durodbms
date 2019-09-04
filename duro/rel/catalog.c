@@ -2816,7 +2816,9 @@ error:
     if (subtx_active) {
         RDB_rollback(ecp, &tx);
     } else {
-        RDB_rollback(ecp, txp);
+        if (RDB_tx_is_running(txp)) {
+            RDB_rollback(ecp, txp);
+        }
     }
     if (idcondp != NULL)
         RDB_del_expr(idcondp, ecp);
