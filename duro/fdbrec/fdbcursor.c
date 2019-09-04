@@ -132,8 +132,43 @@ static int
 RDB_fdb_cursor_update(RDB_cursor *curp, int fieldc, const RDB_field fieldv[],
         RDB_exec_context *ecp)
 {
-    RDB_raise_not_supported("update by index cursor not available", ecp);
-	return RDB_ERROR;
+    int ret;
+    int skeylen;
+    void *key;
+    size_t key_length;
+    uint8_t *pkey;
+    void *value = curp->cur.fdb.value;
+    size_t value_length = curp->cur.fdb.value_length;
+    int prefix_length = RDB_fdb_key_index_prefix_length(curp->idxp);
+
+    memcpy(&skeylen, (uint8_t *)curp->cur.fdb.key + curp->cur.fdb.key_length - sizeof(int),
+            sizeof(int));
+    if (skeylen > curp->cur.fdb.key_length - sizeof(int)) {
+        RDB_raise_internal("invalid size of secondary index record", ecp);
+        return RDB_ERROR;
+    }
+    key_length = curp->cur.fdb.key_length - prefix_length - skeylen - sizeof(int);
+    pkey = RDB_fdb_prepend_key_prefix(curp->recmapp,
+            curp->cur.fdb.key + prefix_length + skeylen, key_length, ecp);
+    if (pkey == NULL) {
+        return RDB_ERROR;
+    }
+
+    key = malloc(key_length);
+    if (key == NULL) {
+        RDB_free(pkey);
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+    memcpy(key, pkey + prefix_length, key_length);
+
+    ret = RDB_update_fdb_kv(curp->recmapp, pkey, key_length + RDB_fdb_key_prefix_length(curp->recmapp),
+            &key, &key_length, &value, &value_length, fieldc, fieldv, curp->tx, ecp);
+
+    free(key);
+    RDB_free(pkey);
+
+    return ret;
 }
 
 int
@@ -145,13 +180,13 @@ RDB_fdb_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[],
     void *data = curp->cur.fdb.value;
     size_t data_length = (size_t)curp->cur.fdb.value_length;
 
-    if (curp->idxp != NULL)
-        return RDB_fdb_cursor_update(curp, fieldc, fields, ecp);
-
     if (RDB_recmap_is_key_update(curp->recmapp, fieldc, fields)) {
         RDB_raise_invalid_argument("Modifiying the key is not supported", ecp);
         return RDB_ERROR;
     }
+
+    if (curp->idxp != NULL)
+        return RDB_fdb_cursor_update(curp, fieldc, fields, ecp);
 
     for (i = 0; i < fieldc; i++) {
         ret = RDB_set_field_mem(curp->recmapp, &data, &data_length, &fields[i],
@@ -223,7 +258,7 @@ fdbkv_to_cursor(RDB_cursor *curp, const FDBKeyValue *fdbkv, RDB_exec_context *ec
     }
 
 	RDB_free(curp->cur.fdb.key);
-	RDB_free(curp->cur.fdb.value);
+	free(curp->cur.fdb.value);
 	curp->cur.fdb.key = curp->cur.fdb.value = NULL;
     if (fdbkv->key_length > 0) {
         curp->cur.fdb.key = RDB_alloc(fdbkv->key_length, ecp);
@@ -237,10 +272,11 @@ fdbkv_to_cursor(RDB_cursor *curp, const FDBKeyValue *fdbkv, RDB_exec_context *ec
     if (curp->idxp == NULL) {
         curp->cur.fdb.value_length = fdbkv->value_length;
         if (fdbkv->value_length > 0) {
-            curp->cur.fdb.value = RDB_alloc(fdbkv->value_length, ecp);
+            curp->cur.fdb.value = malloc(fdbkv->value_length);
             if (curp->cur.fdb.value == NULL) {
                 RDB_free(curp->cur.fdb.key);
                 curp->cur.fdb.key = NULL;
+                RDB_raise_no_memory(ecp);
                 return RDB_ERROR;
             }
             memcpy(curp->cur.fdb.value, fdbkv->value, fdbkv->value_length);
@@ -300,9 +336,10 @@ fdbkv_to_cursor(RDB_cursor *curp, const FDBKeyValue *fdbkv, RDB_exec_context *ec
             return RDB_ERROR;
         }
 
-        curp->cur.fdb.value = RDB_alloc(value_length, ecp);
+        curp->cur.fdb.value = malloc(value_length);
         if (curp->cur.fdb.value == NULL) {
             fdb_future_destroy(f);
+            RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
         memcpy(curp->cur.fdb.value, value, value_length);

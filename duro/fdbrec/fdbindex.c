@@ -108,11 +108,6 @@ RDB_populate_fdb_index(RDB_index *ixp, RDB_rec_transaction *rtxp, RDB_exec_conte
             RDB_raise_not_supported("delayed creation of unique index", ecp);
             RDB_destroy_fdb_cursor(curp, ecp);
             return RDB_ERROR;
-            /*
-            fdb_transaction_set((FDBTransaction*)rtxp, key_name, key_name_length,
-                    curp->cur.fdb.key + keyprefixlen,
-                    curp->cur.fdb.key_length - keyprefixlen);
-            */
         } else {
             int len = key_name_length + curp->cur.fdb.key_length - keyprefixlen + sizeof(int);
             int skeylen = key_name_length - RDB_fdb_key_index_prefix_length(ixp);
