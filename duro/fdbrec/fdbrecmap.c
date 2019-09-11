@@ -749,10 +749,82 @@ RDB_contains_fdb_rec(RDB_recmap *rmp, RDB_field fieldv[], RDB_rec_transaction *r
     return RDB_OK;
 }
 
+static int
+fdbrec_range_count(FDBTransaction *tx, const uint8_t *key_name, int key_name_length,
+        const uint8_t *end_key_name, int end_key_name_length, int offset, fdb_bool_t *out_more,
+        RDB_exec_context *ecp)
+{
+    int out_count;
+    const FDBKeyValue *out_kv;
+    FDBFuture *f = fdb_transaction_get_range(tx,
+            FDB_KEYSEL_FIRST_GREATER_OR_EQUAL(key_name, key_name_length) + offset,
+            FDB_KEYSEL_FIRST_GREATER_OR_EQUAL(end_key_name, end_key_name_length),
+            1, 0, FDB_STREAMING_MODE_WANT_ALL, 0, 0, 0);
+    fdb_error_t err = fdb_future_block_until_ready(f);
+    if (err != 0) {
+        RDB_handle_fdb_errcode(err, ecp, tx);
+        fdb_future_destroy(f);
+        return RDB_ERROR;
+    }
+    err = fdb_future_get_keyvalue_array(f, &out_kv, &out_count, out_more);
+    if (err != 0) {
+        RDB_handle_fdb_errcode(err, ecp, tx);
+        fdb_future_destroy(f);
+        return RDB_ERROR;
+    }
+    fdb_future_destroy(f);
+    return out_count;
+}
+
 int
 RDB_fdb_recmap_est_size(RDB_recmap *rmp, RDB_rec_transaction *rtxp, unsigned *sz,
-	RDB_exec_context *ecp)
+    RDB_exec_context *ecp)
 {
-	*sz = 0;
-	return RDB_OK;
+    int res;
+    uint8_t *key_name, *end_key_name;
+    int key_name_length;
+    fdb_bool_t out_more;
+
+    key_name_length = strlen(rmp->namp) + 3;
+
+    key_name = RDB_alloc(key_name_length, ecp);
+    if (key_name == NULL) {
+        return RDB_ERROR;
+    }
+    end_key_name = RDB_alloc(key_name_length, ecp);
+    if (end_key_name == NULL) {
+        RDB_free(key_name);
+        return RDB_ERROR;
+    }
+
+    // Get first tuple
+    strcpy(key_name, "t/");
+    strcat(key_name, rmp->namp);
+    key_name[key_name_length - 1] = (uint8_t) '/';
+    memcpy(end_key_name, key_name, key_name_length);
+    end_key_name[key_name_length - 1] = (uint8_t)('/' + 1);
+
+    res = fdbrec_range_count((FDBTransaction*)rtxp,
+        key_name, key_name_length, end_key_name, key_name_length, 0, &out_more, ecp);
+    if (res == RDB_ERROR) {
+        RDB_free(key_name);
+        RDB_free(end_key_name);
+        return RDB_ERROR;
+    }
+    if (res == 0) {
+        *sz = 0;
+        RDB_free(key_name);
+        RDB_free(end_key_name);
+        return RDB_OK;
+    }
+
+    res = fdbrec_range_count((FDBTransaction*)rtxp,
+            key_name, key_name_length, end_key_name, key_name_length, 200, &out_more, ecp);
+    RDB_free(key_name);
+    RDB_free(end_key_name);
+    if (res == RDB_ERROR) {
+        return RDB_ERROR;
+    }
+    *sz = out_more ? 400 : 100;
+    return RDB_OK;
 }
