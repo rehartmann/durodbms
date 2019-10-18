@@ -78,6 +78,7 @@ if postgresql == 'true':
     pglib = subprocess.check_output(['pg_config', '--libdir']).rstrip()
     env.Replace(LIBPATH = env['LIBPATH'] + [pglib])
     env.Append(CFLAGS = ' -DPOSTGRESQL')
+    durolibs = durolibs + ['pq']
 
 if foundationdb == 'true':
     env.Append(CFLAGS = ' -DFOUNDATIONDB')
