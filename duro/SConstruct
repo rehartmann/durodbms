@@ -41,7 +41,7 @@ else:
     default_prefix = '/usr/local'
     env.Replace(SHLIBSUFFIX = env['SHLIBSUFFIX'] + '.' + release)
     env.Replace(LIBS = ['ltdl', 'm'])
-    durolibs = ['ltdl', 'm', 'pq']
+    durolibs = ['ltdl', 'm']
 
 prefix = ARGUMENTS.get('prefix', default_prefix)
 
