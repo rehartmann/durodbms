@@ -68,4 +68,14 @@ RDB_fdb_prepend_key_prefix(RDB_recmap *, const void *, size_t, RDB_exec_context 
 uint8_t *
 RDB_fdb_prepend_key_index_prefix(RDB_index *, const void *, size_t, RDB_exec_context *);
 
+int
+RDB_delete_from_fdb_indexes(RDB_recmap *, uint8_t *, int,
+    uint8_t *, int, RDB_rec_transaction *, RDB_exec_context *);
+
+int
+RDB_update_fdb_kv(RDB_recmap *, uint8_t *, int,
+        void **, size_t *, void **, size_t *,
+        int, const RDB_field[],
+        RDB_rec_transaction *, RDB_exec_context *);
+
 #endif /* FDBREC_FDBRECMAP_H_ */

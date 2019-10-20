@@ -15,11 +15,12 @@
 #include <rec/indeximpl.h>
 #include <treerec/field.h>
 #include <obj/excontext.h>
+#include "fdbrecmap.h"
+
+#include <string.h>
 
 #define FDB_API_VERSION 600
 #include <foundationdb/fdb_c.h>
-
-#include <string.h>
 
 /*
  * Allocate and initialize a RDB_cursor structure.
@@ -515,12 +516,6 @@ RDB_fdb_cursor_prev(RDB_cursor *curp, RDB_exec_context *ecp)
 {
     RDB_raise_not_supported("scrolling backward not supported", ecp);
 	return RDB_ERROR;
-}
-
-static int
-RDB_fdb_key_index_prefix_length(RDB_index *ixp)
-{
-    return strlen(ixp->namp) + 3;
 }
 
 static uint8_t *

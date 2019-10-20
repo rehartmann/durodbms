@@ -6,6 +6,8 @@
 #ifndef FDBREC_FDBENV_H_
 #define FDBREC_FDBENV_H_
 
+#include <stdlib.h>
+
 #define FDB_API_VERSION 600 
 #include <foundationdb/fdb_c.h>
 

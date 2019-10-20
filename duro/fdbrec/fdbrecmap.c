@@ -14,6 +14,8 @@
 #include <treerec/field.h>
 #include <treerec/treerecmap.h>
 
+#include <string.h>
+
 #define FDB_API_VERSION 600
 #include <foundationdb/fdb_c.h>
 
@@ -213,6 +215,31 @@ full_skey(RDB_index *ixp, uint8_t *key_name, int key_name_length, uint8_t *pkey,
 }
 
 static int
+RDB_fdb_key_exists(uint8_t *key_name, int key_name_length, FDBTransaction *tx,
+        RDB_exec_context *ecp, RDB_bool *resultp)
+{
+    fdb_bool_t present;
+    uint8_t* out_value;
+    int out_value_length;
+    FDBFuture *f = fdb_transaction_get(tx, key_name, key_name_length, 0);
+    fdb_error_t err = fdb_future_block_until_ready(f);
+    if (err != 0) {
+        fdb_future_destroy(f);
+        RDB_handle_fdb_errcode(err, ecp, tx);
+        return RDB_ERROR;
+    }
+    err = fdb_future_get_value(f, &present, &out_value, &out_value_length);
+    if (err != 0) {
+        fdb_future_destroy(f);
+        RDB_handle_fdb_errcode(err, ecp, tx);
+        return RDB_ERROR;
+    }
+    *resultp = present ? RDB_TRUE : RDB_FALSE;
+    fdb_future_destroy(f);
+    return RDB_OK;
+}
+
+static int
 insert_into_fdb_indexes(RDB_recmap *rmp, uint8_t *key, int key_length, void *value, int valuelen,
         RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
@@ -297,31 +324,6 @@ error:
     RDB_free(key_name);
     RDB_free(key_name_length);
     return RDB_ERROR;
-}
-
-static int
-RDB_fdb_key_exists(uint8_t *key_name, int key_name_length, FDBTransaction *tx,
-        RDB_exec_context *ecp, RDB_bool *resultp)
-{
-    fdb_bool_t present;
-    uint8_t* out_value;
-    int out_value_length;
-    FDBFuture *f = fdb_transaction_get(tx, key_name, key_name_length, 0);
-    fdb_error_t err = fdb_future_block_until_ready(f);
-    if (err != 0) {
-        fdb_future_destroy(f);
-        RDB_handle_fdb_errcode(err, ecp, tx);
-        return RDB_ERROR;
-    }
-    err = fdb_future_get_value(f, &present, &out_value, &out_value_length);
-    if (err != 0) {
-        fdb_future_destroy(f);
-        RDB_handle_fdb_errcode(err, ecp, tx);
-        return RDB_ERROR;
-    }
-    *resultp = present ? RDB_TRUE : RDB_FALSE;
-    fdb_future_destroy(f);
-    return RDB_OK;
 }
 
 int

@@ -35,7 +35,7 @@ RDB_win_event_loop(_In_ LPVOID lpParameter)
 }
 #endif
 
-static int
+int
 RDB_fdb_close_env(RDB_environment *envp, RDB_exec_context *ecp)
 {
     if (RDB_fdb_resultf != NULL) {

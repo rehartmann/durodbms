@@ -11,9 +11,13 @@
 #include <rec/indeximpl.h>
 #include <rec/recmapimpl.h>
 #include <rec/cursorimpl.h>
+#include <treerec/field.h>
+#include <treerec/treerecmap.h>
 #include <gen/strfns.h>
 #include <obj/excontext.h>
 #include <obj/builtintypes.h>
+
+#include <string.h>
 
 #define FDB_API_VERSION 600
 #include <foundationdb/fdb_c.h>
@@ -246,14 +250,14 @@ RDB_delete_fdb_index(RDB_index *ixp, RDB_rec_transaction *rtxp,
 
 static int
 RDB_fdb_index_get(RDB_index *ixp, RDB_field keyv[], RDB_rec_transaction *rtxp,
-        uint8_t **value, int *value_length, int *pkey_name_length,
+        const uint8_t **value, int *value_length, int *pkey_name_length,
         RDB_exec_context *ecp)
 {
     size_t keylen;
     void *key;
     uint8_t *key_name;
     int key_name_length;
-    uint8_t *pkey;
+    const uint8_t *pkey;
     int pkey_length;
     int i;
     fdb_error_t err;
@@ -345,7 +349,7 @@ int
 RDB_fdb_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc,
         RDB_rec_transaction *rtxp, RDB_field retfieldv[], RDB_exec_context *ecp)
 {
-    uint8_t *value;
+    const uint8_t *value;
     int value_length;
     int pkey_name_length;
     int recmap_prefix_length = RDB_fdb_key_prefix_length(ixp->rmp);
@@ -357,7 +361,7 @@ RDB_fdb_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc,
 
     ret = RDB_get_mem_fields(ixp->rmp, RDB_fdb_key_name + recmap_prefix_length,
             (size_t) (pkey_name_length - recmap_prefix_length),
-            value, (size_t) value_length, fieldc, retfieldv);
+            (void *) value, (size_t) value_length, fieldc, retfieldv);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp);
         return RDB_ERROR;
@@ -369,7 +373,7 @@ int
 RDB_fdb_index_delete_rec(RDB_index *ixp, RDB_field keyv[], RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
 {
-    uint8_t *value;
+    const uint8_t *value;
     int value_length;
     int pkey_name_length;
     int ret = RDB_fdb_index_get(ixp, keyv, rtxp, &value, &value_length,

@@ -240,7 +240,7 @@ env.Command('docs/api/html/index.html',
 env.Alias('javadocs', 'docs/javadoc/index.html')
 
 env.Command('docs/javadoc/index.html', Glob('../jduro/src/net/sf/duro/*.java'),
-        'javadoc -d docs/javadoc -classpath ../jduro/src:../jduro/lib/javax.json.jar net.sf.duro')
+        'javadoc -d docs/javadoc -classpath ../jduro/src:../jduro/lib/javax.json.jar:../jduro/lib/javax.json-api-1.1.jar net.sf.duro')
 
 #
 # Defaults
