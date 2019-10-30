@@ -29,7 +29,6 @@ new_fdb_index(RDB_recmap *rmp, const char *name,
 {
     int i;
     RDB_index *ixp;
-    RDB_bool all_cmpfn = RDB_TRUE;
 
     ixp = RDB_alloc(sizeof(RDB_index), ecp);
     if (ixp == NULL) {
@@ -184,7 +183,6 @@ RDB_open_fdb_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
         const RDB_compare_field cmpv[], int flags, RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
 {
-    int ret;
     RDB_index *ixp = new_fdb_index(rmp, namp, fieldc, fieldv, flags, ecp);
     if (ixp == NULL)
         return NULL;
@@ -194,10 +192,6 @@ RDB_open_fdb_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     rmp->indexes = ixp;
 
     return ixp;
-
-error:
-    RDB_close_fdb_index(ixp, ecp);
-    return NULL;
 }
 
 int

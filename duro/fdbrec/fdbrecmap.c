@@ -30,7 +30,6 @@ new_recmap(const char *namp, const char *filenamp,
 	RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[],
 	int keyfieldc, int flags, RDB_exec_context *ecp)
 {
-	int ret;
 	RDB_recmap *rmp = RDB_new_recmap(namp, filenamp, envp, fieldc, fieldinfov,
 		keyfieldc, flags, ecp);
 	if (rmp == NULL)
@@ -162,8 +161,9 @@ RDB_fdb_prepend_key_prefix(RDB_recmap *rmp, const void *key, size_t keylen, RDB_
 {
 	size_t namelen = strlen(rmp->namp);
     uint8_t *key_name = RDB_alloc(RDB_fdb_key_prefix_length(rmp) + keylen, ecp);
-    if (key_name == NULL)
-        return NULL;
+    if (key_name == NULL) {
+    	return NULL;
+    }
 
 	memcpy(key_name, "t/", 2);
 	memcpy(key_name + 2, rmp->namp, namelen);
@@ -219,7 +219,7 @@ RDB_fdb_key_exists(uint8_t *key_name, int key_name_length, FDBTransaction *tx,
         RDB_exec_context *ecp, RDB_bool *resultp)
 {
     fdb_bool_t present;
-    uint8_t* out_value;
+    uint8_t const* out_value;
     int out_value_length;
     FDBFuture *f = fdb_transaction_get(tx, key_name, key_name_length, 0);
     fdb_error_t err = fdb_future_block_until_ready(f);
@@ -335,10 +335,6 @@ RDB_insert_fdb_rec(RDB_recmap *rmp, RDB_field fieldv[], RDB_rec_transaction *rtx
 	uint8_t *key_name;
 	int key_name_length;
 	int ret;
-    uint8_t* out_value;
-    int out_value_length;
-    fdb_bool_t present;
-    fdb_error_t err;
     int prefix_length;
     RDB_bool exists;
 
@@ -389,7 +385,6 @@ RDB_update_fdb_kv(RDB_recmap *rmp, uint8_t *key_name, int key_name_length,
 {
     int i;
     int ret;
-    fdb_error_t err;
     RDB_bool exists;
 
     if (RDB_recmap_is_key_update(rmp, fieldc, fieldv)) {
@@ -467,7 +462,7 @@ RDB_update_fdb_rec(RDB_recmap *rmp, RDB_field keyv[],
     uint8_t *key_name;
     int key_name_length;
     int value_length;
-    uint8_t *value;
+    const uint8_t *value;
     size_t key_length;
     void *key;
     size_t data_length;
@@ -541,7 +536,7 @@ RDB_update_fdb_rec(RDB_recmap *rmp, RDB_field keyv[],
 
 int
 RDB_delete_from_fdb_indexes(RDB_recmap *rmp, uint8_t *key, int key_length,
-    uint8_t *value, int value_length, RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
+    const uint8_t *value, int value_length, RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     void *skey = NULL;
     size_t skeylen;
@@ -585,7 +580,7 @@ RDB_delete_fdb_kv(RDB_recmap *rmp, uint8_t *key_name, int key_name_length,
     RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     if (rmp->indexes != NULL) {
-        uint8_t *value;
+        const uint8_t *value;
         int value_length;
         fdb_bool_t present;
         fdb_error_t err;
@@ -631,7 +626,7 @@ RDB_delete_fdb_rec(RDB_recmap *rmp, int fieldc, RDB_field keyv[],
     }
     ret = RDB_delete_fdb_kv(rmp, key_name, key_name_length, rtxp, ecp);
     RDB_free(key_name);
-	return RDB_OK;
+	return ret;
 }
 
 int
@@ -640,7 +635,7 @@ RDB_get_fdb_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
 {
     int key_name_length;
     int ret;
-    uint8_t *value;
+    const uint8_t *value;
     int value_length;
     fdb_bool_t present;
     fdb_error_t err;
@@ -800,8 +795,8 @@ RDB_fdb_recmap_est_size(RDB_recmap *rmp, RDB_rec_transaction *rtxp, unsigned *sz
     }
 
     // Get first tuple
-    strcpy(key_name, "t/");
-    strcat(key_name, rmp->namp);
+    strcpy((char *)key_name, "t/");
+    strcat((char *)key_name, rmp->namp);
     key_name[key_name_length - 1] = (uint8_t) '/';
     memcpy(end_key_name, key_name, key_name_length);
     end_key_name[key_name_length - 1] = (uint8_t)('/' + 1);

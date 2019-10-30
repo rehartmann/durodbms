@@ -25,8 +25,8 @@ int
 RDB_fields_to_mem(RDB_recmap *, int, const RDB_field[], void **, size_t *);
 
 int
-RDB_get_mem_fields(RDB_recmap *, void *, size_t,
-        void *, size_t, int fieldc, RDB_field[]);
+RDB_get_mem_fields(RDB_recmap *, const void *, size_t,
+        const void *, size_t, int fieldc, RDB_field[]);
 
 int
 RDB_set_field_mem(RDB_recmap *, void **, size_t *,

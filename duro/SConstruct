@@ -82,7 +82,7 @@ if postgresql == 'true':
 
 if foundationdb == 'true':
     env.Append(CFLAGS = ' -DFOUNDATIONDB')
-    env.Replace(LIBS = ['fdb_c'])
+    env.Append(LIBS = ['fdb_c'])
     durolibs = durolibs + ['fdb_c']
 
 #

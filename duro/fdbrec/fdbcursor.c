@@ -14,6 +14,7 @@
 #include <rec/recmapimpl.h>
 #include <rec/indeximpl.h>
 #include <treerec/field.h>
+#include <treerec/treerecmap.h>
 #include <obj/excontext.h>
 #include "fdbrecmap.h"
 
@@ -215,7 +216,7 @@ RDB_fdb_cursor_delete(RDB_cursor *curp, RDB_exec_context *ecp)
     if (curp->idxp == NULL) {
         fdb_transaction_clear((FDBTransaction*)curp->tx, curp->cur.fdb.key, curp->cur.fdb.key_length);
         return RDB_delete_from_fdb_indexes(curp->recmapp, curp->cur.fdb.key, curp->cur.fdb.key_length,
-            curp->cur.fdb.value, curp->cur.fdb.value_length, (FDBTransaction*)curp->tx, ecp);
+            curp->cur.fdb.value, curp->cur.fdb.value_length, (RDB_rec_transaction *)curp->tx, ecp);
     } else {
         int pkeylen;
         int skeylen;
@@ -243,7 +244,7 @@ RDB_fdb_cursor_delete(RDB_cursor *curp, RDB_exec_context *ecp)
         }
 
         res = RDB_delete_fdb_kv(curp->recmapp, pkey, pkeylen + RDB_fdb_key_prefix_length(curp->recmapp),
-                (FDBTransaction*)curp->tx, ecp);
+                (RDB_rec_transaction *)curp->tx, ecp);
         RDB_free(pkey);
         return res;
     }
@@ -286,15 +287,12 @@ fdbkv_to_cursor(RDB_cursor *curp, const FDBKeyValue *fdbkv, RDB_exec_context *ec
         int pkeylen;
         int skeylen;
         int value_length;
-        uint8_t *value;
-        int pkey_length;
+        const uint8_t *value;
         uint8_t *pkey;
         FDBFuture *f;
         fdb_error_t err;
         fdb_bool_t present;
         int iprefixlen = RDB_fdb_key_index_prefix_length(curp->idxp);
-
-        int i;
 
         if (fdbkv->key_length < iprefixlen + sizeof(int)) {
             RDB_raise_internal("invalid key record size", ecp);
@@ -358,7 +356,6 @@ int
 RDB_fdb_cursor_first(RDB_cursor *curp, RDB_exec_context *ecp)
 {
 	fdb_error_t err;
-	fdb_bool_t out_present;
 	FDBFuture* f;
 	const FDBKeyValue *out_kv;
 	int out_count;
@@ -429,7 +426,6 @@ int
 RDB_fdb_cursor_next(RDB_cursor *curp, int flags, RDB_exec_context *ecp)
 {
 	fdb_error_t err;
-	fdb_bool_t out_present;
 	FDBFuture* f;
 	const FDBKeyValue *out_kv;
 	int out_count;

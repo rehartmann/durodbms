@@ -15,6 +15,8 @@
 #define FDB_API_VERSION 600
 #include <foundationdb/fdb_c.h>
 
+#include <string.h>
+
 RDB_sequence *
 RDB_open_fdb_sequence(const char *cname, const char *filename,
         RDB_environment *envp, RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
@@ -120,7 +122,6 @@ RDB_fdb_sequence_next(RDB_sequence *seqp, RDB_rec_transaction *rtxp, RDB_int *va
     fdb_bool_t present;
     fdb_error_t err;
     FDBFuture *f;
-    RDB_int *value;
     int key_length = 2 + strlen(seqp->cnamp);
     
     key = RDB_alloc(key_length, ecp);

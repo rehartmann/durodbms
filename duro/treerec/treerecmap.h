@@ -53,6 +53,6 @@ RDB_bool
 RDB_recmap_is_key_update(RDB_recmap *, int, const RDB_field[]);
 
 int
-RDB_make_skey(RDB_index *, void *, size_t, void *, size_t, void **, size_t *);
+RDB_make_skey(RDB_index *, const void *, size_t, const void *, size_t, void **, size_t *);
 
 #endif /* TREEREC_AVLRECMAP_H_ */

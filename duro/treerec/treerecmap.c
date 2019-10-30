@@ -196,7 +196,7 @@ value_to_mem(RDB_recmap *rmp, RDB_field fldv[], void **valuep, size_t *valuelen)
 }
 
 int
-RDB_make_skey(RDB_index *ixp, void *key, size_t keylen, void *value, size_t valuelen,
+RDB_make_skey(RDB_index *ixp, const void *key, size_t keylen, const void *value, size_t valuelen,
         void **skeyp, size_t *skeylenp)
 {
     RDB_field *fieldv;

@@ -20,7 +20,7 @@
 #include <db.h>
 
 static int
-compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p, size_t *locp)
+compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p)
 {
     int i;
     RDB_index *ixp = dbp->app_private;

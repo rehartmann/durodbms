@@ -233,8 +233,8 @@ error:
 }
 
 int
-RDB_get_mem_fields(RDB_recmap *rmp, void *key, size_t keylen,
-        void *value, size_t valuelen, int fieldc, RDB_field retfieldv[])
+RDB_get_mem_fields(RDB_recmap *rmp, const void *key, size_t keylen,
+        const void *value, size_t valuelen, int fieldc, RDB_field retfieldv[])
 {
     int i;
 

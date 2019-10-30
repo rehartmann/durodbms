@@ -68,7 +68,7 @@ error:
  * Compares records by comparing the fields.
  */
 static int
-compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p, size_t *locp)
+compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p)
 {
     int i;
     int res;
