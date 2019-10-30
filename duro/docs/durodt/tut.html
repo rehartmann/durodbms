@@ -465,6 +465,15 @@ no db>
 <p>Creating a PostgreSQL database using Duro D/T is not supported.
 This has to be done using one of the PostgreSQL utilities, e.g. <code>createdb</code>.
 
+<p>If DuroDBMS has been built with FoundationDB support,
+a FoundationDB database can be used as a database environment
+by passing a PostgreSQL URI to connect(), e.g.:
+
+<pre>
+no db> connect('foundationdb://');
+no db>
+</pre>
+
 <p>After a database environment was created and/or connected to, a
 database can be created using the built-in
 update operator create_db().</p>
