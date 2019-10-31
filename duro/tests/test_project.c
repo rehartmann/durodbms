@@ -44,10 +44,13 @@ print_table2(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     RDB_object *tplp;
     RDB_object array;
     RDB_int i;
+    RDB_seq_item seq;
 
     RDB_init_obj(&array);
 
-    ret = RDB_table_to_array(&array, tbp, 0, NULL, 0, ecp, txp);
+    seq.asc = RDB_TRUE;
+    seq.attrname = "EMPNO";
+    ret = RDB_table_to_array(&array, tbp, 1, &seq, 0, ecp, txp);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -155,7 +158,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
-    RDB_add_arg(exp, argp);    
+    RDB_add_arg(exp, argp);
 
     argp = RDB_string_to_expr("NAME", ecp);
     if (argp == NULL) {
@@ -163,7 +166,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
-    RDB_add_arg(exp, argp);    
+    RDB_add_arg(exp, argp);
 
     vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     if (vtbp == NULL) {
