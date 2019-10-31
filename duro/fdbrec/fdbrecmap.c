@@ -640,7 +640,7 @@ RDB_get_fdb_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc,
     fdb_bool_t present;
     fdb_error_t err;
 
-    if (RDB_fdb_key_name == NULL) {
+    if (RDB_fdb_key_name != NULL) {
         RDB_free(RDB_fdb_key_name);
         RDB_fdb_key_name = NULL;
     }
