@@ -20,7 +20,7 @@
 #include <db.h>
 
 static int
-compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p)
+compare_idx_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p, size_t *locp)
 {
     int i;
     RDB_index *ixp = dbp->app_private;
@@ -85,7 +85,7 @@ new_index(RDB_recmap *rmp, const char *name, const char *filename,
          */
         if (all_cmpfn) {
             ixp->impl.dbp->app_private = ixp;
-            ixp->impl.dbp->set_bt_compare(ixp->impl.dbp, &compare_key);
+            ixp->impl.dbp->set_bt_compare(ixp->impl.dbp, &compare_idx_key);
         }
     }
 
