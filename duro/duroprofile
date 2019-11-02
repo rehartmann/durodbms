@@ -3,3 +3,5 @@ LD_LIBRARY_PATH=$PWD:/usr/local/lib
 export LD_LIBRARY_PATH
 TCLLIBPATH=$PWD
 export TCLLIBPATH
+CFLAGS="-g -Wall"
+export CFLAGS

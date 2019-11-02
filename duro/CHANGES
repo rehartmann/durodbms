@@ -16,6 +16,8 @@ DuroDBMS 1.7
 - Fixed problems in ||, upper(), and lower() which could cause the string
   length being set incorrectly.
 
+- Fixed bug that caused the program to crash when sorting using an index.
+
 - Added support for NaN.
 
 DuroDBMS 1.6

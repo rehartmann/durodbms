@@ -1215,8 +1215,8 @@ RDB_table_iterator(RDB_object *tbp,
                    RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
-    RDB_qresult *qrp;
     RDB_expression *texp;
+    RDB_qresult *qrp = NULL;
 
     for (i = 0; i < seqitc; i++) {
         RDB_type *attrtyp = RDB_type_attr_type(RDB_obj_type(tbp),
@@ -1250,7 +1250,8 @@ RDB_table_iterator(RDB_object *tbp,
             if (RDB_sorter(texp, &qrp, ecp, txp, seqitc, seqitv) != RDB_OK)
                 return NULL;
         }
-    } else {
+    }
+    if (qrp == NULL) {
         qrp = RDB_expr_qresult(texp, ecp, txp);
         if (qrp == NULL) {
             return NULL;

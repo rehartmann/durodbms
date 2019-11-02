@@ -564,6 +564,26 @@ test join_extend {Natural JOIN/EXTEND}  -setup $SETUP -cleanup $CLEANUP -body {
 2 y 1 yy
 }
 
+test sort_using_index {sort output using index}  -setup $SETUP -cleanup $CLEANUP -match glob -body {
+    exec $testdir/../../dli/durodt  -e $dbenvname << {
+        current_db := 'D';
+
+        begin tx;
+        var r real rel {n int, s string} key {n};
+        insert r rel {tup {n 1, s 'Xxx'},
+        			  tup {n 2, s 'Abc'},
+        			  tup {n 3, s 'B'}};
+		index r_s r(s);
+		var t tup{n int, s string};
+		for t in r order (s asc);
+		    io.put_line(t.s);
+		end for;
+	}
+} -result {Abc
+B
+Xxx
+}
+
 test join_rename_index {JOIN with index}  -setup $SETUP -cleanup $CLEANUP -match glob -body {
     exec $testdir/../../dli/durodt  -e $dbenvname << {
         current_db := 'D';
