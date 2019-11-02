@@ -17,20 +17,20 @@
 static RDB_bool RDB_fdb_initialized = RDB_FALSE;
 
 void *
-RDB_event_loop(void *arg)
+RDB_fdb_event_loop(void *arg)
 {
     int err = fdb_run_network();
     if (err != 0) {
-        printf("error %d\n", err);
+        fprintf(stderr, "error %d\n", err);
     }
     return NULL;
 }
 
 #ifdef _WIN32
 DWORD WINAPI
-RDB_win_event_loop(_In_ LPVOID lpParameter)
+RDB_fdb_win_event_loop(_In_ LPVOID lpParameter)
 {
-    RDB_event_loop(NULL);
+    RDB_fdb_event_loop(NULL);
     return (DWORD) 0;
 }
 #endif
@@ -83,9 +83,9 @@ RDB_fdb_open_env(const char *path, RDB_exec_context *ecp)
             return NULL;
         }
 #ifdef _WIN32
-        if (CreateThread(NULL, 0, &RDB_win_event_loop, NULL, 0, NULL) == NULL) {
+        if (CreateThread(NULL, 0, &RDB_fdb_win_event_loop, NULL, 0, NULL) == NULL) {
 #else
-        if (pthread_create(&thread, NULL, &RDB_event_loop, NULL) != 0) {
+        if (pthread_create(&thread, NULL, &RDB_fdb_event_loop, NULL) != 0) {
 #endif
             RDB_raise_system("thread creation failed", ecp);
             return NULL;
