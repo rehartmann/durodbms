@@ -19,14 +19,14 @@ extern FDBFuture *RDB_fdb_resultf;
 extern uint8_t *RDB_fdb_key_name;
 
 RDB_recmap *
-RDB_create_fdb_recmap(const char *, const char *,
+RDB_create_fdb_recmap(const char *,
         RDB_environment *, int, const RDB_field_info[], int,
         int, const RDB_compare_field[], int,
         int, const RDB_string_vec *,
         RDB_rec_transaction *, RDB_exec_context *);
 
 RDB_recmap *
-RDB_open_fdb_recmap(const char *, const char *,
+RDB_open_fdb_recmap(const char *,
         RDB_environment *, int, const RDB_field_info[], int,
         RDB_rec_transaction *, RDB_exec_context *);
 

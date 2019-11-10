@@ -25,8 +25,8 @@
  * the existing recmap is deleted.
  */
 RDB_recmap *
-RDB_create_recmap(const char *name, const char *filename,
-        RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[], int keyfieldc,
+RDB_create_recmap(const char *name, RDB_environment *envp,
+		int fieldc, const RDB_field_info fieldinfov[], int keyfieldc,
         int cmpc, const RDB_compare_field cmpv[], int flags,
         int keyc, const RDB_string_vec *keyv,
         RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
@@ -34,7 +34,7 @@ RDB_create_recmap(const char *name, const char *filename,
     if (envp == NULL)
         return RDB_create_tree_recmap(fieldc, fieldinfov,
             keyfieldc, cmpc, cmpv, flags, keyc, keyv, NULL, ecp);
-    return (*envp->create_recmap_fn)(name, filename, envp, fieldc, fieldinfov,
+    return (*envp->create_recmap_fn)(name, envp, fieldc, fieldinfov,
             keyfieldc, cmpc, cmpv, flags, keyc, keyv, rtxp, ecp);
 }
 
@@ -43,11 +43,11 @@ RDB_create_recmap(const char *name, const char *filename,
  * envp may not be NULL.
  */
 RDB_recmap *
-RDB_open_recmap(const char *name, const char *filename,
-       RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[], int keyfieldc,
+RDB_open_recmap(const char *name, RDB_environment *envp,
+       int fieldc, const RDB_field_info fieldinfov[], int keyfieldc,
        RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
-    return (*envp->open_recmap_fn)(name, filename, envp, fieldc, fieldinfov,
+    return (*envp->open_recmap_fn)(name, envp, fieldc, fieldinfov,
             keyfieldc, rtxp, ecp);
 }
 

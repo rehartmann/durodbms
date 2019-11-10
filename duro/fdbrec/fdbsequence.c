@@ -18,7 +18,7 @@
 #include <string.h>
 
 RDB_sequence *
-RDB_open_fdb_sequence(const char *cname, const char *filename,
+RDB_open_fdb_sequence(const char *cname,
         RDB_environment *envp, RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     uint8_t *key;
@@ -162,7 +162,7 @@ error:
 
 int
 RDB_rename_fdb_sequence(const char *oldname, const char *newname,
-        const char *filename, RDB_environment *envp, RDB_rec_transaction *rtxp,
+        RDB_environment *envp, RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
 {
     uint8_t const* out_value;

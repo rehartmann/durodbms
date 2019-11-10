@@ -45,17 +45,17 @@ typedef struct RDB_environment {
 
     /* Functions implementing environment close and recmap functions */
     int (*close_fn)(struct RDB_environment *, RDB_exec_context *);
-    RDB_recmap *(*create_recmap_fn)(const char *, const char *,
+    RDB_recmap *(*create_recmap_fn)(const char *,
             RDB_environment *, int, const RDB_field_info[], int,
             int, const RDB_compare_field[], int,
             int, const RDB_string_vec *,
             RDB_rec_transaction *, RDB_exec_context *);
-    RDB_recmap *(*open_recmap_fn)(const char *, const char *,
+    RDB_recmap *(*open_recmap_fn)(const char *,
             RDB_environment *, int, const RDB_field_info[], int,
             RDB_rec_transaction *, RDB_exec_context *);
-    RDB_sequence *(*open_sequence_fn)(const char *, const char *, RDB_environment *,
+    RDB_sequence *(*open_sequence_fn)(const char *, RDB_environment *,
             RDB_rec_transaction *, RDB_exec_context *);
-    int (*rename_sequence_fn)(const char *, const char *, const char *, RDB_environment *,
+    int (*rename_sequence_fn)(const char *, const char *, RDB_environment *,
             RDB_rec_transaction *, RDB_exec_context *);
     RDB_rec_transaction *(*begin_tx_fn)(RDB_environment *,
             RDB_rec_transaction *, RDB_exec_context *);

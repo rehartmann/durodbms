@@ -223,13 +223,17 @@ RDB_create_tbindex(RDB_object *tbp, RDB_tbindex *indexp, RDB_environment *envp,
     /* Create record-layer index */
     indexp->idxp = RDB_create_index(tbp->val.tbp->stp->recmapp,
                   RDB_table_is_persistent(tbp) ? indexp->name : NULL,
-                  RDB_table_is_persistent(tbp) ? RDB_DATAFILE : NULL,
                   txp != NULL ? envp : NULL, indexp->attrc, fieldv, cmpv, flags,
                   txp != NULL ? txp->tx : NULL, ecp);
     if (indexp->idxp == NULL) {
         RDB_handle_err(ecp, txp);
         ret = RDB_ERROR;
     } else {
+    	if (envp != NULL && RDB_env_queries(envp)) {
+    		/* Can't use index directly, so remove reference */
+    		RDB_close_index(indexp->idxp, ecp);
+    		indexp->idxp = NULL;
+    	}
         ret = RDB_OK;
     }
 
@@ -591,7 +595,6 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
     }
     tbp->val.tbp->stp->recmapp = RDB_create_recmap(RDB_table_is_persistent(tbp) ?
             (rmname == NULL ? RDB_table_name(tbp) : rmname) : NULL,
-            RDB_table_is_persistent(tbp) ? RDB_DATAFILE : NULL,
             RDB_table_is_persistent(tbp) ? envp : NULL,
             attrc, finfov, piattrc, cmpc, cmpv, flags,
             tbp->val.tbp->keyc - 1, tbp->val.tbp->keyv + 1,
@@ -742,7 +745,7 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
     if (ret != RDB_OK)
         return RDB_ERROR;
 
-    tbp->val.tbp->stp->recmapp = RDB_open_recmap(rmname, RDB_DATAFILE, envp,
+    tbp->val.tbp->stp->recmapp = RDB_open_recmap(rmname, envp,
             attrc, finfov, piattrc, txp != NULL ? txp->tx : NULL, ecp);
     if (tbp->val.tbp->stp->recmapp == NULL) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_RESOURCE_NOT_FOUND_ERROR) {
@@ -842,7 +845,6 @@ RDB_open_tbindex(RDB_object *tbp, RDB_tbindex *indexp,
     /* open index */
     indexp->idxp = RDB_open_index(tbp->val.tbp->stp->recmapp,
                   RDB_table_is_persistent(tbp) ? indexp->name : NULL,
-                  RDB_table_is_persistent(tbp) ? RDB_DATAFILE : NULL,
                   envp, indexp->attrc, fieldv, cmpv, indexp->unique ? RDB_UNIQUE : 0,
                   txp != NULL ? txp->tx : NULL, ecp);
     if (indexp->idxp == NULL) {

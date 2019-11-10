@@ -142,7 +142,7 @@ make_skey(DB *dbp, const DBT *pkeyp, const DBT *pdatap, DBT *skeyp)
  * it must be array of size fieldc specifying the order. cmpv[].fno is ignored.
  */
 RDB_index *
-RDB_create_bdb_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
+RDB_create_bdb_index(RDB_recmap *rmp, const char *namp,
         RDB_environment *envp, int fieldc, const RDB_field_descriptor fieldv[],
         const RDB_compare_field cmpv[], int flags, RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
@@ -157,12 +157,14 @@ RDB_create_bdb_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     for (i = 0; i < fieldc; i++) {
         fnov[i] = fieldv[i].no;
     }
-    ixp = new_index(rmp, namp, filenamp, envp, fieldc, fnov, cmpv, flags, ecp);
+    ixp = new_index(rmp, namp, namp != NULL ? RDB_DATAFILE : NULL,
+    		envp, fieldc, fnov, cmpv, flags, ecp);
     RDB_free(fnov);
     if (ixp == NULL)
         return NULL;
 
-    ret = ixp->impl.dbp->open(ixp->impl.dbp, (DB_TXN *) rtxp, filenamp, namp,
+    ret = ixp->impl.dbp->open(ixp->impl.dbp, (DB_TXN *) rtxp,
+    		envp != NULL ? RDB_DATAFILE : NULL, namp,
             RDB_ORDERED & flags ? DB_BTREE : DB_HASH, DB_CREATE, 0664);
     if (ret != 0) {
         RDB_errcode_to_error(ret, ecp);
@@ -187,17 +189,19 @@ error:
 }
 
 RDB_index *
-RDB_open_bdb_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
+RDB_open_bdb_index(RDB_recmap *rmp, const char *namp,
         RDB_environment *envp, int fieldc, const int fieldv[],
         const RDB_compare_field cmpv[], int flags, RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
 {
     int ret;
-    RDB_index *ixp = new_index(rmp, namp, filenamp, envp, fieldc, fieldv, cmpv, flags, ecp);
+    RDB_index *ixp = new_index(rmp, namp, envp != NULL ? RDB_DATAFILE : NULL,
+    		envp, fieldc, fieldv, cmpv, flags, ecp);
     if (ixp == NULL)
         return NULL;
 
-    ret = ixp->impl.dbp->open(ixp->impl.dbp, (DB_TXN *) rtxp, filenamp, namp, DB_UNKNOWN, 0, 0664);
+    ret = ixp->impl.dbp->open(ixp->impl.dbp, (DB_TXN *) rtxp, envp != NULL ? RDB_DATAFILE : NULL,
+    		namp, DB_UNKNOWN, 0, 0664);
     if (ret != 0) {
         RDB_errcode_to_error(ret, ecp);
         goto error;

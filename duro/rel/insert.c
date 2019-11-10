@@ -97,7 +97,7 @@ RDB_insert_nonvirtual(RDB_object *tbp, const RDB_object *tplp,
                         }
 
                         dflp->seqp = RDB_open_sequence(RDB_obj_string(&seqname),
-                                RDB_DATAFILE, RDB_db_env(RDB_tx_db(txp)), txp->tx, ecp);
+                                RDB_db_env(RDB_tx_db(txp)), txp->tx, ecp);
                         if (dflp->seqp == NULL) {
                             RDB_destroy_obj(&seqname, ecp);
                             RDB_handle_err(ecp, txp);

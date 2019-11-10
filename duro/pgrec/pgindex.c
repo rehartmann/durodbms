@@ -38,7 +38,7 @@ new_min_index(const char *name, RDB_recmap *rmp, RDB_exec_context *ecp)
 }
 
 RDB_index *
-RDB_create_pg_index(RDB_recmap *rmp, const char *name, const char *filename,
+RDB_create_pg_index(RDB_recmap *rmp, const char *name,
         RDB_environment *envp, int fieldc, const RDB_field_descriptor fieldv[],
         const RDB_compare_field cmpv[], int flags, RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)

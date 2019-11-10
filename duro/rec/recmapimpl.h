@@ -74,11 +74,11 @@ typedef struct RDB_recmap {
             RDB_exec_context *);
     RDB_cursor * (*cursor_fn)(RDB_recmap *, RDB_bool, RDB_rec_transaction *,
             RDB_exec_context *);
-    RDB_index *(*create_index_fn)(RDB_recmap *, const char *, const char *,
+    RDB_index *(*create_index_fn)(RDB_recmap *, const char *,
             RDB_environment *, int, const RDB_field_descriptor[],
             const RDB_compare_field[], int, RDB_rec_transaction *,
             RDB_exec_context *);
-    RDB_index *(*open_index_fn)(RDB_recmap *, const char *, const char *,
+    RDB_index *(*open_index_fn)(RDB_recmap *, const char *,
             RDB_environment *, int, const int[],
             const RDB_compare_field[], int, RDB_rec_transaction *,
             RDB_exec_context *);

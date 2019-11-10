@@ -1521,7 +1521,7 @@ delete_sequences(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
                     RDB_destroy_hashmap_iter(&hiter);
                     return RDB_ERROR;
                 }
-                seqp = RDB_open_sequence(RDB_obj_string(&seqname), RDB_DATAFILE,
+                seqp = RDB_open_sequence(RDB_obj_string(&seqname),
                             RDB_db_env(RDB_tx_db(txp)), txp->tx, ecp);
                 if (seqp == NULL) {
                     RDB_destroy_obj(&seqname, ecp);
@@ -1781,7 +1781,7 @@ RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
                         return RDB_ERROR;
                     }
                     ret = RDB_rename_sequence(RDB_obj_string(&oldname),
-                            RDB_obj_string(&newname), RDB_DATAFILE,
+                            RDB_obj_string(&newname),
                             RDB_db_env(RDB_tx_db(txp)), txp->tx, ecp);
                     RDB_destroy_obj(&oldname, ecp);
                     RDB_destroy_obj(&newname, ecp);

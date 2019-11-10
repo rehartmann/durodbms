@@ -5,3 +5,5 @@ TCLLIBPATH=$PWD
 export TCLLIBPATH
 CFLAGS="-g -Wall"
 export CFLAGS
+LDFLAGS=-g
+export LDFLAGS

@@ -7,6 +7,7 @@
  */
 
 #include "bdbsequence.h"
+#include "bdbrecmap.h"
 #include <rec/envimpl.h>
 #include <rec/sequenceimpl.h>
 #include <gen/strfns.h>
@@ -17,7 +18,7 @@
 #include <errno.h>
 
 RDB_sequence *
-RDB_open_bdb_sequence(const char *cname, const char *filename,
+RDB_open_bdb_sequence(const char *cname,
         RDB_environment *envp, RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     DBT key;
@@ -29,7 +30,7 @@ RDB_open_bdb_sequence(const char *cname, const char *filename,
         RDB_raise_no_memory(ecp);
         return NULL;
     }
-    seqp->filenamp = RDB_dup_str(filename);
+    seqp->filenamp = RDB_dup_str(RDB_DATAFILE);
     if (seqp->filenamp == NULL) {
         RDB_raise_no_memory(ecp);
         return NULL;
@@ -55,7 +56,7 @@ RDB_open_bdb_sequence(const char *cname, const char *filename,
      * The sequence key is always the same.
      */
 
-    ret = dbp->open(dbp, (DB_TXN *) rtxp, filename,
+    ret = dbp->open(dbp, (DB_TXN *) rtxp, RDB_DATAFILE,
             cname, DB_HASH, DB_CREATE, 0664);
     if (ret != 0) {
         RDB_errcode_to_error(ret, ecp);
@@ -152,11 +153,11 @@ RDB_bdb_sequence_next(RDB_sequence *seqp, RDB_rec_transaction *rtxp, RDB_int *va
  */
 int
 RDB_rename_bdb_sequence(const char *oldname, const char *newname,
-        const char *filename, RDB_environment *envp, RDB_rec_transaction *rtxp,
+        RDB_environment *envp, RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
 {
     /* Rename database */
-    int ret = envp->env.envp->dbrename(envp->env.envp, (DB_TXN *) rtxp, filename,
+    int ret = envp->env.envp->dbrename(envp->env.envp, (DB_TXN *) rtxp, RDB_DATAFILE,
             oldname, newname, 0);
     if (ret != 0) {
         RDB_errcode_to_error(ret, ecp);

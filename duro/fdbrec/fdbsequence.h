@@ -16,7 +16,7 @@ typedef struct RDB_rec_transaction RDB_rec_transaction;
 typedef struct RDB_exec_context RDB_exec_context;
 
 RDB_sequence *
-RDB_open_fdb_sequence(const char *, const char *,
+RDB_open_fdb_sequence(const char *,
         RDB_environment *, RDB_rec_transaction *, RDB_exec_context *);
 
 int
@@ -27,7 +27,7 @@ RDB_delete_fdb_sequence(RDB_sequence *, RDB_environment *, RDB_rec_transaction *
         RDB_exec_context *);
 
 int
-RDB_rename_fdb_sequence(const char *, const char *, const char *, RDB_environment *,
+RDB_rename_fdb_sequence(const char *, const char *, RDB_environment *,
         RDB_rec_transaction *, RDB_exec_context *);
 
 int

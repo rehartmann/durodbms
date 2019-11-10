@@ -13,10 +13,10 @@
  * Open a sequence. Create the sequence if it does not exist.
  */
 RDB_sequence *
-RDB_open_sequence(const char *cname, const char *filename,
+RDB_open_sequence(const char *cname,
         RDB_environment *envp, RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
-    return (*envp->open_sequence_fn)(cname, filename, envp, rtxp, ecp);
+    return (*envp->open_sequence_fn)(cname, envp, rtxp, ecp);
 }
 
 int
@@ -47,9 +47,9 @@ RDB_sequence_next(RDB_sequence *seqp, RDB_rec_transaction *rtxp, RDB_int *valp,
  */
 int
 RDB_rename_sequence(const char *oldname, const char *newname,
-        const char *filename, RDB_environment *envp, RDB_rec_transaction *rtxp,
+        RDB_environment *envp, RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
 {
-    return (*envp->rename_sequence_fn)(oldname, newname, filename, envp,
+    return (*envp->rename_sequence_fn)(oldname, newname, envp,
             rtxp, ecp);
 }

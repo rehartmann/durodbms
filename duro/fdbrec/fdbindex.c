@@ -141,7 +141,7 @@ RDB_populate_fdb_index(RDB_index *ixp, RDB_rec_transaction *rtxp, RDB_exec_conte
  * Create index.
  */
 RDB_index *
-RDB_create_fdb_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
+RDB_create_fdb_index(RDB_recmap *rmp, const char *namp,
         RDB_environment *envp, int fieldc, const RDB_field_descriptor fieldv[],
         const RDB_compare_field cmpv[], int flags, RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
@@ -178,7 +178,7 @@ error:
 }
 
 RDB_index *
-RDB_open_fdb_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
+RDB_open_fdb_index(RDB_recmap *rmp, const char *namp,
         RDB_environment *envp, int fieldc, const int fieldv[],
         const RDB_compare_field cmpv[], int flags, RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
@@ -355,7 +355,7 @@ RDB_fdb_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc,
 
     ret = RDB_get_mem_fields(ixp->rmp, RDB_fdb_key_name + recmap_prefix_length,
             (size_t) (pkey_name_length - recmap_prefix_length),
-            (void *) value, (size_t) value_length, fieldc, retfieldv);
+            value, (size_t) value_length, fieldc, retfieldv);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp);
         return RDB_ERROR;

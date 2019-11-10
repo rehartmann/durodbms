@@ -10,17 +10,17 @@
 #include <gen/strfns.h>
 
 RDB_index *
-RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
+RDB_create_index(RDB_recmap *rmp, const char *namp,
         RDB_environment *envp, int fieldc, const RDB_field_descriptor fieldv[],
         const RDB_compare_field cmpv[], int flags, RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
 {
-    return (*rmp->create_index_fn)(rmp, namp, filenamp, envp, fieldc, fieldv,
+    return (*rmp->create_index_fn)(rmp, namp, envp, fieldc, fieldv,
             cmpv, flags, rtxp, ecp);
 }
 
 RDB_index *
-RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
+RDB_open_index(RDB_recmap *rmp, const char *namp,
         RDB_environment *envp, int fieldc, const int fieldv[],
         const RDB_compare_field cmpv[], int flags, RDB_rec_transaction *rtxp,
         RDB_exec_context *ecp)
@@ -29,7 +29,7 @@ RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
         RDB_raise_not_supported("", ecp);
         return NULL;
     }
-    return (*rmp->open_index_fn)(rmp, namp, filenamp, envp, fieldc, fieldv,
+    return (*rmp->open_index_fn)(rmp, namp, envp, fieldc, fieldv,
                 cmpv, flags, rtxp, ecp);
 }
 

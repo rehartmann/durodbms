@@ -12,17 +12,20 @@
 
 #include <db.h>
 
+/* Name of the file in which the tables are physically stored */
+#define RDB_DATAFILE "rdata"
+
 typedef RDB_exec_context RDB_exec_context;
 
 RDB_recmap *
-RDB_create_bdb_recmap(const char *, const char *,
+RDB_create_bdb_recmap(const char *,
         RDB_environment *, int, const RDB_field_info[], int,
         int, const RDB_compare_field[], int,
         int, const RDB_string_vec *,
         RDB_rec_transaction *, RDB_exec_context *);
 
 RDB_recmap *
-RDB_open_bdb_recmap(const char *, const char *,
+RDB_open_bdb_recmap(const char *,
         RDB_environment *, int, const RDB_field_info[], int,
         RDB_rec_transaction *, RDB_exec_context *);
 

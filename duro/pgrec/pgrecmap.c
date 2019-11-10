@@ -48,7 +48,7 @@ new_pg_recmap(const char *name, RDB_environment *envp,
 }
 
 RDB_recmap *
-RDB_create_pg_recmap(const char *name, const char *filename,
+RDB_create_pg_recmap(const char *name,
         RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[], int keyfieldc,
         int cmpc, const RDB_compare_field cmpv[], int flags,
         int keyc, const RDB_string_vec *keyv,
@@ -198,7 +198,7 @@ error:
 }
 
 RDB_recmap *
-RDB_open_pg_recmap(const char *name, const char *filename,
+RDB_open_pg_recmap(const char *name,
        RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[],
        int keyfieldc, RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {

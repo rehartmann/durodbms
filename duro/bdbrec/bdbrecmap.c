@@ -111,7 +111,7 @@ compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p, size_t *locp)
 }
 
 RDB_recmap *
-RDB_create_bdb_recmap(const char *name, const char *filename,
+RDB_create_bdb_recmap(const char *name,
         RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[],
         int keyfieldc, int cmpc, const RDB_compare_field cmpv[], int flags,
         int keyc, const RDB_string_vec *keyv,
@@ -123,7 +123,7 @@ RDB_create_bdb_recmap(const char *name, const char *filename,
 
     /* Allocate and initialize RDB_recmap structure */
 
-    rmp = new_recmap(name, filename, envp,
+    rmp = new_recmap(name, envp != NULL ? RDB_DATAFILE : NULL, envp,
             fieldc, fieldinfov, keyfieldc, flags, ecp);
     if (rmp == NULL) {
         return NULL;
@@ -164,13 +164,16 @@ RDB_create_bdb_recmap(const char *name, const char *filename,
     rmp->impl.dbp->set_errfile(rmp->impl.dbp, NULL);
 
     /* Create BDB database */
-    ret = rmp->impl.dbp->open(rmp->impl.dbp, (DB_TXN *) rtxp, filename, name,
+    ret = rmp->impl.dbp->open(rmp->impl.dbp, (DB_TXN *) rtxp, envp != NULL ? RDB_DATAFILE : NULL,
+    		name,
             RDB_ORDERED & flags ? DB_BTREE : DB_HASH,
             DB_CREATE | DB_EXCL, 0664);
     if (ret == EEXIST && envp != NULL) {
         /* BDB database exists - remove it and try again */
-        envp->env.envp->dbremove(envp->env.envp, (DB_TXN *) rtxp, filename, name, 0);
-        ret = rmp->impl.dbp->open(rmp->impl.dbp, (DB_TXN *) rtxp, filename, name,
+        envp->env.envp->dbremove(envp->env.envp, (DB_TXN *) rtxp, envp != NULL ? RDB_DATAFILE : NULL,
+        		name, 0);
+        ret = rmp->impl.dbp->open(rmp->impl.dbp, (DB_TXN *) rtxp, envp != NULL ? RDB_DATAFILE : NULL,
+        		name,
                 RDB_ORDERED & flags ? DB_BTREE : DB_HASH,
                 DB_CREATE | DB_EXCL, 0664);
     }
@@ -187,14 +190,14 @@ error:
 }
 
 RDB_recmap *
-RDB_open_bdb_recmap(const char *name, const char *filename,
+RDB_open_bdb_recmap(const char *name,
        RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[], int keyfieldc,
        RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
     RDB_recmap *rmp;
     int ret;
-    rmp = new_recmap(name, filename, envp, fieldc, fieldinfov, keyfieldc,
-            RDB_UNIQUE, ecp);
+    rmp = new_recmap(name, envp != NULL ? RDB_DATAFILE : NULL, envp,
+    		fieldc, fieldinfov, keyfieldc, RDB_UNIQUE, ecp);
     if (rmp == NULL) {
         return NULL;
     }
@@ -207,7 +210,8 @@ RDB_open_bdb_recmap(const char *name, const char *filename,
     }
 
     /* Open database */
-    ret = rmp->impl.dbp->open(rmp->impl.dbp, (DB_TXN *) rtxp, filename, name, DB_UNKNOWN,
+    ret = rmp->impl.dbp->open(rmp->impl.dbp, (DB_TXN *) rtxp,
+    		envp != NULL ? RDB_DATAFILE : NULL, name, DB_UNKNOWN,
             0, 0664);
     if (ret != 0) {
         goto error;

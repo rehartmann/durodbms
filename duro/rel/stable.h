@@ -8,9 +8,6 @@
 #include "rdb.h"
 #include <rec/index.h>
 
-/* Name of the file in which the tables are physically stored */
-#define RDB_DATAFILE "rdata"
-
 typedef struct RDB_tbindex RDB_tbindex;
 
 typedef struct RDB_stored_table {

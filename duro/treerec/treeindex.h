@@ -19,15 +19,9 @@ typedef struct RDB_index RDB_index;
 typedef struct RDB_rec_transaction RDB_rec_transaction;
 
 RDB_index *
-RDB_create_tree_index(RDB_recmap *, const char *, const char *,
+RDB_create_tree_index(RDB_recmap *, const char *,
         RDB_environment *, int, const RDB_field_descriptor[],
         const RDB_compare_field[], int, RDB_rec_transaction *,
-        RDB_exec_context *);
-
-RDB_index *
-RDB_open_tree_index(RDB_recmap *, const char *namp, const char *filenamp,
-        RDB_environment *dsp, int fieldc, const int fieldv[],
-        const RDB_compare_field cmpv[], int flags, RDB_rec_transaction *,
         RDB_exec_context *);
 
 /* Close an index. */

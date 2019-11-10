@@ -26,11 +26,11 @@ uint8_t *RDB_fdb_key_name;
  * Allocate a RDB_recmap structure and initialize its fields for FDB.
  */
 static RDB_recmap *
-new_recmap(const char *namp, const char *filenamp,
+new_recmap(const char *namp,
 	RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[],
 	int keyfieldc, int flags, RDB_exec_context *ecp)
 {
-	RDB_recmap *rmp = RDB_new_recmap(namp, filenamp, envp, fieldc, fieldinfov,
+	RDB_recmap *rmp = RDB_new_recmap(namp, NULL, envp, fieldc, fieldinfov,
 		keyfieldc, flags, ecp);
 	if (rmp == NULL)
 		return NULL;
@@ -52,7 +52,7 @@ new_recmap(const char *namp, const char *filenamp,
 }
 
 RDB_recmap *
-RDB_create_fdb_recmap(const char *name, const char *filename,
+RDB_create_fdb_recmap(const char *name,
 	RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[],
 	int keyfieldc, int cmpc, const RDB_compare_field cmpv[], int flags,
 	int keyc, const RDB_string_vec *keyv,
@@ -62,16 +62,16 @@ RDB_create_fdb_recmap(const char *name, const char *filename,
 		RDB_raise_not_supported("comparison function not supported", ecp);
 		return NULL;
 	}
-	return new_recmap(name, filename, envp, fieldc, fieldinfov,
+	return new_recmap(name, envp, fieldc, fieldinfov,
 		keyfieldc, flags, ecp);
 }
 
 RDB_recmap *
-RDB_open_fdb_recmap(const char *name, const char *filename,
+RDB_open_fdb_recmap(const char *name,
 	RDB_environment *envp, int fieldc, const RDB_field_info fieldinfov[],
 	int keyfieldc, RDB_rec_transaction *rtxp, RDB_exec_context *ecp)
 {
-    return new_recmap(name, filename, envp, fieldc, fieldinfov,
+    return new_recmap(name, envp, fieldc, fieldinfov,
 		keyfieldc, RDB_UNIQUE, ecp);
 }
 
