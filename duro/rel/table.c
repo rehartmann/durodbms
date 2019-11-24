@@ -288,8 +288,10 @@ RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, int flags, RDB_exec_context 
     }
 
     /* Eliminate duplicates, if necessary */
-    if (RDB_duprem(qrp, ecp, txp) != RDB_OK)
+    ret = RDB_duprem(qrp, ecp, txp);
+    if (ret != RDB_OK) {
         goto cleanup;
+    }
 
     while ((ret = RDB_next_tuple(qrp, &tpl, ecp, txp)) == RDB_OK) {
         if (!RDB_table_is_persistent(dstp))

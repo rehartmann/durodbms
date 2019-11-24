@@ -17,7 +17,7 @@ release = '1.7'
 env = Environment(ENV = os.environ, tools = ['default', 'textfile'], CPPPATH = ['.'])
 env.Append(JAVACLASSPATH = [os.getenv('CLASSPATH'), '../jduro/lib/javax.json.jar', '../jduro/lib/javax.json-api-1.1.jar'])
 
-java_home = os.getenv('JAVA_HOME', '/usr/lib/jvm/java-11-openjdk-i386')
+java_home = os.getenv('JAVA_HOME', '/usr/lib/jvm/java-11-openjdk-amd64')
 
 oshlibsuffix = env['SHLIBSUFFIX']
 

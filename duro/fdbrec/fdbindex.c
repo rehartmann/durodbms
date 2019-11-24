@@ -92,9 +92,8 @@ RDB_populate_fdb_index(RDB_index *ixp, RDB_rec_transaction *rtxp, RDB_exec_conte
         ret = RDB_make_skey(ixp, curp->cur.fdb.key + keyprefixlen,
                 (size_t)curp->cur.fdb.key_length - keyprefixlen,
                 curp->cur.fdb.value, (size_t)curp->cur.fdb.value_length,
-                &skey, &skeylen);
+                &skey, &skeylen, RDB_TRUE, ecp);
         if (ret != RDB_OK) {
-            RDB_errcode_to_error(ret, ecp);
             RDB_destroy_fdb_cursor(curp, ecp);
             return RDB_ERROR;
         }
@@ -253,6 +252,7 @@ RDB_fdb_index_get(RDB_index *ixp, RDB_field keyv[], RDB_rec_transaction *rtxp,
     int key_name_length;
     const uint8_t *pkey;
     int pkey_length;
+    RDB_field *trkeyv;
     int i;
     fdb_error_t err;
     int ret;
@@ -264,7 +264,24 @@ RDB_fdb_index_get(RDB_index *ixp, RDB_field keyv[], RDB_rec_transaction *rtxp,
         keyv[i].no = ixp->fieldv[i];
     }
 
-    ret = RDB_fields_to_mem(ixp->rmp, ixp->fieldc, keyv, &key, &keylen);
+    if (RDB_ORDERED & ixp->flags) {
+    	trkeyv = RDB_alloc(ixp->fieldc * sizeof(RDB_field), ecp);
+    	if (trkeyv == NULL) {
+    		return RDB_ERROR;
+    	}
+    	if (RDB_fdb_transform_fields(ixp->fieldc, trkeyv, keyv,
+    			ixp->rmp->fieldinfos, ecp) != RDB_OK) {
+    		RDB_free(trkeyv);
+    		return RDB_ERROR;
+    	}
+        ret = RDB_fields_to_mem(ixp->rmp, ixp->fieldc, trkeyv, &key, &keylen);
+    	for (i = 0; i < ixp->fieldc; i++) {
+    		free(trkeyv[i].datap);
+    	}
+    	RDB_free(trkeyv);
+    } else {
+    	ret = RDB_fields_to_mem(ixp->rmp, ixp->fieldc, keyv, &key, &keylen);
+    }
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp);
         return RDB_ERROR;

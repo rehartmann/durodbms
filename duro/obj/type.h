@@ -76,17 +76,17 @@ typedef struct {
  */
 
 typedef struct RDB_type {
-    /* internal */
+    /* Internal */
     char *name;
     enum RDB_tp_kind kind;
 
-    /* comparison function */
+    /* Comparison function */
     RDB_operator *compare_op;
 
     RDB_int ireplen;
 
     union {
-        struct RDB_type *basetyp; /* relation or array type */
+        struct RDB_type *basetyp; /* Relation or array type */
         struct {
             int attrc;
             RDB_attr *attrv;

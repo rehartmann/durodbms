@@ -197,15 +197,17 @@ value_to_mem(RDB_recmap *rmp, RDB_field fldv[], void **valuep, size_t *valuelen)
 
 int
 RDB_make_skey(RDB_index *ixp, const void *key, size_t keylen, const void *value, size_t valuelen,
-        void **skeyp, size_t *skeylenp)
+        void **skeyp, size_t *skeylenp, RDB_bool transform, RDB_exec_context *ecp)
 {
     RDB_field *fieldv;
+    RDB_field *trfieldv;
     int ret;
     int i;
 
-    fieldv = malloc(sizeof(RDB_field) * ixp->fieldc);
-    if (fieldv == NULL)
-        return ENOMEM;
+    fieldv = RDB_alloc(sizeof(RDB_field) * ixp->fieldc, ecp);
+    if (fieldv == NULL) {
+    	return RDB_ERROR;
+    }
 
     for (i = 0; i < ixp->fieldc; i++) {
         fieldv[i].no = ixp->fieldv[i];
@@ -214,12 +216,35 @@ RDB_make_skey(RDB_index *ixp, const void *key, size_t keylen, const void *value,
     ret = RDB_get_mem_fields(ixp->rmp, key, keylen, value, valuelen, ixp->fieldc, fieldv);
     if (ret != RDB_OK) {
         free(fieldv);
-        return ret;
+        RDB_errcode_to_error(ret, ecp);
+        return RDB_ERROR;
     }
 
-    ret = RDB_fields_to_mem(ixp->rmp, ixp->fieldc, fieldv, skeyp, skeylenp);
+    if (transform && (RDB_ORDERED & ixp->flags)) {
+    	trfieldv = RDB_alloc(ixp->fieldc * sizeof(RDB_field), ecp);
+    	if (trfieldv == NULL) {
+    		return RDB_ERROR;
+    	}
+    	if (RDB_fdb_transform_fields(ixp->fieldc, trfieldv, fieldv,
+    			ixp->rmp->fieldinfos, ecp) != RDB_OK) {
+    		RDB_free(trfieldv);
+    		return RDB_ERROR;
+    	}
+        ret = RDB_fields_to_mem(ixp->rmp, ixp->fieldc, trfieldv, skeyp, skeylenp);
+    	for (i = 0; i < ixp->fieldc; i++) {
+    		free(trfieldv[i].datap);
+    	}
+    	RDB_free(trfieldv);
+    } else {
+        ret = RDB_fields_to_mem(ixp->rmp, ixp->fieldc, fieldv, skeyp, skeylenp);
+    }
+
     free(fieldv);
-    return ret;
+    if (ret != RDB_OK) {
+    	RDB_errcode_to_error(ret, ecp);
+    	return RDB_ERROR;
+    }
+    return RDB_OK;
 }
 
 static int
@@ -232,9 +257,9 @@ check_in_indexes(RDB_recmap *rmp, void *key, size_t keylen,
     int ret;
 
     for (ixp = rmp->indexes; ixp != NULL; ixp = ixp->nextp) {
-        ret = RDB_make_skey(ixp, key, keylen, value, valuelen, &skey, &skeylen);
+        ret = RDB_make_skey(ixp, key, keylen, value, valuelen, &skey, &skeylen,
+        		RDB_FALSE, ecp);
         if (ret != RDB_OK) {
-            RDB_errcode_to_error(ret, ecp);
             return RDB_ERROR;
         }
         if (RDB_tree_find(ixp->impl.tree.treep, skey, skeylen) != NULL) {
@@ -258,9 +283,9 @@ insert_into_indexes(RDB_recmap *rmp, RDB_tree_node *nodep, RDB_exec_context *ecp
     for (ixp = rmp->indexes; ixp != NULL; ixp = ixp->nextp) {
         void *key;
 
-        ret = RDB_make_skey(ixp, nodep->key, nodep->keylen, nodep->value, nodep->valuelen, &skey, &skeylen);
+        ret = RDB_make_skey(ixp, nodep->key, nodep->keylen, nodep->value, nodep->valuelen,
+        		&skey, &skeylen, RDB_FALSE, ecp);
         if (ret != RDB_OK) {
-            RDB_errcode_to_error(ret, ecp);
             return RDB_ERROR;
         }
 
@@ -352,10 +377,11 @@ RDB_recmap_is_key_update(RDB_recmap *rmp, int fieldc, const RDB_field fieldv[])
 {
     int i;
     for (i = 0; i < fieldc; i++) {
-        RDB_index *ixp;
+        /* RDB_index *ixp; */
 
         if (fieldv[i].no < rmp->keyfieldcount)
             return RDB_TRUE;
+        /*
         for (ixp = rmp->indexes; ixp != NULL; ixp = ixp->nextp) {
             int j;
             for (j = 0; j < ixp->fieldc; j++) {
@@ -363,6 +389,7 @@ RDB_recmap_is_key_update(RDB_recmap *rmp, int fieldc, const RDB_field fieldv[])
                     return RDB_TRUE;
             }
         }
+        */
     }
     return RDB_FALSE;
 }
@@ -522,9 +549,9 @@ RDB_delete_from_tree_indexes(RDB_recmap *rmp, RDB_tree_node *nodep, RDB_exec_con
     int ret;
 
     for (ixp = rmp->indexes; ixp != NULL; ixp = ixp->nextp) {
-        ret = RDB_make_skey(ixp, nodep->key, nodep->keylen, nodep->value, nodep->valuelen, &skey, &skeylen);
+        ret = RDB_make_skey(ixp, nodep->key, nodep->keylen, nodep->value, nodep->valuelen,
+        		&skey, &skeylen, RDB_FALSE, ecp);
         if (ret != RDB_OK) {
-            RDB_errcode_to_error(ret, ecp);
             return RDB_ERROR;
         }
 

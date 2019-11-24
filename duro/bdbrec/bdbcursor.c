@@ -175,7 +175,7 @@ RDB_bdb_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[],
 
     for (i = 0; i < fieldc; i++) {
         if (fields[i].no < curp->recmapp->keyfieldcount) {
-            RDB_raise_invalid_argument("Modifiying the key is not supported", ecp);
+            RDB_raise_invalid_argument("Modifying the key is not supported", ecp);
             return RDB_ERROR;
         }
         ret = RDB_set_field(curp->recmapp, &curp->cur.bdb.current_data, &fields[i],

@@ -108,7 +108,7 @@ RDB_tree_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[],
     */
 
     if (RDB_recmap_is_key_update(curp->recmapp, fieldc, fields)) {
-        RDB_raise_invalid_argument("Modifiying the key is not supported", ecp);
+        RDB_raise_invalid_argument("Modifying the key is not supported", ecp);
         return RDB_ERROR;
     }
 

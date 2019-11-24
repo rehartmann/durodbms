@@ -985,12 +985,14 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
 
         if (upd) {
             if (upd_to_vals(updc, updv, &tpl, valv, getfn, getarg, ecp, txp) != RDB_OK) {
+                RDB_destroy_obj(&tpl, ecp);
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
             for (i = 0; i < updc; i++) {
                 /* Update tuple */
                 if (RDB_tuple_set(&tpl, updv[i].name, &valv[i], ecp) != RDB_OK) {
+                    RDB_destroy_obj(&tpl, ecp);
                     rcount = RDB_ERROR;
                     goto cleanup;
                 }
@@ -998,11 +1000,13 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
             
             /* Insert tuple into temporary table */
             if (RDB_insert(&tmptb, &tpl, ecp, txp) != RDB_OK) {
+                RDB_destroy_obj(&tpl, ecp);
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
             rcount++;
         }
+        RDB_destroy_obj(&tpl, ecp);
         if (texp->def.op.optinfo.objc == refexp->def.tbref.indexp->attrc
                 && texp->def.op.optinfo.all_eq)
             flags = RDB_REC_DUP;
@@ -1092,6 +1096,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
             rcount = RDB_ERROR;
             goto cleanup;
         }
+        RDB_destroy_obj(&tpl, ecp);
         upd = (RDB_bool) (upd && b);
 
         if (upd) {
@@ -1120,10 +1125,11 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
     /*
      * Insert the records from the temporary table into the original table.
      */
-     if (RDB_move_tuples(refexp->def.tbref.tbp, &tmptb, RDB_DISTINCT, ecp, txp)
+
+    if (RDB_move_tuples(refexp->def.tbref.tbp, &tmptb, RDB_DISTINCT, ecp, txp)
              == (RDB_int) RDB_ERROR) {
-         rcount = RDB_ERROR;
-     }
+        rcount = RDB_ERROR;
+    }
 
 cleanup:
     RDB_destroy_obj(&tmptb, ecp);

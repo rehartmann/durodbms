@@ -65,9 +65,6 @@ RDB_fdb_key_index_prefix_length(RDB_index *);
 uint8_t *
 RDB_fdb_prepend_key_prefix(RDB_recmap *, const void *, size_t, RDB_exec_context *);
 
-uint8_t *
-RDB_fdb_prepend_key_index_prefix(RDB_index *, const void *, size_t, RDB_exec_context *);
-
 int
 RDB_delete_from_fdb_indexes(RDB_recmap *, uint8_t *, int,
     const uint8_t *, int, RDB_rec_transaction *, RDB_exec_context *);

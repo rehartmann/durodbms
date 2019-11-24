@@ -13,6 +13,8 @@
 #include <obj/excontext.h>
 #include <treerec/treerecmap.h>
 
+#include <string.h>
+
 /*
  * Create a recmap with the <var>name</var> specified by name in the DB environment
  * pointed to by envp in the file specified by filename.
@@ -222,4 +224,46 @@ error:
     RDB_free(rmp->fieldinfos);
     RDB_free(rmp);
     return NULL;
+}
+
+int
+RDB_fdb_transform_fields(int fieldc, RDB_field dstv[], const RDB_field srcv[],
+		RDB_field_info finfov[], RDB_exec_context *ecp)
+{
+	int i;
+
+	for (i = 0; i < fieldc; i++) {
+		if (RDB_FTYPE_CHAR & finfov[srcv[i].no].flags) {
+			size_t dstlen;
+			void *tdst = RDB_alloc(srcv[i].len, ecp);
+			if (tdst == NULL) {
+				return RDB_ERROR;
+			}
+			(*srcv[i].copyfp)(tdst, srcv[i].datap, srcv[i].len);
+			dstlen = strxfrm(NULL, tdst, 0) + 1;
+			dstv[i].datap = malloc(dstlen);
+			if (dstv[i].datap == NULL) {
+				RDB_free(tdst);
+				RDB_raise_no_memory(ecp);
+				return RDB_ERROR;
+			}
+			dstv[i].len = dstlen;
+			if (strxfrm(dstv[i].datap, tdst, dstlen) >= dstlen) {
+				RDB_raise_internal("strxfrm() failed", ecp);
+				return RDB_ERROR;
+			}
+			RDB_free(tdst);
+		} else {
+			dstv[i].datap = malloc(srcv[i].len);
+			if (dstv[i].datap == NULL) {
+				RDB_raise_no_memory(ecp);
+				return RDB_ERROR;
+			}
+			(*srcv[i].copyfp)(dstv[i].datap, srcv[i].datap, srcv[i].len);
+			dstv[i].len = srcv[i].len;
+		}
+		dstv[i].copyfp = &memcpy;
+		dstv[i].no = srcv[i].no;
+	}
+	return RDB_OK;
 }

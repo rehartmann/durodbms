@@ -47,4 +47,7 @@ int
 RDB_fdb_index_delete_rec(RDB_index *, RDB_field[], RDB_rec_transaction *,
         RDB_exec_context *);
 
+uint8_t *
+RDB_fdb_prepend_key_index_prefix(RDB_index *, const void *, size_t, RDB_exec_context *);
+
 #endif

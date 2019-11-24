@@ -821,6 +821,7 @@ RDB_open_tbindex(RDB_object *tbp, RDB_tbindex *indexp,
 {
     int ret;
     int i;
+    int flags;
     RDB_compare_field *cmpv = NULL;
     int *fieldv = RDB_alloc(sizeof(int *) * indexp->attrc, ecp);
 
@@ -842,10 +843,16 @@ RDB_open_tbindex(RDB_object *tbp, RDB_tbindex *indexp,
         fieldv[i] = *RDB_field_no(tbp->val.tbp->stp, indexp->attrv[i].attrname);
     }
 
+    flags = 0;
+    if (indexp->unique)
+        flags = RDB_UNIQUE;
+    if (indexp->ordered)
+        flags |= RDB_ORDERED;
+
     /* open index */
     indexp->idxp = RDB_open_index(tbp->val.tbp->stp->recmapp,
                   RDB_table_is_persistent(tbp) ? indexp->name : NULL,
-                  envp, indexp->attrc, fieldv, cmpv, indexp->unique ? RDB_UNIQUE : 0,
+                  envp, indexp->attrc, fieldv, cmpv, flags,
                   txp != NULL ? txp->tx : NULL, ecp);
     if (indexp->idxp == NULL) {
         ret = RDB_ERROR;

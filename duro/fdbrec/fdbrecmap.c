@@ -19,8 +19,11 @@
 #define FDB_API_VERSION 600
 #include <foundationdb/fdb_c.h>
 
-FDBFuture *RDB_fdb_resultf = NULL;
+/* FDB key of the current record */
 uint8_t *RDB_fdb_key_name;
+
+/* FDB future of the current record */
+FDBFuture *RDB_fdb_resultf = NULL;
 
 /*
  * Allocate a RDB_recmap structure and initialize its fields for FDB.
@@ -268,9 +271,9 @@ insert_into_fdb_indexes(RDB_recmap *rmp, uint8_t *key, int key_length, void *val
         void *skey = NULL;
         size_t skeylen;
 
-        ret = RDB_make_skey(ixp, key, (size_t)key_length, value, (size_t)valuelen, &skey, &skeylen);
+        ret = RDB_make_skey(ixp, key, (size_t)key_length, value, (size_t)valuelen,
+        		&skey, &skeylen, RDB_TRUE, ecp);
         if (ret != RDB_OK) {
-            RDB_errcode_to_error(ret, ecp);
             goto error;
         }
 
@@ -548,9 +551,8 @@ RDB_delete_from_fdb_indexes(RDB_recmap *rmp, uint8_t *key, int key_length,
 
     for (ixp = rmp->indexes; ixp != NULL; ixp = ixp->nextp) {
         ret = RDB_make_skey(ixp, key + prefixlen, (size_t)(key_length - prefixlen),
-                value, (size_t)value_length, &skey, &skeylen);
+                value, (size_t)value_length, &skey, &skeylen, RDB_TRUE, ecp);
         if (ret != RDB_OK) {
-            RDB_errcode_to_error(ret, ecp);
             return RDB_ERROR;
         }
         key_name_length = skeylen + RDB_fdb_key_index_prefix_length(ixp);
@@ -561,10 +563,12 @@ RDB_delete_from_fdb_indexes(RDB_recmap *rmp, uint8_t *key, int key_length,
 
         if (RDB_UNIQUE & ixp->flags) {
             fdb_transaction_clear((FDBTransaction*)rtxp, key_name, key_name_length);
+            RDB_free(key_name);
         } else {
             int len;
             uint8_t *buf = full_skey(ixp, key_name, key_name_length,
                 key + prefixlen, key_length - prefixlen, &len, ecp);
+            RDB_free(key_name);
             if (buf == NULL) {
                 return RDB_ERROR;
             }

@@ -6,7 +6,6 @@
 #include "fdbcursor.h"
 #include "fdbenv.h"
 #include "fdbrecmap.h"
-#include "fdbindex.h"
 #include "fdbsequence.h"
 #include "fdbtx.h"
 #include <rec/dbdefs.h>
@@ -183,7 +182,7 @@ RDB_fdb_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[],
     size_t data_length = (size_t)curp->cur.fdb.value_length;
 
     if (RDB_recmap_is_key_update(curp->recmapp, fieldc, fields)) {
-        RDB_raise_invalid_argument("Modifiying the key is not supported", ecp);
+        RDB_raise_invalid_argument("Modifying the key is not supported", ecp);
         return RDB_ERROR;
     }
 
@@ -536,6 +535,7 @@ int
 RDB_fdb_cursor_seek(RDB_cursor *curp, int fieldc, RDB_field keyv[], int flags,
         RDB_exec_context *ecp)
 {
+	RDB_field *trkeyv;
     int ret;
     int i;
     size_t keylen;
@@ -557,8 +557,25 @@ RDB_fdb_cursor_seek(RDB_cursor *curp, int fieldc, RDB_field keyv[], int flags,
             keyv[i].no = curp->idxp->fieldv[i];
     }
 
-    ret = RDB_fields_to_mem(curp->recmapp, fieldc,
-                keyv, &key, &keylen);
+    if (curp->idxp != NULL && (RDB_ORDERED & curp->idxp->flags)) {
+    	trkeyv = RDB_alloc(curp->idxp->fieldc * sizeof(RDB_field), ecp);
+    	if (trkeyv == NULL) {
+    		return RDB_ERROR;
+    	}
+    	if (RDB_fdb_transform_fields(curp->idxp->fieldc, trkeyv, keyv,
+    			curp->idxp->rmp->fieldinfos, ecp) != RDB_OK) {
+    		RDB_free(trkeyv);
+    		return RDB_ERROR;
+    	}
+    	ret = RDB_fields_to_mem(curp->idxp->rmp, curp->idxp->fieldc, trkeyv, &key, &keylen);
+    	for (i = 0; i < curp->idxp->fieldc; i++) {
+    		free(trkeyv[i].datap);
+    	}
+    	RDB_free(trkeyv);
+    } else {
+    	ret = RDB_fields_to_mem(curp->recmapp, fieldc,
+    			keyv, &key, &keylen);
+    }
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp);
         return RDB_ERROR;

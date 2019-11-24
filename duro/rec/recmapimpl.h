@@ -89,4 +89,8 @@ RDB_new_recmap(const char *, const char *,
         RDB_environment *, int, const RDB_field_info[],
         int, int, RDB_exec_context *);
 
+int
+RDB_fdb_transform_fields(int, RDB_field[], const RDB_field[],
+		RDB_field_info[], RDB_exec_context *);
+
 #endif
