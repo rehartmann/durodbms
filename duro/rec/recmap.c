@@ -14,6 +14,7 @@
 #include <treerec/treerecmap.h>
 
 #include <string.h>
+#include <arpa/inet.h>
 
 /*
  * Create a recmap with the <var>name</var> specified by name in the DB environment
@@ -235,6 +236,7 @@ RDB_fdb_transform_fields(int fieldc, RDB_field dstv[], const RDB_field srcv[],
 	for (i = 0; i < fieldc; i++) {
 		if (RDB_FTYPE_CHAR & finfov[srcv[i].no].flags) {
 			size_t dstlen;
+
 			void *tdst = RDB_alloc(srcv[i].len, ecp);
 			if (tdst == NULL) {
 				return RDB_ERROR;
@@ -253,6 +255,17 @@ RDB_fdb_transform_fields(int fieldc, RDB_field dstv[], const RDB_field srcv[],
 				return RDB_ERROR;
 			}
 			RDB_free(tdst);
+		} else if (RDB_FTYPE_INTEGER & finfov[srcv[i].no].flags) {
+			RDB_int val;
+
+			dstv[i].datap = malloc(sizeof(RDB_int));
+			if (dstv[i].datap == NULL) {
+				RDB_raise_no_memory(ecp);
+				return RDB_ERROR;
+			}
+			(*srcv[i].copyfp)(&val, srcv[i].datap, sizeof(RDB_int));
+			*((uint32_t *) dstv[i].datap) = htonl((uint32_t) val);
+			dstv[i].len = sizeof(RDB_int);
 		} else {
 			dstv[i].datap = malloc(srcv[i].len);
 			if (dstv[i].datap == NULL) {

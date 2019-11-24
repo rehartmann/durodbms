@@ -569,19 +569,27 @@ test sort_using_index {sort output using index}  -setup $SETUP -cleanup $CLEANUP
         current_db := 'D';
 
         begin tx;
-        var r real rel {n int, s string} key {n};
-        insert r rel {tup {n 1, s 'Xxx'},
-        			  tup {n 2, s 'Abc'},
-        			  tup {n 3, s 'B'}};
+        var r real rel {n int, s string, m int} key {n};
+        insert r rel {tup {n 1, s 'Xxx', m 2},
+        			  tup {n 2, s 'Abc', m 256},
+        			  tup {n 3, s 'B', m 1}};
 		index r_s r(s);
-		var t tup{n int, s string};
+        index r_m r(m);
+		var t tup {n int, s string, m int};
 		for t in r order (s asc);
 		    io.put_line(t.s);
 		end for;
+        for t in r order (m asc);
+            io.put(t.m);
+            io.put_line('');
+        end for;
 	}
 } -result {Abc
 B
 Xxx
+1
+2
+256
 }
 
 test join_rename_index {JOIN with index}  -setup $SETUP -cleanup $CLEANUP -match glob -body {
