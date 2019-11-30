@@ -41,8 +41,7 @@ if {[lindex $argv [expr $pgargidx+1]]=="true"} {
 
     ::tcltest::configure -testdir $dir
     ::tcltest::configure -tmpdir [::tcltest::configure -testdir]
-    lappend targv -skip {index oindex opt}
-    eval ::tcltest::configure $targv
+    eval ::tcltest::configure "$targv -skip {index oindex opt}"
     set env(DURO_STORAGE) POSTGRESQL
     ::tcltest::runAllTests
 }
@@ -60,7 +59,6 @@ if {[lindex $argv [expr $fdbargidx+1]]=="true"} {
 
     ::tcltest::configure -testdir $dir
     ::tcltest::configure -tmpdir [::tcltest::configure -testdir]
-#    lappend targv -skip {index oindex opt}
     eval ::tcltest::configure $targv
     set env(DURO_STORAGE) FOUNDATIONDB
     ::tcltest::runAllTests

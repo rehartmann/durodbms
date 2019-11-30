@@ -15,6 +15,7 @@
 
 #include <string.h>
 #include <arpa/inet.h>
+#include <math.h>
 
 /*
  * Create a recmap with the <var>name</var> specified by name in the DB environment
@@ -266,6 +267,44 @@ RDB_fdb_transform_fields(int fieldc, RDB_field dstv[], const RDB_field srcv[],
 			(*srcv[i].copyfp)(&val, srcv[i].datap, sizeof(RDB_int));
 			*((uint32_t *) dstv[i].datap) = htonl((uint32_t) val);
 			dstv[i].len = sizeof(RDB_int);
+		} else if (RDB_FTYPE_FLOAT & finfov[srcv[i].no].flags) {
+			static const RDB_float MINUS_ONE = -1.0;
+			RDB_float val;
+			int j;
+			uint8_t *dstdatap = malloc(sizeof(RDB_float));
+			if (dstdatap == NULL) {
+				RDB_raise_no_memory(ecp);
+				return RDB_ERROR;
+			}
+
+			(*srcv[i].copyfp)(&val, srcv[i].datap, sizeof(RDB_float));
+
+			if (isnan(val)) {
+				/* Use canonical NaN */
+				val = nan("");
+			}
+
+			/* If little endian, invert byte order */
+			if (((uint8_t*) &MINUS_ONE)[0] & 1) {
+				*((RDB_float *) dstdatap) = val;
+			} else {
+				uint8_t *srcp = (uint8_t *)&val;
+
+				for (j = 0; j < sizeof(RDB_float); j++) {
+					dstdatap[j] = srcp[sizeof(RDB_float) - 1 - j];
+				}
+			}
+			if (dstdatap[0] & 128) {
+				/* Number is negative - invert all bits */
+				for (j = 0; j < sizeof(RDB_float); j++) {
+				    dstdatap[j] = ~dstdatap[j];
+				}
+			} else {
+				/* Number is positive - invert sign bit */
+				dstdatap[0] ^= 128;
+			}
+			dstv[i].datap = dstdatap;
+			dstv[i].len = sizeof(RDB_float);
 		} else {
 			dstv[i].datap = malloc(srcv[i].len);
 			if (dstv[i].datap == NULL) {
