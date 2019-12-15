@@ -238,7 +238,7 @@ type_implement_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             return TCL_ERROR;
     }
 
-    ret = RDB_implement_type(Tcl_GetString(objv[2]), irep, (size_t)-1,
+    ret = RDB_implement_type(Tcl_GetString(objv[2]), irep, (RDB_int)-1,
             statep->current_ecp, txp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);

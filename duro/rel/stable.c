@@ -908,12 +908,15 @@ RDB_delete_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp,
 }
 
 /**
- * If txp is not NULL and the error is a deadlock, abort the transaction
+ * If txp is not NULL and the error is a deadlock or should be rolled back,
+ * roll back the transaction
  */
 void
 RDB_handle_err(RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_DEADLOCK_ERROR && txp != NULL) {
+    if ((RDB_obj_type(RDB_get_err(ecp)) == &RDB_DEADLOCK_ERROR || ecp->rollback)
+    		&& txp != NULL) {
         RDB_rollback_all(ecp, txp);
+        ecp->rollback = RDB_FALSE;
     }
 }

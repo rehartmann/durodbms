@@ -25,6 +25,7 @@ RDB_init_exec_context(RDB_exec_context *ecp)
 {
     ecp->error_active = RDB_FALSE;
     ecp->error_retryable = RDB_FALSE;
+    ecp->rollback = RDB_FALSE;
     RDB_init_hashmap(&ecp->pmap, 16);
 }
 

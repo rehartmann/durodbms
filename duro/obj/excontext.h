@@ -26,8 +26,11 @@ typedef struct RDB_exec_context {
     /* Property map */
     RDB_hashmap pmap;
 
-    /* RDB_TRUE is the operation that failed should be retried */
+    /* RDB_TRUE if the operation that failed should be retried */
     RDB_bool error_retryable;
+
+    /* RDB_TRUE if the transaction should be rolled back */
+    RDB_bool rollback;
 } RDB_exec_context;
 
 void
