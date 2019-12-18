@@ -36,7 +36,7 @@
  * to RDB_open_env.
  * If DuroDBMS has been built with PostgreSQL support, \a path can be
  * a PostgreSQL URI.
- * If DuroDBMS has been built with FoundationSQL support, \a path can be
+ * If DuroDBMS has been built with FoundationDB support, \a path can be
  * a URI of the form foundationdb://<file> where file is a cluster file path.
  *
  * @param path  pathname of the direcory where the data is stored.
