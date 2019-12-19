@@ -14,8 +14,13 @@
 #include <treerec/treerecmap.h>
 
 #include <string.h>
-#include <arpa/inet.h>
 #include <math.h>
+
+#ifdef _WIN32
+#include <winsock.h>
+#else
+#include <arpa/inet.h>
+#endif
 
 /*
  * Create a recmap with the <var>name</var> specified by name in the DB environment

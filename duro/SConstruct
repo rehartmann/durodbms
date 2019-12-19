@@ -34,7 +34,7 @@ posix_regex = conf.CheckCHeader('regex.h')
 if env['PLATFORM'] == 'win32':
     default_prefix = 'C:'
     env.Replace(LIBS = ['ltdl', 'shlwapi'])
-    durolibs = ['shlwapi']
+    durolibs = ['shlwapi', 'Ws2_32']
     if posix_regex:
         durolibs = durolibs + ['regex']
 else:
