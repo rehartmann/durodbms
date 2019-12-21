@@ -14,7 +14,6 @@ To build DuroDBMS with PostgreSQL support, add postgresql=true to each invocatio
 To build DuroDBMS without Berkeley DB support, add berkeleydb=false to each invocation.
 
 To build DuroDBMS with FoundationDB support, add foundationdb=true to each invocation.
-FoundationDB support is still incomplete and experimental.
 
 'scons test' will build the Tcl interface if it has not already been built
 because the tests depend on it. If Tcl is not available, running the tests
@@ -42,14 +41,14 @@ The location of Berkeley DB may also be specified using
 the environment. With Visual C++, the variables LIB and INCLUDE
 can be used.
 
-By default, DuroDBMS is installed in C:\duro.1.7 on Windows, and
-/usr/local/duro.1.7 on all other systems.
+By default, DuroDBMS is installed in C:\durodbms.1.7 on Windows, and
+/usr/local/durodbms.1.7 on all other systems.
 You can specify a different directory by passing an installdir
 variable to scons, e. g.:
 
 scons installdir=/usr install
 
-This will install DuroDBMS in /usr/duro.1.7.
+This will install DuroDBMS in /usr/durodbms.1.7.
 
 To build the REST server, type:
 

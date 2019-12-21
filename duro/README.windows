@@ -27,8 +27,7 @@ scripts is to add this subdirectory to TCLLIBPATH, e.g.:
     set TCLLIBPATH=C:/durodbms.1.7/lib
 
 DuroDBMS is still under development. Report bugs to
-rhartmann@users.sourceforge.net or use a Sourceforge tracker
-at <http://sourceforge.net/tracker/?group_id=80719>. 
+rhartmann@users.sourceforge.net. 
 
 -----
 
