@@ -467,7 +467,7 @@ This has to be done using one of the PostgreSQL utilities, e.g. <code>createdb</
 
 <p>If DuroDBMS has been built with FoundationDB support,
 a FoundationDB database can be used as a database environment
-by passing a PostgreSQL URI to connect(), e.g.:
+by passing a FoundationDB cluster file path preceded by 'foundationdb://'. E.g.:
 
 <pre>
 no db> connect('foundationdb://');
