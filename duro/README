@@ -5,8 +5,9 @@ a relational database management system and programming language.
 
 The following software is required for compiling and running DuroDBMS:
 
-- Berkeley DB Transactional Data Store (release 6.1 or later)
-  or PostgreSQL (release 10.6 or later recommended)
+- Berkeley DB Transactional Data Store (release 6.1 or later),
+  PostgreSQL (release 10.6 or later recommended),
+  or FoundationDB (release 6.1 or later recommended)
 - POSIX.2 or C++ regular expressions
 - GNU Libtool (not under MS Windows)
 - Tcl 8.5 or later (optional)
