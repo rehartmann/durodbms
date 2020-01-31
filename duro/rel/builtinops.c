@@ -1009,10 +1009,32 @@ static int
 op_subscript(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_object *objp = RDB_array_get(argv[0], RDB_obj_int(argv[1]), ecp);
-    if (objp == NULL)
-        return RDB_ERROR;
+	RDB_object *objp;
 
+	if (RDB_is_array(argv[0])) {
+		if (RDB_obj_type(argv[1]) != &RDB_INTEGER) {
+			RDB_raise_type_mismatch("subscript argument must be integer", ecp);
+			return RDB_ERROR;
+		}
+	    objp = RDB_array_get(argv[0], RDB_obj_int(argv[1]), ecp);
+	    if (objp == NULL) {
+	        return RDB_ERROR;
+	    }
+	} else if (RDB_is_tuple(argv[0])) {
+		if (RDB_obj_type(argv[1]) != &RDB_STRING) {
+			RDB_raise_type_mismatch("subscript argument must be string", ecp);
+			return RDB_ERROR;
+		}
+	    objp = RDB_tuple_get(argv[0], RDB_obj_string(argv[1]));
+	    if (objp == NULL) {
+	    	RDB_raise_name(RDB_obj_string(argv[1]), ecp);
+	        return RDB_ERROR;
+	    }
+	}
+	else {
+		RDB_raise_type_mismatch("array or tuple required", ecp);
+		return RDB_ERROR;
+	}
     return RDB_copy_obj(retvalp, objp, ecp);
 }
 

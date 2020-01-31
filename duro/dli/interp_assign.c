@@ -73,39 +73,59 @@ resolve_target(RDB_expression *exp, Duro_interp *interp, RDB_exec_context *ecp)
         arglistp = RDB_expr_op_args((RDB_expression *)exp);
         if (strcmp(opname, "[]") == 0
                 && RDB_expr_list_length(arglistp) == 2) {
-            RDB_int idx;
             RDB_object idxobj;
+            RDB_object *retvalp;
 
             /*
              * Resolve array subscription
              */
 
             /* Get first argument, which must be an array */
-            RDB_object *arrp = resolve_target(RDB_expr_list_get(arglistp, 0), interp, ecp);
-            if (arrp == NULL)
+            objp = resolve_target(RDB_expr_list_get(arglistp, 0), interp, ecp);
+            if (objp == NULL)
                 return NULL;
-            if (RDB_obj_type(arrp) == NULL
-                    || !RDB_type_is_array(RDB_obj_type(arrp))) {
-                RDB_raise_type_mismatch("not an array", ecp);
-                return NULL;
-            }
 
-            /* Get second argument, which must be INTEGER */
-            RDB_init_obj(&idxobj);
-            if (RDB_evaluate(RDB_expr_list_get(arglistp, 1), &Duro_get_var, interp, interp->envp, ecp,
-                    interp->txnp != NULL ? &interp->txnp->tx : NULL,
-                    &idxobj) != RDB_OK) {
-                RDB_destroy_obj(&idxobj, ecp);
+            if (RDB_is_array(objp)) {
+            	/* Get second argument, which must be integer */
+            	RDB_init_obj(&idxobj);
+            	if (RDB_evaluate(RDB_expr_list_get(arglistp, 1), &Duro_get_var, interp, interp->envp, ecp,
+            			interp->txnp != NULL ? &interp->txnp->tx : NULL,
+            					&idxobj) != RDB_OK) {
+            		RDB_destroy_obj(&idxobj, ecp);
+            		return NULL;
+            	}
+            	if (RDB_obj_type(&idxobj) != &RDB_INTEGER) {
+            		RDB_raise_type_mismatch("array index must be integer", ecp);
+            		RDB_destroy_obj(&idxobj, ecp);
+            		return NULL;
+            	}
+            	retvalp = RDB_array_get(objp, RDB_obj_int(&idxobj), ecp);
+            	RDB_destroy_obj(&idxobj, ecp);
+            	return retvalp;
+            } else if (RDB_is_tuple(objp)) {
+            	/* Get second argument, which must be string */
+            	RDB_init_obj(&idxobj);
+            	if (RDB_evaluate(RDB_expr_list_get(arglistp, 1), &Duro_get_var, interp, interp->envp, ecp,
+            			interp->txnp != NULL ? &interp->txnp->tx : NULL,
+            					&idxobj) != RDB_OK) {
+            		RDB_destroy_obj(&idxobj, ecp);
+            		return NULL;
+            	}
+            	if (RDB_obj_type(&idxobj) != &RDB_STRING) {
+            		RDB_raise_type_mismatch("tuple attribute must be string", ecp);
+            		RDB_destroy_obj(&idxobj, ecp);
+            		return NULL;
+            	}
+            	retvalp = RDB_tuple_get(objp, RDB_obj_string(&idxobj));
+            	if (retvalp == NULL) {
+            		RDB_raise_name(RDB_obj_string(&idxobj), ecp);
+            	}
+            	RDB_destroy_obj(&idxobj, ecp);
+            	return retvalp;
+            } else {
+                RDB_raise_type_mismatch("array or tuple required", ecp);
                 return NULL;
             }
-            if (RDB_obj_type(&idxobj) != &RDB_INTEGER) {
-                RDB_raise_type_mismatch("array index must be INTEGER", ecp);
-                RDB_destroy_obj(&idxobj, ecp);
-                return NULL;
-            }
-            idx = RDB_obj_int(&idxobj);
-            RDB_destroy_obj(&idxobj, ecp);
-            return RDB_array_get(arrp, idx, ecp);
         }
         if (strcmp(opname, ".") == 0 && RDB_expr_list_length(arglistp) == 2) {
             RDB_object idobj;

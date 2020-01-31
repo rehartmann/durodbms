@@ -1,5 +1,9 @@
 Summary of Changes to DuroDBMS
 
+DuroDBMS 1.8
+
+- Supporting tuple access using the subscript operator. 
+
 DuroDBMS 1.7
 
 - Added support for FoundationDB as storage engine.

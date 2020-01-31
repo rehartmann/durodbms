@@ -113,4 +113,39 @@ test tupleval {tuple value} -body {
 } -result {ro
 }
 
+test subscript {attribute access using subscript operator} -body {
+    exec $testdir/../../dli/durodt << {
+        var t init tup{a 'xy'};
+        io.put_line(t['a']);
+        try
+            io.put_line(t['b']);
+            io.put_line('accessing t.b succeeded');
+        catch err name_error;
+            ;
+        end try;
+        try
+            io.put_line(t[0]);
+            io.put_line('integer as attribute name succeeded');
+        catch err type_mismatch_error;
+            ;
+        end try;
+        t["a"] := 'zz';
+        io.put_line(t.a);
+        try
+            t["b"] := 'yy';
+            io.put_line('assignment of t.b succeeded');
+        catch err name_error;
+            ;
+        end try;
+        try
+            t[1] := 'yy';
+            io.put_line('integer as attribute name succeeded');
+        catch err type_mismatch_error;
+            ;
+        end try;
+    }
+} -result {xy
+zz
+}
+
 cleanupTests

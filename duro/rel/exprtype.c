@@ -1041,10 +1041,33 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
         /* Array index operator */
         typ = &RDB_INTEGER;
     } else if (strcmp(exp->def.op.name, "[]") == 0
-            && argc == 2
-            && (argtv[0] == NULL || argtv[0]->kind == RDB_TP_ARRAY)) {
-        /* Array subscript operator */
-        typ = RDB_dup_nonscalar_type(argtv[0]->def.basetyp, ecp);
+            && argc == 2 && argtv[0] != NULL) {
+    	if (argtv[0]->kind == RDB_TP_ARRAY) {
+            /* Array subscript operator */
+            typ = RDB_dup_nonscalar_type(argtv[0]->def.basetyp, ecp);
+    	} else if (argtv[0]->kind == RDB_TP_TUPLE) {
+    		RDB_object obj;
+
+    		RDB_init_obj(&obj);
+    		if (RDB_evaluate(exp->def.op.args.firstp->nextp, NULL, NULL,
+    		        envp, ecp, txp, &obj) == RDB_ERROR) {
+    			RDB_destroy_obj(&obj, ecp);
+    			goto error;
+    		}
+    		if (RDB_obj_type(&obj) != &RDB_STRING) {
+    			RDB_destroy_obj(&obj, ecp);
+    			RDB_raise_type_mismatch("subscript argument must be string", ecp);
+    			goto error;
+    		}
+
+            typ = RDB_type_attr_type(argtv[0], RDB_obj_string(&obj));
+            if (typ == NULL) {
+            	RDB_raise_not_found(RDB_obj_string(&obj), ecp);
+    			RDB_destroy_obj(&obj, ecp);
+            	goto error;
+            }
+			RDB_destroy_obj(&obj, ecp);
+    	}
     } else if (strcmp(exp->def.op.name, "tclose") == 0 && argc == 1) {
         if (argtv[0] == NULL) {
             RDB_raise_invalid_argument("invalid TCLOSE invocation", ecp);

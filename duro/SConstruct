@@ -12,7 +12,7 @@ import subprocess
 
 bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.18.1')
 
-release = '1.7'
+release = '1.8'
 
 env = Environment(ENV = os.environ, tools = ['default', 'textfile'], CPPPATH = ['.'])
 env.Append(JAVACLASSPATH = [os.getenv('CLASSPATH'), '../jduro/lib/javax.json.jar', '../jduro/lib/javax.json-api-1.1.jar'])
