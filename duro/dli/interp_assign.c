@@ -1151,7 +1151,9 @@ Duro_exec_load(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp
      */
     srcvarname = RDB_expr_var_name(tbexp);
     if (srcvarname != NULL) {
-        srctbp = Duro_lookup_var(srcvarname, interp, ecp);
+    	int flags;
+
+        srctbp = Duro_lookup_sym(srcvarname, interp, &flags, ecp);
         if (srctbp == NULL) {
             ret = RDB_ERROR;
             goto cleanup;

@@ -335,7 +335,9 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
      */
     srcvarname = RDB_expr_var_name(tbexp);
     if (srcvarname != NULL) {
-        it.tbp = Duro_lookup_var(srcvarname, interp, ecp);
+    	int flags;
+
+        it.tbp = Duro_lookup_sym(srcvarname, interp, &flags, ecp);
         if (it.tbp == NULL)
             goto error;
     } else {

@@ -4,6 +4,11 @@ DuroDBMS 1.8
 
 - Supporting tuple access using the subscript operator. 
 
+- Fixed bug that prevented non-update relation variable arguments from
+  being used in LOAD and FOR .. IN.
+
+- Generic relation types are now allowed in operator parameters.
+
 DuroDBMS 1.7
 
 - Added support for FoundationDB as storage engine.
@@ -196,7 +201,7 @@ DuroDBMS 0.26
 
 - Fixed a bug in the handling of string literals in user-defined operators.
 
-- Generic tuple types now allowed in operator parameters.
+- Generic tuple types are now allowed in operator parameters.
 
 - Replaced fatal_error by data_corruption_error and run_recovery_error.
 

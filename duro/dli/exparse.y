@@ -3113,7 +3113,7 @@ type: qualified_id
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
     }
-    | TOK_RELATION '{' id_type_commalist '}' {
+    | TOK_RELATION '{' id_type_commalist_gen '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);

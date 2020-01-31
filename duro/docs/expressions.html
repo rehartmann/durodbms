@@ -134,6 +134,7 @@ type = qualified_id
         | TUPLE '{' [id type {',' id type}] '}'
         | TUPLE '{' [id type {',' id type} ','] '*' '}'
         | RELATION '{' [id type {',' id type}] '}'
+        | RELATION '{' [id type {',' id type} ','] '*' '}'
         | ARRAY type
         | SAME_TYPE_AS '(' expression ')'
         | TUPLE SAME_HEADING_AS '(' expression ')'
