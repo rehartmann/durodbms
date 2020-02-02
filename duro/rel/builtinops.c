@@ -98,9 +98,9 @@ OPERATOR group(r RELATION { * }, attrname string, ..., dst_attr string) RETURNS 
 
 <h3 id="op_heading">OPERATOR heading</h3>
 
-OPERATOR heading(r RELATION { * } RETURNS RELATION { name string, type string };
+OPERATOR heading(r RELATION { * }) RETURNS RELATION { name string, type string };
 
-OPERATOR heading(r TUPLE { * } RETURNS RELATION { name string, type string };
+OPERATOR heading(r TUPLE { * }) RETURNS RELATION { name string, type string };
 
 <h4>Description</h4>
 
