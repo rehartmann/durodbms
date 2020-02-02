@@ -24,4 +24,8 @@ int
 RDB_expr_to_str(RDB_object *dstp, const RDB_expression *exp,
         RDB_exec_context *, RDB_transaction *, int options);
 
+int
+RDB_type_to_str(RDB_object *, const RDB_type *,
+RDB_exec_context *);
+
 #endif

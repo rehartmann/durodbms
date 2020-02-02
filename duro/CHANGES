@@ -9,6 +9,8 @@ DuroDBMS 1.8
 
 - Generic relation types are now allowed in operator parameters.
 
+- Added heading operator.
+
 DuroDBMS 1.7
 
 - Added support for FoundationDB as storage engine.

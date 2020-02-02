@@ -19,76 +19,11 @@ RDB_op_map RDB_builtin_ro_op_map;
 
 RDB_op_map RDB_builtin_upd_op_map;
 
+RDB_attr heading_result_attrs[2];
+
 /**
 
 @page relops Built-in relational and related operators
-
-<h3 id="op_relation">OPERATOR RELATION</h3>
-
-OPERATOR RELATION(t TUPLE { * }, ...) RETURNS RELATION { * };
-
-<h4>Description</h4>
-
-The relation selector.
-
-<hr>
-
-<h3 id="op_is_empty">OPERATOR is_empty</h3>
-
-OPERATOR is_empty(RELATION { * }) RETURNS boolean;
-
-<h4>Description</h4>
-
-Checks if a table is empty.
-
-<h4>Return value</h4>
-
-TRUE if the relation-valued operand is empty, RDB_FALSE
-otherwise.
-
-<hr>
-
-<h3 id="op_count">OPERATOR count</h3>
-
-OPERATOR count(RELATION { * }) RETURNS integer;
-
-<h4>Description</h4>
-
-Counts the tuples in a table.
-
-<h4>Return value</h4>
-
-The cardinality of the relation-valued operand.
-
-<hr>
-
-<h3 id="op_in">OPERATOR in</h3>
-
-OPERATOR in (t TUPLE { * }, r RELATION { * }) RETURNS boolean;
-
-<h4>Description</h4>
-
-Checks if a table contains a given tuple.
-
-<h4>Return value</h4>
-
-TRUE if @a r contains @a t, RDB_FALSE otherwise.
-
-<hr>
-
-<h3 id="op_subset_of">OPERATOR subset_of</h3>
-
-OPERATOR subset_of(r1 RELATION { * }, r2 RELATION { * }) RETURNS boolean;
-
-<h4>Description</h4>
-
-Checks if a table is a subset of another table.
-
-<h4>Return value</h4>
-
-TRUE if the @a r1 is a subset of @a r2, RDB_FALSE otherwise.
-
-<hr>
 
 <h3 id="op_any">OPERATOR any</h3>
 
@@ -125,6 +60,95 @@ For the semantics, see RDB_avg().
 
 <hr>
 
+<h3 id="op_count">OPERATOR count</h3>
+
+OPERATOR count(RELATION { * }) RETURNS integer;
+
+<h4>Description</h4>
+
+Counts the tuples in a table.
+
+<h4>Return value</h4>
+
+The cardinality of the relation-valued operand.
+
+<hr>
+
+<h3 id="op_divide">OPERATOR divide</h3>
+
+OPERATOR divide(r1 RELATION { * }, r2 RELATION { * }, r2 RELATION { * }) RETURNS RELATION { * };
+
+<h4>Description</h4>
+
+The relational three-argument (small) DIVIDE operator.
+
+<hr>
+
+<h3 id="op_extend">OPERATOR extend</h3>
+
+OPERATOR extend(r RELATION { * }, attrexp <em>ANY</em>, attrname string, ...) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_group">OPERATOR group</h3>
+
+OPERATOR group(r RELATION { * }, attrname string, ..., dst_attr string) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_heading">OPERATOR heading</h3>
+
+OPERATOR heading(r RELATION { * } RETURNS RELATION { name string, type string };
+
+OPERATOR heading(r TUPLE { * } RETURNS RELATION { name string, type string };
+
+<h4>Description</h4>
+
+Returns the heading of a relation or tuple.
+
+<hr>
+
+<h3 id="op_intersect">OPERATOR intersect</h3>
+
+OPERATOR intersect(r1 RELATION { * }, r2 RELATION { * }) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_in">OPERATOR in</h3>
+
+OPERATOR in (t TUPLE { * }, r RELATION { * }) RETURNS boolean;
+
+<h4>Description</h4>
+
+Checks if a table contains a given tuple.
+
+<h4>Return value</h4>
+
+TRUE if @a r contains @a t, RDB_FALSE otherwise.
+
+<hr>
+
+<h3 id="op_is_empty">OPERATOR is_empty</h3>
+
+OPERATOR is_empty(RELATION { * }) RETURNS boolean;
+
+<h4>Description</h4>
+
+Checks if a table is empty.
+
+<h4>Return value</h4>
+
+TRUE if the relation-valued operand is empty, RDB_FALSE
+otherwise.
+
+<hr>
+
+<h3 id="op_join">OPERATOR join</h3>
+
+OPERATOR join(r1 RELATION { * }, r2 RELATION { * }) RETURNS RELATION { * };
+
+<hr>
+
 <h3 id="op_max">OPERATOR max</h3>
 
 OPERATOR max(r RELATION { * }, attr integer) RETURNS integer;
@@ -151,6 +175,66 @@ For the semantics, see RDB_min().
 
 <hr>
 
+<h3 id="op_minus">OPERATOR minus</h3>
+
+OPERATOR minus(r1 RELATION { * }, r2 RELATION { * }) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_project">OPERATOR project</h3>
+
+OPERATOR project(r1 RELATION { * }, attrname string ...) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_relation">OPERATOR relation</h3>
+
+OPERATOR relation(t TUPLE { * }, ...) RETURNS RELATION { * };
+
+<h4>Description</h4>
+
+The relation selector.
+
+<hr>
+
+<h3 id="op_remove">OPERATOR remove</h3>
+
+OPERATOR remove(r RELATION { * }, attrname string ...) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_rename">OPERATOR rename</h3>
+
+OPERATOR rename(r RELATION { * }, scr_attrname string, dst_attrname string ...) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_subset_of">OPERATOR subset_of</h3>
+
+OPERATOR subset_of(r1 RELATION { * }, r2 RELATION { * }) RETURNS boolean;
+
+<h4>Description</h4>
+
+Checks if a table is a subset of another table.
+
+<h4>Return value</h4>
+
+TRUE if the @a r1 is a subset of @a r2, RDB_FALSE otherwise.
+
+<hr>
+
+<h3 id="op_semijoin">OPERATOR semijoin</h3>
+
+OPERATOR semijoin(r1 RELATION { * }, r2 RELATION { * }) RETURNS RELATION { * };
+
+<hr>
+
+<h3 id="op_semiminus">OPERATOR semiminus</h3>
+
+OPERATOR semiminus(r1 RELATION { * }, r2 RELATION { * }) RETURNS RELATION { * };
+
+<hr>
+
 <h3 id="op_sum">OPERATOR sum</h3>
 
 OPERATOR SUM(r RELATION { * }, attr integer) RETURNS integer;
@@ -164,61 +248,17 @@ For the semantics, see RDB_sum().
 
 <hr>
 
-<h3 id="op_divide">OPERATOR divide</h3>
+<h3 id="op_summarize">OPERATOR summarize</h3>
 
-OPERATOR divide(r1 RELATION { * }, r2 RELATION { * }, r2 RELATION { * }) RETURNS RELATION { * };
-
-<h4>Description</h4>
-
-The relational three-argument (small) DIVIDE operator.
+OPERATOR summarize(r1 RELATION { * }, r2 RELATION { * }, expr <em>ANY</em>, attrname string, ...) RETURNS RELATION { * };
 
 <hr>
 
-<h3 id="op_extend">OPERATOR extend</h3>
+<h3 id="op_tclose">OPERATOR tclose</h3>
 
-OPERATOR extend(r RELATION { * }, attrexp <em>ANY</em>, attrname string, ...) RETURNS RELATION { * };
+OPERATOR tclose(r RELATION { * }) RETURNS RELATION { * };
 
-<hr>
-
-<h3 id="op_group">OPERATOR group</h3>
-
-OPERATOR group(r RELATION { * }, attrname string, ..., dst_attr string) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_intersect">OPERATOR intersect</h3>
-
-OPERATOR intersect(r1 RELATION { * }, r2 RELATION { * }) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_join">OPERATOR join</h3>
-
-OPERATOR join(r1 RELATION { * }, r2 RELATION { * }) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_minus">OPERATOR minus</h3>
-
-OPERATOR minus(r1 RELATION { * }, r2 RELATION { * }) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_project">OPERATOR project</h3>
-
-OPERATOR project(r1 RELATION { * }, attrname string ...) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_remove">OPERATOR remove</h3>
-
-OPERATOR remove(r RELATION { * }, attrname string ...) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_rename">OPERATOR rename</h3>
-
-OPERATOR rename(r RELATION { * }, scr_attrname string, dst_attrname string ...) RETURNS RELATION { * };
+The transitive closure operator.
 
 <hr>
 
@@ -249,32 +289,6 @@ OPERATOR update(r1 RELATION { * }, dst_attrname string, src_expr <em>ANY</em>, .
 <h3 id="op_unwrap">OPERATOR unwrap</h3>
 
 OPERATOR unwrap(attrname string, ...) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_semijoin">OPERATOR semijoin</h3>
-
-OPERATOR semijoin(r1 RELATION { * }, r2 RELATION { * }) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_semiminus">OPERATOR semiminus</h3>
-
-OPERATOR semiminus(r1 RELATION { * }, r2 RELATION { * }) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_summarize">OPERATOR summarize</h3>
-
-OPERATOR summarize(r1 RELATION { * }, r2 RELATION { * }, expr <em>ANY</em>, attrname string, ...) RETURNS RELATION { * };
-
-<hr>
-
-<h3 id="op_tclose">OPERATOR tclose</h3>
-
-OPERATOR tclose(r RELATION { * }) RETURNS RELATION { * };
-
-The transitive closure operator.
 
 <hr>
 
@@ -546,6 +560,8 @@ OPERATOR to_tuple(r RELATION { * }) RETURNS TUPLE { * };
 <h4>Description</h4>
 
 Extracts a single tuple from a relation.
+
+<hr>
 
 @page arrayop Built-in array operators
 
@@ -1006,6 +1022,53 @@ op_subset_of(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
+op_heading(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    int i;
+    int attrc;
+    RDB_object tpl;
+    RDB_object typobj;
+    RDB_type *typ = RDB_obj_type(argv[0]);
+    RDB_attr *attrv = RDB_type_attrs(typ, &attrc);
+
+    if (RDB_init_table(retvalp, NULL, 2, heading_result_attrs,
+            0, NULL, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+    RDB_init_obj(&tpl);
+    RDB_init_obj(&typobj);
+    for (i = 0; i < attrc; i++) {
+        if (RDB_tuple_set_string(&tpl, "name", attrv[i].name, ecp) != RDB_OK) {
+            goto error;
+        }
+        if (RDB_type_name(attrv[i].typ) != NULL) {
+            if (RDB_tuple_set_string(&tpl, "type", RDB_type_name(attrv[i].typ), ecp) != RDB_OK) {
+                goto error;
+            }
+        } else {
+            if (RDB_type_to_str(&typobj, attrv[i].typ, ecp) != RDB_OK) {
+                goto error;
+            }
+            if (RDB_tuple_set_string(&tpl, "type", RDB_obj_string(&typobj), ecp) != RDB_OK) {
+                goto error;
+            }
+        }
+        if (RDB_insert(retvalp, &tpl, ecp, NULL) != RDB_OK) {
+            goto error;
+        }
+    }
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&typobj, ecp);
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&typobj, ecp);
+    return RDB_ERROR;
+}
+
+static int
 op_subscript(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
@@ -1123,6 +1186,7 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
     RDB_attr genattr;
     RDB_type *genreltyp = NULL;
     RDB_type *gentuptyp = NULL;
+    RDB_type *heading_result_typ;
 
     /*
      * No errors other than no_memory_error may be raised here because the other error
@@ -1280,6 +1344,26 @@ RDB_init_builtin_ops(RDB_exec_context *ecp)
     paramtv[0] = gentuptyp;
     paramtv[1] = genreltyp;
     if (RDB_put_global_ro_op("in", 2, paramtv, &RDB_BOOLEAN, &op_in, ecp) != RDB_OK)
+        goto error;
+
+    paramtv[0] = genreltyp;
+    heading_result_attrs[0].name = "name";
+    heading_result_attrs[0].typ = &RDB_STRING;
+    heading_result_attrs[0].options = 0;
+    heading_result_attrs[0].defaultp = NULL;
+    heading_result_attrs[1].name = "type";
+    heading_result_attrs[1].typ = &RDB_STRING;
+    heading_result_attrs[1].options = 0;
+    heading_result_attrs[1].defaultp = NULL;
+    heading_result_typ = RDB_new_relation_type(2, heading_result_attrs, ecp);
+    if (heading_result_typ == NULL) {
+        goto error;
+    }
+    if (RDB_put_global_ro_op("heading", 1, paramtv, heading_result_typ, &op_heading, ecp) != RDB_OK)
+        goto error;
+
+    paramtv[0] = gentuptyp;
+    if (RDB_put_global_ro_op("heading", 1, paramtv, heading_result_typ, &op_heading, ecp) != RDB_OK)
         goto error;
 
     paramtv[0] = genreltyp;

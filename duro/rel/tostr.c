@@ -599,3 +599,74 @@ RDB_expr_to_str(RDB_object *dstp, const RDB_expression *exp,
 
     return append_ex(dstp, exp, NULL, ecp, txp, options);
 }
+
+static int
+append_typ(RDB_object *, const RDB_type *, RDB_exec_context *);
+
+static int
+append_attrs(RDB_object *dstp, const RDB_type *typ,
+RDB_exec_context *ecp)
+{
+    int i;
+    if (RDB_append_string(dstp, "{ ", ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+    for (i = 0; i < typ->def.tuple.attrc; i++) {
+        if (RDB_append_string(dstp, typ->def.tuple.attrv[i].name, ecp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+        if (RDB_append_char(dstp, ' ', ecp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+        if (append_typ(dstp, typ->def.tuple.attrv[i].typ, ecp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+        if (i < typ->def.tuple.attrc - 1) {
+            if (RDB_append_string(dstp, ", ", ecp) != RDB_OK) {
+                return RDB_ERROR;
+            }
+        }
+    }
+    return RDB_append_string(dstp, " }", ecp);
+}
+
+static int
+append_typ(RDB_object *dstp, const RDB_type *typ,
+        RDB_exec_context *ecp)
+{
+    switch(typ->kind) {
+    case RDB_TP_SCALAR:
+        return RDB_append_string(dstp, typ->name, ecp);
+    case RDB_TP_TUPLE:
+        if (RDB_append_string(dstp, "TUPLE ", ecp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+        if (append_attrs(dstp, typ, ecp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+        break;
+    case RDB_TP_RELATION:
+        if (RDB_append_string(dstp, "RELATION ", ecp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+        if (append_attrs(dstp, typ->def.basetyp, ecp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+        break;
+    case RDB_TP_ARRAY:
+        if (RDB_append_string(dstp, "ARRAY ", ecp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+        break;
+    }
+}
+
+int
+RDB_type_to_str(RDB_object *dstp, const RDB_type *typ,
+        RDB_exec_context *ecp)
+{
+    if (RDB_string_to_obj(dstp, "", ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    return append_typ(dstp, typ, ecp);
+}
