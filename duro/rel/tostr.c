@@ -657,8 +657,12 @@ append_typ(RDB_object *dstp, const RDB_type *typ,
         if (RDB_append_string(dstp, "ARRAY ", ecp) != RDB_OK) {
             return RDB_ERROR;
         }
+        if (append_typ(dstp, typ->def.basetyp, ecp) != RDB_OK) {
+            return RDB_ERROR;
+        }
         break;
     }
+    return RDB_OK;
 }
 
 int

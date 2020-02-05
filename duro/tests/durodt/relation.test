@@ -2355,4 +2355,27 @@ test nan {insert and read NaN into and from table} \
 2
 }
 
+test heading {heading operator} -setup $SETUP -cleanup $CLEANUP \
+        -match glob -body {
+    exec $testdir/../../dli/durodt -e $dbenvname << {
+        current_db := 'D';
+
+        begin tx;
+        var r real relation {i int, d float, c string, t tuple {n int},
+                r relation {n int, s string}, a array string} key {i};
+
+        var tp tup {name string, `type` string};
+        for tp in heading(r) order(name asc);
+            io.put_line(tp.name || ' ' || tp.`type`);
+        end for;
+        commit;
+    }
+} -result {a ARRAY string
+c string
+d float
+i integer
+r RELATION {*s string*}
+t TUPLE { n integer }
+}
+
 cleanupTests

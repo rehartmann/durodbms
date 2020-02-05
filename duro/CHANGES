@@ -7,7 +7,7 @@ DuroDBMS 1.8
 - Fixed bug that prevented non-update relation variable arguments from
   being used in LOAD and FOR .. IN.
 
-- Generic relation types are now allowed in operator parameters.
+- Generic relation types are now allowed as operator parameter types.
 
 - Added heading operator.
 
