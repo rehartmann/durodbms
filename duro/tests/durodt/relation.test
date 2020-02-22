@@ -1144,7 +1144,7 @@ test logic {Logic operators} -setup $SETUP -cleanup $CLEANUP -body {
 
         -- Tuple attribute as target
         var tp tuple { a array tuple same_heading_as(t) };
-        load tp.a from t where a=2 order (b asc);
+        load tp.a from t where a=2 order (b asc) limit 2;
         for i:= 0 to length(tp.a) - 1;
 			io.put(tp.a[i].a);
 			io.put(' ');

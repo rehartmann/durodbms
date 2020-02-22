@@ -411,6 +411,8 @@ RDB_token_name(int tok)
         return "RETURN";
     case TOK_DEFAULT:
         return "DEFAULT";
+    case TOK_LIMIT:
+        return "LIMIT";
     case TOK_LOAD:
         return "LOAD";
     case TOK_ORDER:

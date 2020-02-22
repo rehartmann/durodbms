@@ -113,13 +113,20 @@ test ptarray {array from private table} -body {
             ;
         end try;
 
-        drop var r;
-
         io.put(a[0].i); io.put_line('');
         io.put(a[1].i); io.put_line('');
         io.put(a[2].i); io.put_line('');
 
         io.put(length(a)); io.put_line('');
+
+        load a from r order(c desc, i asc) limit 2;
+
+        io.put(a[0].i); io.put_line('');
+        io.put(a[1].i); io.put_line('');
+
+        io.put(length(a)); io.put_line('');
+
+        drop var r;
         
         var i same_type_as(length(a));
         
@@ -133,6 +140,9 @@ test ptarray {array from private table} -body {
 2
 3
 3
+1
+2
+2
 }
 
 test ops {operators with array arguments} -setup $SETUP -cleanup $CLEANUP -body {

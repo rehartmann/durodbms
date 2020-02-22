@@ -468,9 +468,14 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
         RDB_exec_context *, RDB_object *restplp);
 
 int
-RDB_table_to_array(RDB_object *arrp, RDB_object *, 
-                   int seqitc, const RDB_seq_item seqitv[], int flags,
+RDB_table_to_array(RDB_object *, RDB_object *,
+                   int, const RDB_seq_item[], int,
                    RDB_exec_context *, RDB_transaction *);
+
+int
+RDB_table_to_array_limit(RDB_object *, RDB_object *,
+                   int, const RDB_seq_item[], int,
+                   RDB_int, RDB_exec_context *, RDB_transaction *);
 
 RDB_qresult *
 RDB_table_iterator(RDB_object *, int, const RDB_seq_item[],

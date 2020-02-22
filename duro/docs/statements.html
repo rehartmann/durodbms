@@ -80,7 +80,7 @@ rename_var_stmt = RENAME id AS id ';'.
 
 const_stmt = CONST id expression ';'.
 
-load_stmt = LOAD qualified_id FROM expression ORDER '(' [order_item {',' order_item}] ')' ';'.
+load_stmt = LOAD qualified_id FROM expression ORDER '(' [order_item {',' order_item}] ')' [LIMIT expression] ';'.
 
 order_item = id ASC | id DESC.
 

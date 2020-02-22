@@ -1183,8 +1183,33 @@ Duro_exec_load(RDB_parse_node *nodep, Duro_interp *interp, RDB_exec_context *ecp
         goto cleanup;
     }
 
-    ret = RDB_table_to_array(dstp, srctbp, seqitc, seqitv, 0, ecp,
+    if (seqitnodep->nextp->nextp->kind == RDB_NODE_INNER) {
+        RDB_object limit;
+        RDB_expression *limitexp;
+        RDB_init_obj(&limit);
+        limitexp = RDB_parse_node_expr(seqitnodep->nextp->nextp->val.children.firstp->nextp,
+                ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
+        if (limitexp == NULL)
+            return RDB_ERROR;
+        ret = RDB_evaluate(limitexp, &Duro_get_var, interp, interp->envp, ecp,
+                interp->txnp != NULL ? &interp->txnp->tx : NULL, &limit);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&limit, ecp);
+            goto cleanup;
+        }
+        if (RDB_obj_type(&limit) != &RDB_INTEGER) {
+            RDB_raise_type_mismatch("integer required after LIMIT", ecp);
+            ret = RDB_ERROR;
+            RDB_destroy_obj(&limit, ecp);
+            goto cleanup;
+        }
+        ret = RDB_table_to_array_limit(dstp, srctbp, seqitc, seqitv, 0, RDB_obj_int(&limit), ecp,
             interp->txnp != NULL ? &interp->txnp->tx : NULL);
+        RDB_destroy_obj(&limit, ecp);
+    } else {
+        ret = RDB_table_to_array(dstp, srctbp, seqitc, seqitv, 0, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL);
+    }
 
 cleanup:
     if (seqitv != NULL)

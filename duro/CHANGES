@@ -11,6 +11,10 @@ DuroDBMS 1.8
 
 - Added heading operator.
 
+- Added RDB_table_to_array_limit().
+
+- Duro D/T: Added optional LIMIT clause to LOAD.
+
 DuroDBMS 1.7
 
 - Added support for FoundationDB as storage engine.

@@ -10,6 +10,8 @@
 #include "optimize.h"
 #include <obj/objinternal.h>
 
+#include <limits.h>
+
 /*
  * Number of entries by which the buffer will be extended
  * when more space is needed
@@ -20,7 +22,7 @@ enum {
 
 static int
 init_expr_array(RDB_object *arrp, RDB_expression *texp,
-                   int seqitc, const RDB_seq_item seqitv[], int flags,
+                   int seqitc, const RDB_seq_item seqitv[], RDB_int limit,
                    RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_qresult *qrp = NULL;
@@ -59,7 +61,7 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
     arrp->val.arr.length = 0;
     arrp->val.arr.capacity = 0;
 
-    for(;;) {
+    for (;;) {
         /* Extend elemv if necessary to make room for the next element */
         if (arrp->val.arr.capacity <= arrp->val.arr.length) {
             if (RDB_enlarge_array_buf(arrp, arrp->val.arr.capacity + BUF_INCREMENT, ecp)
@@ -70,13 +72,19 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
 
         /* Get next tuple */
         if (RDB_next_tuple(qrp, &arrp->val.arr.elemv[arrp->val.arr.length],
-                ecp, txp) != RDB_OK)
+                ecp, txp) != RDB_OK) {
             break;
+        }
+        if (arrp->val.arr.length == limit) {
+            break;
+        }
         arrp->val.arr.length++;
     }
-    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
-        goto error;
-    RDB_clear_err(ecp);
+    if (RDB_get_err(ecp) != NULL) {
+        if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
+            goto error;
+        RDB_clear_err(ecp);
+    }
 
     if (RDB_del_qresult(qrp, ecp, txp) != RDB_OK) {
         qrp = NULL;
@@ -97,6 +105,39 @@ error:
  * \#include <rel/rdb.h>
  *
  */
+
+int
+RDB_table_to_array_limit(RDB_object *arrp, RDB_object *tbp,
+                   int seqitc, const RDB_seq_item seqitv[], int flags,
+                   RDB_int limit, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int i;
+    RDB_expression *texp;
+
+    if (arrp->kind != RDB_OB_INITIAL && arrp->kind != RDB_OB_ARRAY) {
+        RDB_raise_invalid_argument("no array", ecp);
+        return RDB_ERROR;
+    }
+
+    for (i = 0; i < seqitc; i++) {
+        RDB_type *attrtyp = RDB_type_attr_type(RDB_obj_type(tbp),
+                seqitv[i].attrname);
+        if (attrtyp == NULL) {
+            RDB_raise_invalid_argument("attribute not found", ecp);
+            return RDB_ERROR;
+        }
+        if (!RDB_type_is_ordered(attrtyp)) {
+            RDB_raise_invalid_argument("attribute type is not ordered", ecp);
+            return RDB_ERROR;
+        }
+    }
+
+    texp = RDB_optimize(tbp, seqitc, seqitv, ecp, txp);
+    if (texp == NULL)
+        return RDB_ERROR;
+
+    return init_expr_array(arrp, texp, seqitc, seqitv, limit, ecp, txp);
+}
 
 /**
  * Create an array which contains
@@ -131,32 +172,7 @@ RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
                    int seqitc, const RDB_seq_item seqitv[], int flags,
                    RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int i;
-    RDB_expression *texp;
-
-    if (arrp->kind != RDB_OB_INITIAL && arrp->kind != RDB_OB_ARRAY) {
-        RDB_raise_invalid_argument("no array", ecp);
-        return RDB_ERROR;
-    }
-
-    for (i = 0; i < seqitc; i++) {
-        RDB_type *attrtyp = RDB_type_attr_type(RDB_obj_type(tbp),
-                seqitv[i].attrname);
-        if (attrtyp == NULL) {
-            RDB_raise_invalid_argument("attribute not found", ecp);
-            return RDB_ERROR;
-        }
-        if (!RDB_type_is_ordered(attrtyp)) {
-            RDB_raise_invalid_argument("attribute type is not ordered", ecp);
-            return RDB_ERROR;
-        }
-    }
-
-    texp = RDB_optimize(tbp, seqitc, seqitv, ecp, txp);
-    if (texp == NULL)
-        return RDB_ERROR;
-
-    return init_expr_array(arrp, texp, seqitc, seqitv, flags, ecp, txp);
+    return RDB_table_to_array_limit(arrp, tbp, seqitc, seqitv, flags, RDB_INT_MAX, ecp, txp);
 }
 
 /*@}*/

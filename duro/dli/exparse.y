@@ -173,6 +173,7 @@ yyerror(const char *);
 %token TOK_EXPLAIN "EXPLAIN"
 %token TOK_MAP "MAP"
 %token TOK_PACKAGE "PACKAGE"
+%token TOK_LIMIT "LIMIT"
 %token TOK_INVALID "invalid"
 
 %left TOK_FROM TOK_ELSE ','
@@ -869,7 +870,7 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $1);
         RDB_parse_add_child($$, $2);
     }
-    | TOK_LOAD qualified_id TOK_FROM expression TOK_ORDER '(' order_item_commalist ')' ';' {
+    | TOK_LOAD qualified_id TOK_FROM expression TOK_ORDER '(' order_item_commalist ')' opt_limit ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -880,7 +881,10 @@ statement: assignment ';' {
             RDB_parse_del_node($6, RDB_parse_ecp);
             RDB_parse_del_node($7, RDB_parse_ecp);
             RDB_parse_del_node($8, RDB_parse_ecp);
-            RDB_parse_del_node($9, RDB_parse_ecp);
+            if ($9 != NULL) {
+                RDB_parse_del_node($9, RDB_parse_ecp);
+            }
+            RDB_parse_del_node($10, RDB_parse_ecp);
             YYABORT;
         }
         RDB_parse_add_child($$, $1);
@@ -891,7 +895,10 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $6);
         RDB_parse_add_child($$, $7);
         RDB_parse_add_child($$, $8);
-        RDB_parse_add_child($$, $9);
+        if ($9 != NULL) {
+            RDB_parse_add_child($$, $9);
+        }
+        RDB_parse_add_child($$, $10);
     }
     | TOK_CONSTRAINT TOK_ID expression ';' {
         $$ = new_parse_inner();
@@ -1696,6 +1703,20 @@ order_item_commalist: ne_order_item_commalist
             YYABORT;
         }
     }
+
+opt_limit: /* empty */ {
+        $$ = NULL;
+    }
+    | TOK_LIMIT expression {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            YYABORT;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+    } 
 
 ne_catch_def_list: catch_def {
         $$ = new_parse_inner();
