@@ -171,6 +171,7 @@ RDB_new_op_data(const char *name, const char *version, int paramc,
     op->modhdl = NULL;
     op->u_data = NULL;
     op->cleanup_fp = NULL;
+    op->locked = RDB_FALSE;
 
     return op;
 

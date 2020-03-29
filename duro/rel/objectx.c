@@ -639,6 +639,9 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
     case RDB_OB_ARRAY:
         return irep_to_array(valp, RDB_type_is_dummy(typ) ? valp->impl_typ : typ,
                 datap, len, ecp);
+    case RDB_OB_OPERATOR:
+        RDB_raise_not_supported("storing operators not supported", ecp);
+        return RDB_ERROR;
     }
     valp->kind = kind;
     return RDB_OK;
@@ -955,6 +958,10 @@ RDB_set_init_value(RDB_object *objp, RDB_type *typ, RDB_environment *envp,
             return RDB_ERROR;
         }
         return RDB_copy_obj_data(objp, &typ->def.scalar.init_val, ecp, NULL);
+    case RDB_TP_OPERATOR:
+        objp->typ = typ;
+        RDB_operator_to_obj(objp, NULL);
+        break;
     }
     return RDB_OK;
 }
@@ -1079,6 +1086,10 @@ RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
             memcpy(dstvalp->val.bin.datap, srcvalp->val.bin.datap,
                     srcvalp->val.bin.len);
         }
+        break;
+    case RDB_OB_OPERATOR:
+        dstvalp->kind = srcvalp->kind;
+        dstvalp->val.op = srcvalp->val.op;
         break;
     }
     return RDB_OK;

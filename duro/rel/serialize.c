@@ -151,6 +151,24 @@ RDB_serialize_type(RDB_object *valp, int *posp, const RDB_type *typ,
     case RDB_TP_RELATION:
     case RDB_TP_ARRAY:
         return RDB_serialize_type(valp, posp, typ->def.basetyp, ecp);
+    case RDB_TP_OPERATOR:
+    {
+        int i;
+
+        if (RDB_serialize_int(valp, posp, typ->def.op.paramc, ecp) != RDB_OK)
+            return RDB_ERROR;
+        for (i = 0; i < typ->def.op.paramc; i++) {
+            if (RDB_serialize_type(valp, posp,
+                    typ->def.op.paramtypev[i], ecp) != RDB_OK) {
+                return RDB_ERROR;
+            }
+        }
+        if (RDB_serialize_type(valp, posp,
+                typ->def.op.rtyp, ecp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+        return RDB_OK;
+    }
     default:
         break;
     }
@@ -558,6 +576,47 @@ RDB_deserialize_type(const RDB_object *valp, int *posp, RDB_exec_context *ecp,
             return NULL;
         }
         return typ;
+    case RDB_TP_OPERATOR:
+    {
+        int i;
+        RDB_int paramc;
+
+        typ = RDB_alloc(sizeof (RDB_type), ecp);
+        if (typ == NULL) {
+            return NULL;
+        }
+        typ->name = NULL;
+        typ->kind = kind;
+        typ->ireplen = RDB_VARIABLE_LEN;
+        typ->cleanup_fp = NULL;
+
+        if (RDB_deserialize_int(valp, posp, ecp, &paramc) != RDB_OK) {
+            RDB_free(typ);
+            return NULL;
+        }
+        typ->def.op.paramc = paramc;
+        typ->def.op.paramtypev = RDB_alloc(sizeof(RDB_type *) * paramc, ecp);
+        if (typ->def.op.paramtypev == NULL) {
+            RDB_free(typ);
+            return NULL;
+        }
+        for (i = 0; i < paramc; i++) {
+            typ->def.op.paramtypev[i] = RDB_deserialize_type(valp, posp, ecp, txp);
+            if (typ->def.op.paramtypev[i] == NULL) {
+                RDB_free(typ->def.op.paramtypev);
+                RDB_free(typ);
+                return NULL;
+            }
+        }
+        typ->def.op.rtyp = RDB_deserialize_type(valp, posp, ecp, txp);
+        if (typ->def.op.rtyp == NULL) {
+            RDB_free(typ->def.op.paramtypev);
+            RDB_free(typ);
+            return NULL;
+        }
+
+        return typ;
+    }
     }
     RDB_raise_internal("invalid type during deserialization", ecp);
     return NULL;

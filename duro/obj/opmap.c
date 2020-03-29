@@ -245,6 +245,10 @@ RDB_del_ops(RDB_op_map *opmap, const char *name, RDB_exec_context *ecp)
     if (op != NULL) {
         int ret;
 
+        if (op->op->locked) {
+            RDB_raise_in_use("operator might be still in use", ecp);
+            return RDB_ERROR;
+        }
         free_ops(op, ecp);
         ret = RDB_hashmap_put(&opmap->map, name, NULL);
         if (ret != RDB_OK) {

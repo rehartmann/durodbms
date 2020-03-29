@@ -74,6 +74,22 @@ RDB_obj_matches_type(const RDB_object *objp, const RDB_type *typ)
         return RDB_TRUE;
     case RDB_OB_ARRAY:
         return array_matches_type(objp, typ);
+    case RDB_OB_OPERATOR:
+        if (!RDB_type_is_operator(typ)) {
+            return RDB_FALSE;
+        }
+        if (objp->val.op == NULL) {
+            return RDB_FALSE;
+        }
+        if (objp->val.op->paramc != typ->def.op.paramc) {
+            return RDB_FALSE;
+        }
+        for (i = 0; i < objp->val.op->paramc; i++) {
+            if (!RDB_type_equals(objp->val.op->paramv[i].typ, typ->def.op.paramtypev[i])) {
+                return RDB_FALSE;
+            }
+        }
+        return RDB_type_equals(objp->val.op->rtyp, typ->def.op.rtyp);
     default:
         ;
     }

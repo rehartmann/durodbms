@@ -661,6 +661,24 @@ append_typ(RDB_object *dstp, const RDB_type *typ,
             return RDB_ERROR;
         }
         break;
+    case RDB_TP_OPERATOR:
+        if (RDB_append_string(dstp, "OPERATOR (", ecp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+        {
+            int i;
+            for (i = 0; i < typ->def.op.paramc; i++) {
+                if (append_typ(dstp, typ->def.op.paramtypev[i], ecp) != RDB_OK) {
+                    return RDB_ERROR;
+                }
+            }
+        }
+        if (RDB_append_string(dstp, ") RETURNS ", ecp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+        if (append_typ(dstp, typ->def.op.rtyp, ecp) != RDB_OK) {
+            return RDB_ERROR;
+        }
     }
     return RDB_OK;
 }

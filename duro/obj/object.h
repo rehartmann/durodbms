@@ -23,7 +23,8 @@ enum RDB_obj_kind {
     RDB_OB_TABLE,
     RDB_OB_TUPLE,
     RDB_OB_ARRAY,
-    RDB_OB_TIME
+    RDB_OB_TIME,
+    RDB_OB_OPERATOR,
 };
 
 /**
@@ -40,6 +41,7 @@ typedef struct RDB_expression RDB_expression;
 typedef struct RDB_type RDB_type;
 typedef struct RDB_exec_context RDB_exec_context;
 typedef struct RDB_object RDB_object;
+typedef struct RDB_op_data RDB_operator;
 
 typedef int RDB_obj_cleanup_func(RDB_object *, RDB_exec_context *);
 
@@ -98,6 +100,7 @@ struct RDB_object {
             int capacity; /* # of RDB_objects allocated, may be larger than length */
             struct RDB_object *elemv;
         } arr;
+        RDB_operator *op;
      } val;
 
      /* Used internally for conversion into the internal representation */
@@ -171,6 +174,9 @@ int
 RDB_string_n_to_obj(RDB_object *, const char *, size_t,
         RDB_exec_context *);
 
+void
+RDB_operator_to_obj(RDB_object *, RDB_operator *);
+
 RDB_bool
 RDB_obj_bool(const RDB_object *);
 
@@ -179,6 +185,9 @@ RDB_obj_int(const RDB_object *);
 
 RDB_float
 RDB_obj_float(const RDB_object *);
+
+RDB_operator *
+RDB_obj_operator(const RDB_object *);
 
 void
 RDB_tm_to_obj(RDB_object *, const struct tm *);

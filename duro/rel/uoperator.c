@@ -978,6 +978,10 @@ RDB_dfl_obj_equals(int argc, RDB_object *argv[], RDB_operator *op,
                 return ret;
             RDB_bool_to_obj(retvalp, res);
             break;
+        case RDB_OB_OPERATOR:
+            RDB_bool_to_obj(retvalp, argv[0]->val.op == argv[1]->val.op ? RDB_TRUE : RDB_FALSE);
+            break;
+
     }
     return RDB_OK;
 } 

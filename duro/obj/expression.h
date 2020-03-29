@@ -50,7 +50,10 @@ RDB_expression *
 RDB_dup_expr(const RDB_expression *, RDB_exec_context *);
 
 RDB_expression *
-RDB_ro_op(const char *opname, RDB_exec_context *);
+RDB_ro_op(const char *, RDB_exec_context *);
+
+RDB_expression *
+RDB_ro_op_from_expr(RDB_expression *, RDB_exec_context *);
 
 void
 RDB_add_arg(RDB_expression *, RDB_expression *);

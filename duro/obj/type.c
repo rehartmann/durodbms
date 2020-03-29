@@ -69,6 +69,15 @@ RDB_type_is_valid(const RDB_type *typ)
         if (RDB_type_is_union(typ))
             return RDB_TRUE;
         return (RDB_bool) (typ->ireplen != RDB_NOT_IMPLEMENTED);
+    case RDB_TP_OPERATOR:
+        for (i = 0; i < typ->def.op.paramc; i++) {
+            if (!RDB_type_is_valid(typ->def.op.paramtypev[i]))
+                return RDB_FALSE;
+        }
+        if (typ->def.op.rtyp != NULL && !RDB_type_is_valid(typ->def.op.rtyp)) {
+            return RDB_FALSE;
+        }
+        return RDB_TRUE;
     }
     abort();
 }
@@ -114,6 +123,16 @@ RDB_type_depends_type(const RDB_type *typ, const RDB_type *dtyp)
                 if (RDB_type_depends_type(typ->def.scalar.repv[i].compv[j].typ, dtyp))
                     return RDB_TRUE;
             }
+        }
+        return RDB_FALSE;
+    case RDB_TP_OPERATOR:
+        for (i = 0; i < typ->def.op.paramc; i++) {
+            if (RDB_type_depends_type(typ->def.op.paramtypev[i], dtyp))
+                return RDB_TRUE;
+        }
+        if (typ->def.op.rtyp != NULL
+                && RDB_type_depends_type(typ->def.op.rtyp, dtyp)) {
+            return RDB_TRUE;
         }
         return RDB_FALSE;
     }
@@ -224,6 +243,9 @@ RDB_dup_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
                 typ->def.tuple.attrv, ecp);
     case RDB_TP_SCALAR:
         return typ;
+    case RDB_TP_OPERATOR:
+        return RDB_new_ro_op_type(typ->def.op.paramc, typ->def.op.paramtypev,
+                typ->def.op.rtyp, ecp);
     }
     abort();
 }
@@ -418,7 +440,7 @@ RDB_new_relation_type_from_base(RDB_type *tpltyp, RDB_exec_context *ecp)
 }
 
 /**
- * Creates a RDB_type struct for an array type.
+ * Creates an RDB_type struct for an array type.
 The base type is specified by <var>typ</var>.
 
 @returns
@@ -442,6 +464,70 @@ RDB_new_array_type(RDB_type *basetyp, RDB_exec_context *ecp)
     typ->cleanup_fp = NULL;
 
     return typ;
+}
+
+/**
+ * Creates an RDB_type struct for a readonly operator type.
+The argument types are specified by <var>argc</var> and <var>argtypev</var>.
+The return type is specified by <var>rtyp</var>.
+
+@returns
+
+A pointer to a RDB_type structure for the new array type,
+or NULL if the creation failed.
+ */
+RDB_type *
+RDB_new_ro_op_type(int argc, RDB_type **argtypev, RDB_type *rtyp, RDB_exec_context *ecp)
+{
+    int i;
+
+    RDB_type *typ = RDB_alloc(sizeof (RDB_type), ecp);
+    if (typ == NULL) {
+        return NULL;
+    }
+
+    typ->name = NULL;
+    typ->compare_op = NULL;
+    typ->kind = RDB_TP_OPERATOR;
+    typ->ireplen = RDB_VARIABLE_LEN;
+    typ->cleanup_fp = NULL;
+
+    typ->def.op.paramtypev = RDB_alloc(sizeof(RDB_type *) * argc, ecp);
+    if (typ->def.op.paramtypev == NULL)
+        goto error;
+
+    for (i = 0; i < argc; i++) {
+        typ->def.op.paramtypev[i] = NULL;
+    }
+    typ->def.op.rtyp = NULL;
+
+    for (i = 0; i < argc; i++) {
+        typ->def.op.paramtypev[i] = RDB_dup_nonscalar_type(argtypev[i], ecp);
+        if (typ->def.op.paramtypev[i] == NULL)
+            goto error;
+    }
+    typ->def.op.rtyp = RDB_dup_nonscalar_type(rtyp, ecp);
+    if (typ->def.op.rtyp == NULL) {
+        goto error;
+    }
+    typ->def.op.paramc = argc;
+
+    return typ;
+
+error:
+    if (typ->def.op.paramtypev != NULL) {
+        for (i = 0; i < argc; i++) {
+            if (typ->def.op.paramtypev[i] != NULL
+                    && !RDB_type_is_scalar(typ->def.op.paramtypev[i])) {
+                RDB_del_nonscalar_type(typ->def.op.paramtypev[i], ecp);
+            }
+        }
+    }
+    if (typ->def.op.rtyp != NULL && !RDB_type_is_scalar(typ->def.op.rtyp)) {
+        RDB_del_nonscalar_type(typ->def.op.rtyp, ecp);
+    }
+    RDB_free(typ);
+    return NULL;
 }
 
 /**
@@ -493,6 +579,19 @@ RDB_bool
 RDB_type_is_array(const RDB_type *typ)
 {
     return (RDB_bool) (typ->kind == RDB_TP_ARRAY);
+}
+
+/**
+ * Checks if a type is an operator type.
+
+@returns
+
+RDB_TRUE if *<var>typ</var> is an operator type, RDB_FALSE if not.
+*/
+RDB_bool
+RDB_type_is_operator(const RDB_type *typ)
+{
+    return (RDB_bool) (typ->kind == RDB_TP_OPERATOR);
 }
 
 /**
@@ -568,6 +667,17 @@ RDB_del_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
     case RDB_TP_SCALAR:
         RDB_raise_invalid_argument("type is scalar", ecp);
         return RDB_ERROR;
+    case RDB_TP_OPERATOR:
+        for (i = 0; i < typ->def.op.paramc; i++) {
+            if (!RDB_type_is_scalar(typ->def.op.paramtypev[i])) {
+                 ret = RDB_del_nonscalar_type(typ->def.op.paramtypev[i], ecp);
+            }
+        }
+        RDB_free(typ->def.op.paramtypev);
+        if (typ->def.op.rtyp != NULL && !RDB_type_is_scalar(typ->def.op.rtyp)) {
+            ret = RDB_del_nonscalar_type(typ->def.op.rtyp, ecp);
+        }
+        break;
     default:
         abort();
     }
@@ -626,6 +736,27 @@ RDB_type_equals(const RDB_type *typ1, const RDB_type *typ2)
         }
         return RDB_TRUE;
     }
+    case RDB_TP_OPERATOR:
+    {
+        int i;
+        if (typ1->def.op.paramc != typ2->def.op.paramc) {
+            return RDB_FALSE;
+        }
+        for (i = 0; i < typ1->def.op.paramc; i++) {
+            if (!RDB_type_equals(typ1->def.op.paramtypev[i], typ2->def.op.paramtypev[i])) {
+                return RDB_FALSE;
+            }
+        }
+        if (typ1->def.op.rtyp == NULL) {
+            return typ2->def.op.rtyp == NULL ? RDB_TRUE : RDB_FALSE;
+        } else {
+            if (typ2->def.op.rtyp == NULL) {
+                return RDB_FALSE;
+            }
+            return RDB_type_equals(typ1->def.op.rtyp, typ2->def.op.rtyp);
+        }
+    }
+    break;
     default:
         ;
     }
@@ -682,6 +813,8 @@ RDB_is_subtype(const RDB_type *typ1, const RDB_type *typ2)
     case RDB_TP_RELATION:
     case RDB_TP_ARRAY:
         return RDB_is_subtype(typ1->def.basetyp, typ2->def.basetyp);
+    case RDB_TP_OPERATOR:
+        return RDB_FALSE;
     }
     abort();
 }
@@ -743,6 +876,7 @@ RDB_type_attr_type(const RDB_type *typ, const char *name)
         break;
     case RDB_TP_ARRAY:
     case RDB_TP_SCALAR:
+    case RDB_TP_OPERATOR:
         return NULL;
     }
     if (attrp == NULL)
@@ -1717,6 +1851,7 @@ RDB_type_is_generic(const RDB_type *typ) {
         return RDB_type_is_generic(typ->def.basetyp);
     case RDB_TP_ARRAY:
     case RDB_TP_SCALAR:
+    case RDB_TP_OPERATOR:
         return RDB_FALSE;
     }
     abort();

@@ -57,7 +57,8 @@ var_expression = [expression '.'] id
     | ro_op_inv
     | array_subscript_inv.
 
-ro_op_inv = [expression '.'] id '(' [expression {',' expression}] ')'.
+ro_op_inv = [expression '.'] id '(' [expression {',' expression}] ')'
+    | '(' expression ')' '(' [expression {',' expression}] ')'.
 
 array_subscript_inv = expression '[' expression ']'. 
 
@@ -138,7 +139,8 @@ type = qualified_id
         | ARRAY type
         | SAME_TYPE_AS '(' expression ')'
         | TUPLE SAME_HEADING_AS '(' expression ')'
-        | RELATION SAME_HEADING_AS '(' expression ')'.
+        | RELATION SAME_HEADING_AS '(' expression ')'
+        | OPERATOR '(' [type {',' type}] ')' RETURNS type.
 </pre>
 
 <pre id="qualified_id">

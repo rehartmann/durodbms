@@ -55,7 +55,8 @@ enum RDB_tp_kind {
     RDB_TP_SCALAR,
     RDB_TP_TUPLE,
     RDB_TP_RELATION,
-    RDB_TP_ARRAY
+    RDB_TP_ARRAY,
+    RDB_TP_OPERATOR
 };
 
 /**@addtogroup type
@@ -115,6 +116,11 @@ typedef struct RDB_type {
             int subtypec;
             struct RDB_type **subtypev;
         } scalar;
+        struct {
+            int paramc;
+            struct RDB_type **paramtypev;
+            RDB_type *rtyp; /* NULL when update operator */
+        } op;
     } def;
     RDB_obj_cleanup_func *cleanup_fp;
     RDB_bool locked;
@@ -197,6 +203,9 @@ RDB_type_is_tuple(const RDB_type *);
 RDB_bool
 RDB_type_is_array(const RDB_type *);
 
+RDB_bool
+RDB_type_is_operator(const RDB_type *);
+
 RDB_type *
 RDB_base_type(const RDB_type *typ);
 
@@ -220,6 +229,9 @@ RDB_new_relation_type_from_base(RDB_type *, RDB_exec_context *);
 
 RDB_type *
 RDB_new_array_type(RDB_type *, RDB_exec_context *);
+
+RDB_type *
+RDB_new_ro_op_type(int, RDB_type **, RDB_type *, RDB_exec_context *);
 
 RDB_type *
 RDB_dup_nonscalar_type(RDB_type *typ, RDB_exec_context *);

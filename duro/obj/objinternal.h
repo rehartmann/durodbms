@@ -38,6 +38,9 @@ struct RDB_expression {
         struct {
             RDB_expr_list args;
             char *name;
+
+            /* When the operator is stored in a variable or returned by an operator */
+            RDB_expression *op;
             struct {
                 int objc;
                 RDB_expression *stopexp;
@@ -89,6 +92,7 @@ struct RDB_op_data {
     void *u_data;
     RDB_op_cleanup_func *cleanup_fp;
     RDB_object cretime;
+    RDB_bool locked;
 };
 
 int

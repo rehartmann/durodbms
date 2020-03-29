@@ -3028,6 +3028,24 @@ ro_op_invocation: TOK_ID '(' expression_commalist ')' {
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
     }
+    | '(' expression ')' '(' expression_commalist ')' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            RDB_parse_del_node($4, RDB_parse_ecp);
+            RDB_parse_del_node($5, RDB_parse_ecp);
+            RDB_parse_del_node($6, RDB_parse_ecp);
+            YYABORT;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+        RDB_parse_add_child($$, $5);
+        RDB_parse_add_child($$, $6);
+    }
     ;
 
 ne_expression_commalist: expression {
@@ -3119,6 +3137,31 @@ id_type_commalist_gen: id_type_commalist {
         RDB_parse_add_child($$, $1);
     }
 
+type_commalist: /* empty */ {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            YYABORT;
+        }
+    }
+    | ne_type_commalist {
+        $$ = $1;
+    }
+
+ne_type_commalist: type {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            YYABORT;
+        }
+        RDB_parse_add_child($$, $1);
+    }
+    | ne_type_commalist ',' type {
+        $$ = $1;
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+    }
+    ;
+
 type: qualified_id
     | TOK_TUPLE '{' id_type_commalist_gen '}' {
         $$ = new_parse_inner();
@@ -3204,6 +3247,24 @@ type: qualified_id
         RDB_parse_add_child($$, $4);
         RDB_parse_add_child($$, $5);
 	}
+	| TOK_OPERATOR '(' type_commalist ')' TOK_RETURNS type {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            RDB_parse_del_node($4, RDB_parse_ecp);
+            RDB_parse_del_node($5, RDB_parse_ecp);
+            RDB_parse_del_node($6, RDB_parse_ecp);
+            YYABORT;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+        RDB_parse_add_child($$, $5);
+        RDB_parse_add_child($$, $6);
+    }
 
 qualified_id: TOK_ID {
         $$ = new_parse_inner();

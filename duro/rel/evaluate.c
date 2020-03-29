@@ -324,6 +324,97 @@ expr_obj(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
 }
 
 static int
+evaluate_expr_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
+        RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp,
+        RDB_object *valp)
+{
+    int i;
+    int ret;
+    RDB_object opobj;
+    RDB_object **valpv = NULL;
+    RDB_object *valv = NULL;
+    RDB_expression *argp;
+    RDB_operator *op;
+    int argc = RDB_expr_list_length(&exp->def.op.args);
+
+    RDB_init_obj(&opobj);
+
+    ret = RDB_evaluate(exp->def.op.op, getfnp, getdata, envp, ecp, txp, &opobj);
+    if (ret != RDB_OK) {
+        goto cleanup;
+    }
+    op = RDB_obj_operator(&opobj);
+    if (op == NULL) {
+        RDB_raise_operator_not_found("no operator", ecp);
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+    if (op->paramc != argc) {
+        RDB_raise_invalid_argument("invalid number of arguments", ecp);
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+
+    if (opobj.kind != RDB_OB_OPERATOR) {
+        RDB_raise_type_mismatch("not an operator", ecp);
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+    valpv = RDB_alloc(argc * sizeof (RDB_object *), ecp);
+    if (valpv == NULL) {
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+    for (i = 0; i < argc; i++) {
+        valpv[i] = NULL;
+    }
+    valv = RDB_alloc(argc * sizeof (RDB_object), ecp);
+    if (valv == NULL) {
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+
+    argp = exp->def.op.args.firstp;
+    for (i = 0; i < argc; i++) {
+        valpv[i] = expr_obj(argp, getfnp, getdata, ecp, txp);
+        if (valpv[i] == NULL) {
+            RDB_init_obj(&valv[i]);
+            valpv[i] = &valv[i];
+            ret = RDB_evaluate(argp, getfnp, getdata, envp, ecp, txp, &valv[i]);
+            if (ret != RDB_OK) {
+                goto cleanup;
+            }
+        }
+        if (!RDB_obj_matches_type(valpv[i], op->paramv[i].typ)) {
+            RDB_raise_type_mismatch("argument does not match parameter type", ecp);
+            ret = RDB_ERROR;
+            goto cleanup;
+        }
+
+    }
+
+    ret = op->opfn.ro_fp(argc, valpv, op, ecp, txp, valp);
+
+cleanup:
+    if (valpv != NULL && valpv != NULL) {
+        for (i = 0; i < argc; i++) {
+            if (valpv[i] == &valv[i]) {
+                RDB_destroy_obj(&valv[i], ecp);
+            }
+        }
+    }
+    if (valpv != NULL) {
+        RDB_free(valpv);
+    }
+    if (valv != NULL) {
+        RDB_free(valv);
+    }
+
+    RDB_destroy_obj(&opobj, ecp);
+    return ret;
+}
+
+static int
 evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp,
         RDB_object *valp)
@@ -717,7 +808,8 @@ RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
 
     switch (exp->kind) {
     case RDB_EX_RO_OP:
-        return evaluate_ro_op(exp, getfnp, getdata, envp, ecp, txp, valp);
+        return exp->def.op.name != NULL ? evaluate_ro_op(exp, getfnp, getdata, envp, ecp, txp, valp)
+                : evaluate_expr_ro_op(exp, getfnp, getdata, envp, ecp, txp, valp);
     case RDB_EX_VAR:
         return evaluate_var(exp->def.varname, getfnp, getdata, ecp,
                 txp, valp);

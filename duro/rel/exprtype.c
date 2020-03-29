@@ -650,6 +650,17 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
     int argc;
     RDB_type **argtv = NULL;
 
+    if (exp->def.op.name == NULL) {
+        RDB_type *optyp = RDB_expr_type(exp->def.op.op, getfnp, getarg, envp, ecp, txp);
+        if (optyp == NULL) {
+            return NULL;
+        }
+        if (!RDB_type_is_operator(optyp)) {
+            RDB_raise_invalid_argument("not an operator", ecp);
+        }
+        return optyp->def.op.rtyp;
+    }
+
     /* Transform UPDATE */
     if (strcmp(exp->def.op.name, "update") == 0) {
         if (RDB_convert_update(exp, getfnp, getarg, ecp, txp) != RDB_OK)

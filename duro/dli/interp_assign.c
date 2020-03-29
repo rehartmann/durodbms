@@ -8,7 +8,9 @@
 #include "interp_assign.h"
 #include "interp_core.h"
 #include "exparse.h"
+#include <obj/operator.h>
 #include <rel/tostr.h>
+#include <rel/internal.h>
 
 #include <string.h>
 
@@ -398,14 +400,32 @@ node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep, Duro_interp *interp,
         return comp_node_to_copy(copyp, nodep, dstexp, srcexp, interp, ecp);
     }
 
-    if (RDB_evaluate(srcexp, &Duro_get_var, interp, interp->envp, ecp,
-            interp->txnp != NULL ? &interp->txnp->tx : NULL,
-            copyp->srcp) != RDB_OK) {
+    copyp->dstp = resolve_target(dstexp, interp, ecp);
+    if (copyp->dstp == NULL) {
         return RDB_ERROR;
     }
 
-    copyp->dstp = resolve_target(dstexp, interp, ecp);
-    if (copyp->dstp == NULL) {
+    if (RDB_evaluate(srcexp, &Duro_get_var, interp, interp->envp, ecp,
+            interp->txnp != NULL ? &interp->txnp->tx : NULL,
+            copyp->srcp) != RDB_OK) {
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NAME_ERROR) {
+            RDB_type *typ = RDB_obj_type(copyp->dstp);
+            if (typ != NULL && RDB_type_is_operator(typ)) {
+                const char *opname = RDB_expr_var_name(srcexp);
+                if (opname != NULL) {
+                    RDB_operator *op = RDB_get_ro_op(opname, typ->def.op.paramc, typ->def.op.paramtypev,
+                            interp->envp, ecp, interp->txnp != NULL ? &interp->txnp->tx : NULL);
+                    if (op != NULL) {
+                        copyp->srcp->typ = RDB_dup_nonscalar_type(typ, ecp);
+                        if (copyp->srcp->typ == NULL) {
+                            return RDB_ERROR;
+                        }
+                        RDB_operator_to_obj(copyp->srcp, op);
+                        return RDB_OK;
+                    }
+                }
+            }
+        }
         return RDB_ERROR;
     }
 

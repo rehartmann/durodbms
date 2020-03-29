@@ -373,6 +373,8 @@ replen(const RDB_type *typ)
     case RDB_TP_ARRAY:
     case RDB_TP_SCALAR:
         return typ->ireplen;
+    case RDB_TP_OPERATOR:
+        return RDB_VARIABLE_LEN;
     }
     abort();
 }

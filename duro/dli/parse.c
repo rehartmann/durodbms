@@ -92,7 +92,7 @@ add_args(RDB_expression *exp, RDB_parse_node *pnodep, RDB_exec_context *ecp,
             RDB_add_arg(exp, chexp);
             
             if (nodep->nextp == NULL)
-               break;
+                break;
                
             /* Skip comma */
             nodep = nodep->nextp->nextp;
@@ -784,6 +784,25 @@ error:
 }
 
 static RDB_expression *
+expr_ro_op_node_expr(RDB_parse_node *argnodep,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_expression *rexp;
+    RDB_expression *opexp = RDB_parse_node_expr(argnodep, ecp, txp);
+    if (opexp == NULL) {
+        return NULL;
+    }
+    rexp = RDB_ro_op_from_expr(opexp, ecp);
+    if (rexp == NULL)
+        return NULL;
+    if (add_args(rexp, argnodep->nextp->nextp->nextp, ecp, txp) != RDB_OK) {
+        RDB_del_expr(rexp, ecp);
+        return NULL;
+    }
+    return rexp;
+}
+
+static RDB_expression *
 subscript_node_expr(RDB_parse_node *argnodep, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
@@ -883,7 +902,7 @@ parse_heading(RDB_parse_node *nodep, RDB_bool rel, RDB_exec_context *ecp,
     RDB_attr *attrv = NULL;
     RDB_type *typ = NULL;
 
-    attrc = (RDB_parse_nodelist_length(nodep) + /* 1 */ 2) / 3;
+    attrc = (RDB_parse_nodelist_length(nodep) + 2) / 3;
     if (attrc > 0) {
         RDB_expression *exp;
         RDB_parse_node *np = nodep->val.children.firstp;
@@ -1231,10 +1250,14 @@ inner_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *t
         case TOK_UPDATE:
             return nodep->exp = update_node_expr(firstp->nextp, ecp, txp);
         case '(':
+            if (firstp->nextp->nextp->nextp != NULL) {
+                return nodep->exp = expr_ro_op_node_expr(firstp->nextp, ecp, txp);
+            } else {
                 argp = RDB_parse_node_expr(firstp->nextp, ecp, txp);
                 if (argp == NULL)
                     return NULL;
                 return nodep->exp = RDB_dup_expr(argp, ecp);
+            }
         case TOK_WITH:
             return nodep->exp = with_node_expr(firstp->nextp, ecp, txp);
         default:
@@ -1458,6 +1481,54 @@ tup_rel_node_to_type(RDB_parse_node *nodep, RDB_gettypefn *getfnp, void *getarg,
             (RDB_bool) (nodep->val.token == TOK_RELATION), ecp, txp);
 }
 
+static RDB_type *
+op_node_to_type(RDB_parse_node *nodep, RDB_gettypefn *getfnp, void *getarg,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int i;
+    RDB_type *rtyp;
+
+    RDB_type *typ = NULL;
+    int argc = (RDB_parse_nodelist_length(nodep->nextp) + 1) / 2;
+    RDB_type **argtypev = RDB_alloc(sizeof(RDB_type *) * argc, ecp);
+    if (argtypev == NULL) {
+        return NULL;
+    }
+    for (i = 0; i < argc; i++) {
+        argtypev[i] = NULL;
+    }
+    if (argc > 0) {
+        RDB_parse_node *typenodep = nodep->nextp->val.children.firstp;
+        for (i = 0; ; i++) {
+            argtypev[i] = RDB_parse_node_to_type(typenodep, getfnp, getarg, ecp, txp);
+            if (argtypev == NULL) {
+                goto cleanup;
+            }
+            if (i == argc - 1) {
+                break;
+            }
+            typenodep = typenodep->nextp->nextp;
+        }
+    }
+    rtyp = RDB_parse_node_to_type(nodep->nextp->nextp->nextp->nextp, getfnp, getarg, ecp, txp);
+    if (rtyp == NULL) {
+        goto cleanup;
+    }
+    typ = RDB_new_ro_op_type(argc, argtypev, rtyp, ecp);
+
+cleanup:
+    for (i = 0; i < argc; i++) {
+        if (argtypev[i] != NULL && !RDB_type_is_scalar(argtypev[i])) {
+            RDB_del_nonscalar_type(argtypev[i], ecp);
+        }
+    }
+    RDB_free(argtypev);
+    if (rtyp != NULL && !RDB_type_is_scalar(rtyp)) {
+        RDB_del_nonscalar_type(rtyp, ecp);
+    }
+    return typ;
+}
+
 int
 RDB_parse_node_qid(RDB_parse_node *parentp, RDB_object *idobjp, RDB_exec_context *ecp)
 {
@@ -1510,6 +1581,9 @@ RDB_parse_node_to_type(RDB_parse_node *nodep, RDB_gettypefn *getfnp, void *getar
                 return NULL;
             return RDB_dup_nonscalar_type(typ, ecp);
         }
+        case TOK_OPERATOR:
+            return op_node_to_type(nodep->val.children.firstp->nextp,
+                    getfnp, getarg, ecp, txp);
         }
     } else {
         RDB_object idobj;

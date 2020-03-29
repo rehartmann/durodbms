@@ -48,7 +48,8 @@ Duro_destroy_varmap(Duro_varmap *varmap)
     while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
         if (entryp->varp != NULL && DURO_VAR_FREE & entryp->flags) {
             RDB_type *typ = RDB_obj_type(entryp->varp);
-            RDB_bool mustdel = !RDB_type_is_scalar(typ) && !RDB_type_is_relation(typ);
+            RDB_bool mustdel = !RDB_type_is_scalar(typ) && !RDB_type_is_relation(typ)
+                    && !RDB_type_is_operator(typ);
 
             RDB_free_obj(entryp->varp, &ec);
 

@@ -356,6 +356,33 @@ RDB_ro_op(const char *opname, RDB_exec_context *ecp)
         RDB_raise_no_memory(ecp);
         return NULL;
     }
+    exp->def.op.op = NULL;
+
+    RDB_init_expr_list(&exp->def.op.args);
+
+    exp->def.op.optinfo.objc = 0;
+    /* exp->def.op.optinfo.objv = NULL; */
+    exp->def.op.optinfo.stopexp = NULL;
+
+    return exp;
+}
+
+RDB_expression *
+RDB_ro_op_from_expr(RDB_expression *op, RDB_exec_context *ecp)
+{
+    RDB_expression *exp = new_expr(ecp);
+    if (exp == NULL) {
+        return NULL;
+    }
+
+    exp->kind = RDB_EX_RO_OP;
+
+    exp->def.op.op = RDB_dup_expr(op, ecp);
+    if (exp->def.op.op == NULL) {
+        RDB_free(exp);
+        return NULL;
+    }
+    exp->def.op.name = NULL;
 
     RDB_init_expr_list(&exp->def.op.args);
 
@@ -526,7 +553,13 @@ dup_ro_op(const RDB_expression *exp, RDB_exec_context *ecp)
 {
     RDB_expression *argp;
     RDB_expression *argdp;
-    RDB_expression *newexp = RDB_ro_op(exp->def.op.name, ecp);
+    RDB_expression *newexp;
+
+    if (exp->def.op.name != NULL) {
+        newexp = RDB_ro_op(exp->def.op.name, ecp);
+    } else {
+        newexp = RDB_ro_op_from_expr(exp->def.op.op, ecp);
+    }
     if (newexp == NULL)
         return NULL;
 
@@ -843,6 +876,9 @@ RDB_destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
         break;
     case RDB_EX_RO_OP:
         RDB_free(exp->def.op.name);
+        if (exp->def.op.op != NULL) {
+            RDB_del_expr(exp->def.op.op, ecp);
+        }
         if (exp->def.op.optinfo.objc > 0) {
             RDB_free(exp->def.op.optinfo.objpv);
             if (exp->def.op.optinfo.objv != NULL) {

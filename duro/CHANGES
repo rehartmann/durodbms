@@ -13,6 +13,8 @@ DuroDBMS 1.8
 
 - Added RDB_table_to_array_limit().
 
+- Added read-only operator types and read-only-operator valued variables.
+
 - Duro D/T: Added optional LIMIT clause to LOAD.
 
 DuroDBMS 1.7

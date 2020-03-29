@@ -173,6 +173,11 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
             RDB_del_nonscalar_type(objp->typ, ecp);
 
         break;
+    case RDB_OB_OPERATOR:
+        if (objp->typ != NULL) {
+            RDB_del_nonscalar_type(objp->typ, ecp);
+        }
+        break;
     }
 
     return RDB_OK;
@@ -381,6 +386,23 @@ RDB_append_char(RDB_object *objp, char ch, RDB_exec_context *ecp)
 }
 
 /**
+ * RDB_operator_to_obj sets the RDB_object pointed to by <var>objp</var>
+to the operator value specified by <var>op</var>.
+
+The RDB_object must either be newly initialized or of type
+string.
+ */
+void
+RDB_operator_to_obj(RDB_object *objp, RDB_operator *op)
+{
+    objp->kind = RDB_OB_OPERATOR;
+    objp->val.op = op;
+    if (op != NULL) {
+        op->locked = RDB_TRUE;
+    }
+}
+
+/**
  * RDB_obj_bool returns the value of the RDB_object pointed to by
 <var>valp</var> as a RDB_bool. The RDB_object must be of type
 BOOLEAN.
@@ -423,6 +445,12 @@ RDB_float
 RDB_obj_float(const RDB_object *valp)
 {
     return valp->val.float_val;
+}
+
+RDB_operator *
+RDB_obj_operator(const RDB_object *objp)
+{
+    return objp->val.op;
 }
 
 /**
@@ -715,6 +743,8 @@ RDB_val_kind(const RDB_type *typ)
         return RDB_OB_TABLE;
     case RDB_TP_ARRAY:
         return RDB_OB_ARRAY;
+    case RDB_TP_OPERATOR:
+        return RDB_OB_OPERATOR;
     }
     /* Should never be reached */
     abort();
