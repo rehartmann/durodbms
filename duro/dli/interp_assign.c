@@ -1,7 +1,7 @@
 /*
  * Interpreter assignment functions
  *
- * Copyright (C) 2012, 2015 Rene Hartmann.
+ * Copyright (C) 2012, 2015, 2020 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 

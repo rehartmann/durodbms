@@ -42,6 +42,7 @@ expression = project | where | rename | dyadic_relation_op_inv
     | expression '/' expression
     | expression '%' expression
     | var_expression
+    | '(' expression ')' '(' [expression {',' expression}] ')'
     | literal
     | count_inv
     | agg_op_inv
@@ -54,11 +55,8 @@ expression = project | where | rename | dyadic_relation_op_inv
 
 <pre id="var_expression">
 var_expression = [expression '.'] id
-    | ro_op_inv
+    | [expression '.'] id '(' [expression {',' expression}] ')'
     | array_subscript_inv.
-
-ro_op_inv = [expression '.'] id '(' [expression {',' expression}] ')'
-    | '(' expression ')' '(' [expression {',' expression}] ')'.
 
 array_subscript_inv = expression '[' expression ']'. 
 

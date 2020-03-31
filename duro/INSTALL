@@ -21,7 +21,8 @@ will not be possible. Duroadmin will not be available either.
 
 SCons is available from www.scons.org.
 
-To compile DuroDBMS, you need GNU Libtool and Berkeley DB.
+To compile DuroDBMS, you need GNU Libtool (not under MS Windows) and either Berkeley DB,
+PostgreSQL or FoundationDB. 
 
 Building the Java interface requires Java Development Kit 7 or later and the javax.json package.
 Copy the JAR file to jduro/lib or add it to CLASSPATH.  

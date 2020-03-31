@@ -1972,7 +1972,7 @@ id_assign: TOK_ID TOK_ASSIGN expression {
 
 var_expression: TOK_ID
     | dot_invocation
-    | ro_op_invocation /* For THE_ and LENGTH operators */
+    | var_ro_op_invocation /* For THE_ and LENGTH operators */
     | expression '[' expression ']' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
@@ -2580,6 +2580,24 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $3);
     }
     | var_expression
+    | '(' expression ')' '(' expression_commalist ')' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            RDB_parse_del_node($4, RDB_parse_ecp);
+            RDB_parse_del_node($5, RDB_parse_ecp);
+            RDB_parse_del_node($6, RDB_parse_ecp);
+            YYABORT;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+        RDB_parse_add_child($$, $5);
+        RDB_parse_add_child($$, $6);
+    }
     | TOK_RELATION '{' ne_expression_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
@@ -3000,7 +3018,7 @@ agg_invocation: agg_op_name '(' expression ')' {
     }
     ;
 
-ro_op_invocation: TOK_ID '(' expression_commalist ')' {
+var_ro_op_invocation: TOK_ID '(' expression_commalist ')' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -3027,24 +3045,6 @@ ro_op_invocation: TOK_ID '(' expression_commalist ')' {
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
-    }
-    | '(' expression ')' '(' expression_commalist ')' {
-        $$ = new_parse_inner();
-        if ($$ == NULL) {
-            RDB_parse_del_node($1, RDB_parse_ecp);
-            RDB_parse_del_node($2, RDB_parse_ecp);
-            RDB_parse_del_node($3, RDB_parse_ecp);
-            RDB_parse_del_node($4, RDB_parse_ecp);
-            RDB_parse_del_node($5, RDB_parse_ecp);
-            RDB_parse_del_node($6, RDB_parse_ecp);
-            YYABORT;
-        }
-        RDB_parse_add_child($$, $1);
-        RDB_parse_add_child($$, $2);
-        RDB_parse_add_child($$, $3);
-        RDB_parse_add_child($$, $4);
-        RDB_parse_add_child($$, $5);
-        RDB_parse_add_child($$, $6);
     }
     ;
 

@@ -1,7 +1,7 @@
 /*
  * Functions to convert parse subtrees to expressions.
  *
- * Copyright (C) 2003-2009, 2011-2015 Rene Hartmann.
+ * Copyright (C) 2003-2009, 2011-2015, 2020 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
